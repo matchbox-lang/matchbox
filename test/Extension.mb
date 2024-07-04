@@ -1,0 +1,10 @@
+extension int
+{
+    public func echo()
+    {
+        print(this)
+        print(this)
+    }
+}
+
+5.echo()

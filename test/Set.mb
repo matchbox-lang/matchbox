@@ -1,0 +1,12 @@
+var a Set<int> = {1, 2, 3}
+
+var numbers = {
+    "One",
+    "Two",
+    "Three",
+    "Four"
+}
+
+for n in numbers {
+    print(n)
+}

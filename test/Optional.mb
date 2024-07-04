@@ -1,0 +1,18 @@
+public enum Optional<T>
+{
+    Some(T),
+    None
+
+    func unwrap() T
+    {
+        if x := this {
+            return x
+        }
+
+        throw "Error"
+    }
+}
+
+var x = Optional.Some(5)
+
+print(x.unwrap()) # 5

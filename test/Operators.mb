@@ -1,0 +1,79 @@
+var a = 2
+var b = 3
+
+a = b
+a := b
+a => b
+
+a + b
+a - b
+a * b
+a / b
+a // b
+a % b
+a ** b
+
+a += b
+a -= b
+a *= b
+a /= b
+a //= b
+a %= b
+a **= b
+
+a == b
+a != b
+a =~ b
+a !~ b
+
+a > b
+a < b
+a >= b
+a <= b
+a <=> b
+
+a && b
+a || b
+
+|>
+<|
+
+a in b
+a instanceof b
+a is b
+a has b
+
+sizeof a
+typeof a
+
+-a
+!a
+~a
+
+a++
+++a
+a--
+--a
+
+a & b
+a | b
+a ^ b
+a << 1
+a >> 1
+
+a &= b
+a |= b
+a ^= b
+a <<= 1
+a >>= 1
+
+a ?? b
+a ??= b
+a ?: b
+
+a.b
+a?.b
+
+a..b
+a..^3
+...[1, 2, 3]

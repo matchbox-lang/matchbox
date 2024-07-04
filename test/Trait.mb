@@ -1,0 +1,22 @@
+trait Animal
+{
+    func sound() String
+
+    public func speak()
+    {
+        print("%s\n" % sound())
+    }
+}
+
+class Sheep
+{
+    use Animal
+
+    func sound() String
+    {
+        return "Baaaah!"
+    }
+}
+
+var x = Sheep()
+x.speak()

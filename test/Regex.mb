@@ -1,0 +1,7 @@
+var str = "Hello World!"
+
+if (str =~ /world/i) {
+    print("The pattern was found.")
+} else {
+    print("No match found.")
+}

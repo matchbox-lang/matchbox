@@ -1,0 +1,10 @@
+var a Map<char, int> = {'x': 1, 'y': 2, 'z': 3}
+
+var numbers = {
+    "One": 1,
+    "Two": 2,
+    "Three": 3,
+    "Four": 4
+}
+
+print(numbers["One"])

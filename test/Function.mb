@@ -1,0 +1,11 @@
+func add(a int, b int) int
+{
+    return a + b
+}
+
+var x = add(2, 3)
+
+var y = func(a int, b int) int
+{
+    return a + b
+}(2, 3)

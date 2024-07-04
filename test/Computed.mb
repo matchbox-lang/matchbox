@@ -1,0 +1,15 @@
+class Time
+{
+    private seconds int
+
+    public minutes int
+    {
+        get() {
+            return seconds / 60
+        }
+
+        set(n int) {
+            seconds = n * 60
+        }
+    }
+}

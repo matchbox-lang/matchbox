@@ -1,0 +1,12 @@
+enum Events
+{
+    PageLoad,
+    KeyPress(char),
+    Paste(String),
+    Click {
+        x int
+        y int
+    }
+}
+
+var event = Events.KeyPress('a')

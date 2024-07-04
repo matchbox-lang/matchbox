@@ -1,0 +1,18 @@
+var x int8 = 100
+var y = 10.5
+
+var z int = x # Implicit OK
+
+var z int = y # Implicit Error
+
+var z = int(y) # Explicit OK
+
+var z = char(y) # Explicit Error
+
+var z int64 = int(y) # Explicit OK > Implicit OK
+
+var s char[] = 'c' # Implicit OK
+
+Derived d = Derived()
+
+Base b = d # Implicit OK

@@ -1,0 +1,14 @@
+func sum(numbers ...int) int
+{
+    var total = 0
+
+    for n in numbers {
+        total += n
+    }
+
+    return total
+}
+
+var result = sum(1, 2, 3, 4)
+
+print(result) # 10

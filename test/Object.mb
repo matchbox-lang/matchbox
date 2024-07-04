@@ -1,0 +1,17 @@
+func echo(x Object)
+{
+    print(x)
+}
+
+func get(x Object) Object
+{
+    return x
+}
+
+echo("Hello")
+echo(10)
+echo(12.5)
+
+var x = get("Hello")
+var y = get(10)
+var z = get(12.5)

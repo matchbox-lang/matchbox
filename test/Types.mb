@@ -1,0 +1,14 @@
+var i int = 0               # Platform specific integer
+var i uint = 0              # Platform specific unsigned integer
+var i int8 = 0              # 8-bit integer
+var i int16 = 0             # 16 bit integer
+var i int32 = 0             # 32-bit integer
+var i int64 = 0             # 64-bit integer
+var i uint8 = 0             # Unsigned 8-bit integer
+var i uint16 = 0            # Unsigned 16 bit integer
+var i uint32 = 0            # Unsigned 32-bit integer
+var i uint64 = 0            # Unsigned 64-bit integer
+var f float = 0.0           # 32-bit floating-point
+var f double = 0.0          # 64-bit floating-point
+var c char = 'a'            # 32-bit Unicode character
+var b bool = false          # 1-bit true or false

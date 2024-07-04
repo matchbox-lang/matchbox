@@ -1,0 +1,9 @@
+use System.Out
+
+Out.hello()
+
+Out.secret() # Error
+
+use Out.hello
+
+hello()

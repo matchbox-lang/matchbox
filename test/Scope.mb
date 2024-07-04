@@ -1,0 +1,17 @@
+var i = 50
+
+func foo(j int)
+{
+    var i = 100
+    
+    print(i)
+    print(j)
+}
+
+func bar(i int)
+{
+    print(i)
+}
+
+foo(i)
+bar(200)

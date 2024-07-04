@@ -1,0 +1,29 @@
+class Point
+{
+    public x int
+    public y int
+
+    public func construct()
+    {
+        set(0, 0)
+    }
+
+    public func construct(x int, y int)
+    {
+        set(x, y)
+    }
+
+    public func set(x, y int)
+    {
+        this.x = x
+        this.y = y
+    }
+
+    public func +=(v Point) Point
+    {
+        this.x += v.x
+        this.y += v.y
+
+        return this
+    }
+}

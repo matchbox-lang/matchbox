@@ -1,0 +1,11 @@
+type int_t int
+
+type operation func<T>(T, T) T
+
+type point (int, int)
+
+type numbers Map<char, int>
+
+type numbers Set<int>
+
+type number int|float

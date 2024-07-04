@@ -1,0 +1,13 @@
+func range(start, stop, step int) int
+{
+    var i = start
+    
+    while i <= stop {
+        yield i
+        i += step
+    }
+}
+
+for i in range(0, 12, 3) {
+    print(i) # 0, 3, 6, 9, 12
+}

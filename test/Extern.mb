@@ -1,0 +1,3 @@
+extern func sqr(n int) int
+
+sqr(5)

@@ -1,0 +1,28 @@
+class Apple<T>
+{
+    private id T
+
+    public func construct(id T)
+    {
+        this.id = id
+    }
+
+    public func getId() T
+    {
+        return this.id
+    }
+}
+
+func mul(a, b)
+{
+    return a * b
+}
+
+func add<T>(a T, b T) T
+{
+    return a + b
+}
+
+var a = Apple<int>(5)
+var b = add<int>(5, 8)
+var c = mul(5, 8)

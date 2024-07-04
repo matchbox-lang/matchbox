@@ -1,0 +1,29 @@
+class Fruit
+{
+    protected id int
+
+    public func construct(id int)
+    {
+        this.id = id
+    }
+
+    public func getId() int
+    {
+        return this.id
+    }
+}
+
+class Apple extends Fruit
+{
+    use Color, Taste
+    
+    public func setId(id int)
+    {
+        this.id = id
+    }
+}
+
+var x = Apple(5)
+var id = a.getId()
+
+print(id) # 5

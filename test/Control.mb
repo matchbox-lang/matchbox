@@ -1,0 +1,93 @@
+var i = 0
+var arr = [1, 2, 3]
+
+if i < 5 {
+    print("i is less than 5")
+} else if i > 5 {
+    print("i is greater than 5")
+} else {
+    print("i is 5")
+}
+
+if x := i {
+    print($"The value is {x}")
+} else {
+    print("None")
+}
+
+switch i {
+    case 10:
+        print("i is equal to 10")
+    case _:
+        print("i is not 10")
+}
+
+switch {
+    case i < 5:
+        print("i is less than 5")
+    case i > 5:
+        print("i is greatear than 5")
+    case _:
+        print("i is 5")
+}
+
+switch typeof i {
+    case int:
+        print("i is an int")
+    case float:
+        print("i is a float")
+    case _:
+        print("i is unknown")
+}
+
+var x = match i {
+    1 => print("1"),
+    2 => print("2"),
+    3 => print("3"),
+    4 => print("4"),
+    5 => print("5"),
+    _ => print("Unknown"),
+}
+
+var x = match {
+    i < 5 => "i is less than 5",
+    i > 5 => "i is greatear than 5",
+    _ => "i is 5"
+}
+
+var x = match (-1, 1) {
+    (1, y) => $"x is 1, y is {y}",
+    (x, 1) => $"x is {x}, y is 1",
+    (-1, -1) => "x is -1, y is -1",
+    _ => "x is 1, y is 1"
+}
+
+while i < 5 {
+    i++
+}
+
+for n in arr {
+    print(n)
+} else {
+    print("arr is empty")
+}
+
+for n in arr where @ > 1 {
+    print(n)
+}
+
+for n in 0..10 {
+    print(n)
+}
+
+for n in range(10, 0, -1) {
+    print(n)
+}
+
+for a, b in zip(points, coords) {
+    print(a, b)
+}
+
+if 2 in arr {
+    print("2 is in arr")
+}

@@ -1,0 +1,24 @@
+var c = a ? a : b
+var c = a ?? b
+
+var matrix int[2][3] = [1, 2, 3, 4, 5, 6]
+
+var a = [x for x in 1..10]
+var b = [x for x in 1..10 where x > 2]
+var c = [y for x in matrix for y in x]
+var d = [[y for y in range(5)] for x in range(5)]
+var e = [[y for y in x] for x in matrix]
+
+if x == y: print("true")
+
+var x, y, z int
+
+func add(a, b int) int
+{
+    return a + b
+}
+
+func foo(n int = 10)
+{
+    print(n)
+}

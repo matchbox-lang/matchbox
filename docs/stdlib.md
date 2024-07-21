@@ -152,6 +152,8 @@
 
 ## sequence
     range           Generate a sequence of numbers
+    resize          Resize an existing vector
+    vector          Create a dynamic sequence of memory
     zip             Zip sequences into a single iterator
 
 ## system

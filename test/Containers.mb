@@ -1,16 +1,16 @@
-var x Array<int>
+var x List<int>
 var x Map<char, int>
 var x Set<int>
 
-var x Array<int> = Array<int>()
+var x List<int> = List<int>()
 var x Map<char, int> = Map<char, int>()
 var x Set<int> = Set<int>()
 
-var x = Array<int>()
+var x = List<int>()
 var x = Map<char, int>()
 var x = Set<int>()
 
-var x Array<int> = [1, 2, 3]
+var x List<int> = [1, 2, 3]
 var x Map<char, int> = {'x': 1, 'y': 2, 'z': 3}
 var x Set<int> = {1, 2, 3}
 

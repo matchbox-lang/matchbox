@@ -1,36 +1,36 @@
 # Standard Library
 
-## class Array\<T\>
-    compact         Return an array of variables and their values
-    current         Return the current element of an array
-    empty           Determine if an array is empty
-    end             Set internal pointer to the end of an array
-    extract         Import variables into the current symbol table from an array
-    first           Return the first element of an array
+## class List\<T\>
+    compact         Return a list of variables and their values
+    current         Return the current element of a list
+    empty           Determine if a list is empty
+    end             Set internal pointer to the end of a list
+    extract         Import variables into the current symbol table from a list
+    first           Return the first element of a list
     get             Return the value at the index
-    join            Join elements of an array into a string
-    key             Return the current index of an array
-    keys            Return the keys of an array
-    last            Return the last element of an array
-    length          Return the length of an array
-    map             Apply a function to all elements in an array
-    merge           Merge the elements of one or more arrays
-    next            Advance internal pointer of an array
-    pop             Remove the last element of an array
-    prev            Rewind internal pointer of an array
-    push            Add new elements onto the end of an array
-    rand            Return a randon element from an array
-    reset           Reset internal pointer to the beginning of an array
-    rsort           Sort an array in descending order
-    shift           Remove an element from the beginning of an array
-    shuffle         Shuffle an array
-    slice           Extract one or more elements from an array
-    sort            Sort an array in ascending order
-    splice          Replace one or more elements in an array
-    split           Split a string into an array of substrings
-    unique          Removes duplicate values from an array
-    unshift         Prepend an element to the beginning of an array
-    values          Return the values of an array
+    join            Join elements of a list into a string
+    key             Return the current index of a list
+    keys            Return the keys of a list
+    last            Return the last element of a list
+    length          Return the length of a list
+    map             Apply a function to all elements in a list
+    merge           Merge the elements of one or more lists
+    next            Advance internal pointer of a list
+    pop             Remove the last element of a list
+    prev            Rewind internal pointer of a list
+    push            Add new elements onto the end of a list
+    rand            Return a randon element from a list
+    reset           Reset internal pointer to the beginning of a list
+    rsort           Sort a list in descending order
+    shift           Remove an element from the beginning of a list
+    shuffle         Shuffle a list
+    slice           Extract one or more elements from a list
+    sort            Sort a list in ascending order
+    splice          Replace one or more elements in a list
+    split           Split a string into a list of substrings
+    unique          Removes duplicate values from a list
+    unshift         Prepend an element to the beginning of a list
+    values          Return the values of a list
 
 ## class Map\<K, V\>
     ksort           Sort a map by key in ascending order

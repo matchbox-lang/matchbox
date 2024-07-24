@@ -1,6 +1,7 @@
 .vscode/
 bin/
 object/
+*.exe
 *.mbx
 *.o
 *.obj

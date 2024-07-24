@@ -441,9 +441,7 @@ Token scanToken()
         case ',':   return makeToken(T_COMMA);
         case '$':   return makeToken(T_DOLLAR);
         case '~':   return makeToken(T_TILDE);
-        case ':':
-            return makeToken(
-                match('=') ? T_COLON_EQUAL : T_COLON);
+        case ':':   return makeToken(T_COLON);
         case '%':
             return makeToken(
                 match('=') ? T_PERCENT_EQUAL : T_PERCENT);

@@ -7,9 +7,6 @@ static x = 0
 const x int = 0
 const x = 0
 
-x int := 0
-x := 0
-
 var a, b, c = 1, 2, 3
 
 var a, b, c = 1, '2', "3"
@@ -35,5 +32,3 @@ var a, b = [1, 2], [3, 4, 5]
 a, b = b, a
 
 var a, b, c = "xyz"
-
-a, b, c := 1, 2, 3

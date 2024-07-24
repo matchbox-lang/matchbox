@@ -2,17 +2,12 @@ public enum Optional<T>
 {
     Some(T),
     None
-
-    func unwrap() T
-    {
-        if x := this {
-            return x
-        }
-
-        throw "Error"
-    }
 }
 
-var x = Optional.Some(5)
+var opt = Some(5)
 
-print(x.unwrap()) # 5
+if var x = opt {
+    print(x) # 5
+} else {
+    print("None")
+}

@@ -9,12 +9,6 @@ if i < 5 {
     print("i is 5")
 }
 
-if x := i {
-    print($"The value is {x}")
-} else {
-    print("None")
-}
-
 switch i {
     case 10:
         print("i is equal to 10")

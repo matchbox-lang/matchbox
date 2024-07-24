@@ -108,7 +108,6 @@ typedef enum TokenType
     T_QUESTION,
     T_TERNARY,
     T_COLON,
-    T_COLON_EQUAL,
     T_EQUAL_TILDE,
     T_NOT_TILDE,
     T_AND_EQUAL,

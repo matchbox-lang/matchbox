@@ -1,17 +1,19 @@
-var i = 50
+var x = 50
 
-func foo(j int)
+func foo(y int)
 {
-    var i = 100
+    var x = 100
     
-    print(i)
-    print(j)
+    print(x)
+    print(y)
 }
 
-func bar(i int)
+func bar(x int)
 {
-    print(i)
+    print(x)
 }
 
-foo(i)
+print(y) # Error
+
+foo(x)
 bar(200)

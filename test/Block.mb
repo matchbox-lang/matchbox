@@ -1,0 +1,9 @@
+var x = 50
+
+{
+    var y = 10
+
+    print(x)
+}
+
+print(y) # Error

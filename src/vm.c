@@ -51,14 +51,14 @@ static void errors(const char* message, const char* s)
 
 static void push(Value value)
 {
-    *vm.sp = value;
+    vm.sp[0] = value;
     vm.sp++;
 }
 
 static Value pop()
 {
     vm.sp--;
-    return *vm.sp;
+    return vm.sp[0];
 }
 
 static Value peek(size_t index)
@@ -296,14 +296,14 @@ static void op_inc()
 {
     uint8_t imm = READ_UINT8();
 
-    AS_INT(vm.fp[imm])++;
+    AS_INT(vm.sp[-1])++;
 }
 
 static void op_dec()
 {
     uint8_t imm = READ_UINT8();
 
-    AS_INT(vm.fp[imm])--;
+    AS_INT(vm.sp[-1])--;
 }
 
 static void op_beq()
@@ -351,15 +351,16 @@ static void op_jsr()
 
     push(ra);
     push(fp);
-    
+
     vm.pc += READ_UINT16();
     vm.fp = vm.sp;
 }
 
 static void op_ret()
 {
-    vm.pc = AS_POINTER(vm.fp[-2]);
-    vm.fp = AS_POINTER(vm.fp[-1]);
+    vm.sp = vm.fp;
+    vm.fp = AS_POINTER(pop());
+    vm.pc = AS_POINTER(pop());
 }
 
 static void initOpcodes()

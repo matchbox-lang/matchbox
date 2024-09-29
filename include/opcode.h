@@ -35,8 +35,8 @@ typedef enum Opcode
     OP_ABS,         // abs
     OP_NOT,         // not
     OP_NEG,         // neg
-    OP_INC,         // inc imm8
-    OP_DEC,         // dec imm8
+    OP_INC,         // inc
+    OP_DEC,         // dec
     OP_BEQ,         // beq imm16
     OP_BLT,         // blt imm16
     OP_BLE,         // ble imm16

@@ -61,14 +61,6 @@ typedef struct AST
         } funcDef;
 
         struct {
-            Scope* scope;
-            StringObject* id;
-            int typeId;
-            AST* expr;
-            int position;
-        } param;
-
-        struct {
             Token operator;
             AST* expr;
         } postfix;

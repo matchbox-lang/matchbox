@@ -294,15 +294,11 @@ static void op_neg()
 
 static void op_inc()
 {
-    uint8_t imm = READ_UINT8();
-
     AS_INT(vm.sp[-1])++;
 }
 
 static void op_dec()
 {
-    uint8_t imm = READ_UINT8();
-
     AS_INT(vm.sp[-1])--;
 }
 

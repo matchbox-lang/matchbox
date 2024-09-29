@@ -233,18 +233,16 @@ static void op_not()
     printf("not\n");
 }
 
-static void op_inc(int8_t imm)
+static void op_inc()
 {
     emit8(OP_INC);
-    emit8(imm);
-    printf("inc\t%d\n", imm);
+    printf("inc\n");
 }
 
-static void op_dec(int8_t imm)
+static void op_dec()
 {
     emit8(OP_DEC);
-    emit8(imm);
-    printf("dec\t%d\n", imm);
+    printf("dec\n");
 }
 
 static void op_beq(uint16_t imm)
@@ -337,7 +335,7 @@ static void increment(AST* ast)
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
 
-    op_inc(symbol->varDef.position);
+    op_inc();
 }
 
 static void decrement(AST* ast)
@@ -345,7 +343,7 @@ static void decrement(AST* ast)
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
 
-    op_dec(symbol->varDef.position);
+    op_dec();
 }
 
 static void postfix(AST* ast)

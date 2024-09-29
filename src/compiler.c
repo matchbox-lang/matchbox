@@ -471,6 +471,22 @@ static void varDef(AST* ast)
     op_stl(ast->varDef.position);
 }
 
+static void expression(AST* ast)
+{
+    switch (ast->type) {
+        case AST_VARIABLE:
+            return variable(ast);
+        case AST_BINARY:
+            return binary(ast);
+        case AST_INTEGER:
+            return number(ast);
+        case AST_POSTFIX:
+            return postfix(ast);
+        case AST_PREFIX:
+            return prefix(ast);
+    }
+}
+
 static void statements(Vector* statements)
 {
     for (size_t i = 0; i < countVector(statements); i++) {
@@ -486,22 +502,6 @@ static void statements(Vector* statements)
             default:
                 expression(ast);
         }
-    }
-}
-
-static void expression(AST* ast)
-{
-    switch (ast->type) {
-        case AST_VARIABLE:
-            return variable(ast);
-        case AST_BINARY:
-            return binary(ast);
-        case AST_INTEGER:
-            return number(ast);
-        case AST_POSTFIX:
-            return postfix(ast);
-        case AST_PREFIX:
-            return prefix(ast);
     }
 }
 

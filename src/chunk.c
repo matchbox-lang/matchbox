@@ -5,7 +5,7 @@
 void initChunk(Chunk* chunk)
 {
     chunk->capacity = CHUNK_INIT_CAPACITY;
-    chunk->code = malloc(chunk->capacity * sizeof(uint8_t));
+    chunk->code = calloc(chunk->capacity, sizeof(uint8_t));
     chunk->count = 0;
 
     initValueArray(&chunk->constants);

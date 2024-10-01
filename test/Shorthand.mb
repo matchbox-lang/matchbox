@@ -9,7 +9,7 @@ var c = [y for x in matrix for y in x]
 var d = [[y for y in range(5)] for x in range(5)]
 var e = [[y for y in x] for x in matrix]
 
-if x == y: print("true")
+if (x == y) print("true")
 
 var x, y, z int
 

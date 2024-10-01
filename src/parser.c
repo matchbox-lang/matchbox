@@ -784,9 +784,9 @@ static AST* statement()
             return functionDefinition();
         case T_RETURN:
             return returnStmt();
+        default:
+            return expression();
     }
-
-    return expression();
 }
 
 static AST* statements(TokenType type)

@@ -2,15 +2,13 @@ type operation func(int, int) int
 
 func log(op operation) operation
 {
-    func fn(a int, b int) int
+    return func(a int, b int) int
     {
         var result = op(a, b)
         print($"Result {result}")
 
         return result
     }
-
-    return fn
 }
 
 @log

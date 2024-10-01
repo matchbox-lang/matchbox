@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 static void expression();
+static void statements();
 
 typedef struct Compiler
 {
@@ -461,6 +462,36 @@ static void assignment(AST* ast)
     }
 }
 
+static void funcCall(AST* ast)
+{
+    int argsCount = countVector(&ast->funcCall.args);
+
+    for (int i = 0; i < argsCount; i++) {
+        AST* arg = vectorGet(&ast->funcCall.args, i);
+        expression(arg);
+    }
+
+    op_jsr(0);
+}
+
+static void funcDef(AST* ast)
+{
+    int paramsCount = countVector(&ast->funcDef.params);;
+
+    for (int i = 0; i < paramsCount; i++) {
+        AST* param = vectorGet(&ast->funcDef.params, i);
+        op_ldl(param->varDef.position - 3);
+    }
+
+    statements(&ast->funcDef.body->statements);
+}
+
+static void ret(AST* ast)
+{
+    expression(ast->expr);
+    op_ret();
+}
+
 static void varDef(AST* ast)
 {
     if (!ast->varDef.expr) {
@@ -478,6 +509,8 @@ static void expression(AST* ast)
             return variable(ast);
         case AST_BINARY:
             return binary(ast);
+        case AST_FUNCTION_CALL:
+            return funcCall(ast);
         case AST_INTEGER:
             return number(ast);
         case AST_POSTFIX:
@@ -495,6 +528,12 @@ static void statements(Vector* statements)
         switch (ast->type) {
             case AST_ASSIGNMENT:
                 assignment(ast);
+                break;
+            case AST_FUNCTION_DEFINITION:
+                funcDef(ast);
+                break;
+            case AST_RETURN:
+                ret(ast);
                 break;
             case AST_VARIABLE_DEFINITION:
                 varDef(ast);

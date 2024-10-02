@@ -19,6 +19,7 @@ void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
 size_t countChunk(Chunk* chunk);
 void resizeChunk(Chunk* chunk, size_t capacity);
+void patchChunk(Chunk* chunk, size_t position, uint8_t byte);
 void writeChunk(Chunk* chunk, uint8_t byte);
 
 #endif

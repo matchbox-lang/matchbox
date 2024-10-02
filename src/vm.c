@@ -95,7 +95,7 @@ static void op_ldc()
 
 static void op_ldl()
 {
-    uint8_t imm = READ_UINT8();
+    int8_t imm = READ_UINT8();
     Value local = vm.fp[imm];
 
     push(local);
@@ -118,7 +118,7 @@ static void op_ldl_2()
 
 static void op_stl()
 {
-    uint8_t imm = READ_UINT8();
+    int8_t imm = READ_UINT8();
 
     vm.fp[imm] = peek(0);
 }
@@ -342,21 +342,25 @@ static void op_jmp()
 
 static void op_jsr()
 {
-    Value ra = POINTER_VALUE(vm.pc + 1);
+    int16_t imm = READ_UINT16();
+    Value ra = POINTER_VALUE(vm.pc);
     Value fp = POINTER_VALUE(vm.fp);
 
     push(ra);
     push(fp);
 
-    vm.pc += READ_UINT16();
+    vm.pc += imm;
     vm.fp = vm.sp;
 }
 
 static void op_ret()
 {
+    Value ra = vm.fp[-2];
+    Value fp = vm.fp[-1];
+
     vm.sp = vm.fp;
-    vm.fp = AS_POINTER(pop());
-    vm.pc = AS_POINTER(pop());
+    vm.fp = AS_POINTER(fp);
+    vm.pc = AS_POINTER(ra);
 }
 
 static void initOpcodes()
@@ -442,8 +446,7 @@ void interpret(char* source)
 {
     Chunk chunk;
     initChunk(&chunk);
-    initCompiler(&chunk);
-    compile(source);
+    compile(source, &chunk);
     initVM();
     interpretChunk(&chunk);
     inspectVM();

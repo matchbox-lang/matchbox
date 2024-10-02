@@ -53,5 +53,5 @@ size_t hashString(const char* chars, int length)
 
 void printString(StringObject* string)
 {
-    printf("%.*s\n", string->length, string->chars);
+    printf("%.*s", string->length, string->chars);
 }

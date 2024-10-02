@@ -27,6 +27,11 @@ void resizeChunk(Chunk* chunk, size_t capacity)
     chunk->capacity = capacity;
 }
 
+void patchChunk(Chunk* chunk, size_t position, uint8_t byte)
+{
+    chunk->code[position] = byte;
+}
+
 void writeChunk(Chunk* chunk, uint8_t byte)
 {
     if (chunk->capacity <= chunk->count) {

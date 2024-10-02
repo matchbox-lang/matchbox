@@ -581,7 +581,7 @@ static AST* parameter()
     
     consume(T_IDENTIFIER);
 
-    AST* ast = createAST(AST_VARIABLE_DEFINITION);
+    AST* ast = createAST(AST_PARAMETER);
     ast->varDef.scope = parser.scope;
     ast->varDef.id = id;
     ast->varDef.typeId = T_UNKNOWN;
@@ -592,7 +592,7 @@ static AST* parameter()
         consumeType();
     }
 
-    setLocalVariable(parser.scope, id, ast);
+    setLocalSymbol(parser.scope, id, ast);
 
     return ast;
 }
@@ -728,14 +728,18 @@ static AST* functionDefinition()
     consume(T_LPAREN);
 
     parser.scope = createScope(parser.scope);
+    int offset = 0;
 
     if (peek().type != T_RPAREN) {
         AST* expr = parameter();
+        expr->varDef.position = --offset;
+    
         pushVector(&ast->funcDef.params, expr);
 
         while (peek().type == T_COMMA) {
             consume(T_COMMA);
             AST* expr = parameter();
+            expr->varDef.position = --offset;
             pushVector(&ast->funcDef.params, expr);
         }
     }

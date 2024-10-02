@@ -3,7 +3,7 @@
 
 #include "chunk.h"
 
-void initCompiler(Chunk* chunk);
-void compile(char* source);
+void initCompiler();
+void compile(char* source, Chunk* chunk);
 
 #endif

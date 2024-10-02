@@ -2,6 +2,7 @@
 #include "ast.h"
 #include "opcode.h"
 #include "parser.h"
+#include "reference.h"
 #include "scope.h"
 #include "vector.h"
 #include <stdlib.h>
@@ -10,63 +11,65 @@
 static void expression();
 static void statements();
 
-typedef struct Compiler
-{
-    Chunk* chunk;
-} Compiler;
+static Chunk* currentChunk;
+static Vector references;
 
-Compiler compiler;
-
-void initCompiler(Chunk* chunk)
+static void write16(int16_t n)
 {
-    compiler.chunk = chunk;
+    writeChunk(currentChunk, (n >> 8) & 0xFF);
+    writeChunk(currentChunk, n & 0xFF);
 }
 
-static void emit16(int16_t n)
+static void write8(uint8_t n)
 {
-    writeChunk(compiler.chunk, (n >> 8) & 0xFF);
-    writeChunk(compiler.chunk, n & 0xFF);
+    writeChunk(currentChunk, n);
 }
 
-static void emit8(uint8_t n)
+static void patch16(size_t position, int16_t n)
 {
-    writeChunk(compiler.chunk, n);
+    patchChunk(currentChunk, position, (n >> 8) & 0xFF);
+    patchChunk(currentChunk, position + 1, n & 0xFF);
+}
+
+static void patch8(size_t position, int8_t n)
+{
+    patchChunk(currentChunk, position, n);
 }
 
 static void op_hlt()
 {
-    emit8(OP_HLT);
+    write8(OP_HLT);
     printf("hlt\n");
 }
 
 static void op_syscall()
 {
-    emit8(OP_SYSCALL);
+    write8(OP_SYSCALL);
     printf("syscall\n");
 }
 
 static void op_ldc(uint8_t imm)
 {
-    emit8(OP_LDC);
-    emit8(imm);
+    write8(OP_LDC);
+    write8(imm);
     printf("ldc\t%d\n", imm);
 }
 
 static void op_ldl_0()
 {
-    emit8(OP_LDL_0);
+    write8(OP_LDL_0);
     printf("ldl_0\n");
 }
 
 static void op_ldl_1()
 {
-    emit8(OP_LDL_1);
+    write8(OP_LDL_1);
     printf("ldl_1\n");
 }
 
 static void op_ldl_2()
 {
-    emit8(OP_LDL_2);
+    write8(OP_LDL_2);
     printf("ldl_2\n");
 }
 
@@ -76,26 +79,26 @@ static void op_ldl(int8_t imm)
     if (imm == 1) return op_ldl_1();
     if (imm == 2) return op_ldl_2();
 
-    emit8(OP_LDL);
-    emit8(imm);
+    write8(OP_LDL);
+    write8(imm);
     printf("ldl\t%d\n", imm);
 }
 
 static void op_stl_0()
 {
-    emit8(OP_STL_0);
+    write8(OP_STL_0);
     printf("stl_0\n");
 }
 
 static void op_stl_1()
 {
-    emit8(OP_STL_1);
+    write8(OP_STL_1);
     printf("stl_1\n");
 }
 
 static void op_stl_2()
 {
-    emit8(OP_STL_2);
+    write8(OP_STL_2);
     printf("stl_2\n");
 }
 
@@ -105,20 +108,20 @@ static void op_stl(int8_t imm)
     if (imm == 1) return op_stl_1();
     if (imm == 2) return op_stl_2();
 
-    emit8(OP_STL);
-    emit8(imm);
+    write8(OP_STL);
+    write8(imm);
     printf("stl\t%d\n", imm);
 }
 
 static void op_push_0()
 {
-    emit8(OP_PUSH_0);
+    write8(OP_PUSH_0);
     printf("push_0\n");
 }
 
 static void op_push_1()
 {
-    emit8(OP_PUSH_1);
+    write8(OP_PUSH_1);
     printf("push_1\n");
 }
 
@@ -127,163 +130,163 @@ static void op_push(int8_t imm)
     if (imm == 0) return op_push_0();
     if (imm == 1) return op_push_1();
 
-    emit8(OP_PUSH);
-    emit8(imm);
+    write8(OP_PUSH);
+    write8(imm);
     printf("push\t%d\n", imm);
 }
 
 static void op_pop()
 {
-    emit8(OP_POP);
+    write8(OP_POP);
     printf("pop\n");
 }
 
 static void op_add()
 {
-    emit8(OP_ADD);
+    write8(OP_ADD);
     printf("add\n");
 }
 
 static void op_sub()
 {
-    emit8(OP_SUB);
+    write8(OP_SUB);
     printf("sub\n");
 }
 
 static void op_mul()
 {
-    emit8(OP_MUL);
+    write8(OP_MUL);
     printf("mul\n");
 }
 
 static void op_div()
 {
-    emit8(OP_DIV);
+    write8(OP_DIV);
     printf("div\n");
 }
 
 static void op_rem()
 {
-    emit8(OP_REM);
+    write8(OP_REM);
     printf("rem\n");
 }
 
 static void op_pow()
 {
-    emit8(OP_POW);
+    write8(OP_POW);
     printf("pow\n");
 }
 
 static void op_band()
 {
-    emit8(OP_BAND);
+    write8(OP_BAND);
     printf("band\n");
 }
 
 static void op_bor()
 {
-    emit8(OP_BOR);
+    write8(OP_BOR);
     printf("bor\n");
 }
 
 static void op_bxor()
 {
-    emit8(OP_BXOR);
+    write8(OP_BXOR);
     printf("bxor\n");
 }
 
 static void op_bnot()
 {
-    emit8(OP_BNOT);
+    write8(OP_BNOT);
     printf("bnot\n");
 }
 
 static void op_lsl()
 {
-    emit8(OP_LSL);
+    write8(OP_LSL);
     printf("lsl\n");
 }
 
 static void op_lsr()
 {
-    emit8(OP_LSR);
+    write8(OP_LSR);
     printf("lsr\n");
 }
 
 static void op_asr()
 {
-    emit8(OP_ASR);
+    write8(OP_ASR);
     printf("asr\n");
 }
 
 static void op_abs()
 {
-    emit8(OP_ABS);
+    write8(OP_ABS);
     printf("abs\n");
 }
 
 static void op_neg()
 {
-    emit8(OP_NEG);
+    write8(OP_NEG);
     printf("neg\n");
 }
 
 static void op_not()
 {
-    emit8(OP_NOT);
+    write8(OP_NOT);
     printf("not\n");
 }
 
 static void op_inc()
 {
-    emit8(OP_INC);
+    write8(OP_INC);
     printf("inc\n");
 }
 
 static void op_dec()
 {
-    emit8(OP_DEC);
+    write8(OP_DEC);
     printf("dec\n");
 }
 
 static void op_beq(uint16_t imm)
 {
-    emit8(OP_BEQ);
-    emit16(imm);
+    write8(OP_BEQ);
+    write16(imm);
     printf("beq\t%d\n", imm);
 }
 
 static void op_blt(uint16_t imm)
 {
-    emit8(OP_BLT);
-    emit16(imm);
+    write8(OP_BLT);
+    write16(imm);
     printf("blt\t%d\n", imm);
 }
 
 static void op_ble(uint16_t imm)
 {
-    emit8(OP_BLE);
-    emit16(imm);
+    write8(OP_BLE);
+    write16(imm);
     printf("ble\t%d\n", imm);
 }
 
 static void op_jmp(uint16_t imm)
 {
-    emit8(OP_JMP);
-    emit16(imm);
+    write8(OP_JMP);
+    write16(imm);
     printf("jmp\t%d\n", imm);
 }
 
 static void op_jsr(uint16_t imm)
 {
-    emit8(OP_JSR);
-    emit16(imm);
+    write8(OP_JSR);
+    write16(imm);
     printf("jsr\t%d\n", imm);
 }
 
 static void op_ret()
 {
-    emit8(OP_RET);
+    write8(OP_RET);
     printf("ret\n");
 }
 
@@ -377,6 +380,10 @@ static void variable(AST* ast)
 {
     AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
 
+    if (symbol->type == AST_PARAMETER) {
+        return op_ldl(symbol->varDef.position - 2);
+    }
+
     op_ldl(symbol->varDef.position);
 }
 
@@ -464,26 +471,27 @@ static void assignment(AST* ast)
 
 static void funcCall(AST* ast)
 {
-    int argsCount = countVector(&ast->funcCall.args);
+    int n = countVector(&ast->funcCall.args);
 
-    for (int i = 0; i < argsCount; i++) {
-        AST* arg = vectorGet(&ast->funcCall.args, i);
+    while (n--) {
+        AST* arg = vectorGet(&ast->funcCall.args, n);
         expression(arg);
     }
+
+    Reference* ref = createReference(ast, countChunk(currentChunk));
+    pushVector(&references, ref);
 
     op_jsr(0);
 }
 
-static void funcDef(AST* ast)
+static int16_t funcDef(AST* ast)
 {
-    int paramsCount = countVector(&ast->funcDef.params);;
-
-    for (int i = 0; i < paramsCount; i++) {
-        AST* param = vectorGet(&ast->funcDef.params, i);
-        op_ldl(param->varDef.position - 3);
-    }
+    int paramsCount = countVector(&ast->funcDef.params);
+    int16_t position = countChunk(currentChunk);
 
     statements(&ast->funcDef.body->statements);
+
+    return position;
 }
 
 static void ret(AST* ast)
@@ -529,13 +537,11 @@ static void statements(Vector* statements)
             case AST_ASSIGNMENT:
                 assignment(ast);
                 break;
-            case AST_FUNCTION_DEFINITION:
-                funcDef(ast);
-                break;
             case AST_RETURN:
                 ret(ast);
                 break;
             case AST_VARIABLE_DEFINITION:
+            case AST_PARAMETER:
                 varDef(ast);
                 break;
             default:
@@ -544,10 +550,26 @@ static void statements(Vector* statements)
     }
 }
 
-void compile(char* source)
+static void functions()
+{
+    for (int i = 0; i < countVector(&references); i++) {
+        Reference* ref = vectorGet(&references, i);
+        AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
+        int16_t offset = funcDef(symbol) - (ref->position + 3);
+
+        patch16(ref->position + 1, offset);
+        freeReference(ref);
+    }
+}
+
+void compile(char* source, Chunk* chunk)
 {
     AST* ast = parse(source);
+    currentChunk = chunk;
+    initVector(&references);
     statements(&ast->statements);
     op_hlt();
+    functions();
+    freeVector(&references);
     freeAST(ast);
 }

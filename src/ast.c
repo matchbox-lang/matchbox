@@ -79,6 +79,7 @@ void freeAST(AST* ast)
             freeString(ast->var.id);
             break;
         case AST_VARIABLE_DEFINITION:
+        case AST_PARAMETER:
             freeScope(ast->varDef.scope);
             freeString(ast->varDef.id);
             freeAST(ast->varDef.expr);

@@ -555,7 +555,7 @@ static void functions()
     for (int i = 0; i < countVector(&references); i++) {
         Reference* ref = vectorGet(&references, i);
         AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
-        int16_t offset = funcDef(symbol) - (ref->position + 3);
+        int16_t offset = funcDef(symbol) - ref->position - 3;
 
         patch16(ref->position + 1, offset);
         freeReference(ref);

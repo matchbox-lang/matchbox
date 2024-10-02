@@ -12,7 +12,32 @@ static void expression();
 static void statements();
 
 static Chunk* currentChunk;
-static Vector references;
+static Vector branches;
+static Vector functions;
+
+static void freeFunctions()
+{
+    size_t count = countVector(&functions);
+
+    for (size_t i = 0; i < count; i++) {
+        Reference* ref = vectorGet(&functions, i);
+        freeReference(ref);
+    }
+
+    freeVector(&functions);
+}
+
+static void freeBranches()
+{
+    size_t count = countVector(&branches);
+
+    for (size_t i = 0; i < count; i++) {
+        Reference* ref = vectorGet(&branches, i);
+        freeReference(ref);
+    }
+
+    freeVector(&branches);
+}
 
 static void write16(int16_t n)
 {
@@ -479,15 +504,36 @@ static void funcCall(AST* ast)
     }
 
     Reference* ref = createReference(ast, countChunk(currentChunk));
-    pushVector(&references, ref);
+    pushVector(&branches, ref);
 
     op_jsr(0);
 }
 
-static int16_t funcDef(AST* ast)
+static Reference* getFunction(StringObject* id)
 {
-    int16_t position = countChunk(currentChunk);
+    size_t count = countVector(&functions);
+
+    for (int i = 0; i < count; i++) {
+        Reference* ref = vectorGet(&functions, i);
+
+        if (compareString(id, ref->ast->funcDef.id)) {
+            return ref;
+        }
+    }
+}
+
+static size_t funcDef(AST* ast)
+{
+    Reference* ref = getFunction(ast->funcDef.id);
+
+    if (ref) {
+        return ref->position;
+    }
+
+    size_t position = countChunk(currentChunk);
+    ref = createReference(ast, position);
     statements(&ast->funcDef.body->statements);
+    pushVector(&functions, ref);
 
     return position;
 }
@@ -540,8 +586,8 @@ static void statements(Vector* statements)
             case AST_RETURN:
                 ret(ast);
                 break;
-            case AST_VARIABLE_DEFINITION:
             case AST_PARAMETER:
+            case AST_VARIABLE_DEFINITION:
                 varDef(ast);
                 break;
             default:
@@ -550,14 +596,14 @@ static void statements(Vector* statements)
     }
 }
 
-static void functions()
+static void references()
 {
-    size_t count = countVector(&references);
+    size_t count = countVector(&branches);
 
     for (int i = 0; i < count; i++) {
-        Reference* ref = vectorGet(&references, i);
+        Reference* ref = vectorGet(&branches, i);
         AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
-        int16_t offset = funcDef(symbol) - ref->position - 3;
+        size_t offset = funcDef(symbol) - ref->position - 3;
 
         patch16(ref->position + 1, offset);
         freeReference(ref);
@@ -568,10 +614,11 @@ void compile(char* source, Chunk* chunk)
 {
     AST* ast = parse(source);
     currentChunk = chunk;
-    initVector(&references);
+    initVector(&branches);
     statements(&ast->statements);
     op_hlt();
-    functions();
-    freeVector(&references);
+    references();
+    freeFunctions();
+    freeBranches();
     freeAST(ast);
 }

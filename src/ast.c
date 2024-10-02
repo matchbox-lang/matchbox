@@ -28,7 +28,9 @@ AST* createAST(TokenType type)
 
 static void freeASTVector(Vector* statements)
 {
-    for (size_t i = 0; i < countVector(statements); i++) {
+    size_t count = countVector(statements);
+
+    for (size_t i = 0; i < count; i++) {
         AST* ast = vectorGet(statements, i);
         freeAST(ast);
     }

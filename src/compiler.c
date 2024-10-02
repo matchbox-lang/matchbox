@@ -471,10 +471,10 @@ static void assignment(AST* ast)
 
 static void funcCall(AST* ast)
 {
-    int n = countVector(&ast->funcCall.args);
+    int count = countVector(&ast->funcCall.args);
 
-    while (n--) {
-        AST* arg = vectorGet(&ast->funcCall.args, n);
+    while (count--) {
+        AST* arg = vectorGet(&ast->funcCall.args, count);
         expression(arg);
     }
 
@@ -486,9 +486,7 @@ static void funcCall(AST* ast)
 
 static int16_t funcDef(AST* ast)
 {
-    int paramsCount = countVector(&ast->funcDef.params);
     int16_t position = countChunk(currentChunk);
-
     statements(&ast->funcDef.body->statements);
 
     return position;
@@ -530,7 +528,9 @@ static void expression(AST* ast)
 
 static void statements(Vector* statements)
 {
-    for (size_t i = 0; i < countVector(statements); i++) {
+    size_t count = countVector(statements);
+
+    for (size_t i = 0; i < count; i++) {
         AST* ast = vectorGet(statements, i);
 
         switch (ast->type) {
@@ -552,7 +552,9 @@ static void statements(Vector* statements)
 
 static void functions()
 {
-    for (int i = 0; i < countVector(&references); i++) {
+    size_t count = countVector(&references);
+
+    for (int i = 0; i < count; i++) {
         Reference* ref = vectorGet(&references, i);
         AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
         int16_t offset = funcDef(symbol) - ref->position - 3;

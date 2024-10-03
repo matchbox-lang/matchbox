@@ -14,6 +14,7 @@ typedef enum ASTType
     AST_BINARY,
     AST_BOOLEAN,
     AST_CHARACTER,
+    AST_COMPOUND,
     AST_FLOAT,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
@@ -23,7 +24,6 @@ typedef enum ASTType
     AST_POSTFIX,
     AST_PREFIX,
     AST_RETURN,
-    AST_STATEMENTS,
     AST_STRING,
     AST_VARIABLE,
     AST_VARIABLE_DEFINITION
@@ -46,6 +46,11 @@ typedef struct AST
             Token operator;
             AST* rightExpr;
         } binary;
+
+        struct {
+            Scope* scope;
+            Vector statements;
+        } compound;
 
         struct {
             Scope* scope;
@@ -89,7 +94,6 @@ typedef struct AST
         int intVal;
         Token character;
         Token string;
-        Vector statements;
         AST* expr;
     };
 } AST;

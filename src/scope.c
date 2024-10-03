@@ -10,6 +10,7 @@ Scope* createScope(Scope* parent)
     scope->parent = parent;
     scope->localOffset = 0;
 
+    initVector(&scope->references);
     initTable(&scope->symbols, 32);
     
     return scope;
@@ -17,6 +18,14 @@ Scope* createScope(Scope* parent)
 
 void freeScope(Scope* scope)
 {
+    size_t count = countVector(&scope->references);
+
+    for (size_t i = 0; i < count; i++) {
+        Reference* ref = vectorGet(&scope->references, i);
+        freeReference(ref);
+    }
+
+    freeVector(&scope->references);
     freeTable(&scope->symbols);
     free(scope);
 }

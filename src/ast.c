@@ -12,14 +12,14 @@ AST* createAST(TokenType type)
 
     switch (type)
     {
+        case AST_COMPOUND:
+            initVector(&ast->compound.statements);
+            break;
         case AST_FUNCTION_CALL:
             initVector(&ast->funcCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
             initVector(&ast->funcDef.params);
-            break;
-        case AST_STATEMENTS:
-            initVector(&ast->statements);
             break;
     }
     
@@ -53,13 +53,15 @@ void freeAST(AST* ast)
             freeAST(ast->binary.leftExpr);
             freeAST(ast->binary.rightExpr);
             break;
+        case AST_COMPOUND:
+            freeScope(ast->compound.scope);
+            freeASTVector(&ast->compound.statements);
+            break;
         case AST_FUNCTION_CALL:
-            freeScope(ast->funcCall.scope);
             freeString(ast->funcCall.id);
             freeASTVector(&ast->funcCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
-            freeScope(ast->funcDef.scope);
             freeString(ast->funcDef.id);
             freeASTVector(&ast->funcDef.params);
             freeAST(ast->funcDef.body);
@@ -73,16 +75,11 @@ void freeAST(AST* ast)
         case AST_RETURN:
             freeAST(ast->expr);
             break;
-        case AST_STATEMENTS:
-            freeASTVector(&ast->statements);
-            break;
         case AST_VARIABLE:
-            freeScope(ast->var.scope);
             freeString(ast->var.id);
             break;
         case AST_VARIABLE_DEFINITION:
         case AST_PARAMETER:
-            freeScope(ast->varDef.scope);
             freeString(ast->varDef.id);
             freeAST(ast->varDef.expr);
             break;

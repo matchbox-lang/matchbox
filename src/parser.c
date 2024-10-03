@@ -796,7 +796,9 @@ static AST* statement()
 static AST* statements(TokenType type)
 {
     Token token = peek();
-    AST* ast = createAST(AST_STATEMENTS);
+    AST* ast = createAST(AST_COMPOUND);
+
+    ast->compound.scope = parser.scope;
 
     while (token.type != type) {
         AST* stmt = statement();
@@ -807,7 +809,7 @@ static AST* statements(TokenType type)
             consume(T_SEMICOLON);
         }
 
-        pushVector(&ast->statements, stmt);
+        pushVector(&ast->compound.statements, stmt);
         token = peek();
     }
 

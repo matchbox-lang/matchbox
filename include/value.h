@@ -16,8 +16,6 @@
 #define AS_INT(value) ((value).intVal)
 #define AS_POINTER(value) ((value).pointer)
 
-typedef struct Object Object;
-
 typedef union Value
 {
     bool boolVal;

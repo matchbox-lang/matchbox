@@ -7,6 +7,7 @@
 
 typedef struct AST AST;
 typedef struct Scope Scope;
+typedef struct StringObject StringObject;
 
 typedef enum ASTType
 {

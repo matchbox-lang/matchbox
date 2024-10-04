@@ -3,8 +3,6 @@
 
 #include <stdio.h>
 
-typedef struct StringObject StringObject;
-
 typedef enum TokenType
 {
     T_IF,

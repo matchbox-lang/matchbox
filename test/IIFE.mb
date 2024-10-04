@@ -1,9 +1,9 @@
 var x = 50
 
-{
-    var y = 10
+func {
+    var y = 100
 
     print(x)
-}
+}()
 
 print(y) # Error

@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 static void expression();
-static void statements();
+static void statements(AST* ast, bool top);
 
 static Chunk* currentChunk;
 static Scope* currentScope;
@@ -522,7 +522,7 @@ static size_t funcDef(AST* ast)
     size_t position = countChunk(currentChunk);
     ref = createReference(ast, position);
 
-    statements(ast->funcDef.body);
+    statements(ast->funcDef.body, false);
     pushVector(&functions, ref);
     currentScope = ast->funcDef.scope;
 
@@ -576,7 +576,7 @@ static void references()
     }
 }
 
-static void statements(AST* ast)
+static void statements(AST* ast, bool top)
 {
     size_t count = countVector(&ast->compound.statements);
     currentScope = ast->compound.scope;
@@ -599,6 +599,12 @@ static void statements(AST* ast)
                 expression(statement);
         }
     }
+
+    if (top) {
+        op_hlt();
+    }
+
+    references();
 }
 
 void compile(char* source, Chunk* chunk)
@@ -607,9 +613,7 @@ void compile(char* source, Chunk* chunk)
     currentChunk = chunk;
 
     initVector(&functions);
-    statements(ast);
-    op_hlt();
-    references();
+    statements(ast, true);
     freeFunctions();
     freeAST(ast);
 }

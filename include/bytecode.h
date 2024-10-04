@@ -1,5 +1,7 @@
-#ifndef OPCODE_H
-#define OPCODE_H
+#ifndef BYTECODE_H
+#define BYTECODE_H
+
+#include "chunk.h"
 
 typedef enum Opcode
 {
@@ -44,5 +46,7 @@ typedef enum Opcode
     OP_JSR,         // jsr imm16
     OP_RET          // ret
 } Opcode;
+
+void disassemble(Chunk* chunk);
 
 #endif

@@ -1,12 +1,9 @@
 #include "compiler.h"
 #include "ast.h"
-#include "opcode.h"
+#include "bytecode.h"
 #include "parser.h"
 #include "reference.h"
 #include "scope.h"
-#include "vector.h"
-#include <stdlib.h>
-#include <stdio.h>
 
 static void expression();
 static void statements(AST* ast, bool top);
@@ -52,38 +49,32 @@ static void patch8(size_t position, int8_t n)
 static void op_hlt()
 {
     write8(OP_HLT);
-    printf("hlt\n");
 }
 
 static void op_syscall()
 {
     write8(OP_SYSCALL);
-    printf("syscall\n");
 }
 
 static void op_ldc(uint8_t imm)
 {
     write8(OP_LDC);
     write8(imm);
-    printf("ldc\t%d\n", imm);
 }
 
 static void op_ldl_0()
 {
     write8(OP_LDL_0);
-    printf("ldl_0\n");
 }
 
 static void op_ldl_1()
 {
     write8(OP_LDL_1);
-    printf("ldl_1\n");
 }
 
 static void op_ldl_2()
 {
     write8(OP_LDL_2);
-    printf("ldl_2\n");
 }
 
 static void op_ldl(int8_t imm)
@@ -94,25 +85,21 @@ static void op_ldl(int8_t imm)
 
     write8(OP_LDL);
     write8(imm);
-    printf("ldl\t%d\n", imm);
 }
 
 static void op_stl_0()
 {
     write8(OP_STL_0);
-    printf("stl_0\n");
 }
 
 static void op_stl_1()
 {
     write8(OP_STL_1);
-    printf("stl_1\n");
 }
 
 static void op_stl_2()
 {
     write8(OP_STL_2);
-    printf("stl_2\n");
 }
 
 static void op_stl(int8_t imm)
@@ -123,19 +110,16 @@ static void op_stl(int8_t imm)
 
     write8(OP_STL);
     write8(imm);
-    printf("stl\t%d\n", imm);
 }
 
 static void op_push_0()
 {
     write8(OP_PUSH_0);
-    printf("push_0\n");
 }
 
 static void op_push_1()
 {
     write8(OP_PUSH_1);
-    printf("push_1\n");
 }
 
 static void op_push(int8_t imm)
@@ -145,162 +129,136 @@ static void op_push(int8_t imm)
 
     write8(OP_PUSH);
     write8(imm);
-    printf("push\t%d\n", imm);
 }
 
 static void op_pop()
 {
     write8(OP_POP);
-    printf("pop\n");
 }
 
 static void op_add()
 {
     write8(OP_ADD);
-    printf("add\n");
 }
 
 static void op_sub()
 {
     write8(OP_SUB);
-    printf("sub\n");
 }
 
 static void op_mul()
 {
     write8(OP_MUL);
-    printf("mul\n");
 }
 
 static void op_div()
 {
     write8(OP_DIV);
-    printf("div\n");
 }
 
 static void op_rem()
 {
     write8(OP_REM);
-    printf("rem\n");
 }
 
 static void op_pow()
 {
     write8(OP_POW);
-    printf("pow\n");
 }
 
 static void op_band()
 {
     write8(OP_BAND);
-    printf("band\n");
 }
 
 static void op_bor()
 {
     write8(OP_BOR);
-    printf("bor\n");
 }
 
 static void op_bxor()
 {
     write8(OP_BXOR);
-    printf("bxor\n");
 }
 
 static void op_bnot()
 {
     write8(OP_BNOT);
-    printf("bnot\n");
 }
 
 static void op_lsl()
 {
     write8(OP_LSL);
-    printf("lsl\n");
 }
 
 static void op_lsr()
 {
     write8(OP_LSR);
-    printf("lsr\n");
 }
 
 static void op_asr()
 {
     write8(OP_ASR);
-    printf("asr\n");
 }
 
 static void op_abs()
 {
     write8(OP_ABS);
-    printf("abs\n");
 }
 
 static void op_neg()
 {
     write8(OP_NEG);
-    printf("neg\n");
 }
 
 static void op_not()
 {
     write8(OP_NOT);
-    printf("not\n");
 }
 
 static void op_inc()
 {
     write8(OP_INC);
-    printf("inc\n");
 }
 
 static void op_dec()
 {
     write8(OP_DEC);
-    printf("dec\n");
 }
 
 static void op_beq(uint16_t imm)
 {
     write8(OP_BEQ);
     write16(imm);
-    printf("beq\t%d\n", imm);
 }
 
 static void op_blt(uint16_t imm)
 {
     write8(OP_BLT);
     write16(imm);
-    printf("blt\t%d\n", imm);
 }
 
 static void op_ble(uint16_t imm)
 {
     write8(OP_BLE);
     write16(imm);
-    printf("ble\t%d\n", imm);
 }
 
 static void op_jmp(uint16_t imm)
 {
     write8(OP_JMP);
     write16(imm);
-    printf("jmp\t%d\n", imm);
 }
 
 static void op_jsr(uint16_t imm)
 {
     write8(OP_JSR);
     write16(imm);
-    printf("jsr\t%d\n", imm);
 }
 
 static void op_ret()
 {
     write8(OP_RET);
-    printf("ret\n");
 }
 
 static void number(AST* ast)
@@ -344,7 +302,6 @@ static void not(AST* ast)
 static void negate(AST* ast)
 {
     expression(ast->prefix.expr);
-    op_neg();
 }
 
 static void increment(AST* ast)

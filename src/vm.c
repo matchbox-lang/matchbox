@@ -1,7 +1,7 @@
 #include "vm.h"
+#include "bytecode.h"
 #include "chunk.h"
 #include "compiler.h"
-#include "opcode.h"
 #include "syscall.h"
 #include "value.h"
 #include <math.h>
@@ -447,6 +447,7 @@ void interpret(char* source)
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
+    disassemble(&chunk);
     initVM();
     interpretChunk(&chunk);
     inspectVM();

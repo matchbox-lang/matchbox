@@ -28,7 +28,6 @@ static int printInstruction(int8_t c)
         case OP_SUB:        return printf("sub\n");
         case OP_MUL:        return printf("mul\n");
         case OP_DIV:        return printf("div\n");
-        case OP_FDIVI:      return printf("fdivi\n");
         case OP_REM:        return printf("rem\n");
         case OP_POW:        return printf("pow\n");
         case OP_BAND:       return printf("band\n");
@@ -49,6 +48,7 @@ static int printInstruction(int8_t c)
         case OP_JMP:        return printf("jmp\t%d\n", READ_UINT16());
         case OP_JSR:        return printf("jsr\t%d\n", READ_UINT16());
         case OP_RET:        return printf("ret\n");
+        case OP_RETV:       return printf("retv\n");
     }
 }
 

@@ -24,7 +24,6 @@ typedef enum Opcode
     OP_SUB,         // sub
     OP_MUL,         // mul
     OP_DIV,         // div
-    OP_FDIVI,       // fdivi
     OP_REM,         // rem
     OP_POW,         // pow
     OP_BAND,        // band
@@ -44,7 +43,8 @@ typedef enum Opcode
     OP_BLE,         // ble imm16
     OP_JMP,         // jmp imm16
     OP_JSR,         // jsr imm16
-    OP_RET          // ret
+    OP_RET,         // ret
+    OP_RETV         // retv
 } Opcode;
 
 void disassemble(Chunk* chunk);

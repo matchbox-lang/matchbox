@@ -266,7 +266,7 @@ static AST* primary()
         return identifier();
     }
     
-    error("Error: Unexpected '%.*s' on line %d:%d\n", token);
+    return createAST(AST_NONE);
 }
 
 static AST* postfix()

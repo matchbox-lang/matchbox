@@ -12,7 +12,7 @@ typedef struct Scope
 {
     Scope* parent;
     Table symbols;
-    size_t localOffset;
+    size_t localCount;
     Vector references;
 } Scope;
 

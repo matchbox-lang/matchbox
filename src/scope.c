@@ -8,7 +8,7 @@ Scope* createScope(Scope* parent)
 {
     Scope* scope = malloc(sizeof(Scope));
     scope->parent = parent;
-    scope->localOffset = 0;
+    scope->localCount = 0;
 
     initVector(&scope->references);
     initTable(&scope->symbols, 32);
@@ -41,7 +41,7 @@ AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast)
 
 AST* setLocalVariable(Scope* scope, StringObject* id, AST* ast)
 {
-    ast->varDef.position = scope->localOffset++;
+    ast->varDef.position = scope->localCount++;
 
     return setLocalSymbol(scope, id, ast);
 }

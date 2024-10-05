@@ -261,6 +261,11 @@ static void op_ret()
     write8(OP_RET);
 }
 
+static void op_retv()
+{
+    write8(OP_RETV);
+}
+
 static void number(AST* ast)
 {
     op_push(ast->intVal);
@@ -488,8 +493,12 @@ static size_t funcDef(AST* ast)
 
 static void ret(AST* ast)
 {
+    if (ast->expr->type == AST_NONE) {
+        return op_ret();
+    }
+
     expression(ast->expr);
-    op_ret();
+    op_retv();
 }
 
 static void varDef(AST* ast)
@@ -500,6 +509,19 @@ static void varDef(AST* ast)
 
     expression(ast->varDef.expr);
     op_stl(ast->varDef.position);
+}
+
+static void references()
+{
+    size_t count = countVector(&currentScope->references);
+
+    for (int i = 0; i < count; i++) {
+        Reference* ref = vectorGet(&currentScope->references, i);
+        AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
+        size_t offset = funcDef(symbol) - ref->position - 3;
+
+        patch16(ref->position + 1, offset);
+    }
 }
 
 static void expression(AST* ast)
@@ -520,19 +542,6 @@ static void expression(AST* ast)
     }
 }
 
-static void references()
-{
-    size_t count = countVector(&currentScope->references);
-
-    for (int i = 0; i < count; i++) {
-        Reference* ref = vectorGet(&currentScope->references, i);
-        AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
-        size_t offset = funcDef(symbol) - ref->position - 3;
-
-        patch16(ref->position + 1, offset);
-    }
-}
-
 static void statements(AST* ast, bool top)
 {
     size_t count = countVector(&ast->compound.statements);
@@ -544,6 +553,10 @@ static void statements(AST* ast, bool top)
         switch (statement->type) {
             case AST_ASSIGNMENT:
                 assignment(statement);
+                break;
+            case AST_FUNCTION_CALL:
+                funcCall(statement);
+                op_pop();
                 break;
             case AST_RETURN:
                 ret(statement);

@@ -192,14 +192,6 @@ static void op_div()
     push(INT_VALUE(a / b));
 }
 
-static void op_fdivi()
-{
-    float b = AS_FLOAT(pop());
-    float a = AS_FLOAT(pop());
-
-    push(FLOAT_VALUE(floor(a / b)));
-}
-
 static void op_rem()
 {
     uint32_t b = AS_INT(pop());
@@ -358,9 +350,16 @@ static void op_ret()
     Value ra = vm.fp[-2];
     Value fp = vm.fp[-1];
 
-    vm.sp = vm.fp;
+    vm.sp = vm.fp - 2;
     vm.fp = AS_POINTER(fp);
     vm.pc = AS_POINTER(ra);
+}
+
+static void op_retv()
+{
+    Value value = pop();
+    op_ret();
+    push(value);
 }
 
 static void initOpcodes()
@@ -384,7 +383,6 @@ static void initOpcodes()
     vm.opcode[OP_SUB] = op_sub;
     vm.opcode[OP_MUL] = op_mul;
     vm.opcode[OP_DIV] = op_div;
-    vm.opcode[OP_FDIVI] = op_fdivi;
     vm.opcode[OP_REM] = op_rem;
     vm.opcode[OP_POW] = op_pow;
     vm.opcode[OP_BAND] = op_band;
@@ -405,6 +403,7 @@ static void initOpcodes()
     vm.opcode[OP_JMP] = op_jmp;
     vm.opcode[OP_JSR] = op_jsr;
     vm.opcode[OP_RET] = op_ret;
+    vm.opcode[OP_RETV] = op_retv;
 }
 
 static void initSyscalls()

@@ -10,7 +10,6 @@
     sub             Subtract
     mul             Multiply
     div             Divide
-    fdivi           Integer division
     rem             Remainder
     pow             Power
     band            Bitwise AND
@@ -31,3 +30,4 @@
     jmp             Jump
     jsr             Jump subroutine
     ret             Return
+    retv            Return value

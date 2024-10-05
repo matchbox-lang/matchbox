@@ -55,10 +55,10 @@ void setByteAt(Chunk* chunk, size_t index, uint8_t byte)
 
 uint8_t* chunkBegin(Chunk* chunk)
 {
-    return &chunk->data[0];
+    return chunk->data;
 }
 
 uint8_t* chunkEnd(Chunk* chunk)
 {
-    return &chunk->data[chunk->count];
+    return chunk->data + chunk->count;
 }

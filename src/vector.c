@@ -60,10 +60,10 @@ void setVectorAt(Vector* vector, size_t index, void* item)
 
 void* vectorBegin(Vector* vector)
 {
-    return &vector->data[0];
+    return vector->data;
 }
 
 void* vectorEnd(Vector* vector)
 {
-    return &vector->data[vector->count];
+    return vector->data + vector->count;
 }

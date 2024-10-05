@@ -25,6 +25,6 @@ size_t countFunctionArray(FunctionArray* array);
 void resizeFunctionArray(FunctionArray* array, size_t capacity);
 void pushFunctionArray(FunctionArray* array, Function func);
 Function getFunctionAt(FunctionArray* array, size_t index);
-void setFunctionAt(FunctionArray* array, size_t index, Function item);
+void setFunctionAt(FunctionArray* array, size_t index, Function func);
 
 #endif

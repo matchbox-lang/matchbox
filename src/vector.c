@@ -57,3 +57,13 @@ void setVectorAt(Vector* vector, size_t index, void* item)
         vector->data[index] = item;
     }
 }
+
+void* vectorBegin(Vector* vector)
+{
+    return &vector->data[0];
+}
+
+void* vectorEnd(Vector* vector)
+{
+    return &vector->data[vector->count];
+}

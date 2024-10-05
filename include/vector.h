@@ -20,5 +20,7 @@ void pushVector(Vector* vector, void* item);
 void* popVector(Vector* vector);
 void* getVectorAt(Vector* vector, size_t index);
 void setVectorAt(Vector* vector, size_t index, void* item);
+void* vectorBegin(Vector* vector);
+void* vectorEnd(Vector* vector);
 
 #endif

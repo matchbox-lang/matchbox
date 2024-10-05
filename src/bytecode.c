@@ -56,7 +56,7 @@ void disassemble(Chunk* chunk)
 {
     ptr = chunk->data;
 
-    while (ptr != &chunk->data[chunk->count]) {
+    while (ptr != chunkEnd(chunk)) {
         int8_t c = READ_UINT8();
 
         printInstruction(c);

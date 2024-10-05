@@ -38,9 +38,9 @@ Function getFunctionAt(FunctionArray* array, size_t index)
     return array->data[index];
 }
 
-void setFunctionAt(FunctionArray* array, size_t index, Function item)
+void setFunctionAt(FunctionArray* array, size_t index, Function func)
 {
     if (index >= 0 && index < array->count) {
-        array->data[index] = item;
+        array->data[index] = func;
     }
 }

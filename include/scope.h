@@ -12,8 +12,8 @@ typedef struct Scope
 {
     Scope* parent;
     Table symbols;
+    ReferenceArray references;
     size_t localCount;
-    Vector references;
 } Scope;
 
 Scope* createScope(Scope* parent);

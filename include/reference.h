@@ -3,13 +3,25 @@
 
 #include "ast.h"
 
+#define ARRAY_INIT_CAPACITY 4
+
 typedef struct Reference
 {
     AST* ast;
     size_t position;
 } Reference;
 
-Reference* createReference(AST* ast, size_t position);
-void freeReference(Reference* reference);
+typedef struct ReferenceArray
+{
+    Reference* data;
+    size_t capacity;
+    size_t count;
+} ReferenceArray;
+
+void initReferenceArray(ReferenceArray* array);
+void freeReferenceArray(ReferenceArray* array);
+size_t countReferenceArray(ReferenceArray* array);
+void resizeReferenceArray(ReferenceArray* array, size_t capacity);
+void pushReferenceArray(ReferenceArray* array, Reference ref);
 
 #endif

@@ -10,19 +10,7 @@ static void statements(AST* ast, bool top);
 
 static Chunk* currentChunk;
 static Scope* currentScope;
-static Vector functions;
-
-static void freeFunctions()
-{
-    size_t count = countVector(&functions);
-
-    for (size_t i = 0; i < count; i++) {
-        Reference* ref = vectorGet(&functions, i);
-        freeReference(ref);
-    }
-
-    freeVector(&functions);
-}
+static ReferenceArray functions;
 
 static void write16(int16_t n)
 {
@@ -453,39 +441,43 @@ static void funcCall(AST* ast)
         expression(arg);
     }
 
-    Reference* ref = createReference(ast, countChunk(currentChunk));
-    pushVector(&currentScope->references, ref);
+    size_t position = countChunk(currentChunk);
+    Reference ref = { ast,  position};
+    pushReferenceArray(&currentScope->references, ref);
     op_jsr(0);
 }
 
-static Reference* getFunction(StringObject* id)
+static Reference getFunction(StringObject* id)
 {
-    size_t count = countVector(&functions);
+    size_t count = countReferenceArray(&functions);
 
     for (int i = 0; i < count; i++) {
-        Reference* ref = vectorGet(&functions, i);
+        Reference ref = functions.data[i];
 
-        if (compareString(id, ref->ast->funcDef.id)) {
+        if (compareString(id, ref.ast->funcDef.id)) {
             return ref;
         }
     }
 
-    return NULL;
+    Reference ref = { NULL };
+
+    return ref;
 }
 
 static size_t funcDef(AST* ast)
 {
-    Reference* ref = getFunction(ast->funcDef.id);
+    Reference ref = getFunction(ast->funcDef.id);
 
-    if (ref) {
-        return ref->position;
+    if (ref.ast) {
+        return ref.position;
     }
 
     size_t position = countChunk(currentChunk);
-    ref = createReference(ast, position);
+    ref.ast = ast;
+    ref.position = position;
 
     statements(ast->funcDef.body, false);
-    pushVector(&functions, ref);
+    pushReferenceArray(&functions, ref);
     currentScope = ast->funcDef.scope;
 
     return position;
@@ -513,14 +505,14 @@ static void varDef(AST* ast)
 
 static void references()
 {
-    size_t count = countVector(&currentScope->references);
+    size_t count = countReferenceArray(&currentScope->references);
 
     for (int i = 0; i < count; i++) {
-        Reference* ref = vectorGet(&currentScope->references, i);
-        AST* symbol = getSymbol(ref->ast->funcCall.scope, ref->ast->funcCall.id);
-        size_t offset = funcDef(symbol) - ref->position - 3;
+        Reference ref = currentScope->references.data[i];
+        AST* symbol = getSymbol(ref.ast->funcCall.scope, ref.ast->funcCall.id);
+        size_t offset = funcDef(symbol) - ref.position - 3;
 
-        patch16(ref->position + 1, offset);
+        patch16(ref.position + 1, offset);
     }
 }
 
@@ -582,8 +574,8 @@ void compile(char* source, Chunk* chunk)
     AST* ast = parse(source);
     currentChunk = chunk;
 
-    initVector(&functions);
+    initReferenceArray(&functions);
     statements(ast, true);
-    freeFunctions();
+    freeReferenceArray(&functions);
     freeAST(ast);
 }

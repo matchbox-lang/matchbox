@@ -2,6 +2,7 @@
 #include "bytecode.h"
 #include "chunk.h"
 #include "compiler.h"
+#include "function.h"
 #include "syscall.h"
 #include "value.h"
 #include <math.h>
@@ -32,7 +33,8 @@ typedef struct VM
     Value* fp;
     uint8_t* pc;
     uint8_t* ra;
-    ValueArray* constants;
+    FunctionArray functions;
+    ValueArray constants;
 } VM;
 
 VM vm;
@@ -88,7 +90,7 @@ static void op_syscall()
 static void op_ldc()
 {
     int8_t imm = READ_UINT8();
-    Value constant = vm.constants->values[imm];
+    Value constant = vm.constants.data[imm];
 
     push(constant);
 }
@@ -419,6 +421,9 @@ static void resetStack()
 
 void initVM()
 {
+    initFunctionArray(&vm.functions);
+    initValueArray(&vm.constants);
+
     initOpcodes();
     initSyscalls();
     resetStack();

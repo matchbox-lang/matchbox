@@ -26,15 +26,15 @@ typedef union Value
 
 typedef struct ValueArray
 {
-    Value* values;
+    Value* data;
     size_t capacity;
     size_t count;
 } ValueArray;
 
-ValueArray* initValueArray(ValueArray* array);
+void initValueArray(ValueArray* array);
 void freeValueArray(ValueArray* array);
 size_t countValueArray(ValueArray* array);
 void resizeValueArray(ValueArray* array, size_t capacity);
-void writeValueArray(ValueArray* array, Value value);
+void pushValueArray(ValueArray* array, Value value);
 
 #endif

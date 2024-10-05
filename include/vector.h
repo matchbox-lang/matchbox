@@ -18,7 +18,7 @@ size_t countVector(Vector* vector);
 void resizeVector(Vector* vector, size_t capacity);
 void pushVector(Vector* vector, void* item);
 void* popVector(Vector* vector);
-void* vectorGet(Vector* vector, size_t index);
-void vectorSet(Vector* vector, size_t index, void* item);
+void* getVectorAt(Vector* vector, size_t index);
+void setVectorAt(Vector* vector, size_t index, void* item);
 
 #endif

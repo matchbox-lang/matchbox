@@ -31,12 +31,7 @@ void resizeChunk(Chunk* chunk, size_t capacity)
     chunk->capacity = capacity;
 }
 
-void patchChunk(Chunk* chunk, size_t position, uint8_t byte)
-{
-    chunk->data[position] = byte;
-}
-
-void writeChunk(Chunk* chunk, uint8_t byte)
+void pushByte(Chunk* chunk, uint8_t byte)
 {
     if (chunk->capacity <= chunk->count) {
         resizeChunk(chunk, chunk->capacity * 2);
@@ -44,4 +39,16 @@ void writeChunk(Chunk* chunk, uint8_t byte)
 
     chunk->data[chunk->count] = byte;
     chunk->count++;
+}
+
+uint8_t getByteAt(Chunk* chunk, size_t index)
+{
+    return chunk->data[index];
+}
+
+void setByteAt(Chunk* chunk, size_t index, uint8_t byte)
+{
+    if (index >= 0 && index < chunk->count) {
+        chunk->data[index] = byte;
+    }
 }

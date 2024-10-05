@@ -35,7 +35,7 @@ size_t countTable(Table* table)
     return table->count;
 }
 
-void* tableGet(Table* table, StringObject* key)
+void* getTableAt(Table* table, StringObject* key)
 {
     if (table->count == 0) {
         return NULL;
@@ -55,7 +55,7 @@ void* tableGet(Table* table, StringObject* key)
     return NULL;
 }
 
-bool tableSet(Table* table, StringObject* key, void* value)
+bool setTableAt(Table* table, StringObject* key, void* value)
 {
     size_t index = key->hash % table->capacity;
     TableItem* current = table->data[index];
@@ -75,7 +75,7 @@ bool tableSet(Table* table, StringObject* key, void* value)
     return true;
 }
 
-bool tableDelete(Table* table, StringObject* key)
+bool deleteTableAt(Table* table, StringObject* key)
 {
     size_t index = key->hash % table->capacity;
     TableItem* prev = NULL;

@@ -23,5 +23,7 @@ void freeReferenceArray(ReferenceArray* array);
 size_t countReferenceArray(ReferenceArray* array);
 void resizeReferenceArray(ReferenceArray* array, size_t capacity);
 void pushReferenceArray(ReferenceArray* array, Reference ref);
+Reference getReferenceAt(ReferenceArray* array, size_t index);
+void setReferenceAt(ReferenceArray* array, size_t index, Reference item);
 
 #endif

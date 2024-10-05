@@ -42,7 +42,7 @@ void* popVector(Vector* vector)
     return NULL;
 }
 
-void* vectorGet(Vector* vector, size_t index)
+void* getVectorAt(Vector* vector, size_t index)
 {
     if (index >= 0 && index < vector->count) {
         return vector->data[index];
@@ -51,7 +51,7 @@ void* vectorGet(Vector* vector, size_t index)
     return NULL;
 }
 
-void vectorSet(Vector* vector, size_t index, void* item)
+void setVectorAt(Vector* vector, size_t index, void* item)
 {
     if (index >= 0 && index < vector->count) {
         vector->data[index] = item;

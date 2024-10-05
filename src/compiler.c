@@ -14,24 +14,24 @@ static ReferenceArray functions;
 
 static void write16(int16_t n)
 {
-    writeChunk(currentChunk, (n >> 8) & 0xFF);
-    writeChunk(currentChunk, n & 0xFF);
+    pushByte(currentChunk, (n >> 8) & 0xFF);
+    pushByte(currentChunk, n & 0xFF);
 }
 
 static void write8(uint8_t n)
 {
-    writeChunk(currentChunk, n);
+    pushByte(currentChunk, n);
 }
 
 static void patch16(size_t position, int16_t n)
 {
-    patchChunk(currentChunk, position, (n >> 8) & 0xFF);
-    patchChunk(currentChunk, position + 1, n & 0xFF);
+    setByteAt(currentChunk, position, (n >> 8) & 0xFF);
+    setByteAt(currentChunk, position + 1, n & 0xFF);
 }
 
 static void patch8(size_t position, int8_t n)
 {
-    patchChunk(currentChunk, position, n);
+    setByteAt(currentChunk, position, n);
 }
 
 static void op_hlt()
@@ -437,7 +437,7 @@ static void funcCall(AST* ast)
     int count = countVector(&ast->funcCall.args);
 
     while (count--) {
-        AST* arg = vectorGet(&ast->funcCall.args, count);
+        AST* arg = getVectorAt(&ast->funcCall.args, count);
         expression(arg);
     }
 
@@ -452,7 +452,7 @@ static Reference getFunction(StringObject* id)
     size_t count = countReferenceArray(&functions);
 
     for (int i = 0; i < count; i++) {
-        Reference ref = functions.data[i];
+        Reference ref = getReferenceAt(&functions, i);
 
         if (compareString(id, ref.ast->funcDef.id)) {
             return ref;
@@ -508,7 +508,7 @@ static void references()
     size_t count = countReferenceArray(&currentScope->references);
 
     for (int i = 0; i < count; i++) {
-        Reference ref = currentScope->references.data[i];
+        Reference ref = getReferenceAt(&currentScope->references, i);
         AST* symbol = getSymbol(ref.ast->funcCall.scope, ref.ast->funcCall.id);
         size_t offset = funcDef(symbol) - ref.position - 3;
 
@@ -540,7 +540,7 @@ static void statements(AST* ast, bool top)
     currentScope = ast->compound.scope;
 
     for (size_t i = 0; i < count; i++) {
-        AST* statement = vectorGet(&ast->compound.statements, i);
+        AST* statement = getVectorAt(&ast->compound.statements, i);
 
         switch (statement->type) {
             case AST_ASSIGNMENT:

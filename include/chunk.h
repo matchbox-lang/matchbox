@@ -21,7 +21,8 @@ void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
 size_t countChunk(Chunk* chunk);
 void resizeChunk(Chunk* chunk, size_t capacity);
-void patchChunk(Chunk* chunk, size_t position, uint8_t byte);
-void writeChunk(Chunk* chunk, uint8_t byte);
+void pushByte(Chunk* chunk, uint8_t byte);
+uint8_t getByteAt(Chunk* chunk, size_t index);
+void setByteAt(Chunk* chunk, size_t index, uint8_t byte);
 
 #endif

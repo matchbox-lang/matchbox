@@ -32,3 +32,15 @@ void pushValueArray(ValueArray* array, Value value)
     
     array->data[array->count++] = value;
 }
+
+Value getValueAt(ValueArray* array, size_t index)
+{
+    return array->data[index];
+}
+
+void setValueAt(ValueArray* array, size_t index, Value item)
+{
+    if (index >= 0 && index < array->count) {
+        array->data[index] = item;
+    }
+}

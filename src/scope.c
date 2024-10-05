@@ -21,7 +21,7 @@ void freeScope(Scope* scope)
     size_t count = countReferenceArray(&scope->references);
 
     for (size_t i = 0; i < count; i++) {
-        Reference ref = scope->references.data[i];
+        Reference ref = getReferenceAt(&scope->references, i);
     }
 
     freeReferenceArray(&scope->references);
@@ -31,7 +31,7 @@ void freeScope(Scope* scope)
 
 AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast)
 {
-    if (tableSet(&scope->symbols, id, ast)) {
+    if (setTableAt(&scope->symbols, id, ast)) {
         return ast;
     }
 
@@ -47,12 +47,12 @@ AST* setLocalVariable(Scope* scope, StringObject* id, AST* ast)
 
 AST* getLocalSymbol(Scope* scope, StringObject* id)
 {
-    return tableGet(&scope->symbols, id);
+    return getTableAt(&scope->symbols, id);
 }
 
 AST* getSymbol(Scope* scope, StringObject* id)
 {
-    AST* symbol = tableGet(&scope->symbols, id);
+    AST* symbol = getTableAt(&scope->symbols, id);
 
     if (symbol) {
         return symbol;

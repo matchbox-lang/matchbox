@@ -90,7 +90,7 @@ static void op_syscall()
 static void op_ldc()
 {
     int8_t imm = READ_UINT8();
-    Value constant = vm.constants->data[imm];
+    Value constant = getValueAt(vm.constants, imm);
 
     push(constant);
 }

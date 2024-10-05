@@ -31,7 +31,7 @@ static void freeASTVector(Vector* statements)
     size_t count = countVector(statements);
 
     for (size_t i = 0; i < count; i++) {
-        AST* ast = vectorGet(statements, i);
+        AST* ast = getVectorAt(statements, i);
         freeAST(ast);
     }
 

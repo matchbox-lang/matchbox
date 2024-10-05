@@ -32,3 +32,15 @@ void pushReferenceArray(ReferenceArray* array, Reference ref)
     
     array->data[array->count++] = ref;
 }
+
+Reference getReferenceAt(ReferenceArray* array, size_t index)
+{
+    return array->data[index];
+}
+
+void setReferenceAt(ReferenceArray* array, size_t index, Reference item)
+{
+    if (index >= 0 && index < array->count) {
+        array->data[index] = item;
+    }
+}

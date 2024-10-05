@@ -54,9 +54,9 @@ static int printInstruction(int8_t c)
 
 void disassemble(Chunk* chunk)
 {
-    ptr = chunk->code;
+    ptr = chunk->data;
 
-    while (ptr != &chunk->code[chunk->count]) {
+    while (ptr != &chunk->data[chunk->count]) {
         int8_t c = READ_UINT8();
 
         printInstruction(c);

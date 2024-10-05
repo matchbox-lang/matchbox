@@ -5,15 +5,19 @@
 void initChunk(Chunk* chunk)
 {
     chunk->capacity = CHUNK_INIT_CAPACITY;
-    chunk->code = calloc(chunk->capacity, sizeof(uint8_t));
+    chunk->data = calloc(chunk->capacity, sizeof(uint8_t));
     chunk->count = 0;
 
+    initFunctionArray(&chunk->functions);
     initValueArray(&chunk->constants);
 }
 
 void freeChunk(Chunk* chunk)
 {
-    free(chunk->code);
+    freeFunctionArray(&chunk->functions);
+    freeValueArray(&chunk->constants);
+
+    free(chunk->data);
 }
 
 size_t countChunk(Chunk* chunk)
@@ -23,13 +27,13 @@ size_t countChunk(Chunk* chunk)
 
 void resizeChunk(Chunk* chunk, size_t capacity)
 {
-    chunk->code = realloc(chunk->code, sizeof(uint8_t) * capacity);
+    chunk->data = realloc(chunk->data, sizeof(uint8_t) * capacity);
     chunk->capacity = capacity;
 }
 
 void patchChunk(Chunk* chunk, size_t position, uint8_t byte)
 {
-    chunk->code[position] = byte;
+    chunk->data[position] = byte;
 }
 
 void writeChunk(Chunk* chunk, uint8_t byte)
@@ -38,6 +42,6 @@ void writeChunk(Chunk* chunk, uint8_t byte)
         resizeChunk(chunk, chunk->capacity * 2);
     }
 
-    chunk->code[chunk->count] = byte;
+    chunk->data[chunk->count] = byte;
     chunk->count++;
 }

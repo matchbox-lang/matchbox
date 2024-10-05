@@ -1,6 +1,7 @@
 #ifndef CHUNK_H
 #define CHUNK_H
 
+#include "function.h"
 #include "value.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -9,9 +10,10 @@
 
 typedef struct Chunk
 {
-    uint8_t* code;
+    uint8_t* data;
     size_t capacity;
     size_t count;
+    FunctionArray functions;
     ValueArray constants;
 } Chunk;
 

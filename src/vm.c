@@ -15,11 +15,6 @@
 #define READ_UINT16() (vm.pc += 2, (uint16_t)((vm.pc[-2] << 8) | vm.pc[-1]))
 #define READ_UINT8() (*(vm.pc++))
 
-#define SLOT_BOOL(i) (AS_BOOL(vm.stack[i]))
-#define SLOT_FLOAT(i) (AS_FLOAT(vm.stack[i]))
-#define SLOT_INT(i) (AS_INT(vm.stack[i]))
-#define SLOT_POINTER(i) (AS_POINTER(vm.stack[i]))
-
 typedef void (*syscall_t)();
 typedef void (*instruction_t)();
 
@@ -471,9 +466,9 @@ void inspectVM()
 
     for (int i = 0; i < STACK_SIZE; i++) {
         char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
-        uint8_t byte = SLOT_INT(i);
+        int value = AS_INT(vm.stack[i]);
 
-        printf("%d: %d%s\n", i, byte, arrow);
+        printf("%d: %d%s\n", i, value, arrow);
     }
 }
 

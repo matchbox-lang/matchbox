@@ -31,6 +31,7 @@ typedef struct VM
     Value stack[STACK_SIZE];
     Value* sp;
     Value* fp;
+    uint8_t* bc;
     uint8_t* pc;
     uint8_t* ra;
     FunctionArray* functions;
@@ -334,7 +335,7 @@ static void op_jmp()
     vm.pc += READ_UINT16();
 }
 
-static void op_jsr()
+static void op_call()
 {
     int16_t imm = READ_UINT16();
     Value ra = POINTER_VALUE(vm.pc);
@@ -343,8 +344,11 @@ static void op_jsr()
     push(ra);
     push(fp);
 
-    vm.pc += imm;
+    Function func = getFunctionAt(vm.functions, imm);
+
+    vm.pc = &vm.bc[func.position];
     vm.fp = vm.sp;
+    vm.sp += func.localCount;
 }
 
 static void op_ret()
@@ -403,7 +407,7 @@ static void initOpcodes()
     vm.opcode[OP_BLT] = op_blt;
     vm.opcode[OP_BLE] = op_ble;
     vm.opcode[OP_JMP] = op_jmp;
-    vm.opcode[OP_JSR] = op_jsr;
+    vm.opcode[OP_CALL] = op_call;
     vm.opcode[OP_RET] = op_ret;
     vm.opcode[OP_RETV] = op_retv;
 }
@@ -439,6 +443,7 @@ static void run()
 
 static void interpretChunk(Chunk* chunk)
 {
+    vm.bc = chunk->data;
     vm.pc = chunk->data;
     vm.constants = &chunk->constants;
     vm.functions = &chunk->functions;

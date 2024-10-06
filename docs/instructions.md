@@ -28,6 +28,6 @@
     blt             Branch less than
     ble             Branch less than or equal
     jmp             Jump
-    jsr             Jump subroutine
+    call            Call subroutine
     ret             Return
     retv            Return value

@@ -8,8 +8,8 @@
 
 typedef struct Function
 {
-    int paramsCount;
-    uint8_t* bytecode;
+    int localCount;
+    size_t position;
 } Function;
 
 typedef struct FunctionArray

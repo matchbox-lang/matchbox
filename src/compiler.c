@@ -238,9 +238,9 @@ static void op_jmp(uint16_t imm)
     write16(imm);
 }
 
-static void op_jsr(uint16_t imm)
+static void op_call(uint16_t imm)
 {
-    write8(OP_JSR);
+    write8(OP_CALL);
     write16(imm);
 }
 
@@ -442,9 +442,9 @@ static void funcCall(AST* ast)
     }
 
     size_t position = countChunk(currentChunk);
-    Reference ref = { ast,  position};
+    Reference ref = { ast, position };
     pushReferenceArray(&currentScope->references, ref);
-    op_jsr(0);
+    op_call(0);
 }
 
 static Reference getFunction(StringObject* id)
@@ -472,15 +472,21 @@ static size_t funcDef(AST* ast)
         return ref.position;
     }
 
+    AST* body = ast->funcDef.body;
+    size_t localCount = body->compound.scope->localCount;
     size_t position = countChunk(currentChunk);
-    ref.ast = ast;
-    ref.position = position;
+    Function func = { localCount, position };
 
+    ref.ast = ast;
+    ref.position = countFunctionArray(&currentChunk->functions);
+    
+    pushFunctionArray(&currentChunk->functions, func);
     statements(ast->funcDef.body, false);
     pushReferenceArray(&functions, ref);
+
     currentScope = ast->funcDef.scope;
 
-    return position;
+    return ref.position;
 }
 
 static void ret(AST* ast)
@@ -510,9 +516,9 @@ static void references()
     for (int i = 0; i < count; i++) {
         Reference ref = getReferenceAt(&currentScope->references, i);
         AST* symbol = getSymbol(ref.ast->funcCall.scope, ref.ast->funcCall.id);
-        size_t offset = funcDef(symbol) - ref.position - 3;
+        size_t position = funcDef(symbol);
 
-        patch16(ref.position + 1, offset);
+        patch16(ref.position + 1, position);
     }
 }
 

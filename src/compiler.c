@@ -367,7 +367,7 @@ static void variable(AST* ast)
     AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
 
     if (symbol->type == AST_PARAMETER) {
-        return op_ldl(symbol->varDef.position - 2);
+        return op_ldl(symbol->varDef.position - 3);
     }
 
     op_ldl(symbol->varDef.position);
@@ -480,12 +480,13 @@ static size_t funcDef(AST* ast)
 
     AST* body = ast->funcDef.body;
     size_t localCount = body->compound.scope->localCount;
+    size_t paramCount = countVector(&ast->funcDef.params);
     size_t position = countChunk(currentChunk);
-    Function func = { localCount, position };
+    Function func = { paramCount, localCount, position };
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
     
     pushFunctionArray(&currentChunk->functions, func);
-    statements(ast->funcDef.body, false);
+    statements(body, false);
     createFunctionReference(ast, functionsIndex);
     currentScope = ast->funcDef.scope;
 

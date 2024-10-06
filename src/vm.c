@@ -338,13 +338,14 @@ static void op_jmp()
 static void op_call()
 {
     int16_t imm = READ_UINT16();
+    Function func = getFunctionAt(vm.functions, imm);
+    Value paramCount = INT_VALUE(func.paramCount);
     Value ra = POINTER_VALUE(vm.pc);
     Value fp = POINTER_VALUE(vm.fp);
 
+    push(paramCount);
     push(ra);
     push(fp);
-
-    Function func = getFunctionAt(vm.functions, imm);
 
     vm.pc = &vm.bc[func.position];
     vm.fp = vm.sp;
@@ -353,10 +354,11 @@ static void op_call()
 
 static void op_ret()
 {
+    Value paramCount = vm.fp[-3];
     Value ra = vm.fp[-2];
     Value fp = vm.fp[-1];
 
-    vm.sp = vm.fp - 2;
+    vm.sp = vm.fp - AS_INT(paramCount) - 3;
     vm.fp = AS_POINTER(fp);
     vm.pc = AS_POINTER(ra);
 }
@@ -468,7 +470,10 @@ void inspectVM()
     printf("\n");
 
     for (int i = 0; i < STACK_SIZE; i++) {
-        printf("%d: %d\n", i, SLOT_INT(i));
+        char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
+        uint8_t byte = SLOT_INT(i);
+
+        printf("%d: %d%s\n", i, byte, arrow);
     }
 }
 

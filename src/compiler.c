@@ -34,6 +34,29 @@ static void patch8(size_t position, int8_t n)
     setByteAt(currentChunk, position, n);
 }
 
+static void createFunctionReference(AST* ast, size_t position)
+{
+    Reference ref = { ast, position };
+    pushReferenceArray(&functions, ref);
+}
+
+static Reference getFunctionReference(StringObject* id)
+{
+    size_t count = countReferenceArray(&functions);
+
+    for (int i = 0; i < count; i++) {
+        Reference ref = getReferenceAt(&functions, i);
+
+        if (compareString(id, ref.ast->funcDef.id)) {
+            return ref;
+        }
+    }
+
+    Reference ref = { NULL };
+
+    return ref;
+}
+
 static void op_hlt()
 {
     write8(OP_HLT);
@@ -447,26 +470,9 @@ static void funcCall(AST* ast)
     op_call(0);
 }
 
-static Reference getFunction(StringObject* id)
-{
-    size_t count = countReferenceArray(&functions);
-
-    for (int i = 0; i < count; i++) {
-        Reference ref = getReferenceAt(&functions, i);
-
-        if (compareString(id, ref.ast->funcDef.id)) {
-            return ref;
-        }
-    }
-
-    Reference ref = { NULL };
-
-    return ref;
-}
-
 static size_t funcDef(AST* ast)
 {
-    Reference ref = getFunction(ast->funcDef.id);
+    Reference ref = getFunctionReference(ast->funcDef.id);
 
     if (ref.ast) {
         return ref.position;
@@ -476,17 +482,14 @@ static size_t funcDef(AST* ast)
     size_t localCount = body->compound.scope->localCount;
     size_t position = countChunk(currentChunk);
     Function func = { localCount, position };
-
-    ref.ast = ast;
-    ref.position = countFunctionArray(&currentChunk->functions);
+    size_t functionsIndex = countFunctionArray(&currentChunk->functions);
     
     pushFunctionArray(&currentChunk->functions, func);
     statements(ast->funcDef.body, false);
-    pushReferenceArray(&functions, ref);
-
+    createFunctionReference(ast, functionsIndex);
     currentScope = ast->funcDef.scope;
 
-    return ref.position;
+    return functionsIndex;
 }
 
 static void ret(AST* ast)

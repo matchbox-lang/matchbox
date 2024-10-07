@@ -664,13 +664,12 @@ static AST* parameter()
     consume(T_IDENTIFIER);
 
     AST* ast = createAST(AST_PARAMETER);
-    ast->varDef.scope = parser.scope;
-    ast->varDef.id = id;
-    ast->varDef.typeId = T_UNKNOWN;
-    ast->varDef.expr = createAST(AST_NONE);
+    ast->param.scope = parser.scope;
+    ast->param.id = id;
+    ast->param.typeId = T_UNKNOWN;
 
     if (isType(peek().type)) {
-        ast->varDef.typeId = peek().type;
+        ast->param.typeId = peek().type;
         consumeType();
     }
 
@@ -716,7 +715,7 @@ static AST* variable()
     if (!symbol) {
         error("Error: '%.*s' is undefined on line %d:%d\n", token);
     }
-
+    
     if (symbol->type == AST_VARIABLE_DEFINITION && symbol->varDef.expr->type == AST_NONE) {
         error("Error: '%.*s' is uninitialized on line %d:%d\n", token);
     }
@@ -836,13 +835,13 @@ static AST* functionDefinition()
 
     if (peek().type != T_RPAREN) {
         AST* expr = parameter();
-        expr->varDef.position = --offset;
+        expr->param.position = --offset;
         pushVector(&ast->funcDef.params, expr);
 
         while (peek().type == T_COMMA) {
             consume(T_COMMA);
             AST* expr = parameter();
-            expr->varDef.position = --offset;
+            expr->param.position = --offset;
             pushVector(&ast->funcDef.params, expr);
         }
     }

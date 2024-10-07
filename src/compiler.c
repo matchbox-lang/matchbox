@@ -368,7 +368,7 @@ static void variable(AST* ast)
     AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
 
     if (symbol->type == AST_PARAMETER) {
-        return op_ldl(symbol->varDef.position - 3);
+        return op_ldl(symbol->param.position - 3);
     }
 
     op_ldl(symbol->varDef.position);
@@ -576,7 +576,6 @@ static AST* statements(AST* ast)
             case AST_RETURN:
                 ret(statement);
                 break;
-            case AST_PARAMETER:
             case AST_VARIABLE_DEFINITION:
                 varDef(statement);
                 break;

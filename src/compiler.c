@@ -571,6 +571,7 @@ static AST* statements(AST* ast)
                 break;
             case AST_FUNCTION_CALL:
                 funcCall(statement);
+                op_pop();
                 break;
             case AST_RETURN:
                 ret(statement);

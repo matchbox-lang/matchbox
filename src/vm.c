@@ -64,6 +64,17 @@ static Value peek(size_t index)
     return vm.sp[-(index + 1)];
 }
 
+static void ret()
+{
+    Value paramCount = vm.fp[-3];
+    Value ra = vm.fp[-2];
+    Value fp = vm.fp[-1];
+
+    vm.sp = vm.fp - AS_INT(paramCount) - 3;
+    vm.fp = AS_POINTER(fp);
+    vm.pc = AS_POINTER(ra);
+}
+
 static void sys_exit()
 {
     uint32_t status = AS_INT(peek(1));
@@ -349,19 +360,14 @@ static void op_call()
 
 static void op_ret()
 {
-    Value paramCount = vm.fp[-3];
-    Value ra = vm.fp[-2];
-    Value fp = vm.fp[-1];
-
-    vm.sp = vm.fp - AS_INT(paramCount) - 3;
-    vm.fp = AS_POINTER(fp);
-    vm.pc = AS_POINTER(ra);
+    ret();
+    push(INT_VALUE(0));
 }
 
 static void op_retv()
 {
     Value value = pop();
-    op_ret();
+    ret();
     push(value);
 }
 

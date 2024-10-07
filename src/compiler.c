@@ -6,7 +6,8 @@
 #include "scope.h"
 
 static void expression();
-static void statements(AST* ast, bool top);
+static void references();
+static AST* statements(AST* ast);
 
 static Chunk* currentChunk;
 static Scope* currentScope;
@@ -470,6 +471,17 @@ static void funcCall(AST* ast)
     op_call(0);
 }
 
+static void functionBody(AST* ast)
+{
+    AST* last = statements(ast);
+
+    if (last == NULL || last->type != AST_RETURN) {
+        op_ret();
+    }
+
+    references();
+}
+
 static size_t funcDef(AST* ast)
 {
     Reference ref = getFunctionReference(ast->funcDef.id);
@@ -486,7 +498,7 @@ static size_t funcDef(AST* ast)
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
     
     pushFunctionArray(&currentChunk->functions, func);
-    statements(body, false);
+    functionBody(body);
     createFunctionReference(ast, functionsIndex);
     currentScope = ast->funcDef.scope;
 
@@ -544,13 +556,14 @@ static void expression(AST* ast)
     }
 }
 
-static void statements(AST* ast, bool top)
+static AST* statements(AST* ast)
 {
     size_t count = countVector(&ast->compound.statements);
+    AST* statement = NULL;
     currentScope = ast->compound.scope;
 
     for (size_t i = 0; i < count; i++) {
-        AST* statement = getVectorAt(&ast->compound.statements, i);
+        statement = getVectorAt(&ast->compound.statements, i);
 
         switch (statement->type) {
             case AST_ASSIGNMENT:
@@ -571,10 +584,13 @@ static void statements(AST* ast, bool top)
         }
     }
 
-    if (top) {
-        op_hlt();
-    }
+    return statement;
+}
 
+static void topLevelStatements(AST* ast)
+{
+    AST* last = statements(ast);
+    op_hlt();
     references();
 }
 
@@ -584,7 +600,7 @@ void compile(char* source, Chunk* chunk)
     currentChunk = chunk;
 
     initReferenceArray(&functions);
-    statements(ast, true);
+    topLevelStatements(ast);
     freeReferenceArray(&functions);
     freeAST(ast);
 }

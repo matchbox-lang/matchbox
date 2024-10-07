@@ -589,7 +589,7 @@ static AST* statements(AST* ast)
 
 static void topLevelStatements(AST* ast)
 {
-    AST* last = statements(ast);
+    statements(ast);
     op_hlt();
     references();
 }

@@ -3,8 +3,7 @@
 
 typedef enum Syscall
 {
-    SYS_EXIT,
-    SYS_WRITE
+    SYS_EXIT
 } Syscall;
 
 #endif

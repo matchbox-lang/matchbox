@@ -22,19 +22,6 @@ static AST* identifier();
 static AST* statements();
 static AST* variable();
 
-static void error(const char* message, Token token)
-{
-    fprintf(
-        stderr,
-        message,
-        token.length,
-        token.chars,
-        token.line,
-        token.column
-    );
-    exit(1);
-}
-
 static void advance()
 {
     parser.previous = parser.current;
@@ -49,6 +36,24 @@ static Token peek()
 static Token prev()
 {
     return parser.previous;
+}
+
+static void error(const char* message, Token token)
+{
+    fprintf(
+        stderr,
+        message,
+        token.length,
+        token.chars,
+        token.line,
+        token.column
+    );
+    exit(1);
+}
+
+static void tokenError()
+{
+    error("Error: Unexpected '%.*s' on line %d:%d\n", peek());
 }
 
 static bool isBool(TokenType type)
@@ -193,7 +198,7 @@ static void consume(TokenType type)
     Token token = peek();
 
     if (token.type != type) {
-        error("Error: Unexpected '%.*s' on line %d:%d\n", token);
+        tokenError();
     }
     
     advance();
@@ -204,7 +209,7 @@ static void consumeType()
     Token token = peek();
 
     if (!isType(token.type)) {
-        error("Error: Unexpected '%.*s' on line %d:%d\n", token);
+        tokenError();
     }
 
     consume(token.type);
@@ -327,7 +332,13 @@ static AST* exponent()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = prefix();
+
+        AST* rightExpr = prefix();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -349,7 +360,13 @@ static AST* factor()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = exponent();
+
+        AST* rightExpr = exponent();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+        
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -371,7 +388,13 @@ static AST* term()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = factor();
+
+        AST* rightExpr = factor();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+        
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -393,7 +416,13 @@ static AST* shift()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = term();
+
+        AST* rightExpr = term();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -415,7 +444,13 @@ static AST* comparison()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = shift();
+
+        AST* rightExpr = shift();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -437,7 +472,13 @@ static AST* equality()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = comparison();
+
+        AST* rightExpr = comparison();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -459,7 +500,13 @@ static AST* bitwiseAND()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = equality();
+
+        AST* rightExpr = equality();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -481,7 +528,13 @@ static AST* bitwiseXOR()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = bitwiseAND();
+
+        AST* rightExpr = bitwiseAND();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -503,7 +556,13 @@ static AST* bitwiseOR()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = bitwiseXOR();
+
+        AST* rightExpr = bitwiseXOR();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -525,7 +584,13 @@ static AST* booleanAND()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = bitwiseOR();
+
+        AST* rightExpr = bitwiseOR();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -547,7 +612,13 @@ static AST* booleanOR()
         ast->binary.leftExpr = expr;
         ast->binary.operator = token;
         consume(token.type);
-        ast->binary.rightExpr = booleanAND();
+
+        AST* rightExpr = booleanAND();
+        if (rightExpr->type == AST_NONE) {
+            tokenError();
+        }
+
+        ast->binary.rightExpr = rightExpr;
         expr = ast;
     }
 
@@ -567,6 +638,17 @@ static AST* returnStmt()
     ast->expr = expression();
 
     return ast;
+}
+
+static AST* argument()
+{
+    AST* expr = expression();
+
+    if (expr->type == AST_NONE) {
+        tokenError();
+    }
+
+    return expr;
 }
 
 static AST* parameter()
@@ -614,7 +696,13 @@ static AST* assignment()
     ast->assignment.scope = parser.scope;
     ast->assignment.id = id;
     ast->assignment.operator = operator;
-    ast->assignment.expr = expression();
+
+    AST* expr = expression();
+    if (expr->type == AST_NONE) {
+        tokenError();
+    }
+
+    ast->assignment.expr = expr;
 
     return ast;
 }
@@ -629,7 +717,7 @@ static AST* variable()
         error("Error: '%.*s' is undefined on line %d:%d\n", token);
     }
 
-    if (!symbol->varDef.expr) {
+    if (symbol->type == AST_VARIABLE_DEFINITION && symbol->varDef.expr->type == AST_NONE) {
         error("Error: '%.*s' is uninitialized on line %d:%d\n", token);
     }
 
@@ -658,14 +746,15 @@ static AST* variableDefinition()
     ast->varDef.scope = parser.scope;
     ast->varDef.id = id;
     ast->varDef.typeId = T_UNKNOWN;
-    ast->varDef.expr = NULL;
 
     if (isType(peek().type)) {
         ast->varDef.typeId = peek().type;
         consumeType();
     }
     
-    if (peek().type == T_EQUAL) {
+    if (peek().type != T_EQUAL) {
+        ast->varDef.expr = createAST(AST_NONE);
+    } else {
         consume(T_EQUAL);
         ast->varDef.expr = expression();
     }
@@ -673,6 +762,20 @@ static AST* variableDefinition()
     setLocalVariable(parser.scope, id, ast);
 
     return ast;
+}
+
+static void testArguments(AST* caller, AST* callee, Token token)
+{
+    size_t paramc = countVector(&callee->funcDef.params);
+    size_t argc = countVector(&caller->funcCall.args);
+
+    if (argc < paramc) {
+        error("Error: Not enough arguments to function '%.*s' on line %d:%d\n", token);
+    }
+
+    if (argc > paramc) {
+        error("Error: Too many arguments to function '%.*s' on line %d:%d\n", token);
+    }
 }
 
 static AST* functionCall()
@@ -685,24 +788,25 @@ static AST* functionCall()
         error("Error: '%.*s' is undefined on line %d:%d\n", token);
     }
 
+    consume(T_LPAREN);
+
     AST* ast = createAST(AST_FUNCTION_CALL);
     ast->funcCall.scope = parser.scope;
     ast->funcCall.id = id;
 
-    consume(T_LPAREN);
-
     if (peek().type != T_RPAREN) {
-        AST* expr = expression();
+        AST* expr = argument();
         pushVector(&ast->funcCall.args, expr);
 
         while (peek().type == T_COMMA) {
             consume(T_COMMA);
-            AST* expr = expression();
+            AST* expr = argument();
             pushVector(&ast->funcCall.args, expr);
         }
     }
-    
+
     consume(T_RPAREN);
+    testArguments(ast, symbol, token);
 
     return ast;
 }
@@ -733,7 +837,6 @@ static AST* functionDefinition()
     if (peek().type != T_RPAREN) {
         AST* expr = parameter();
         expr->varDef.position = --offset;
-    
         pushVector(&ast->funcDef.params, expr);
 
         while (peek().type == T_COMMA) {
@@ -781,7 +884,7 @@ static AST* statement()
 
     switch (token.type) {
         case T_UNKNOWN:
-            error("Error: Unexpected '%.*s' on line %d:%d\n", token);
+            tokenError();
         case T_VAR:
             return variableDefinition();
         case T_FUNC:

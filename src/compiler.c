@@ -368,7 +368,7 @@ static void variable(AST* ast)
     AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
 
     if (symbol->type == AST_PARAMETER) {
-        return op_ldl(symbol->param.position - 3);
+        return op_ldl(-symbol->param.position - 4);
     }
 
     op_ldl(symbol->varDef.position);

@@ -813,17 +813,17 @@ static AST* functionDefinition()
     consume(T_LPAREN);
 
     parser.scope = createScope(parser.scope);
-    int offset = 0;
+    int paramCount = 0;
 
     if (peek().type != T_RPAREN) {
         AST* expr = parameter();
-        expr->param.position = --offset;
+        expr->param.position = paramCount++;
         pushVector(&ast->funcDef.params, expr);
 
         while (peek().type == T_COMMA) {
             consume(T_COMMA);
             AST* expr = parameter();
-            expr->param.position = --offset;
+            expr->param.position = paramCount++;
             pushVector(&ast->funcDef.params, expr);
         }
     }

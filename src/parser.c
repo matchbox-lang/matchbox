@@ -86,25 +86,7 @@ static bool isAssignment(TokenType type)
 
 static bool isType(TokenType type)
 {
-    switch (type) {
-        case T_INT:
-        case T_UINT:
-        case T_INT8:
-        case T_INT16:
-        case T_INT32:
-        case T_INT64:
-        case T_UINT8:
-        case T_UINT16:
-        case T_UINT32:
-        case T_UINT64:
-        case T_FLOAT:
-        case T_DOUBLE:
-        case T_CHAR:
-        case T_BOOL:
-            return true;
-    }
-
-    return false;
+    return type == T_INT;
 }
 
 static bool isEquality(TokenType type)

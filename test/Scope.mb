@@ -16,4 +16,4 @@ func bar(x int)
 print(y) # Error
 
 foo(x)
-bar(200)
+bar(125)

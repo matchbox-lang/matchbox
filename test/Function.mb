@@ -1,6 +1,8 @@
-func add(a int, b int) int
+func add(x int, y int) int
 {
-    return a + b
+    return x + y
 }
 
-var x = add(2, 3)
+var res = add(5, 10)
+
+print(res)

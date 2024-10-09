@@ -44,8 +44,8 @@ typedef struct AST
         } assignment;
 
         struct {
-            AST* leftExpr;
             Token operator;
+            AST* leftExpr;
             AST* rightExpr;
         } binary;
 
@@ -99,8 +99,8 @@ typedef struct AST
             Scope* scope;
             StringObject* id;
             int typeId;
-            AST* expr;
             int position;
+            AST* expr;
         } varDef;
 
         bool boolVal;

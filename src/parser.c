@@ -765,24 +765,27 @@ static void compareSyscallSignature(AST* caller, Syscall* syscall, Token token)
     }
 }
 
+static void arguments(Vector* args)
+{
+    if (peek().type != T_RPAREN) {
+        AST* expr = argument();
+        pushVector(args, expr);
+
+        while (peek().type == T_COMMA) {
+            consume(T_COMMA);
+            AST* expr = argument();
+            pushVector(args, expr);
+        }
+    }
+}
+
 static AST* systemCall(Syscall* syscall, Token token)
 {
     AST* ast = createAST(AST_SYSCALL);
     ast->syscall.opcode = syscall->opcode;
 
     consume(T_LPAREN);
-
-    if (peek().type != T_RPAREN) {
-        AST* expr = argument();
-        pushVector(&ast->syscall.args, expr);
-
-        while (peek().type == T_COMMA) {
-            consume(T_COMMA);
-            AST* expr = argument();
-            pushVector(&ast->syscall.args, expr);
-        }
-    }
-
+    arguments(&ast->syscall.args);
     consume(T_RPAREN);
     compareSyscallSignature(ast, syscall, token);
 
@@ -807,24 +810,32 @@ static AST* functionCall()
     AST* ast = createAST(AST_FUNCTION_CALL);
     ast->funcCall.id = id;
     ast->funcCall.scope = parser.scope;
-
+    
     consume(T_LPAREN);
-
-    if (peek().type != T_RPAREN) {
-        AST* expr = argument();
-        pushVector(&ast->funcCall.args, expr);
-
-        while (peek().type == T_COMMA) {
-            consume(T_COMMA);
-            AST* expr = argument();
-            pushVector(&ast->funcCall.args, expr);
-        }
-    }
-
+    arguments(&ast->funcCall.args);
     consume(T_RPAREN);
     compareFunctionSignature(ast, symbol, token);
 
     return ast;
+}
+
+static void parameters(Vector* params)
+{
+    parser.scope = createScope(parser.scope);
+    int paramCount = 0;
+
+    if (peek().type != T_RPAREN) {
+        AST* expr = parameter();
+        expr->param.position = paramCount++;
+        pushVector(params, expr);
+
+        while (peek().type == T_COMMA) {
+            consume(T_COMMA);
+            AST* expr = parameter();
+            expr->param.position = paramCount++;
+            pushVector(params, expr);
+        }
+    }
 }
 
 static AST* functionDefinition()
@@ -846,23 +857,7 @@ static AST* functionDefinition()
 
     consume(T_IDENTIFIER);
     consume(T_LPAREN);
-
-    parser.scope = createScope(parser.scope);
-    int paramCount = 0;
-
-    if (peek().type != T_RPAREN) {
-        AST* expr = parameter();
-        expr->param.position = paramCount++;
-        pushVector(&ast->funcDef.params, expr);
-
-        while (peek().type == T_COMMA) {
-            consume(T_COMMA);
-            AST* expr = parameter();
-            expr->param.position = paramCount++;
-            pushVector(&ast->funcDef.params, expr);
-        }
-    }
-    
+    parameters(&ast->funcDef.params);
     consume(T_RPAREN);
 
     if (isType(peek().type)) {

@@ -19,6 +19,7 @@ typedef enum Opcode
     OP_PUSH,        // push imm8
     OP_PUSH_0,      // push_0
     OP_PUSH_1,      // push_1
+    OP_PUSH_2,      // push_2
     OP_POP,         // pop
     OP_ADD,         // add
     OP_SUB,         // sub
@@ -33,7 +34,6 @@ typedef enum Opcode
     OP_LSL,         // lsl
     OP_LSR,         // lsr
     OP_ASR,         // asr
-    OP_ABS,         // abs
     OP_NOT,         // not
     OP_NEG,         // neg
     OP_INC,         // inc

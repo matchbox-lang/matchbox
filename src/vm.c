@@ -157,6 +157,11 @@ static void op_push_1()
     push(INT_VALUE(1));
 }
 
+static void op_push_2()
+{
+    push(INT_VALUE(2));
+}
+
 static void op_pop()
 {
     pop();
@@ -263,13 +268,6 @@ static void op_asr()
     int32_t a = AS_INT(pop());
 
     push(INT_VALUE(~(~a >> b)));
-}
-
-static void op_abs()
-{
-    int32_t n = AS_INT(pop());
-
-    push(INT_VALUE(n < 0 ? -n : n));
 }
 
 static void op_not()
@@ -436,6 +434,7 @@ static void initInstructions()
     vm.opcode[OP_PUSH] = op_push;
     vm.opcode[OP_PUSH_0] = op_push_0;
     vm.opcode[OP_PUSH_1] = op_push_1;
+    vm.opcode[OP_PUSH_2] = op_push_2;
     vm.opcode[OP_POP] = op_pop;
     vm.opcode[OP_ADD] = op_add;
     vm.opcode[OP_SUB] = op_sub;
@@ -450,7 +449,6 @@ static void initInstructions()
     vm.opcode[OP_LSL] = op_lsl;
     vm.opcode[OP_LSR] = op_lsr;
     vm.opcode[OP_ASR] = op_asr;
-    vm.opcode[OP_ABS] = op_abs;
     vm.opcode[OP_NOT] = op_not;
     vm.opcode[OP_NEG] = op_neg;
     vm.opcode[OP_INC] = op_inc;

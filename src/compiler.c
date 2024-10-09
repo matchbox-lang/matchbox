@@ -74,70 +74,31 @@ static void op_ldc(uint8_t imm)
     write8(imm);
 }
 
-static void op_ldl_0()
-{
-    write8(OP_LDL_0);
-}
-
-static void op_ldl_1()
-{
-    write8(OP_LDL_1);
-}
-
-static void op_ldl_2()
-{
-    write8(OP_LDL_2);
-}
-
 static void op_ldl(int8_t imm)
 {
-    if (imm == 0) return op_ldl_0();
-    if (imm == 1) return op_ldl_1();
-    if (imm == 2) return op_ldl_2();
+    if (imm == 0) return write8(OP_LDL_0);
+    if (imm == 1) return write8(OP_LDL_1);
+    if (imm == 2) return write8(OP_LDL_2);
 
     write8(OP_LDL);
     write8(imm);
 }
 
-static void op_stl_0()
-{
-    write8(OP_STL_0);
-}
-
-static void op_stl_1()
-{
-    write8(OP_STL_1);
-}
-
-static void op_stl_2()
-{
-    write8(OP_STL_2);
-}
-
 static void op_stl(int8_t imm)
 {
-    if (imm == 0) return op_stl_0();
-    if (imm == 1) return op_stl_1();
-    if (imm == 2) return op_stl_2();
+    if (imm == 0) return write8(OP_STL_0);
+    if (imm == 1) return write8(OP_STL_1);
+    if (imm == 2) return write8(OP_STL_2);
 
     write8(OP_STL);
     write8(imm);
 }
 
-static void op_push_0()
-{
-    write8(OP_PUSH_0);
-}
-
-static void op_push_1()
-{
-    write8(OP_PUSH_1);
-}
-
 static void op_push(int8_t imm)
 {
-    if (imm == 0) return op_push_0();
-    if (imm == 1) return op_push_1();
+    if (imm == 0) return write8(OP_PUSH_0);
+    if (imm == 1) return write8(OP_PUSH_1);
+    if (imm == 2) return write8(OP_PUSH_2);
 
     write8(OP_PUSH);
     write8(imm);
@@ -211,11 +172,6 @@ static void op_lsr()
 static void op_asr()
 {
     write8(OP_ASR);
-}
-
-static void op_abs()
-{
-    write8(OP_ABS);
 }
 
 static void op_neg()
@@ -530,7 +486,7 @@ static void ret(AST* ast)
 static void variableDefinition(AST* ast)
 {
     if (!ast->varDef.expr) {
-        return op_push_0();
+        return op_push(0);
     }
 
     expression(ast->varDef.expr);

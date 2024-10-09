@@ -23,6 +23,7 @@ static int printInstruction(int8_t c)
         case OP_PUSH:       return printf("push\t%d\n", READ_INT8());
         case OP_PUSH_0:     return printf("push_0\n");
         case OP_PUSH_1:     return printf("push_1\n");
+        case OP_PUSH_2:     return printf("push_2\n");
         case OP_POP:        return printf("pop\n");
         case OP_ADD:        return printf("add\n");
         case OP_SUB:        return printf("sub\n");
@@ -37,7 +38,6 @@ static int printInstruction(int8_t c)
         case OP_LSL:        return printf("lsl\n");
         case OP_LSR:        return printf("lsr\n");
         case OP_ASR:        return printf("asr\n");
-        case OP_ABS:        return printf("abs\n");
         case OP_NOT:        return printf("not\n");
         case OP_NEG:        return printf("neg\n");
         case OP_INC:        return printf("inc\n");

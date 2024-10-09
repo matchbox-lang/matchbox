@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "scope.h"
 #include "table.h"
+#include "syscall.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -745,35 +746,69 @@ static AST* variableDefinition()
     return ast;
 }
 
-static void testArguments(AST* caller, AST* callee, Token token)
+static void compareFunctionSignature(AST* caller, AST* callee, Token token)
 {
-    size_t paramc = countVector(&callee->funcDef.params);
-    size_t argc = countVector(&caller->funcCall.args);
+    size_t argCount = countVector(&caller->funcCall.args);
+    size_t paramCount = countVector(&callee->funcDef.params);
 
-    if (argc < paramc) {
-        error("Error: Not enough arguments to function '%.*s' on line %d:%d\n", token);
+    if (argCount != paramCount) {
+        error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+    }
+}
+
+static void compareSyscallSignature(AST* caller, Syscall* syscall, Token token)
+{
+    size_t argCount = countVector(&caller->syscall.args);
+
+    if (argCount != syscall->paramCount) {
+        error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+    }
+}
+
+static AST* systemCall(Syscall* syscall, Token token)
+{
+    AST* ast = createAST(AST_SYSCALL);
+    ast->syscall.opcode = syscall->opcode;
+
+    consume(T_LPAREN);
+
+    if (peek().type != T_RPAREN) {
+        AST* expr = argument();
+        pushVector(&ast->syscall.args, expr);
+
+        while (peek().type == T_COMMA) {
+            consume(T_COMMA);
+            AST* expr = argument();
+            pushVector(&ast->syscall.args, expr);
+        }
     }
 
-    if (argc > paramc) {
-        error("Error: Too many arguments to function '%.*s' on line %d:%d\n", token);
-    }
+    consume(T_RPAREN);
+    compareSyscallSignature(ast, syscall, token);
+
+    return ast;
 }
 
 static AST* functionCall()
 {
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
+    Syscall* syscall = getSyscallByName(id->chars);
+    
+    if (syscall) {
+        return systemCall(syscall, token);
+    }
 
+    AST* symbol = getSymbol(parser.scope, id);
     if (!symbol) {
         error("Error: '%.*s' is undefined on line %d:%d\n", token);
     }
 
-    consume(T_LPAREN);
-
     AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->funcCall.scope = parser.scope;
     ast->funcCall.id = id;
+    ast->funcCall.scope = parser.scope;
+
+    consume(T_LPAREN);
 
     if (peek().type != T_RPAREN) {
         AST* expr = argument();
@@ -787,7 +822,7 @@ static AST* functionCall()
     }
 
     consume(T_RPAREN);
-    testArguments(ast, symbol, token);
+    compareFunctionSignature(ast, symbol, token);
 
     return ast;
 }

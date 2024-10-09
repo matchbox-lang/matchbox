@@ -456,7 +456,20 @@ static void assignment(AST* ast)
     }
 }
 
-static void funcCall(AST* ast)
+static void systemCall(AST* ast)
+{
+    int count = countVector(&ast->syscall.args);
+
+    while (count--) {
+        AST* arg = getVectorAt(&ast->syscall.args, count);
+        expression(arg);
+    }
+
+    op_push(ast->syscall.opcode);
+    op_syscall();
+}
+
+static void functionCall(AST* ast)
 {
     int count = countVector(&ast->funcCall.args);
 
@@ -482,7 +495,7 @@ static void functionBody(AST* ast)
     references();
 }
 
-static size_t funcDef(AST* ast)
+static size_t functionDefinition(AST* ast)
 {
     Reference ref = getFunctionReference(ast->funcDef.id);
 
@@ -515,7 +528,7 @@ static void ret(AST* ast)
     op_retv();
 }
 
-static void varDef(AST* ast)
+static void variableDefinition(AST* ast)
 {
     if (!ast->varDef.expr) {
         return op_push_0();
@@ -532,7 +545,7 @@ static void references()
     for (int i = 0; i < count; i++) {
         Reference ref = getReferenceAt(&currentScope->references, i);
         AST* symbol = getSymbol(ref.ast->funcCall.scope, ref.ast->funcCall.id);
-        size_t position = funcDef(symbol);
+        size_t position = functionDefinition(symbol);
 
         patch16(ref.position + 1, position);
     }
@@ -546,13 +559,15 @@ static void expression(AST* ast)
         case AST_BINARY:
             return binary(ast);
         case AST_FUNCTION_CALL:
-            return funcCall(ast);
+            return functionCall(ast);
         case AST_INTEGER:
             return number(ast);
         case AST_POSTFIX:
             return postfix(ast);
         case AST_PREFIX:
             return prefix(ast);
+        case AST_SYSCALL:
+            return systemCall(ast);
     }
 }
 
@@ -570,14 +585,18 @@ static AST* statements(AST* ast)
                 assignment(statement);
                 break;
             case AST_FUNCTION_CALL:
-                funcCall(statement);
+                functionCall(statement);
                 op_pop();
                 break;
             case AST_RETURN:
                 ret(statement);
                 break;
+            case AST_SYSCALL:
+                systemCall(statement);
+                op_pop();
+                break;
             case AST_VARIABLE_DEFINITION:
-                varDef(statement);
+                variableDefinition(statement);
                 break;
             default:
                 expression(statement);

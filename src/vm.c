@@ -75,13 +75,6 @@ static void ret()
     vm.pc = AS_POINTER(ra);
 }
 
-static void sys_exit()
-{
-    uint32_t status = AS_INT(peek(1));
-    
-    exit(status);
-}
-
 static void op_hlt()
 {
     vm.running = false;
@@ -89,9 +82,9 @@ static void op_hlt()
 
 static void op_syscall()
 {
-    uint32_t n = AS_INT(peek(0));
+    uint32_t opcode = AS_INT(pop());
 
-    vm.syscode[n]();
+    vm.syscode[opcode]();
 }
 
 static void op_ldc()
@@ -361,7 +354,7 @@ static void op_call()
 static void op_ret()
 {
     ret();
-    push(INT_VALUE(0));
+    op_push_0();
 }
 
 static void op_retv()
@@ -371,7 +364,22 @@ static void op_retv()
     push(value);
 }
 
-static void initOpcodes()
+static void sys_exit()
+{
+    uint32_t status = AS_INT(peek(0));
+    
+    exit(status);
+}
+
+static void sys_print()
+{
+    uint32_t i = AS_INT(peek(0));
+    
+    printf("%d\n", i);
+    op_push_0();
+}
+
+static void initInstructions()
 {
     vm.opcode[OP_HLT] = op_hlt;
     vm.opcode[OP_SYSCALL] = op_syscall;
@@ -418,6 +426,7 @@ static void initOpcodes()
 static void initSyscalls()
 {
     vm.syscode[SYS_EXIT] = sys_exit;
+    vm.syscode[SYS_PRINT] = sys_print;
 }
 
 static void resetStack()
@@ -428,9 +437,9 @@ static void resetStack()
 
 void initVM()
 {
-    initOpcodes();
-    initSyscalls();
     resetStack();
+    initInstructions();
+    initSyscalls();
 }
 
 static void run()
@@ -459,23 +468,21 @@ void interpret(char* source)
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
-    disassemble(&chunk);
     initVM();
     interpretChunk(&chunk);
-    inspectVM();
     freeChunk(&chunk);
 }
 
 void inspectVM()
 {
-    printf("\n");
-
     for (int i = 0; i < STACK_SIZE; i++) {
         char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
         int value = AS_INT(vm.stack[i]);
 
         printf("%d: %d%s\n", i, value, arrow);
     }
+    
+    printf("\n");
 }
 
 #undef READ_UINT8

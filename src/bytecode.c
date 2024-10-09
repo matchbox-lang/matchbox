@@ -61,4 +61,6 @@ void disassemble(Chunk* chunk)
 
         printInstruction(c);
     }
+
+    printf("\n");
 }

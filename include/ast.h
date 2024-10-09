@@ -26,6 +26,7 @@ typedef enum ASTType
     AST_PREFIX,
     AST_RETURN,
     AST_STRING,
+    AST_SYSCALL,
     AST_VARIABLE,
     AST_VARIABLE_DEFINITION
 } ASTType;
@@ -83,6 +84,11 @@ typedef struct AST
             Token operator;
             AST* expr;
         } prefix;
+
+        struct {
+            int opcode;
+            Vector args;
+        } syscall;
 
         struct {
             Scope* scope;

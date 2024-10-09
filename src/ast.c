@@ -21,6 +21,9 @@ AST* createAST(TokenType type)
         case AST_FUNCTION_DEFINITION:
             initVector(&ast->funcDef.params);
             break;
+        case AST_SYSCALL:
+            initVector(&ast->syscall.args);
+            break;
     }
     
     return ast;

@@ -1,19 +1,22 @@
 #include "syscall.h"
+#include "lexer.h"
 #include <stdio.h>
 #include <string.h>
 
-static char* syscalls[SYSCALL_SIZE] = {
-    "exit",
-    "print"
+static Syscall syscalls[SYSCALL_SIZE] = {
+    {"exit", 0, 1, {T_INT}},
+    {"print", 1, 1, {T_INT}}
 };
 
-int getSyscall(char* name)
+Syscall* getSyscallByName(char* name)
 {
     for (int i = 0; i < SYSCALL_SIZE; i++) {
-        if (strcmp(name, syscalls[i]) == 0) {
-            return i;
+        Syscall* syscall = &syscalls[i];
+
+        if (strcmp(name, syscall->name) == 0) {
+            return syscall;
         }
     }
 
-    return -1;
+    return NULL;
 }

@@ -767,6 +767,8 @@ static void compareSyscallSignature(AST* caller, Syscall* syscall, Token token)
 
 static void arguments(Vector* args)
 {
+    consume(T_LPAREN);
+
     if (peek().type != T_RPAREN) {
         AST* expr = argument();
         pushVector(args, expr);
@@ -777,6 +779,8 @@ static void arguments(Vector* args)
             pushVector(args, expr);
         }
     }
+
+    consume(T_RPAREN);
 }
 
 static AST* systemCall(Syscall* syscall, Token token)
@@ -784,9 +788,7 @@ static AST* systemCall(Syscall* syscall, Token token)
     AST* ast = createAST(AST_SYSCALL);
     ast->syscall.opcode = syscall->opcode;
 
-    consume(T_LPAREN);
     arguments(&ast->syscall.args);
-    consume(T_RPAREN);
     compareSyscallSignature(ast, syscall, token);
 
     return ast;
@@ -811,9 +813,7 @@ static AST* functionCall()
     ast->funcCall.id = id;
     ast->funcCall.scope = parser.scope;
     
-    consume(T_LPAREN);
     arguments(&ast->funcCall.args);
-    consume(T_RPAREN);
     compareFunctionSignature(ast, symbol, token);
 
     return ast;
@@ -821,6 +821,8 @@ static AST* functionCall()
 
 static void parameters(Vector* params)
 {
+    consume(T_LPAREN);
+
     parser.scope = createScope(parser.scope);
     int paramCount = 0;
 
@@ -836,6 +838,8 @@ static void parameters(Vector* params)
             pushVector(params, expr);
         }
     }
+
+    consume(T_RPAREN);
 }
 
 static AST* functionDefinition()
@@ -856,9 +860,7 @@ static AST* functionDefinition()
     ast->funcDef.typeId = T_NONE;
 
     consume(T_IDENTIFIER);
-    consume(T_LPAREN);
     parameters(&ast->funcDef.params);
-    consume(T_RPAREN);
 
     if (isType(peek().type)) {
         ast->funcDef.typeId = peek().type;

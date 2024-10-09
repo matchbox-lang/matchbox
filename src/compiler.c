@@ -456,32 +456,31 @@ static void assignment(AST* ast)
     }
 }
 
-static void systemCall(AST* ast)
+static void arguments(Vector* args)
 {
-    int count = countVector(&ast->syscall.args);
+    int count = countVector(args);
 
     while (count--) {
-        AST* arg = getVectorAt(&ast->syscall.args, count);
+        AST* arg = getVectorAt(args, count);
         expression(arg);
     }
-
-    op_push(ast->syscall.opcode);
-    op_syscall();
 }
 
 static void functionCall(AST* ast)
 {
-    int count = countVector(&ast->funcCall.args);
-
-    while (count--) {
-        AST* arg = getVectorAt(&ast->funcCall.args, count);
-        expression(arg);
-    }
+    arguments(&ast->funcCall.args);
 
     size_t position = countChunk(currentChunk);
     Reference ref = { ast, position };
     pushReferenceArray(&currentScope->references, ref);
     op_call(0);
+}
+
+static void systemCall(AST* ast)
+{
+    arguments(&ast->syscall.args);
+    op_push(ast->syscall.opcode);
+    op_syscall();
 }
 
 static void functionBody(AST* ast)

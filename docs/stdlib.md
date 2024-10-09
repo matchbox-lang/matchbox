@@ -112,7 +112,7 @@
 
 ## math
     abs             Return the absolute value
-    avg             Return the average of two numbers
+    avg             Return the average of one or more numbers
     acos            Return the arc cosine
     acosh           Return the hyperbolic arc cosine
     asin            Return the arc sine
@@ -157,7 +157,7 @@
     zip             Zip sequences into a single iterator
 
 ## system
-    endianess       Return the endianess of the system
+    byteorder       Return the endianess of the system
     exit            Terminate the current process
 
 ## time

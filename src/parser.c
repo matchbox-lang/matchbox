@@ -649,7 +649,7 @@ static AST* parameter()
     AST* ast = createAST(AST_PARAMETER);
     ast->param.scope = parser.scope;
     ast->param.id = id;
-    ast->param.typeId = T_UNKNOWN;
+    ast->param.typeId = T_NONE;
 
     if (isType(peek().type)) {
         ast->param.typeId = peek().type;
@@ -727,7 +727,7 @@ static AST* variableDefinition()
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
     ast->varDef.scope = parser.scope;
     ast->varDef.id = id;
-    ast->varDef.typeId = T_UNKNOWN;
+    ast->varDef.typeId = T_NONE;
 
     if (isType(peek().type)) {
         ast->varDef.typeId = peek().type;
@@ -842,7 +842,7 @@ static AST* functionDefinition()
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
     ast->funcDef.scope = parser.scope;
     ast->funcDef.id = id;
-    ast->funcDef.typeId = T_UNKNOWN;
+    ast->funcDef.typeId = T_NONE;
 
     consume(T_IDENTIFIER);
     consume(T_LPAREN);
@@ -897,7 +897,7 @@ static AST* identifier()
 static AST* statement()
 {
     Token token = peek();
-
+    
     switch (token.type) {
         case T_UNKNOWN:
             tokenError();

@@ -82,7 +82,7 @@ static void op_hlt()
 
 static void op_syscall()
 {
-    uint32_t opcode = AS_INT(pop());
+    int32_t opcode = AS_INT(pop());
 
     vm.syscode[opcode]();
 }
@@ -164,124 +164,124 @@ static void op_pop()
 
 static void op_add()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a + b));
 }
 
 static void op_sub()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a - b));
 }
 
 static void op_mul()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a * b));
 }
 
 static void op_div()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a / b));
 }
 
 static void op_rem()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a % b));
 }
 
 static void op_pow()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(pow(a, b)));
 }
 
 static void op_band()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a & b));
 }
 
 static void op_bor()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a | b));
 }
 
 static void op_bxor()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a ^ b));
 }
 
 static void op_bnot()
 {
-    uint32_t n = AS_INT(vm.sp[-1]);
+    int32_t n = AS_INT(vm.sp[-1]);
 
     vm.sp[-1] = INT_VALUE(~n);
 }
 
 static void op_lsl()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a << b));
 }
 
 static void op_lsr()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(a >> b));
 }
 
 static void op_asr()
 {
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
 
     push(INT_VALUE(~(~a >> b)));
 }
 
 static void op_abs()
 {
-    uint32_t n = AS_INT(pop());
+    int32_t n = AS_INT(pop());
 
-    push(INT_VALUE(((n >> 31) | 1) * n));
+    push(INT_VALUE(n < 0 ? -n : n));
 }
 
 static void op_not()
 {
-    uint32_t n = AS_INT(vm.sp[-1]);
+    int32_t n = AS_INT(vm.sp[-1]);
 
     vm.sp[-1] = INT_VALUE(!n);
 }
 
 static void op_neg()
 {
-    uint32_t n = AS_INT(vm.sp[-1]);
+    int32_t n = AS_INT(vm.sp[-1]);
 
     vm.sp[-1] = INT_VALUE(-n);
 }
@@ -366,17 +366,58 @@ static void op_retv()
 
 static void sys_exit()
 {
-    uint32_t status = AS_INT(peek(0));
+    int32_t status = AS_INT(pop());
     
     exit(status);
 }
 
 static void sys_print()
 {
-    uint32_t i = AS_INT(peek(0));
+    int32_t n = AS_INT(pop());
     
-    printf("%d\n", i);
+    printf("%d\n", n);
     op_push_0();
+}
+
+static void sys_clamp()
+{
+    int32_t num = AS_INT(pop());
+    int32_t min = AS_INT(pop());
+    int32_t max = AS_INT(pop());
+    int32_t tmp = num < min ? min : num;
+
+    push(INT_VALUE(tmp > max ? max : tmp));
+}
+
+static void sys_abs()
+{
+    int32_t n = AS_INT(pop());
+
+    push(INT_VALUE(n < 0 ? -n : n));
+}
+
+static void sys_min()
+{
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
+
+    push(INT_VALUE(a < b ? a : b));
+}
+
+static void sys_max()
+{
+    int32_t b = AS_INT(pop());
+    int32_t a = AS_INT(pop());
+
+    push(INT_VALUE(a > b ? a : b));
+}
+
+static void sys_byteorder()
+{
+    int32_t i = 1;
+    char *c = (char*)&i;
+
+    push(INT_VALUE((int32_t)*c));
 }
 
 static void initInstructions()
@@ -427,6 +468,11 @@ static void initSyscalls()
 {
     vm.syscode[SYS_EXIT] = sys_exit;
     vm.syscode[SYS_PRINT] = sys_print;
+    vm.syscode[SYS_CLAMP] = sys_clamp;
+    vm.syscode[SYS_ABS] = sys_abs;
+    vm.syscode[SYS_MIN] = sys_min;
+    vm.syscode[SYS_MAX] = sys_max;
+    vm.syscode[SYS_BYTEORDER] = sys_byteorder;
 }
 
 static void resetStack()
@@ -477,12 +523,10 @@ void inspectVM()
 {
     for (int i = 0; i < STACK_SIZE; i++) {
         char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
-        int value = AS_INT(vm.stack[i]);
+        int n = AS_INT(vm.stack[i]);
 
-        printf("%d: %d%s\n", i, value, arrow);
+        printf("%d: %d%s\n", i, n, arrow);
     }
-    
-    printf("\n");
 }
 
 #undef READ_UINT8

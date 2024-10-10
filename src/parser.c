@@ -57,6 +57,11 @@ static void tokenError()
     error("Error: Unexpected '%.*s' on line %d:%d\n", peek());
 }
 
+static void binaryError(Token token)
+{
+    error("Error: Invalid operands to binary '%.*s' on line %d:%d\n", token);
+}
+
 static int getTypeId(AST* expr)
 {
     switch (expr->type) {
@@ -71,6 +76,8 @@ static int getTypeId(AST* expr)
         case AST_INTEGER:
             return T_INT;
     }
+
+    return -1;
 }
 
 static int getBinaryTypeId(AST* leftExpr, AST* rightExpr, Token token)
@@ -78,11 +85,7 @@ static int getBinaryTypeId(AST* leftExpr, AST* rightExpr, Token token)
     int a = getTypeId(leftExpr);
     int b = getTypeId(rightExpr);
 
-    if (a != b) {
-        error("Error: Invalid operands to binary '%.*s' on line %d:%d\n", token);
-    }
-
-    return a;
+    return a == b ? a : -1;
 }
 
 static bool isBool(TokenType type)
@@ -349,8 +352,13 @@ static AST* exponent()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+        
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -377,9 +385,14 @@ static AST* factor()
         if (rightExpr->type == AST_NONE) {
             tokenError();
         }
+
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
         
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -406,9 +419,14 @@ static AST* term()
         if (rightExpr->type == AST_NONE) {
             tokenError();
         }
+
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
         
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -436,8 +454,13 @@ static AST* shift()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -463,6 +486,10 @@ static AST* comparison()
         AST* rightExpr = shift();
         if (rightExpr->type == AST_NONE) {
             tokenError();
+        }
+
+        if (getBinaryTypeId(expr, rightExpr, token) < 0) {
+            binaryError(token);
         }
 
         ast->binary.rightExpr = rightExpr;
@@ -494,6 +521,10 @@ static AST* equality()
             tokenError();
         }
 
+        if (getBinaryTypeId(expr, rightExpr, token) < 0) {
+            binaryError(token);
+        }
+
         ast->binary.rightExpr = rightExpr;
         ast->binary.typeId = T_BOOL;
         expr = ast;
@@ -523,8 +554,13 @@ static AST* bitwiseAND()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+        
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -552,8 +588,13 @@ static AST* bitwiseXOR()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+        
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -581,8 +622,13 @@ static AST* bitwiseOR()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+        
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -610,8 +656,13 @@ static AST* booleanAND()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+        
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 
@@ -639,8 +690,13 @@ static AST* booleanOR()
             tokenError();
         }
 
+        int typeId = getBinaryTypeId(expr, rightExpr, token);
+        if (typeId < 0) {
+            binaryError(token);
+        }
+        
         ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
+        ast->binary.typeId = typeId;
         expr = ast;
     }
 

@@ -3,7 +3,7 @@
 #include "chunk.h"
 #include "compiler.h"
 #include "function.h"
-#include "syscall.h"
+#include "service.h"
 #include "value.h"
 #include <math.h>
 #include <stdbool.h>
@@ -15,13 +15,13 @@
 #define READ_UINT16() (vm.pc += 2, (uint16_t)((vm.pc[-2] << 8) | vm.pc[-1]))
 #define READ_UINT8() (*(vm.pc++))
 
-typedef void (*syscall_t)();
+typedef void (*service_t)();
 typedef void (*instruction_t)();
 
 typedef struct VM
 {
     bool running;
-    syscall_t syscode[SYSCALL_SIZE];
+    service_t service[SERVICE_SIZE];
     instruction_t opcode[INSTRUCTION_SIZE];
     Value stack[STACK_SIZE];
     Value* sp;
@@ -84,7 +84,7 @@ static void op_syscall()
 {
     int32_t opcode = AS_INT(pop());
 
-    vm.syscode[opcode]();
+    vm.service[opcode]();
 }
 
 static void op_ldc()
@@ -462,15 +462,15 @@ static void initInstructions()
     vm.opcode[OP_RETV] = op_retv;
 }
 
-static void initSyscalls()
+static void initServices()
 {
-    vm.syscode[SYS_EXIT] = sys_exit;
-    vm.syscode[SYS_PRINT] = sys_print;
-    vm.syscode[SYS_CLAMP] = sys_clamp;
-    vm.syscode[SYS_ABS] = sys_abs;
-    vm.syscode[SYS_MIN] = sys_min;
-    vm.syscode[SYS_MAX] = sys_max;
-    vm.syscode[SYS_BYTEORDER] = sys_byteorder;
+    vm.service[SYS_EXIT] = sys_exit;
+    vm.service[SYS_PRINT] = sys_print;
+    vm.service[SYS_CLAMP] = sys_clamp;
+    vm.service[SYS_ABS] = sys_abs;
+    vm.service[SYS_MIN] = sys_min;
+    vm.service[SYS_MAX] = sys_max;
+    vm.service[SYS_BYTEORDER] = sys_byteorder;
 }
 
 static void resetStack()
@@ -483,7 +483,7 @@ void initVM()
 {
     resetStack();
     initInstructions();
-    initSyscalls();
+    initServices();
 }
 
 static void run()

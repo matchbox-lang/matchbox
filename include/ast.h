@@ -6,8 +6,9 @@
 #include <stdbool.h>
 
 typedef struct AST AST;
-typedef struct Scope Scope;
 typedef struct StringObject StringObject;
+typedef struct Scope Scope;
+typedef struct Service Service;
 
 typedef enum ASTType
 {
@@ -58,6 +59,7 @@ typedef struct AST
             Scope* scope;
             StringObject* id;
             Vector args;
+            AST* symbol;
         } funcCall;
 
         struct {
@@ -88,11 +90,13 @@ typedef struct AST
         struct {
             int opcode;
             Vector args;
+            Service* service;
         } syscall;
 
         struct {
             Scope* scope;
             StringObject* id;
+            AST* symbol;
         } var;
 
         struct {

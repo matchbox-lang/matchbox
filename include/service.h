@@ -1,18 +1,18 @@
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef SERVICE_H
+#define SERVICE_H
 
-#define SYSCALL_SIZE 7
+#define SERVICE_SIZE 7
 
-typedef struct Syscall
+typedef struct Service
 {
     char* name;
     int opcode;
     int paramCount;
     int params[4];
     int typeId;
-} Syscall;
+} Service;
 
-typedef enum SyscallCode
+typedef enum ServiceCode
 {
     SYS_EXIT,
     SYS_PRINT,
@@ -21,8 +21,8 @@ typedef enum SyscallCode
     SYS_MIN,
     SYS_MAX,
     SYS_BYTEORDER
-} SyscallCode;
+} ServiceCode;
 
-Syscall* getSyscallByName(char* name);
+Service* getServiceByName(char* name);
 
 #endif

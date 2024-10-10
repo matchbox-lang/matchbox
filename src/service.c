@@ -1,9 +1,9 @@
-#include "syscall.h"
+#include "service.h"
 #include "lexer.h"
 #include <stdio.h>
 #include <string.h>
 
-static Syscall syscalls[] = {
+static Service services[] = {
     {"exit", 0, 1, {T_INT}, T_NONE},
     {"print", 1, 1, {T_INT}, T_NONE},
     {"clamp", 2, 3, {T_INT, T_INT, T_INT}, T_INT},
@@ -13,13 +13,13 @@ static Syscall syscalls[] = {
     {"byteorder", 6, 0, {}, T_INT}
 };
 
-Syscall* getSyscallByName(char* name)
+Service* getServiceByName(char* name)
 {
-    for (int i = 0; i < SYSCALL_SIZE; i++) {
-        Syscall* syscall = &syscalls[i];
+    for (int i = 0; i < SERVICE_SIZE; i++) {
+        Service* service = &services[i];
 
-        if (strcmp(name, syscall->name) == 0) {
-            return syscall;
+        if (strcmp(name, service->name) == 0) {
+            return service;
         }
     }
 

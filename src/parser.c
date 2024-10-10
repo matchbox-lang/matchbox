@@ -3,7 +3,7 @@
 #include "lexer.h"
 #include "scope.h"
 #include "table.h"
-#include "syscall.h"
+#include "service.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -689,6 +689,20 @@ static AST* assignment()
     return ast;
 }
 
+static int getTypeId(AST* expr)
+{
+    switch (expr->type) {
+        case AST_VARIABLE:
+            return expr->var.symbol->varDef.typeId;
+        case AST_FUNCTION_CALL:
+            return expr->funcCall.symbol->funcDef.typeId;
+        case AST_SYSCALL:
+            return expr->syscall.service->typeId;
+        case AST_INTEGER:
+            return T_INT;
+    }
+}
+
 static AST* variable()
 {
     Token token = prev();
@@ -706,6 +720,7 @@ static AST* variable()
     AST* ast = createAST(AST_VARIABLE);
     ast->var.scope = parser.scope;
     ast->var.id = id;
+    ast->var.symbol = symbol;
 
     return ast;
 }
@@ -738,7 +753,9 @@ static AST* variableDefinition()
         ast->varDef.expr = createAST(AST_NONE);
     } else {
         consume(T_EQUAL);
-        ast->varDef.expr = expression();
+        AST* expr = expression();
+        ast->varDef.expr = expr;
+        ast->varDef.typeId = getTypeId(expr);
     }
 
     setLocalVariable(parser.scope, id, ast);
@@ -754,14 +771,33 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
     if (argCount != paramCount) {
         error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
     }
+
+    for (int i = 0; i < argCount; i++) {
+        AST* a = getVectorAt(&caller->funcCall.args, i);
+        AST* b = getVectorAt(&callee->funcDef.params, i);
+        int typeId = getTypeId(a);
+
+        if (typeId != b->param.typeId) {
+            error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+        }
+    }
 }
 
-static void compareSyscallSignature(AST* caller, Syscall* syscall, Token token)
+static void compareServiceSignature(AST* caller, Service* service, Token token)
 {
     size_t argCount = countVector(&caller->syscall.args);
 
-    if (argCount != syscall->paramCount) {
+    if (argCount != service->paramCount) {
         error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+    }
+
+    for (int i = 0; i < argCount; i++) {
+        AST* expr = getVectorAt(&caller->syscall.args, i);
+        int typeId = getTypeId(expr);
+
+        if (typeId != service->params[i]) {
+            error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+        }
     }
 }
 
@@ -781,13 +817,14 @@ static void arguments(Vector* args)
     consume(T_RPAREN);
 }
 
-static AST* systemCall(Syscall* syscall, Token token)
+static AST* systemCall(Service* service, Token token)
 {
     AST* ast = createAST(AST_SYSCALL);
-    ast->syscall.opcode = syscall->opcode;
+    ast->syscall.opcode = service->opcode;
+    ast->syscall.service = service;
 
     arguments(&ast->syscall.args);
-    compareSyscallSignature(ast, syscall, token);
+    compareServiceSignature(ast, service, token);
 
     return ast;
 }
@@ -796,10 +833,10 @@ static AST* functionCall()
 {
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    Syscall* syscall = getSyscallByName(id->chars);
+    Service* service = getServiceByName(id->chars);
     
-    if (syscall) {
-        return systemCall(syscall, token);
+    if (service) {
+        return systemCall(service, token);
     }
 
     AST* symbol = getSymbol(parser.scope, id);
@@ -808,8 +845,9 @@ static AST* functionCall()
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->funcCall.id = id;
     ast->funcCall.scope = parser.scope;
+    ast->funcCall.id = id;
+    ast->funcCall.symbol = symbol;
     
     arguments(&ast->funcCall.args);
     compareFunctionSignature(ast, symbol, token);

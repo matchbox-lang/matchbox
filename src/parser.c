@@ -57,6 +57,34 @@ static void tokenError()
     error("Error: Unexpected '%.*s' on line %d:%d\n", peek());
 }
 
+static int getTypeId(AST* expr)
+{
+    switch (expr->type) {
+        case AST_BINARY:
+            return expr->binary.typeId;
+        case AST_VARIABLE:
+            return expr->var.symbol->varDef.typeId;
+        case AST_FUNCTION_CALL:
+            return expr->funcCall.symbol->funcDef.typeId;
+        case AST_SYSCALL:
+            return expr->syscall.service->typeId;
+        case AST_INTEGER:
+            return T_INT;
+    }
+}
+
+static int getBinaryTypeId(AST* leftExpr, AST* rightExpr, Token token)
+{
+    int a = getTypeId(leftExpr);
+    int b = getTypeId(rightExpr);
+
+    if (a != b) {
+        error("Error: Invalid operands to binary '%.*s' on line %d:%d\n", token);
+    }
+
+    return a;
+}
+
 static bool isBool(TokenType type)
 {
     switch (type) {
@@ -322,6 +350,7 @@ static AST* exponent()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -350,6 +379,7 @@ static AST* factor()
         }
         
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -378,6 +408,7 @@ static AST* term()
         }
         
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -406,6 +437,7 @@ static AST* shift()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -434,6 +466,7 @@ static AST* comparison()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = T_BOOL;
         expr = ast;
     }
 
@@ -462,6 +495,7 @@ static AST* equality()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = T_BOOL;
         expr = ast;
     }
 
@@ -490,6 +524,7 @@ static AST* bitwiseAND()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -518,6 +553,7 @@ static AST* bitwiseXOR()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -546,6 +582,7 @@ static AST* bitwiseOR()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -574,6 +611,7 @@ static AST* booleanAND()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -602,6 +640,7 @@ static AST* booleanOR()
         }
 
         ast->binary.rightExpr = rightExpr;
+        ast->binary.typeId = getBinaryTypeId(expr, rightExpr, token);
         expr = ast;
     }
 
@@ -689,20 +728,6 @@ static AST* assignment()
     return ast;
 }
 
-static int getTypeId(AST* expr)
-{
-    switch (expr->type) {
-        case AST_VARIABLE:
-            return expr->var.symbol->varDef.typeId;
-        case AST_FUNCTION_CALL:
-            return expr->funcCall.symbol->funcDef.typeId;
-        case AST_SYSCALL:
-            return expr->syscall.service->typeId;
-        case AST_INTEGER:
-            return T_INT;
-    }
-}
-
 static AST* variable()
 {
     Token token = prev();
@@ -769,7 +794,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
     size_t paramCount = countVector(&callee->funcDef.params);
 
     if (argCount != paramCount) {
-        error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+        error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -778,7 +803,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
         int typeId = getTypeId(a);
 
         if (typeId != b->param.typeId) {
-            error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+            error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
         }
     }
 }
@@ -788,7 +813,7 @@ static void compareServiceSignature(AST* caller, Service* service, Token token)
     size_t argCount = countVector(&caller->syscall.args);
 
     if (argCount != service->paramCount) {
-        error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+        error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -796,7 +821,7 @@ static void compareServiceSignature(AST* caller, Service* service, Token token)
         int typeId = getTypeId(expr);
 
         if (typeId != service->params[i]) {
-            error("Error: Incorrect arguments to function '%.*s' on line %d:%d\n", token);
+            error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
         }
     }
 }

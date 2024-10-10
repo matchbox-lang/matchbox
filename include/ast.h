@@ -48,6 +48,7 @@ typedef struct AST
             Token operator;
             AST* leftExpr;
             AST* rightExpr;
+            int typeId;
         } binary;
 
         struct {

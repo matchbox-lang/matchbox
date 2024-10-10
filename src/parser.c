@@ -769,14 +769,12 @@ static void arguments(Vector* args)
 {
     consume(T_LPAREN);
 
-    if (peek().type != T_RPAREN) {
+    while (peek().type != T_RPAREN) {
         AST* expr = argument();
         pushVector(args, expr);
 
-        while (peek().type == T_COMMA) {
+        if (peek().type == T_COMMA) {
             consume(T_COMMA);
-            AST* expr = argument();
-            pushVector(args, expr);
         }
     }
 
@@ -826,16 +824,13 @@ static void parameters(Vector* params)
     parser.scope = createScope(parser.scope);
     int paramCount = 0;
 
-    if (peek().type != T_RPAREN) {
+    while (peek().type != T_RPAREN) {
         AST* expr = parameter();
         expr->param.position = paramCount++;
         pushVector(params, expr);
 
-        while (peek().type == T_COMMA) {
+        if (peek().type == T_COMMA) {
             consume(T_COMMA);
-            AST* expr = parameter();
-            expr->param.position = paramCount++;
-            pushVector(params, expr);
         }
     }
 

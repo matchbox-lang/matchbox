@@ -58,6 +58,15 @@ static Reference getFunctionReference(StringObject* id)
     return ref;
 }
 
+static int getLocalPosition(AST* ast)
+{
+    if (ast->type == AST_PARAMETER) {
+        return -(ast->param.position + 4);
+    }
+    
+    return ast->varDef.position;
+}
+
 static void op_hlt()
 {
     write8(OP_HLT);
@@ -283,8 +292,9 @@ static void preIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+    int position = getLocalPosition(symbol);
 
-    op_inc(symbol->varDef.position);
+    op_inc(position);
     expression(expr);
 }
 
@@ -292,8 +302,9 @@ static void preDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+    int position = getLocalPosition(symbol);
 
-    op_dec(symbol->varDef.position);
+    op_dec(position);
     expression(expr);
 }
 
@@ -301,18 +312,20 @@ static void postIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+    int position = getLocalPosition(symbol);
 
     expression(expr);
-    op_inc(symbol->varDef.position);
+    op_inc(position);
 }
 
 static void postDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+    int position = getLocalPosition(symbol);
 
     expression(expr);
-    op_dec(symbol->varDef.position);
+    op_dec(position);
 }
 
 static void postfix(AST* ast)
@@ -344,80 +357,84 @@ static void prefix(AST* ast)
 static void variable(AST* ast)
 {
     AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
+    int position = getLocalPosition(symbol);
 
-    if (symbol->type == AST_PARAMETER) {
-        return op_ldl(-symbol->param.position - 4);
-    }
-
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
 }
 
 static void additionAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
     expression(ast->assignment.expr);
     op_add();
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void subtractionAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
     expression(ast->assignment.expr);
     op_sub();
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void muliplicationAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
     expression(ast->assignment.expr);
     op_mul();
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void divisionAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
     expression(ast->assignment.expr);
     op_div();
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void remainderAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
     expression(ast->assignment.expr);
     op_rem();
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void exponentiationAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
-    op_ldl(symbol->varDef.position);
+    op_ldl(position);
     expression(ast->assignment.expr);
     op_pow();
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void simpleAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
+    int position = getLocalPosition(symbol);
 
     expression(ast->assignment.expr);
-    op_stl(symbol->varDef.position);
+    op_stl(position);
 }
 
 static void assignment(AST* ast)
@@ -511,8 +528,10 @@ static void variableDefinition(AST* ast)
         return op_push(0);
     }
 
+    int position = getLocalPosition(ast);
+
     expression(ast->varDef.expr);
-    op_stl(ast->varDef.position);
+    op_stl(position);
 }
 
 static void references()

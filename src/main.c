@@ -30,7 +30,7 @@ static void runFile(const char* filename)
     char* source = getFileContents(filename);
 
     if (!source) {
-        printf("Error: Could not read file %s\n", filename);
+        fprintf(stderr, "Error: Could not read file %s\n", filename);
         exit(1);
     }
 

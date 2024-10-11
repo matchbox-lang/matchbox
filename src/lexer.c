@@ -15,6 +15,10 @@ typedef struct Position
 Position current;
 Position start;
 
+const char* stringError = "Error: Missing terminating %c character on line %d:%d\n";
+const char* characterError = "Error: Missing terminating ' character on line %d:%d\n";
+const char* commentError = "Error: Unterminated comment on line %d:%d\n";
+
 void initLexer(char* source)
 {
     current.chars = source;
@@ -150,7 +154,7 @@ static void skipCommentMulti()
         advance();
     }
 
-    error("Error: Unterminated comment on line %d:%d\n");
+    error(commentError);
 }
 
 static void skipComment()
@@ -371,7 +375,7 @@ static Token characterLiteral()
         advance();
     }
 
-    error("Error: Missing terminating ' character on line %d:%d\n");
+    error(characterError);
 }
 
 static Token stringLiteral(char c)
@@ -385,7 +389,7 @@ static Token stringLiteral(char c)
         advance();
     }
 
-    errorc("Error: Missing terminating %c character on line %d:%d\n", c);
+    errorc(stringError, c);
 }
 
 static Token identifier()

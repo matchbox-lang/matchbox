@@ -35,18 +35,6 @@ typedef struct VM
 
 VM vm;
 
-static void error(const char* message)
-{
-    fprintf(stderr, message);
-    exit(1);
-}
-
-static void errors(const char* message, const char* s)
-{
-    fprintf(stderr, message, s);
-    exit(1);
-}
-
 static void push(Value value)
 {
     vm.sp[0] = value;

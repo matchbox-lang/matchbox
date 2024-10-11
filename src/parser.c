@@ -23,6 +23,14 @@ static AST* identifier();
 static AST* statements();
 static AST* variable();
 
+const char* invalidArgumentsError = "Error: Invalid arguments to function '%.*s' on line %d:%d\n";
+const char* invalidOperandError = "Error: Invalid operand to unary '%.*s' on line %d:%d\n";
+const char* invalidOperandsError = "Error: Invalid operands to binary '%.*s' on line %d:%d\n";
+const char* redefinitionError = "Error: Redefinition of '%.*s' on line %d:%d\n";
+const char* undefinedError = "Error: '%.*s' is undefined on line %d:%d\n";
+const char* unexpectedError = "Error: Unexpected '%.*s' on line %d:%d\n";
+const char* uninitializedError = "Error: '%.*s' is uninitialized on line %d:%d\n";
+
 static void advance()
 {
     parser.previous = parser.current;
@@ -54,12 +62,7 @@ static void error(const char* message, Token token)
 
 static void tokenError()
 {
-    error("Error: Unexpected '%.*s' on line %d:%d\n", peek());
-}
-
-static void binaryError(Token token)
-{
-    error("Error: Invalid operands to binary '%.*s' on line %d:%d\n", token);
+    error(unexpectedError, peek());
 }
 
 static int getTypeId(AST* expr)
@@ -354,7 +357,7 @@ static AST* exponent()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -388,7 +391,7 @@ static AST* factor()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -422,7 +425,7 @@ static AST* term()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -456,7 +459,7 @@ static AST* shift()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
 
         ast->binary.rightExpr = rightExpr;
@@ -489,7 +492,7 @@ static AST* comparison()
         }
 
         if (getBinaryTypeId(expr, rightExpr, token) < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
 
         ast->binary.rightExpr = rightExpr;
@@ -522,7 +525,7 @@ static AST* equality()
         }
 
         if (getBinaryTypeId(expr, rightExpr, token) < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
 
         ast->binary.rightExpr = rightExpr;
@@ -556,7 +559,7 @@ static AST* bitwiseAND()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -590,7 +593,7 @@ static AST* bitwiseXOR()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -624,7 +627,7 @@ static AST* bitwiseOR()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -658,7 +661,7 @@ static AST* booleanAND()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -692,7 +695,7 @@ static AST* booleanOR()
 
         int typeId = getBinaryTypeId(expr, rightExpr, token);
         if (typeId < 0) {
-            binaryError(token);
+            error(invalidOperandsError, token);
         }
         
         ast->binary.rightExpr = rightExpr;
@@ -736,7 +739,7 @@ static AST* parameter()
     AST* symbol = getLocalSymbol(parser.scope, id);
 
     if (symbol) {
-        error("Error: Redefinition of '%.*s' on line %d:%d\n", token);
+        error(redefinitionError, token);
     }
     
     consume(T_IDENTIFIER);
@@ -764,7 +767,7 @@ static AST* assignment()
     AST* symbol = getSymbol(parser.scope, id);
 
     if (!symbol) {
-        error("Error: '%.*s' is undefined on line %d:%d\n", token);
+        error(undefinedError, token);
     }
 
     consume(operator.type);
@@ -791,11 +794,11 @@ static AST* variable()
     AST* symbol = getSymbol(parser.scope, id);
 
     if (!symbol) {
-        error("Error: '%.*s' is undefined on line %d:%d\n", token);
+        error(undefinedError, token);
     }
     
     if (symbol->type == AST_VARIABLE_DEFINITION && symbol->varDef.expr->type == AST_NONE) {
-        error("Error: '%.*s' is uninitialized on line %d:%d\n", token);
+        error(uninitializedError, token);
     }
 
     AST* ast = createAST(AST_VARIABLE);
@@ -815,7 +818,7 @@ static AST* variableDefinition()
     AST* symbol = getLocalSymbol(parser.scope, id);
 
     if (symbol) {
-        error("Error: Redefinition of '%.*s' on line %d:%d\n", token);
+        error(redefinitionError, token);
     }
 
     consume(T_IDENTIFIER);
@@ -850,7 +853,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
     size_t paramCount = countVector(&callee->funcDef.params);
 
     if (argCount != paramCount) {
-        error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
+        error(invalidArgumentsError, token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -859,7 +862,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
         int typeId = getTypeId(a);
 
         if (typeId != b->param.typeId) {
-            error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
+            error(invalidArgumentsError, token);
         }
     }
 }
@@ -869,7 +872,7 @@ static void compareServiceSignature(AST* caller, Service* service, Token token)
     size_t argCount = countVector(&caller->syscall.args);
 
     if (argCount != service->paramCount) {
-        error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
+        error(invalidArgumentsError, token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -877,7 +880,7 @@ static void compareServiceSignature(AST* caller, Service* service, Token token)
         int typeId = getTypeId(expr);
 
         if (typeId != service->params[i]) {
-            error("Error: Invalid arguments to function '%.*s' on line %d:%d\n", token);
+            error(invalidArgumentsError, token);
         }
     }
 }
@@ -922,7 +925,7 @@ static AST* functionCall()
 
     AST* symbol = getSymbol(parser.scope, id);
     if (!symbol) {
-        error("Error: '%.*s' is undefined on line %d:%d\n", token);
+        error(undefinedError, token);
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
@@ -965,7 +968,7 @@ static AST* functionDefinition()
     AST* symbol = getLocalSymbol(parser.scope, id);
 
     if (symbol) {
-        error("Error: Redefinition of '%.*s' on line %d:%d\n", token);
+        error(redefinitionError, token);
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);

@@ -70,12 +70,16 @@ static int getTypeId(AST* expr)
     switch (expr->type) {
         case AST_BINARY:
             return expr->binary.typeId;
-        case AST_VARIABLE:
-            return expr->var.symbol->varDef.typeId;
         case AST_FUNCTION_CALL:
             return expr->funcCall.symbol->funcDef.typeId;
         case AST_SYSCALL:
             return expr->syscall.service->typeId;
+        case AST_VARIABLE:
+            return expr->var.symbol->varDef.typeId;
+        case AST_PREFIX:
+            return getTypeId(expr->prefix.expr);
+        case AST_POSTFIX:
+            return getTypeId(expr->postfix.expr);
         case AST_INTEGER:
             return T_INT;
     }

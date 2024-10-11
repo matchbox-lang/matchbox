@@ -155,6 +155,20 @@ static void op_pop()
     pop();
 }
 
+static void op_inc()
+{
+    int8_t imm = READ_UINT8();
+
+    AS_INT(vm.fp[imm])++;
+}
+
+static void op_dec()
+{
+    int8_t imm = READ_UINT8();
+
+    AS_INT(vm.fp[imm])--;
+}
+
 static void op_add()
 {
     int32_t b = AS_INT(pop());
@@ -270,16 +284,6 @@ static void op_neg()
     int32_t n = AS_INT(vm.sp[-1]);
 
     vm.sp[-1] = INT_VALUE(-n);
-}
-
-static void op_inc()
-{
-    AS_INT(vm.sp[-1])++;
-}
-
-static void op_dec()
-{
-    AS_INT(vm.sp[-1])--;
 }
 
 static void op_beq()

@@ -49,14 +49,7 @@ static Token prev()
 
 static void error(const char* message, Token token)
 {
-    fprintf(
-        stderr,
-        message,
-        token.length,
-        token.chars,
-        token.line,
-        token.column
-    );
+    fprintf(stderr, message, token.length, token.chars, token.line, token.column);
     exit(1);
 }
 

@@ -109,6 +109,18 @@ static void op_pop()
     write8(OP_POP);
 }
 
+static void op_inc(uint8_t imm)
+{
+    write8(OP_INC);
+    write8(imm);
+}
+
+static void op_dec(uint8_t imm)
+{
+    write8(OP_DEC);
+    write8(imm);
+}
+
 static void op_add()
 {
     write8(OP_ADD);
@@ -182,16 +194,6 @@ static void op_neg()
 static void op_not()
 {
     write8(OP_NOT);
-}
-
-static void op_inc()
-{
-    write8(OP_INC);
-}
-
-static void op_dec()
-{
-    write8(OP_DEC);
 }
 
 static void op_beq(uint16_t imm)
@@ -277,29 +279,49 @@ static void negate(AST* ast)
     expression(ast->prefix.expr);
 }
 
-static void increment(AST* ast)
+static void preIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
 
-    op_inc();
+    op_inc(symbol->varDef.position);
+    expression(expr);
 }
 
-static void decrement(AST* ast)
+static void preDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
 
-    op_dec();
+    op_dec(symbol->varDef.position);
+    expression(expr);
+}
+
+static void postIncrement(AST* ast)
+{
+    AST* expr = ast->postfix.expr;
+    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+
+    expression(expr);
+    op_inc(symbol->varDef.position);
+}
+
+static void postDecrement(AST* ast)
+{
+    AST* expr = ast->postfix.expr;
+    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+
+    expression(expr);
+    op_dec(symbol->varDef.position);
 }
 
 static void postfix(AST* ast)
 {
     switch (ast->postfix.operator.type) {
         case T_INCREMENT:
-            return increment(ast);
+            return postIncrement(ast);
         case T_DECREMENT:
-            return decrement(ast);
+            return postDecrement(ast);
     }
 }
 
@@ -309,9 +331,9 @@ static void prefix(AST* ast)
         case T_TILDE:
             return bitNot(ast);
         case T_INCREMENT:
-            return increment(ast);
+            return preIncrement(ast);
         case T_DECREMENT:
-            return decrement(ast);
+            return preDecrement(ast);
         case T_EXCLAMATION:
             return not(ast);
         case T_MINUS:

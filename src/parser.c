@@ -76,14 +76,6 @@ static void tokenError()
     error(unexpectedTokenError, token);
 }
 
-static int getBinaryTypeId(AST* leftExpr, AST* rightExpr, Token token)
-{
-    int a = getTypeId(leftExpr);
-    int b = getTypeId(rightExpr);
-
-    return a == b ? a : -1;
-}
-
 static bool isBool(TokenType type)
 {
     switch (type) {
@@ -117,17 +109,6 @@ static bool isType(TokenType type)
     return type == T_INT;
 }
 
-static bool isEquality(TokenType type)
-{
-    switch (type) {
-        case T_EQUAL_EQUAL:
-        case T_NOT_EQUAL:
-            return true;
-    }
-
-    return false;
-}
-
 static bool isComparison(TokenType type)
 {
     switch (type) {
@@ -140,6 +121,22 @@ static bool isComparison(TokenType type)
     }
 
     return false;
+}
+
+static bool isEquality(TokenType type)
+{
+    switch (type) {
+        case T_EQUAL_EQUAL:
+        case T_NOT_EQUAL:
+            return true;
+    }
+
+    return false;
+}
+
+static bool isBoolOperator(TokenType type)
+{
+    return isComparison(type) || isEquality(type);
 }
 
 static bool isShift(TokenType type)
@@ -332,35 +329,39 @@ static AST* prefix()
 
 }
 
+static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
+{   
+    if (rightExpr->type == AST_NONE) {
+        tokenError();
+    }
+
+    int a = getTypeId(leftExpr);
+    int b = getTypeId(rightExpr);
+
+    if (a != b) {
+        error(invalidOperandsError, token);
+    }
+
+    int typeId = isBoolOperator(token.type) ? T_BOOL : a;
+    
+    AST* ast = createAST(AST_BINARY);
+    ast->binary.leftExpr = leftExpr;
+    ast->binary.operator = token;
+    ast->binary.rightExpr = rightExpr;
+    ast->binary.typeId = typeId;
+
+    return ast;
+}
+
 static AST* exponent()
 {
     AST* expr = prefix();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_POWER) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_POWER) {
         consume(token.type);
-
-        AST* rightExpr = prefix();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, prefix(), token);
+        token = peek();
     }
 
     return expr;
@@ -369,32 +370,12 @@ static AST* exponent()
 static AST* factor()
 {
     AST* expr = exponent();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (!isFactor(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isFactor(token.type)) {
         consume(token.type);
-
-        AST* rightExpr = exponent();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, exponent(), token);
+        token = peek();
     }
 
     return expr;
@@ -403,32 +384,12 @@ static AST* factor()
 static AST* term()
 {
     AST* expr = factor();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (!isTerm(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isTerm(token.type)) {
         consume(token.type);
-
-        AST* rightExpr = factor();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, factor(), token);
+        token = peek();
     }
 
     return expr;
@@ -437,32 +398,12 @@ static AST* term()
 static AST* shift()
 {
     AST* expr = term();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (!isShift(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isShift(token.type)) {
         consume(token.type);
-
-        AST* rightExpr = term();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, term(), token);
+        token = peek();
     }
 
     return expr;
@@ -471,31 +412,12 @@ static AST* shift()
 static AST* comparison()
 {
     AST* expr = shift();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (!isComparison(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isComparison(token.type)) {
         consume(token.type);
-
-        AST* rightExpr = shift();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        if (getBinaryTypeId(expr, rightExpr, token) < 0) {
-            error(invalidOperandsError, token);
-        }
-
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = T_BOOL;
-        expr = ast;
+        expr = binary(expr, shift(), token);
+        token = peek();
     }
 
     return expr;
@@ -504,31 +426,12 @@ static AST* comparison()
 static AST* equality()
 {
     AST* expr = comparison();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (!isEquality(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isEquality(token.type)) {
         consume(token.type);
-
-        AST* rightExpr = comparison();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        if (getBinaryTypeId(expr, rightExpr, token) < 0) {
-            error(invalidOperandsError, token);
-        }
-
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = T_BOOL;
-        expr = ast;
+        expr = binary(expr, comparison(), token);
+        token = peek();
     }
 
     return expr;
@@ -537,32 +440,12 @@ static AST* equality()
 static AST* bitwiseAND()
 {
     AST* expr = equality();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_AMPERSAND) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_AMPERSAND) {
         consume(token.type);
-
-        AST* rightExpr = equality();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, equality(), token);
+        token = peek();
     }
 
     return expr;
@@ -571,32 +454,12 @@ static AST* bitwiseAND()
 static AST* bitwiseXOR()
 {
     AST* expr = bitwiseAND();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_CIRCUMFLEX) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_CIRCUMFLEX) {
         consume(token.type);
-
-        AST* rightExpr = bitwiseAND();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, bitwiseAND(), token);
+        token = peek();
     }
 
     return expr;
@@ -605,32 +468,12 @@ static AST* bitwiseXOR()
 static AST* bitwiseOR()
 {
     AST* expr = bitwiseXOR();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_PIPE) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_PIPE) {
         consume(token.type);
-
-        AST* rightExpr = bitwiseXOR();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, bitwiseXOR(), token);
+        token = peek();
     }
 
     return expr;
@@ -639,32 +482,12 @@ static AST* bitwiseOR()
 static AST* booleanAND()
 {
     AST* expr = bitwiseOR();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_BOOLEAN_AND) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_BOOLEAN_AND) {
         consume(token.type);
-
-        AST* rightExpr = bitwiseOR();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, bitwiseOR(), token);
+        token = peek();
     }
 
     return expr;
@@ -673,32 +496,12 @@ static AST* booleanAND()
 static AST* booleanOR()
 {
     AST* expr = booleanAND();
+    Token token = peek();
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_BOOLEAN_OR) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_BOOLEAN_OR) {
         consume(token.type);
-
-        AST* rightExpr = booleanAND();
-        if (rightExpr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getBinaryTypeId(expr, rightExpr, token);
-        if (typeId < 0) {
-            error(invalidOperandsError, token);
-        }
-        
-        ast->binary.rightExpr = rightExpr;
-        ast->binary.typeId = typeId;
-        expr = ast;
+        expr = binary(expr, booleanAND(), token);
+        token = peek();
     }
 
     return expr;

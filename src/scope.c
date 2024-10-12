@@ -29,20 +29,22 @@ void freeScope(Scope* scope)
     free(scope);
 }
 
-AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast)
+size_t getLocalCount(Scope* scope)
 {
+    return scope->localCount;
+}
+
+AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast, bool local)
+{
+    if (local) {
+        scope->localCount++;
+    }
+    
     if (setTableAt(&scope->symbols, id, ast)) {
         return ast;
     }
 
     return NULL;
-}
-
-AST* setLocalVariable(Scope* scope, StringObject* id, AST* ast)
-{
-    ast->varDef.position = scope->localCount++;
-
-    return setLocalSymbol(scope, id, ast);
 }
 
 AST* getLocalSymbol(Scope* scope, StringObject* id)

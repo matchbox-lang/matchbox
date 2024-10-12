@@ -752,7 +752,7 @@ static AST* parameter()
         consumeType();
     }
 
-    setLocalSymbol(parser.scope, id, ast);
+    setLocalSymbol(parser.scope, id, ast, false);
 
     return ast;
 }
@@ -863,7 +863,8 @@ static AST* variableDefinition()
         error(invalidTypeError, token);
     }
 
-    setLocalVariable(parser.scope, id, ast);
+    setLocalSymbol(parser.scope, id, ast, true);
+    ast->varDef.position = getLocalCount(parser.scope);
 
     return ast;
 }
@@ -1017,7 +1018,7 @@ static AST* functionDefinition()
     ast->funcDef.body = statements(T_RBRACE);
     consume(T_RBRACE);
     parser.scope = parser.scope->parent;
-    setLocalSymbol(parser.scope, id, ast);
+    setLocalSymbol(parser.scope, id, ast, false);
 
     return ast;
 }

@@ -415,7 +415,7 @@ Token scanToken()
 
     char c = advance();
 
-    if (isAlpha(c))  {
+    if (isAlpha(c)) {
         return identifier();
     }
 

@@ -23,13 +23,16 @@ static AST* identifier();
 static AST* statements();
 static AST* variable();
 
-const char* assignmentError = "Error: Incompatible type assigned to variable %.*s on line %d:%d\n";
+const char* assignmentError = "Error: Invalid assignment for variable %.*s on line %d:%d\n";
 const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
 const char* invalidOperandError = "Error: Invalid operand to unary %.*s on line %d:%d\n";
 const char* invalidOperandsError = "Error: Invalid operands to binary %.*s on line %d:%d\n";
+const char* invalidTypeError = "Error: Invalid type for variable %.*s on line %d:%d\n";
+const char* identifierError = "Error: Expected identifier on line %d:%d\n";
 const char* redefinitionError = "Error: Redefinition of %.*s on line %d:%d\n";
 const char* undefinedError = "Error: %.*s is undefined on line %d:%d\n";
-const char* unexpectedError = "Error: Unexpected %.*s on line %d:%d\n";
+const char* unexpectedTokenError = "Error: Unexpected %.*s on line %d:%d\n";
+const char* unexpectedLastTokenError = "Error: Unexpected end of input on line %d:%d\n";
 const char* uninitializedError = "Error: %.*s is uninitialized on line %d:%d\n";
 
 static void advance()
@@ -54,11 +57,11 @@ static void error(const char* message, Token token)
     exit(1);
 }
 
-static void syntaxError(Token token)
+static void lineError(const char* message, Token token)
 {
     int column = token.column + token.length;
-    
-    fprintf(stderr, unexpectedError, 12, "end of input", token.line, column);
+
+    fprintf(stderr, message, token.line, column);
     exit(1);
 }
 
@@ -67,10 +70,10 @@ static void tokenError()
     Token token = peek();
 
     if (token.type == T_EOF) {
-        syntaxError(prev());
+        lineError(unexpectedLastTokenError, prev());
     }
 
-    error(unexpectedError, token);
+    error(unexpectedTokenError, token);
 }
 
 static int getBinaryTypeId(AST* leftExpr, AST* rightExpr, Token token)
@@ -804,6 +807,23 @@ static AST* variable()
     return ast;
 }
 
+static void variableExpression(AST* ast, Token token)
+{
+    AST* expr = expression();
+
+    if (expr->type == AST_NONE) {
+        tokenError();
+    }
+
+    int typeId = getTypeId(expr);
+    if (typeId < 0) {
+        error(assignmentError, token);
+    }
+
+    ast->varDef.expr = expr;
+    ast->varDef.typeId = typeId;
+}
+
 static AST* variableDefinition()
 {
     consume(T_VAR);
@@ -814,6 +834,10 @@ static AST* variableDefinition()
 
     if (symbol) {
         error(redefinitionError, token);
+    }
+
+    if (peek().type != T_IDENTIFIER) {
+        lineError(identifierError, prev());
     }
 
     consume(T_IDENTIFIER);
@@ -832,19 +856,11 @@ static AST* variableDefinition()
         ast->varDef.expr = createAST(AST_NONE);
     } else {
         consume(T_EQUAL);
-        AST* expr = expression();
+        variableExpression(ast, token);
+    }
 
-        if (expr->type == AST_NONE) {
-            tokenError();
-        }
-
-        int typeId = getTypeId(expr);
-        if (typeId < 0) {
-            error(assignmentError, token);
-        }
-
-        ast->varDef.expr = expr;
-        ast->varDef.typeId = typeId;
+    if (ast->varDef.typeId == T_NONE) {
+        error(invalidTypeError, token);
     }
 
     setLocalVariable(parser.scope, id, ast);
@@ -908,6 +924,28 @@ static void arguments(Vector* args)
     consume(T_RPAREN);
 }
 
+static void parameters(Vector* params)
+{
+    consume(T_LPAREN);
+
+    parser.scope = createScope(parser.scope);
+    int paramCount = 0;
+
+    while (peek().type != T_RPAREN) {
+        AST* expr = parameter();
+        expr->param.position = paramCount++;
+        pushVector(params, expr);
+
+        if (peek().type != T_COMMA) {
+            break;
+        }
+        
+        consume(T_COMMA);
+    }
+    
+    consume(T_RPAREN);
+}
+
 static AST* systemCall(Service* service, Token token)
 {
     AST* ast = createAST(AST_SYSCALL);
@@ -946,28 +984,6 @@ static AST* functionCall()
     return ast;
 }
 
-static void parameters(Vector* params)
-{
-    consume(T_LPAREN);
-
-    parser.scope = createScope(parser.scope);
-    int paramCount = 0;
-
-    while (peek().type != T_RPAREN) {
-        AST* expr = parameter();
-        expr->param.position = paramCount++;
-        pushVector(params, expr);
-
-        if (peek().type != T_COMMA) {
-            break;
-        }
-        
-        consume(T_COMMA);
-    }
-    
-    consume(T_RPAREN);
-}
-
 static AST* functionDefinition()
 {
     consume(T_FUNC);
@@ -978,6 +994,10 @@ static AST* functionDefinition()
 
     if (symbol) {
         error(redefinitionError, token);
+    }
+
+    if (peek().type != T_IDENTIFIER) {
+        lineError(identifierError, prev());
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);

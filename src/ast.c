@@ -1,6 +1,7 @@
 #include "ast.h"
 #include "object.h"
 #include "scope.h"
+#include "service.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -91,4 +92,32 @@ void freeAST(AST* ast)
     }
 
     free(ast);
+}
+
+int getTypeId(AST* expr)
+{
+    switch (expr->type) {
+        case AST_BINARY:
+            return expr->binary.typeId;
+        case AST_FUNCTION_CALL:
+            return getTypeId(expr->funcCall.symbol);
+        case AST_FUNCTION_DEFINITION:
+            return expr->funcDef.typeId;
+        case AST_PARAMETER:
+            return expr->param.typeId;
+        case AST_SYSCALL:
+            return expr->syscall.service->typeId;
+        case AST_VARIABLE:
+            return getTypeId(expr->var.symbol);
+        case AST_VARIABLE_DEFINITION:
+            return expr->varDef.typeId;
+        case AST_PREFIX:
+            return getTypeId(expr->prefix.expr);
+        case AST_POSTFIX:
+            return getTypeId(expr->postfix.expr);
+        case AST_INTEGER:
+            return T_INT;
+    }
+
+    return -1;
 }

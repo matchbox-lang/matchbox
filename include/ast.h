@@ -119,5 +119,6 @@ typedef struct AST
 
 AST* createAST(TokenType type);
 void freeAST(AST* ast);
+int getTypeId(AST* expr);
 
 #endif

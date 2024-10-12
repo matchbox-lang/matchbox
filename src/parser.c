@@ -23,13 +23,14 @@ static AST* identifier();
 static AST* statements();
 static AST* variable();
 
-const char* invalidArgumentsError = "Error: Invalid arguments to function '%.*s' on line %d:%d\n";
-const char* invalidOperandError = "Error: Invalid operand to unary '%.*s' on line %d:%d\n";
-const char* invalidOperandsError = "Error: Invalid operands to binary '%.*s' on line %d:%d\n";
-const char* redefinitionError = "Error: Redefinition of '%.*s' on line %d:%d\n";
-const char* undefinedError = "Error: '%.*s' is undefined on line %d:%d\n";
-const char* unexpectedError = "Error: Unexpected '%.*s' on line %d:%d\n";
-const char* uninitializedError = "Error: '%.*s' is uninitialized on line %d:%d\n";
+const char* assignmentError = "Error: Incompatible type assigned to variable %.*s on line %d:%d\n";
+const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
+const char* invalidOperandError = "Error: Invalid operand to unary %.*s on line %d:%d\n";
+const char* invalidOperandsError = "Error: Invalid operands to binary %.*s on line %d:%d\n";
+const char* redefinitionError = "Error: Redefinition of %.*s on line %d:%d\n";
+const char* undefinedError = "Error: %.*s is undefined on line %d:%d\n";
+const char* unexpectedError = "Error: Unexpected %.*s on line %d:%d\n";
+const char* uninitializedError = "Error: %.*s is uninitialized on line %d:%d\n";
 
 static void advance()
 {
@@ -53,31 +54,23 @@ static void error(const char* message, Token token)
     exit(1);
 }
 
-static void tokenError()
+static void syntaxError(Token token)
 {
-    error(unexpectedError, peek());
+    int column = token.column + token.length;
+    
+    fprintf(stderr, unexpectedError, 12, "end of input", token.line, column);
+    exit(1);
 }
 
-static int getTypeId(AST* expr)
+static void tokenError()
 {
-    switch (expr->type) {
-        case AST_BINARY:
-            return expr->binary.typeId;
-        case AST_FUNCTION_CALL:
-            return expr->funcCall.symbol->funcDef.typeId;
-        case AST_SYSCALL:
-            return expr->syscall.service->typeId;
-        case AST_VARIABLE:
-            return expr->var.symbol->varDef.typeId;
-        case AST_PREFIX:
-            return getTypeId(expr->prefix.expr);
-        case AST_POSTFIX:
-            return getTypeId(expr->postfix.expr);
-        case AST_INTEGER:
-            return T_INT;
+    Token token = peek();
+
+    if (token.type == T_EOF) {
+        syntaxError(prev());
     }
 
-    return -1;
+    error(unexpectedError, token);
 }
 
 static int getBinaryTypeId(AST* leftExpr, AST* rightExpr, Token token)
@@ -276,6 +269,11 @@ static AST* primary()
     if (token.type == T_LPAREN) {
         consume(T_LPAREN);
         AST* ast = expression();
+        
+        if (ast->type == AST_NONE) {
+            tokenError();
+        }
+
         consume(T_RPAREN);
 
         return ast;
@@ -744,7 +742,7 @@ static AST* parameter()
     AST* ast = createAST(AST_PARAMETER);
     ast->param.scope = parser.scope;
     ast->param.id = id;
-    ast->param.typeId = T_NONE;
+    ast->param.typeId = T_INT;
 
     if (isType(peek().type)) {
         ast->param.typeId = peek().type;
@@ -835,8 +833,18 @@ static AST* variableDefinition()
     } else {
         consume(T_EQUAL);
         AST* expr = expression();
+
+        if (expr->type == AST_NONE) {
+            tokenError();
+        }
+
+        int typeId = getTypeId(expr);
+        if (typeId < 0) {
+            error(assignmentError, token);
+        }
+
         ast->varDef.expr = expr;
-        ast->varDef.typeId = getTypeId(expr);
+        ast->varDef.typeId = typeId;
     }
 
     setLocalVariable(parser.scope, id, ast);
@@ -890,9 +898,11 @@ static void arguments(Vector* args)
         AST* expr = argument();
         pushVector(args, expr);
 
-        if (peek().type == T_COMMA) {
-            consume(T_COMMA);
+        if (peek().type != T_COMMA) {
+            break;
         }
+        
+        consume(T_COMMA);
     }
 
     consume(T_RPAREN);
@@ -948,11 +958,13 @@ static void parameters(Vector* params)
         expr->param.position = paramCount++;
         pushVector(params, expr);
 
-        if (peek().type == T_COMMA) {
-            consume(T_COMMA);
+        if (peek().type != T_COMMA) {
+            break;
         }
+        
+        consume(T_COMMA);
     }
-
+    
     consume(T_RPAREN);
 }
 

@@ -330,7 +330,7 @@ static AST* prefix()
 }
 
 static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
-{   
+{
     if (rightExpr->type == AST_NONE) {
         tokenError();
     }

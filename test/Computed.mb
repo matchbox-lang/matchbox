@@ -4,7 +4,7 @@ class Time
 
     public minutes int
     {
-        get() {
+        get {
             return seconds / 60
         }
 

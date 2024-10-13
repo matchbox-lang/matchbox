@@ -8,9 +8,8 @@ class Time:
     private seconds int
 
     public minutes int:
-        get():
+        get:
             return seconds / 60
 
-        set(n int) {
+        set(n int):
             seconds = n * 60
-        }

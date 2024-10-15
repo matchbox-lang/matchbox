@@ -1,29 +1,24 @@
-class Fruit
+class Foo
 {
-    protected id int
+    id int
 
     public func construct(id int)
     {
-        this.id = id
+        self.id = id
     }
 
     public func getId() int
     {
-        return this.id
+        return self.id
     }
-}
 
-class Apple extends Fruit
-{
-    use Color, Taste
-    
     public func setId(id int)
     {
-        this.id = id
+        self.id = id
     }
 }
 
-var x = Apple(5)
-var id = a.getId()
+var x = Foo(5)
+var id = x.getId()
 
 print(id) # 5

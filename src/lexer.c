@@ -206,7 +206,6 @@ static TokenType getIdentifierType()
 
     switch (c) {
         case 'a':
-            if (checkKeyword(1, 7, "bstract")) return T_ABSTRACT;
             if (checkKeyword(1, 1, "s")) return T_AS;
             if (checkKeyword(1, 4, "sync")) return T_ASYNC;
             if (checkKeyword(1, 4, "wait")) return T_AWAIT;
@@ -222,6 +221,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "onst")) return T_CONST;
             if (checkKeyword(1, 8, "onstruct")) return T_CONSTRUCT;
             if (checkKeyword(1, 7, "ontinue")) return T_CONTINUE;
+            if (checkKeyword(1, 7, "ontract")) return T_CONTRACT;
             break;
         case 'd':
             if (checkKeyword(1, 4, "efer")) return T_DEFER;
@@ -237,7 +237,6 @@ static TokenType getIdentifierType()
             break;
         case 'f':
             if (checkKeyword(1, 4, "alse")) return T_FALSE;
-            if (checkKeyword(1, 4, "inal")) return T_FINAL;
             if (checkKeyword(1, 6, "inally")) return T_FINALLY;
             if (checkKeyword(1, 4, "loat")) return T_FLOAT;
             if (checkKeyword(1, 5, "ouble")) return T_DOUBLE;
@@ -262,21 +261,19 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
             break;
         case 'p':
-            if (checkKeyword(1, 6, "rivate")) return T_PRIVATE;
-            if (checkKeyword(1, 8, "rotected")) return T_PROTECTED;
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;
             break;
         case 'r':
             if (checkKeyword(1, 5, "eturn")) return T_RETURN;
             break;
         case 's':
+            if (checkKeyword(1, 3, "elf")) return T_SELF;
             if (checkKeyword(1, 5, "izeof")) return T_SIZEOF;
             if (checkKeyword(1, 5, "tatic")) return T_STATIC;
             if (checkKeyword(1, 5, "truct")) return T_STRUCT;
             if (checkKeyword(1, 5, "witch")) return T_SWITCH;
             break;
         case 't':
-            if (checkKeyword(1, 3, "his")) return T_THIS;
             if (checkKeyword(1, 4, "hrow")) return T_THROW;
             if (checkKeyword(1, 4, "rait")) return T_TRAIT;
             if (checkKeyword(1, 3, "rue")) return T_TRUE;

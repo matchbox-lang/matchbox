@@ -2,9 +2,18 @@ extension int
 {
     public func echo()
     {
-        print(this)
-        print(this)
+        print(self)
+        print(self)
+    }
+}
+
+extension float
+{
+    public squared float
+    {
+        return self * self
     }
 }
 
 5.echo()
+8.squared

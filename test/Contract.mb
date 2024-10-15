@@ -1,0 +1,20 @@
+contract Animal
+{
+    func noise() String
+}
+
+class Sheep
+{
+    func noise() String
+    {
+        print("I'm a Sheep!")
+    }
+}
+
+func shout(animal Animal)
+{
+    animal.noise()
+}
+
+var sheep = Sheep()
+shout(sheep)

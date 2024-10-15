@@ -15,15 +15,15 @@ class Point
 
     public func set(x, y int)
     {
-        this.x = x
-        this.y = y
+        self.x = x
+        self.y = y
     }
 
     public func +=(v Point) Point
     {
-        this.x += v.x
-        this.y += v.y
+        self.x += v.x
+        self.y += v.y
 
-        return this
+        return self
     }
 }

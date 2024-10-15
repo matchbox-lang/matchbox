@@ -1,12 +1,10 @@
-trait Foo
+contract Foo
 {
     func shout()
 }
 
 extension int
 {
-    use Foo
-
     func shout()
     {
         print("Hello!")

@@ -1,22 +1,25 @@
 trait Animal
 {
-    func sound() String
+    name String
 
-    public func speak()
+    public func construct(name String)
     {
-        print("%s\n" % sound())
+        self.name = name
+    }
+
+    public func noise()
+    {
+        print("I'm {self.name}!")
     }
 }
 
-class Sheep
+class Sheep extends Animal
 {
-    use Animal
-
-    func sound() String
+    func shout()
     {
-        return "Baaaah!"
+        print(self.noise())
     }
 }
 
-var x = Sheep()
-x.speak()
+var sheep = Sheep("Roxy")
+sheep.shout()

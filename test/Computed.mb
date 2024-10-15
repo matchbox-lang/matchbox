@@ -1,14 +1,19 @@
-class Time
+class Timer
 {
-    private seconds int
+    seconds float
 
-    public minutes int
+    public hours float
+    {
+        return seconds / 3600
+    }
+
+    public minutes float
     {
         get {
             return seconds / 60
         }
 
-        set(n int) {
+        set(n float) {
             seconds = n * 60
         }
     }

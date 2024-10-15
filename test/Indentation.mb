@@ -5,7 +5,7 @@ func greet(x bool):
         print("Goodbye.")
 
 class Time:
-    private seconds int
+    seconds int
 
     public minutes int:
         get:

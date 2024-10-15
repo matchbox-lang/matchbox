@@ -1,15 +1,15 @@
 class Apple<T>
 {
-    private id T
+    id T
 
     public func construct(id T)
     {
-        this.id = id
+        self.id = id
     }
 
     public func getId() T
     {
-        return this.id
+        return self.id
     }
 }
 

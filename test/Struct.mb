@@ -2,7 +2,18 @@ struct Point
 {
     x int
     y int
+
+    public new(x, y int) Point
+    {
+        return {x, y}
+    }
+
+    public clone() Point
+    {
+        return self
+    }
 }
 
 var a Point = {x: 1, y: 2}
 var b Point = {1, 2}
+var c = Point.new(1, 2)

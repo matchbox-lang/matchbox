@@ -2,17 +2,17 @@ class Timer
 {
     seconds float
 
-    public func construct(n float)
+    func construct(n float)
     {
         self.seconds = n
     }
 
-    public hours float
+    hours float
     {
         return seconds / 3600
     }
 
-    public minutes float
+    minutes float
     {
         get {
             return seconds / 60

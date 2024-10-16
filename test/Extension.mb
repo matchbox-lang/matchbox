@@ -1,6 +1,6 @@
 extension int
 {
-    public func echo()
+    func echo()
     {
         print(self)
         print(self)
@@ -9,7 +9,7 @@ extension int
 
 extension float
 {
-    public squared float
+    squared float
     {
         return self * self
     }

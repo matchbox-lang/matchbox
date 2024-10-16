@@ -1,3 +1,9 @@
+public struct Point
+{
+    public x int
+    public y int
+}
+
 public func hello()
 {
     print("Hello World!")

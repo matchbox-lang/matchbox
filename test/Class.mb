@@ -2,17 +2,17 @@ class Foo
 {
     id int
 
-    public func construct(id int)
+    func construct(id int)
     {
         self.id = id
     }
 
-    public func getId() int
+    func getId() int
     {
         return self.id
     }
 
-    public func setId(id int)
+    func setId(id int)
     {
         self.id = id
     }

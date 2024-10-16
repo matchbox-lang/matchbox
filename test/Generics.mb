@@ -2,12 +2,12 @@ class Apple<T>
 {
     id T
 
-    public func construct(id T)
+    func construct(id T)
     {
         self.id = id
     }
 
-    public func getId() T
+    func getId() T
     {
         return self.id
     }

@@ -2,12 +2,12 @@ trait Animal
 {
     name String
 
-    public func construct(name String)
+    func construct(name String)
     {
         self.name = name
     }
 
-    public func noise()
+    func noise()
     {
         print("I'm {self.name}!")
     }

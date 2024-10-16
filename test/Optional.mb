@@ -1,4 +1,4 @@
-public enum Optional<T>
+enum Optional<T>
 {
     Some(T),
     None

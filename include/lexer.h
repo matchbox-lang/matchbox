@@ -35,7 +35,6 @@ typedef enum TokenType
     T_TYPE,
     T_EXTENDS,
     T_PUBLIC,
-    T_PRIVATE,
     T_STATIC,
     T_CONSTRUCT,
     T_DESTRUCT,

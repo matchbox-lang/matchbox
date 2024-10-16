@@ -1,5 +1,7 @@
 use System.Out
 
+var pt = Out.Point {10, 25}
+
 Out.hello()
 
 Out.secret() # Error

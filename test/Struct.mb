@@ -3,12 +3,12 @@ struct Point
     x int
     y int
 
-    public new(x, y int) Point
+    func new(x, y int) Point
     {
         return {x, y}
     }
 
-    public clone() Point
+    func clone() Point
     {
         return self
     }

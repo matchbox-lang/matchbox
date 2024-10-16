@@ -37,7 +37,7 @@ static void patch8(size_t position, int8_t n)
 
 static void createFunctionReference(AST* ast, size_t position)
 {
-    Reference ref = { ast, position };
+    Reference ref = {ast, position};
     pushReferenceArray(&functions, ref);
 }
 
@@ -53,7 +53,7 @@ static Reference getFunctionReference(StringObject* id)
         }
     }
 
-    Reference ref = { NULL };
+    Reference ref = {NULL};
 
     return ref;
 }
@@ -466,7 +466,7 @@ static void functionCall(AST* ast)
     arguments(&ast->funcCall.args);
 
     size_t position = countChunk(currentChunk);
-    Reference ref = { ast, position };
+    Reference ref = {ast, position};
     pushReferenceArray(&currentScope->references, ref);
     op_call(0);
 }
@@ -501,7 +501,7 @@ static size_t functionDefinition(AST* ast)
     size_t localCount = body->compound.scope->localCount;
     size_t paramCount = countVector(&ast->funcDef.params);
     size_t position = countChunk(currentChunk);
-    Function func = { paramCount, localCount, position };
+    Function func = {paramCount, localCount, position};
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
     
     pushFunctionArray(&currentChunk->functions, func);

@@ -5,8 +5,8 @@
 @endwhile
 
 @for post in posts
-    <h2>{{ post.title }}</h2>
-    <p>{{ post.body }}</p>
+    <h2>{{post.title}}</h2>
+    <p>{{post.body}}</p>
 @endfor
 
 @if count(posts) == 1

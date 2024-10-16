@@ -261,6 +261,7 @@ static TokenType getIdentifierType()
             break;
         case 'p':
             if (checkKeyword(1, 8, "rotolcol")) return T_PROTOCOL;
+            if (checkKeyword(1, 6, "rivate")) return T_PRIVATE;
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;
             break;
         case 'r':

@@ -221,7 +221,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "onst")) return T_CONST;
             if (checkKeyword(1, 8, "onstruct")) return T_CONSTRUCT;
             if (checkKeyword(1, 7, "ontinue")) return T_CONTINUE;
-            if (checkKeyword(1, 7, "ontract")) return T_CONTRACT;
             break;
         case 'd':
             if (checkKeyword(1, 4, "efer")) return T_DEFER;
@@ -261,6 +260,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
             break;
         case 'p':
+            if (checkKeyword(1, 8, "rotolcol")) return T_PROTOCOL;
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;
             break;
         case 'r':

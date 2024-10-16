@@ -1,4 +1,4 @@
-contract Animal
+protocol Animal
 {
     func noise() String
 }

@@ -29,7 +29,7 @@ typedef enum TokenType
     T_CLASS,
     T_STRUCT,
     T_TRAIT,
-    T_CONTRACT,
+    T_PROTOCOL,
     T_ENUM,
     T_FUNC,
     T_TYPE,

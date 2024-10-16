@@ -2,6 +2,11 @@ class Timer
 {
     seconds float
 
+    public func construct(n float)
+    {
+        self.seconds = n
+    }
+
     public hours float
     {
         return seconds / 3600

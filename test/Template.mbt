@@ -2,12 +2,12 @@
 
 @while true
     I'm running forever!
-@endwhile
+@end
 
 @for post in posts
     <h2>{{post.title}}</h2>
     <p>{{post.body}}</p>
-@endfor
+@end
 
 @if count(posts) == 1
     There is one post!
@@ -15,11 +15,11 @@
     There are multiple posts!
 @else
     There are no posts!
-@endif
+@end
 
 @switch i
     @case 10
         i is equal to 10
     @case _
         i is not 10
-@endswitch
+@end

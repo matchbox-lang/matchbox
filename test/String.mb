@@ -5,15 +5,15 @@ var bananas = 3
 
 var str = "I have %d apples." % apples
 var str = "I have %d fruit." % (apples + bananas)
-var str = $"I have {apples} apples."
-var str = $"I have {apples + bananas} fruit."
+var str = "I have {apples} apples."
+var str = "I have {apples + bananas} fruit."
 
 var str = `C:\path\to\file`
-var str = $`I have {apples} apples.`
+var str = `I have {apples} apples.`
 
 var str = """Multi
 Line
 String"""
 
-var str = $"""I have {apples} apples."""
-var str = $```I have {apples} apples.```
+var str = """I have {apples} apples."""
+var str = ```I have {apples} apples.```

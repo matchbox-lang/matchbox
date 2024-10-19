@@ -5,8 +5,8 @@
 @end
 
 @for post in posts
-    <h2>{{post.title}}</h2>
-    <p>{{post.body}}</p>
+    <h2>{post.title}</h2>
+    <p>{post.body}</p>
 @end
 
 @if count(posts) == 1

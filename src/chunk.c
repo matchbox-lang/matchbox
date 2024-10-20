@@ -14,9 +14,8 @@ void initChunk(Chunk* chunk)
 
 void freeChunk(Chunk* chunk)
 {
-    freeFunctionArray(&chunk->functions);
     freeValueArray(&chunk->constants);
-
+    freeFunctionArray(&chunk->functions);
     free(chunk->data);
 }
 

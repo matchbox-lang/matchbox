@@ -31,6 +31,7 @@ typedef struct VM
     uint8_t* ra;
     FunctionArray* functions;
     ValueArray* constants;
+    Value** display;
 } VM;
 
 VM vm;
@@ -77,18 +78,17 @@ static void op_syscall()
 
 static void op_ldc()
 {
-    int8_t imm = READ_UINT8();
-    Value constant = getValueAt(vm.constants, imm);
+    int8_t n = READ_UINT8();
+    Value constant = getValueAt(vm.constants, n);
 
     push(constant);
 }
 
 static void op_ldl()
 {
-    int8_t imm = READ_UINT8();
-    Value local = vm.fp[imm];
+    int8_t n = READ_UINT8();
 
-    push(local);
+    push(vm.fp[n]);
 }
 
 static void op_ldl_0()
@@ -108,9 +108,9 @@ static void op_ldl_2()
 
 static void op_stl()
 {
-    int8_t imm = READ_UINT8();
+    int8_t n = READ_UINT8();
 
-    vm.fp[imm] = peek(0);
+    vm.fp[n] = peek(0);
 }
 
 static void op_stl_0()
@@ -128,11 +128,29 @@ static void op_stl_2()
     vm.fp[2] = peek(0);
 }
 
+static void op_ldn()
+{
+    int8_t depth = READ_UINT8();
+    int8_t position = READ_UINT8();
+    Value* fp = vm.display[depth];
+
+    push(fp[position]);
+}
+
+static void op_stn()
+{
+    int8_t depth = READ_UINT8();
+    int8_t position = READ_UINT8();
+    Value* fp = vm.display[depth];
+
+    fp[position] = peek(0);
+}
+
 static void op_push()
 {
-    int8_t imm = READ_UINT8();
+    int8_t n = READ_UINT8();
 
-    push(INT_VALUE(imm));
+    push(INT_VALUE(n));
 }
 
 static void op_push_0()
@@ -157,16 +175,16 @@ static void op_pop()
 
 static void op_inc()
 {
-    int8_t imm = READ_UINT8();
+    int8_t n = READ_UINT8();
 
-    AS_INT(vm.fp[imm])++;
+    AS_INT(vm.fp[n])++;
 }
 
 static void op_dec()
 {
-    int8_t imm = READ_UINT8();
+    int8_t n = READ_UINT8();
 
-    AS_INT(vm.fp[imm])--;
+    AS_INT(vm.fp[n])--;
 }
 
 static void op_add()
@@ -288,34 +306,34 @@ static void op_neg()
 
 static void op_beq()
 {
-    int16_t imm = READ_UINT16();
+    int16_t n = READ_UINT16();
     Value b = peek(0);
     Value a = peek(1);
 
     if (AS_INT(a) == AS_INT(b)) {
-        vm.pc += imm;
+        vm.pc += n;
     }
 }
 
 static void op_blt()
 {
-    int16_t imm = READ_UINT16();
+    int16_t n = READ_UINT16();
     Value b = peek(0);
     Value a = peek(1);
 
     if (AS_INT(a) < AS_INT(b)) {
-        vm.pc += imm;
+        vm.pc += n;
     }
 }
 
 static void op_ble()
 {
-    int16_t imm = READ_UINT16();
+    int16_t n = READ_UINT16();
     Value b = peek(0);
     Value a = peek(1);
 
     if (AS_INT(a) <= AS_INT(b)) {
-        vm.pc += imm;
+        vm.pc += n;
     }
 }
 
@@ -326,8 +344,8 @@ static void op_jmp()
 
 static void op_call()
 {
-    int16_t imm = READ_UINT16();
-    Function func = getFunctionAt(vm.functions, imm);
+    int16_t n = READ_UINT16();
+    Function func = getFunctionAt(vm.functions, n);
     Value paramCount = INT_VALUE(func.paramCount);
     Value ra = POINTER_VALUE(vm.pc);
     Value fp = POINTER_VALUE(vm.fp);
@@ -423,6 +441,8 @@ static void initInstructions()
     vm.opcode[OP_STL_0] = op_stl_0;
     vm.opcode[OP_STL_1] = op_stl_1;
     vm.opcode[OP_STL_2] = op_stl_2;
+    vm.opcode[OP_LDN] = op_ldn;
+    vm.opcode[OP_STN] = op_stn;
     vm.opcode[OP_PUSH] = op_push;
     vm.opcode[OP_PUSH_0] = op_push_0;
     vm.opcode[OP_PUSH_1] = op_push_1;
@@ -469,13 +489,21 @@ static void resetStack()
 {
     vm.sp = vm.stack;
     vm.fp = vm.stack;
+    vm.display[0] = vm.fp;
 }
 
 void initVM()
 {
+    vm.display = malloc(sizeof(Value*));
+
     resetStack();
     initInstructions();
     initServices();
+}
+
+void freeVM()
+{
+    free(vm.display);
 }
 
 static void run()
@@ -507,6 +535,7 @@ void interpret(char* source)
     initVM();
     interpretChunk(&chunk);
     freeChunk(&chunk);
+    freeVM();
 }
 
 void inspectVM()

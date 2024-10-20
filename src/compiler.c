@@ -5,13 +5,13 @@
 #include "reference.h"
 #include "scope.h"
 
-static void expression();
-static void references();
-static AST* statements(AST* ast);
-
 static Chunk* currentChunk;
 static Scope* currentScope;
 static ReferenceArray functions;
+
+static void expression();
+static void references();
+static AST* statements(AST* ast);
 
 static void write16(int16_t n)
 {

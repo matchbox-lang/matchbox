@@ -20,6 +20,8 @@ static int printInstruction(int8_t c)
         case OP_STL_0:      return printf("stl_0\n");
         case OP_STL_1:      return printf("stl_1\n");
         case OP_STL_2:      return printf("stl_2\n");
+        case OP_LDN:        return printf("ldn\t%d, %d\n", READ_INT8(), READ_INT8());
+        case OP_STN:        return printf("stn\t%d, %d\n", READ_INT8(), READ_INT8());
         case OP_PUSH:       return printf("push\t%d\n", READ_INT8());
         case OP_PUSH_0:     return printf("push_0\n");
         case OP_PUSH_1:     return printf("push_1\n");

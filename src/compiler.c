@@ -503,7 +503,9 @@ static size_t functionDefinition(AST* ast)
     size_t position = countChunk(currentChunk);
     Function func = {paramCount, localCount, position};
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
-    
+    size_t level = getLevel(body->compound.scope);
+
+    setMaxScopeLevel(currentChunk, level);
     pushFunctionArray(&currentChunk->functions, func);
     functionBody(body);
     createFunctionReference(ast, functionsIndex);

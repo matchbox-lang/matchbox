@@ -7,6 +7,7 @@ void initChunk(Chunk* chunk)
     chunk->capacity = CHUNK_INIT_CAPACITY;
     chunk->data = calloc(chunk->capacity, sizeof(uint8_t));
     chunk->count = 0;
+    chunk->maxScopeLevel = 1;
 
     initFunctionArray(&chunk->functions);
     initValueArray(&chunk->constants);
@@ -22,6 +23,18 @@ void freeChunk(Chunk* chunk)
 size_t countChunk(Chunk* chunk)
 {
     return chunk->count;
+}
+
+size_t getMaxScopeLevel(Chunk* chunk)
+{
+    return chunk->maxScopeLevel;
+}
+
+size_t setMaxScopeLevel(Chunk* chunk, size_t level)
+{
+    if (level > chunk->maxScopeLevel) {
+        chunk->maxScopeLevel = level;
+    }
 }
 
 void resizeChunk(Chunk* chunk, size_t capacity)

@@ -9,6 +9,7 @@ Scope* createScope(Scope* parent)
     Scope* scope = malloc(sizeof(Scope));
     scope->parent = parent;
     scope->localCount = 0;
+    scope->level = getLevel(parent) + 1;
 
     initReferenceArray(&scope->references);
     initTable(&scope->symbols, 32);
@@ -32,6 +33,11 @@ void freeScope(Scope* scope)
 size_t getLocalCount(Scope* scope)
 {
     return scope->localCount;
+}
+
+size_t getLevel(Scope* scope)
+{
+    return scope ? scope->level : 0;
 }
 
 AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast, bool local)

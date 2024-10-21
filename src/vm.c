@@ -32,6 +32,7 @@ typedef struct VM
     FunctionArray* functions;
     ValueArray* constants;
     Value** display;
+    size_t displaySize;
 } VM;
 
 VM vm;
@@ -494,7 +495,8 @@ static void resetStack()
 
 void initVM()
 {
-    vm.display = malloc(sizeof(Value*));
+    vm.display = calloc(2, sizeof(Value*));
+    vm.displaySize = 2;
 
     resetStack();
     initInstructions();
@@ -519,6 +521,13 @@ static void run()
 
 static void interpretChunk(Chunk* chunk)
 {
+    size_t level = getMaxScopeLevel(chunk);
+
+    if (level > vm.displaySize) {
+        vm.display = realloc(vm.display, level * sizeof(Value*));
+        vm.displaySize = level;
+    }
+
     vm.bc = chunk->data;
     vm.pc = chunk->data;
     vm.constants = &chunk->constants;

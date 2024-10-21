@@ -732,7 +732,6 @@ static void parameters(Vector* params)
 {
     consume(T_LPAREN);
 
-    parser.scope = createScope(parser.scope);
     int paramCount = 0;
 
     while (peek().type != T_RPAREN) {
@@ -810,6 +809,7 @@ static AST* functionDefinition()
     ast->funcDef.typeId = T_NONE;
 
     consume(T_IDENTIFIER);
+    parser.scope = createScope(parser.scope);
     parameters(&ast->funcDef.params);
 
     if (isType(peek().type)) {

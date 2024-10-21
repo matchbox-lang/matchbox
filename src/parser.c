@@ -666,8 +666,8 @@ static AST* variableDefinition()
         error(invalidTypeError, token);
     }
 
-    setLocalSymbol(parser.scope, id, ast, true);
     ast->varDef.position = getLocalCount(parser.scope);
+    setLocalSymbol(parser.scope, id, ast, true);
 
     return ast;
 }

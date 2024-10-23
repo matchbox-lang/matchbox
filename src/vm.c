@@ -21,8 +21,8 @@ typedef void (*instruction_t)();
 typedef struct VM
 {
     bool running;
+    instruction_t opcode[OP_SIZE];
     service_t service[SERVICE_SIZE];
-    instruction_t opcode[INSTRUCTION_SIZE];
     Value stack[STACK_SIZE];
     Value* sp;
     Value* fp;
@@ -31,8 +31,6 @@ typedef struct VM
     uint8_t* ra;
     FunctionArray* functions;
     ValueArray* constants;
-    Value** display;
-    size_t displaySize;
 } VM;
 
 VM vm;
@@ -127,24 +125,6 @@ static void op_stl_1()
 static void op_stl_2()
 {
     vm.fp[2] = peek(0);
-}
-
-static void op_ldn()
-{
-    int8_t depth = READ_UINT8();
-    int8_t position = READ_UINT8();
-    Value* fp = vm.display[depth];
-
-    push(fp[position]);
-}
-
-static void op_stn()
-{
-    int8_t depth = READ_UINT8();
-    int8_t position = READ_UINT8();
-    Value* fp = vm.display[depth];
-
-    fp[position] = peek(0);
 }
 
 static void op_push()
@@ -442,8 +422,6 @@ static void initInstructions()
     vm.opcode[OP_STL_0] = op_stl_0;
     vm.opcode[OP_STL_1] = op_stl_1;
     vm.opcode[OP_STL_2] = op_stl_2;
-    vm.opcode[OP_LDN] = op_ldn;
-    vm.opcode[OP_STN] = op_stn;
     vm.opcode[OP_PUSH] = op_push;
     vm.opcode[OP_PUSH_0] = op_push_0;
     vm.opcode[OP_PUSH_1] = op_push_1;
@@ -490,22 +468,13 @@ static void resetStack()
 {
     vm.sp = vm.stack;
     vm.fp = vm.stack;
-    vm.display[0] = vm.fp;
 }
 
 void initVM()
 {
-    vm.display = calloc(2, sizeof(Value*));
-    vm.displaySize = 2;
-
     resetStack();
     initInstructions();
     initServices();
-}
-
-void freeVM()
-{
-    free(vm.display);
 }
 
 static void run()
@@ -521,13 +490,6 @@ static void run()
 
 static void interpretChunk(Chunk* chunk)
 {
-    size_t level = getMaxScopeLevel(chunk);
-
-    if (level > vm.displaySize) {
-        vm.display = realloc(vm.display, level * sizeof(Value*));
-        vm.displaySize = level;
-    }
-
     vm.bc = chunk->data;
     vm.pc = chunk->data;
     vm.constants = &chunk->constants;
@@ -544,7 +506,6 @@ void interpret(char* source)
     initVM();
     interpretChunk(&chunk);
     freeChunk(&chunk);
-    freeVM();
 }
 
 void inspectVM()

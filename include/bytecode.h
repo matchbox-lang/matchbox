@@ -16,8 +16,6 @@ typedef enum Opcode
     OP_STL_0,       // stl_0
     OP_STL_1,       // stl_1
     OP_STL_2,       // stl_2
-    OP_LDN,         // ldn imm8, imm8
-    OP_STN,         // stn imm8, imm8
     OP_PUSH,        // push imm8
     OP_PUSH_0,      // push_0
     OP_PUSH_1,      // push_1
@@ -46,7 +44,8 @@ typedef enum Opcode
     OP_JMP,         // jmp imm16
     OP_CALL,        // call imm16
     OP_RET,         // ret
-    OP_RETV         // retv
+    OP_RETV,        // retv
+    OP_SIZE
 } Opcode;
 
 void disassemble(Chunk* chunk);

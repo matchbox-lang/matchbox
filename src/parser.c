@@ -592,7 +592,7 @@ static AST* variable()
 {
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
+    AST* symbol = getLocalSymbol(parser.scope, id);
 
     if (!symbol) {
         error(undefinedError, token);

@@ -354,9 +354,14 @@ static void sys_clamp()
     int32_t num = AS_INT(POP());
     int32_t min = AS_INT(POP());
     int32_t max = AS_INT(POP());
-    int32_t tmp = num < min ? min : num;
 
-    PUSH(INT_VALUE(tmp > max ? max : tmp));
+    if (num < min) {
+        PUSH(INT_VALUE(min));
+    } else if (num > max) {
+        PUSH(INT_VALUE(max));
+    } else {
+        PUSH(INT_VALUE(num));
+    }
 }
 
 static void sys_abs()

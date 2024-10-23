@@ -305,8 +305,8 @@ static void op_call()
     Value ra = POINTER_VALUE(vm.pc);
     Value fp = POINTER_VALUE(vm.fp);
 
-    PUSH(sp);
     PUSH(ra);
+    PUSH(sp);
     PUSH(fp);
 
     vm.pc = &vm.bc[func.position];
@@ -316,8 +316,8 @@ static void op_call()
 
 static void op_ret()
 {
-    vm.sp = AS_POINTER(vm.fp[-3]);
-    vm.pc = AS_POINTER(vm.fp[-2]);
+    vm.pc = AS_POINTER(vm.fp[-3]);
+    vm.sp = AS_POINTER(vm.fp[-2]);
     vm.fp = AS_POINTER(vm.fp[-1]);
 
     op_push_0();
@@ -327,8 +327,8 @@ static void op_retv()
 {
     Value value = POP();
 
-    vm.sp = AS_POINTER(vm.fp[-3]);
-    vm.pc = AS_POINTER(vm.fp[-2]);
+    vm.pc = AS_POINTER(vm.fp[-3]);
+    vm.sp = AS_POINTER(vm.fp[-2]);
     vm.fp = AS_POINTER(vm.fp[-1]);
 
     PUSH(value);

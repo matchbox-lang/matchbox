@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PUSH(value) (vm.sp[0] = value, vm.sp++)
+#define POP() ((--vm.sp)[0])
 #define READ_UINT16() (vm.pc += 2, (uint16_t)((vm.pc[-2] << 8) | vm.pc[-1]))
 #define READ_UINT8() (*(vm.pc++))
 
@@ -35,23 +37,6 @@ typedef struct VM
 
 VM vm;
 
-static void push(Value value)
-{
-    vm.sp[0] = value;
-    vm.sp++;
-}
-
-static Value pop()
-{
-    vm.sp--;
-    return vm.sp[0];
-}
-
-static Value peek(size_t index)
-{
-    return vm.sp[-(index + 1)];
-}
-
 static void ret()
 {
     Value paramCount = vm.fp[-3];
@@ -70,7 +55,7 @@ static void op_hlt()
 
 static void op_syscall()
 {
-    int32_t opcode = AS_INT(pop());
+    int32_t opcode = AS_INT(POP());
 
     vm.service[opcode]();
 }
@@ -80,78 +65,78 @@ static void op_ldc()
     int8_t n = READ_UINT8();
     Value constant = getValueAt(vm.constants, n);
 
-    push(constant);
+    PUSH(constant);
 }
 
 static void op_ldl()
 {
     int8_t n = READ_UINT8();
 
-    push(vm.fp[n]);
+    PUSH(vm.fp[n]);
 }
 
 static void op_ldl_0()
 {
-    push(vm.fp[0]);
+    PUSH(vm.fp[0]);
 }
 
 static void op_ldl_1()
 {
-    push(vm.fp[1]);
+    PUSH(vm.fp[1]);
 }
 
 static void op_ldl_2()
 {
-    push(vm.fp[2]);
+    PUSH(vm.fp[2]);
 }
 
 static void op_stl()
 {
     int8_t n = READ_UINT8();
 
-    vm.fp[n] = peek(0);
+    vm.fp[n] = vm.sp[-1];
 }
 
 static void op_stl_0()
 {
-    vm.fp[0] = peek(0);
+    vm.fp[0] = vm.sp[-1];
 }
 
 static void op_stl_1()
 {
-    vm.fp[1] = peek(0);
+    vm.fp[1] = vm.sp[-1];
 }
 
 static void op_stl_2()
 {
-    vm.fp[2] = peek(0);
+    vm.fp[2] = vm.sp[-1];
 }
 
 static void op_push()
 {
     int8_t n = READ_UINT8();
 
-    push(INT_VALUE(n));
+    PUSH(INT_VALUE(n));
 }
 
 static void op_push_0()
 {
-    push(INT_VALUE(0));
+    PUSH(INT_VALUE(0));
 }
 
 static void op_push_1()
 {
-    push(INT_VALUE(1));
+    PUSH(INT_VALUE(1));
 }
 
 static void op_push_2()
 {
-    push(INT_VALUE(2));
+    PUSH(INT_VALUE(2));
 }
 
 static void op_pop()
 {
-    pop();
+    POP();
 }
 
 static void op_inc()
@@ -170,74 +155,74 @@ static void op_dec()
 
 static void op_add()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a + b));
+    PUSH(INT_VALUE(a + b));
 }
 
 static void op_sub()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a - b));
+    PUSH(INT_VALUE(a - b));
 }
 
 static void op_mul()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a * b));
+    PUSH(INT_VALUE(a * b));
 }
 
 static void op_div()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a / b));
+    PUSH(INT_VALUE(a / b));
 }
 
 static void op_rem()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a % b));
+    PUSH(INT_VALUE(a % b));
 }
 
 static void op_pow()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(pow(a, b)));
+    PUSH(INT_VALUE(pow(a, b)));
 }
 
 static void op_band()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a & b));
+    PUSH(INT_VALUE(a & b));
 }
 
 static void op_bor()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a | b));
+    PUSH(INT_VALUE(a | b));
 }
 
 static void op_bxor()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a ^ b));
+    PUSH(INT_VALUE(a ^ b));
 }
 
 static void op_bnot()
@@ -249,26 +234,26 @@ static void op_bnot()
 
 static void op_lsl()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a << b));
+    PUSH(INT_VALUE(a << b));
 }
 
 static void op_lsr()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a >> b));
+    PUSH(INT_VALUE(a >> b));
 }
 
 static void op_asr()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(~(~a >> b)));
+    PUSH(INT_VALUE(~(~a >> b)));
 }
 
 static void op_not()
@@ -288,8 +273,8 @@ static void op_neg()
 static void op_beq()
 {
     int16_t n = READ_UINT16();
-    Value b = peek(0);
-    Value a = peek(1);
+    Value b = vm.sp[-1];
+    Value a = vm.sp[-2];
 
     if (AS_INT(a) == AS_INT(b)) {
         vm.pc += n;
@@ -299,8 +284,8 @@ static void op_beq()
 static void op_blt()
 {
     int16_t n = READ_UINT16();
-    Value b = peek(0);
-    Value a = peek(1);
+    Value b = vm.sp[-1];
+    Value a = vm.sp[-2];
 
     if (AS_INT(a) < AS_INT(b)) {
         vm.pc += n;
@@ -310,8 +295,8 @@ static void op_blt()
 static void op_ble()
 {
     int16_t n = READ_UINT16();
-    Value b = peek(0);
-    Value a = peek(1);
+    Value b = vm.sp[-1];
+    Value a = vm.sp[-2];
 
     if (AS_INT(a) <= AS_INT(b)) {
         vm.pc += n;
@@ -331,9 +316,9 @@ static void op_call()
     Value ra = POINTER_VALUE(vm.pc);
     Value fp = POINTER_VALUE(vm.fp);
 
-    push(paramCount);
-    push(ra);
-    push(fp);
+    PUSH(paramCount);
+    PUSH(ra);
+    PUSH(fp);
 
     vm.pc = &vm.bc[func.position];
     vm.fp = vm.sp;
@@ -348,21 +333,21 @@ static void op_ret()
 
 static void op_retv()
 {
-    Value value = pop();
+    Value value = POP();
     ret();
-    push(value);
+    PUSH(value);
 }
 
 static void sys_exit()
 {
-    int32_t status = AS_INT(pop());
+    int32_t status = AS_INT(POP());
     
     exit(status);
 }
 
 static void sys_print()
 {
-    int32_t n = AS_INT(pop());
+    int32_t n = AS_INT(POP());
     
     printf("%d\n", n);
     op_push_0();
@@ -370,35 +355,35 @@ static void sys_print()
 
 static void sys_clamp()
 {
-    int32_t num = AS_INT(pop());
-    int32_t min = AS_INT(pop());
-    int32_t max = AS_INT(pop());
+    int32_t num = AS_INT(POP());
+    int32_t min = AS_INT(POP());
+    int32_t max = AS_INT(POP());
     int32_t tmp = num < min ? min : num;
 
-    push(INT_VALUE(tmp > max ? max : tmp));
+    PUSH(INT_VALUE(tmp > max ? max : tmp));
 }
 
 static void sys_abs()
 {
-    int32_t n = AS_INT(pop());
+    int32_t n = AS_INT(POP());
 
-    push(INT_VALUE(n < 0 ? -n : n));
+    PUSH(INT_VALUE(n < 0 ? -n : n));
 }
 
 static void sys_min()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a < b ? a : b));
+    PUSH(INT_VALUE(a < b ? a : b));
 }
 
 static void sys_max()
 {
-    int32_t b = AS_INT(pop());
-    int32_t a = AS_INT(pop());
+    int32_t b = AS_INT(POP());
+    int32_t a = AS_INT(POP());
 
-    push(INT_VALUE(a > b ? a : b));
+    PUSH(INT_VALUE(a > b ? a : b));
 }
 
 static void sys_byteorder()
@@ -406,7 +391,7 @@ static void sys_byteorder()
     int32_t i = 1;
     char *c = (char*)&i;
 
-    push(INT_VALUE((int32_t)*c));
+    PUSH(INT_VALUE((int32_t)*c));
 }
 
 static void initInstructions()

@@ -833,7 +833,6 @@ static AST* variableDefinition()
     
     if (peek().type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
-        initialize(ast);
     } else {
         consume(T_EQUAL);
         variableExpression(ast, token);

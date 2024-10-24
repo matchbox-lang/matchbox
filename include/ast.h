@@ -103,6 +103,7 @@ typedef struct AST
         struct {
             Scope* scope;
             StringObject* id;
+            bool initialized;
             int typeId;
             int position;
             AST* expr;

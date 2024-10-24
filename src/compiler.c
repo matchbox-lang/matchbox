@@ -526,7 +526,7 @@ static void ret(AST* ast)
 
 static void variableDefinition(AST* ast)
 {
-    if (!ast->varDef.expr) {
+    if (ast->varDef.expr->type == AST_NONE) {
         return op_push(0);
     }
 

@@ -650,7 +650,6 @@ static AST* variableDefinition()
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
     ast->varDef.scope = parser.scope;
     ast->varDef.id = id;
-    ast->varDef.initialized = false;
     ast->varDef.typeId = T_NONE;
     ast->varDef.position = getLocalCount(parser.scope);
 
@@ -661,6 +660,7 @@ static AST* variableDefinition()
     
     if (peek().type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
+        ast->varDef.initialized = false;
     } else {
         consume(T_EQUAL);
         variableExpression(ast, token);

@@ -76,7 +76,7 @@ static void tokenError()
     error(unexpectedTokenError, token);
 }
 
-static bool isBool(TokenType type)
+static bool isBoolToken(TokenType type)
 {
     switch (type) {
         case T_TRUE:
@@ -87,7 +87,7 @@ static bool isBool(TokenType type)
     return false;
 }
 
-static bool isAssignment(TokenType type)
+static bool isAssignmentToken(TokenType type)
 {
     switch (type) {
         case T_EQUAL:
@@ -104,12 +104,12 @@ static bool isAssignment(TokenType type)
     return false;
 }
 
-static bool isType(TokenType type)
+static bool isTypeToken(TokenType type)
 {
     return type == T_INT;
 }
 
-static bool isComparison(TokenType type)
+static bool isComparisonToken(TokenType type)
 {
     switch (type) {
         case T_GREATER:
@@ -123,7 +123,7 @@ static bool isComparison(TokenType type)
     return false;
 }
 
-static bool isEquality(TokenType type)
+static bool isEqualityToken(TokenType type)
 {
     switch (type) {
         case T_EQUAL_EQUAL:
@@ -134,12 +134,12 @@ static bool isEquality(TokenType type)
     return false;
 }
 
-static bool isBoolOperator(TokenType type)
+static bool isBoolOperatorToken(TokenType type)
 {
-    return isComparison(type) || isEquality(type);
+    return isComparisonToken(type) || isEqualityToken(type);
 }
 
-static bool isShift(TokenType type)
+static bool isShiftToken(TokenType type)
 {
     switch (type) {
         case T_LSHIFT:
@@ -150,7 +150,7 @@ static bool isShift(TokenType type)
     return false;
 }
 
-static bool isTerm(TokenType type)
+static bool isTermToken(TokenType type)
 {
     switch (type) {
         case T_PLUS:
@@ -161,7 +161,7 @@ static bool isTerm(TokenType type)
     return false;
 }
 
-static bool isFactor(TokenType type)
+static bool isFactorToken(TokenType type)
 {
     switch (type) {
         case T_STAR:
@@ -174,7 +174,7 @@ static bool isFactor(TokenType type)
     return false;
 }
 
-static bool isPrefix(TokenType type)
+static bool isPrefixToken(TokenType type)
 {
     switch (type) {
         case T_INCREMENT:
@@ -189,8 +189,9 @@ static bool isPrefix(TokenType type)
     return false;
 }
 
-static bool isPostfix(TokenType type)
+static bool isPostfixToken(TokenType type)
 {
+
     switch (type) {
         case T_INCREMENT:
         case T_DECREMENT:
@@ -215,7 +216,7 @@ static void consumeType()
 {
     Token token = peek();
 
-    if (!isType(token.type)) {
+    if (!isTypeToken(token.type)) {
         tokenError();
     }
 
@@ -226,7 +227,7 @@ static AST* primary()
 {
     Token token = peek();
 
-    if (isBool(token.type)) {
+    if (isBoolToken(token.type)) {
         AST* ast = createAST(AST_BOOLEAN);
         ast->boolVal = token.type == T_TRUE;
         consume(token.type);
@@ -295,7 +296,7 @@ static AST* postfix()
     AST* expr = identifier();
     Token token = peek();
 
-    if (!isPostfix(token.type)) {
+    if (!isPostfixToken(token.type)) {
         return expr;
     }
 
@@ -309,7 +310,7 @@ static AST* postfix()
 
 static AST* prefix()
 {
-    if (!isPrefix(peek().type)) {
+    if (!isPrefixToken(peek().type)) {
         return postfix();
     }
 
@@ -342,7 +343,7 @@ static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
         error(invalidOperandsError, token);
     }
 
-    int typeId = isBoolOperator(token.type) ? T_BOOL : a;
+    int typeId = isBoolOperatorToken(token.type) ? T_BOOL : a;
     
     AST* ast = createAST(AST_BINARY);
     ast->binary.leftExpr = leftExpr;
@@ -372,7 +373,7 @@ static AST* factor()
     AST* expr = exponent();
     Token token = peek();
 
-    while (isFactor(token.type)) {
+    while (isFactorToken(token.type)) {
         consume(token.type);
         expr = binary(expr, exponent(), token);
         token = peek();
@@ -386,7 +387,7 @@ static AST* term()
     AST* expr = factor();
     Token token = peek();
 
-    while (isTerm(token.type)) {
+    while (isTermToken(token.type)) {
         consume(token.type);
         expr = binary(expr, factor(), token);
         token = peek();
@@ -400,7 +401,7 @@ static AST* shift()
     AST* expr = term();
     Token token = peek();
 
-    while (isShift(token.type)) {
+    while (isShiftToken(token.type)) {
         consume(token.type);
         expr = binary(expr, term(), token);
         token = peek();
@@ -414,7 +415,7 @@ static AST* comparison()
     AST* expr = shift();
     Token token = peek();
 
-    while (isComparison(token.type)) {
+    while (isComparisonToken(token.type)) {
         consume(token.type);
         expr = binary(expr, shift(), token);
         token = peek();
@@ -428,7 +429,7 @@ static AST* equality()
     AST* expr = comparison();
     Token token = peek();
 
-    while (isEquality(token.type)) {
+    while (isEqualityToken(token.type)) {
         consume(token.type);
         expr = binary(expr, comparison(), token);
         token = peek();
@@ -554,7 +555,7 @@ static AST* parameter()
     ast->param.id = id;
     ast->param.typeId = T_INT;
 
-    if (isType(peek().type)) {
+    if (isTypeToken(peek().type)) {
         ast->param.typeId = peek().type;
         consumeType();
     }
@@ -664,7 +665,7 @@ static AST* variableDefinition()
     ast->varDef.typeId = T_NONE;
     ast->varDef.position = getLocalCount(parser.scope);
 
-    if (isType(peek().type)) {
+    if (isTypeToken(peek().type)) {
         ast->varDef.typeId = peek().type;
         consumeType();
     }
@@ -826,7 +827,7 @@ static AST* functionDefinition()
     parser.scope = createScope(parser.scope);
     parameters(&ast->funcDef.params);
 
-    if (isType(peek().type)) {
+    if (isTypeToken(peek().type)) {
         ast->funcDef.typeId = peek().type;
         consumeType();
     }
@@ -844,7 +845,7 @@ static AST* identifier()
 {
     consume(T_IDENTIFIER);
 
-    if (isAssignment(peek().type)) {
+    if (isAssignmentToken(peek().type)) {
         return assignment();
     }
 

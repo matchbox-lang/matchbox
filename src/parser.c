@@ -21,7 +21,6 @@ Parser parser;
 static AST* expression();
 static AST* identifier();
 static AST* statements();
-static AST* variable();
 
 const char* assignmentError = "Error: Invalid assignment for variable %.*s on line %d:%d\n";
 const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
@@ -279,10 +278,6 @@ static AST* primary()
 
         return ast;
     }
-
-    if (token.type == T_IDENTIFIER) {
-        return identifier();
-    }
     
     return createAST(AST_NONE);
 }
@@ -292,6 +287,8 @@ static AST* postfix()
     if (peek().type != T_IDENTIFIER) {
         return primary();
     }
+
+    consume(T_IDENTIFIER);
 
     AST* expr = identifier();
     Token token = peek();
@@ -321,7 +318,7 @@ static AST* prefix()
 
     if (peek().type == T_IDENTIFIER) {
         consume(T_IDENTIFIER);
-        ast->prefix.expr = variable();
+        ast->prefix.expr = identifier();
     } else {
         ast->prefix.expr = prefix();
     }
@@ -574,6 +571,12 @@ static void initialize(AST* ast)
 
 static AST* assignment()
 {
+    consume(T_IDENTIFIER);
+
+    if (!isAssignmentToken(peek().type)) {
+        return identifier();
+    }
+
     Token operator = peek();
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
@@ -597,92 +600,6 @@ static AST* assignment()
 
     initialize(symbol);
     ast->assignment.expr = expr;
-
-    return ast;
-}
-
-static AST* variable()
-{
-    Token token = prev();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
-
-    if (!symbol) {
-        error(undefinedError, token);
-    }
-    
-    if (symbol->type == AST_VARIABLE_DEFINITION && !symbol->varDef.initialized) {
-        error(uninitializedError, token);
-    }
-
-    AST* ast = createAST(AST_VARIABLE);
-    ast->var.scope = parser.scope;
-    ast->var.id = id;
-    ast->var.symbol = symbol;
-
-    return ast;
-}
-
-static void variableExpression(AST* ast, Token token)
-{
-    AST* expr = expression();
-
-    if (expr->type == AST_NONE) {
-        tokenError();
-    }
-
-    int typeId = getTypeId(expr);
-    if (typeId < 0) {
-        error(assignmentError, token);
-    }
-
-    ast->varDef.expr = expr;
-    ast->varDef.typeId = typeId;
-    initialize(ast);
-}
-
-static AST* variableDefinition()
-{
-    consume(T_VAR);
-
-    Token token = peek();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
-
-    if (symbol) {
-        error(redefinitionError, token);
-    }
-
-    if (peek().type != T_IDENTIFIER) {
-        lineError(identifierError, prev());
-    }
-
-    consume(T_IDENTIFIER);
-
-    AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->varDef.scope = parser.scope;
-    ast->varDef.id = id;
-    ast->varDef.typeId = T_NONE;
-    ast->varDef.position = getLocalCount(parser.scope);
-
-    if (isTypeToken(peek().type)) {
-        ast->varDef.typeId = peek().type;
-        consumeType();
-    }
-    
-    if (peek().type != T_EQUAL) {
-        ast->varDef.expr = createAST(AST_NONE);
-        initialize(ast);
-    } else {
-        consume(T_EQUAL);
-        variableExpression(ast, token);
-    }
-
-    if (ast->varDef.typeId == T_NONE) {
-        error(invalidTypeError, token);
-    }
-
-    setLocalSymbol(parser.scope, id, ast, true);
 
     return ast;
 }
@@ -843,17 +760,92 @@ static AST* functionDefinition()
 
 static AST* identifier()
 {
-    consume(T_IDENTIFIER);
-
-    if (isAssignmentToken(peek().type)) {
-        return assignment();
-    }
-
     if (peek().type == T_LPAREN) {
         return functionCall();
     }
+    
+    Token token = prev();
+    StringObject* id = copyString(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.scope, id);
 
-    return variable();
+    if (!symbol) {
+        error(undefinedError, token);
+    }
+    
+    if (symbol->type == AST_VARIABLE_DEFINITION && !symbol->varDef.initialized) {
+        error(uninitializedError, token);
+    }
+
+    AST* ast = createAST(AST_VARIABLE);
+    ast->var.scope = parser.scope;
+    ast->var.id = id;
+    ast->var.symbol = symbol;
+
+    return ast;
+}
+
+static void variableExpression(AST* ast, Token token)
+{
+    AST* expr = expression();
+
+    if (expr->type == AST_NONE) {
+        tokenError();
+    }
+
+    int typeId = getTypeId(expr);
+    if (typeId < 0) {
+        error(assignmentError, token);
+    }
+
+    ast->varDef.expr = expr;
+    ast->varDef.typeId = typeId;
+    initialize(ast);
+}
+
+static AST* variableDefinition()
+{
+    consume(T_VAR);
+
+    Token token = peek();
+    StringObject* id = copyString(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.scope, id);
+
+    if (symbol) {
+        error(redefinitionError, token);
+    }
+
+    if (peek().type != T_IDENTIFIER) {
+        lineError(identifierError, prev());
+    }
+
+    consume(T_IDENTIFIER);
+
+    AST* ast = createAST(AST_VARIABLE_DEFINITION);
+    ast->varDef.scope = parser.scope;
+    ast->varDef.id = id;
+    ast->varDef.typeId = T_NONE;
+    ast->varDef.position = getLocalCount(parser.scope);
+
+    if (isTypeToken(peek().type)) {
+        ast->varDef.typeId = peek().type;
+        consumeType();
+    }
+    
+    if (peek().type != T_EQUAL) {
+        ast->varDef.expr = createAST(AST_NONE);
+        initialize(ast);
+    } else {
+        consume(T_EQUAL);
+        variableExpression(ast, token);
+    }
+
+    if (ast->varDef.typeId == T_NONE) {
+        error(invalidTypeError, token);
+    }
+
+    setLocalSymbol(parser.scope, id, ast, true);
+
+    return ast;
 }
 
 static AST* statement()
@@ -867,6 +859,8 @@ static AST* statement()
             return variableDefinition();
         case T_FUNC:
             return functionDefinition();
+        case T_IDENTIFIER:
+            return assignment();
         case T_RETURN:
             return returnStmt();
         default:

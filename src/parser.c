@@ -587,8 +587,11 @@ static AST* assignment()
         tokenError();
     }
 
+    if (symbol->type == AST_VARIABLE_DEFINITION) {
+        symbol->varDef.initialized = true;
+    }
+
     ast->assignment.expr = expr;
-    symbol->varDef.initialized = true;
 
     return ast;
 }

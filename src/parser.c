@@ -514,6 +514,10 @@ static AST* expression()
 
 static AST* returnStmt()
 {
+    if (parser.scope->level < 2) {
+        tokenError();
+    }
+
     consume(T_RETURN);
     
     AST* ast = createAST(AST_RETURN);

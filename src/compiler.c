@@ -527,7 +527,7 @@ static void ret(AST* ast)
 static void variableDefinition(AST* ast)
 {
     if (ast->varDef.expr->type == AST_NONE) {
-        return op_push(0);
+        return;
     }
 
     int position = getLocalPosition(ast);
@@ -604,8 +604,21 @@ static AST* statements(AST* ast)
     return statement;
 }
 
+static void entry()
+{
+    Function func = {0, 0, 3};
+    pushFunctionArray(&currentChunk->functions, func);
+    op_call(0);
+}
+
 static void topLevelStatements(AST* ast)
 {
+    size_t count = countVector(&ast->compound.statements);
+
+    if (count) {
+        entry();
+    }
+    
     statements(ast);
     op_hlt();
     references();
@@ -613,8 +626,8 @@ static void topLevelStatements(AST* ast)
 
 void compile(char* source, Chunk* chunk)
 {
-    AST* ast = parse(source);
     currentChunk = chunk;
+    AST* ast = parse(source);
 
     initReferenceArray(&functions);
     topLevelStatements(ast);

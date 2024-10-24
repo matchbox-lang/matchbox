@@ -564,6 +564,13 @@ static AST* parameter()
     return ast;
 }
 
+static void initialize(AST* ast)
+{
+    if (ast->type == AST_VARIABLE_DEFINITION) {
+        ast->varDef.initialized = true;
+    }
+}
+
 static AST* assignment()
 {
     Token operator = peek();
@@ -587,10 +594,7 @@ static AST* assignment()
         tokenError();
     }
 
-    if (symbol->type == AST_VARIABLE_DEFINITION) {
-        symbol->varDef.initialized = true;
-    }
-
+    initialize(symbol);
     ast->assignment.expr = expr;
 
     return ast;
@@ -631,9 +635,9 @@ static void variableExpression(AST* ast, Token token)
         error(assignmentError, token);
     }
 
-    ast->varDef.initialized = true;
     ast->varDef.expr = expr;
     ast->varDef.typeId = typeId;
+    initialize(ast);
 }
 
 static AST* variableDefinition()
@@ -667,7 +671,7 @@ static AST* variableDefinition()
     
     if (peek().type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
-        ast->varDef.initialized = false;
+        initialize(ast);
     } else {
         consume(T_EQUAL);
         variableExpression(ast, token);

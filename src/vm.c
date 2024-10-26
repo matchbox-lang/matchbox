@@ -484,6 +484,16 @@ static void interpretChunk(Chunk* chunk)
     run();
 }
 
+void inspectStack()
+{
+    for (int i = 0; i < STACK_SIZE; i++) {
+        char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
+        int n = AS_INT(vm.stack[i]);
+
+        printf("%d: %d%s\n", i, n, arrow);
+    }
+}
+
 void interpret(char* source)
 {
     Chunk chunk;
@@ -492,16 +502,6 @@ void interpret(char* source)
     initVM();
     interpretChunk(&chunk);
     freeChunk(&chunk);
-}
-
-void inspectVM()
-{
-    for (int i = 0; i < STACK_SIZE; i++) {
-        char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
-        int n = AS_INT(vm.stack[i]);
-
-        printf("%d: %d%s\n", i, n, arrow);
-    }
 }
 
 #undef READ_UINT8

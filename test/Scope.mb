@@ -1,5 +1,7 @@
 var x = 50
 
+print(x)
+
 func foo(y int)
 {
     var x = 100
@@ -12,8 +14,6 @@ func bar(x int)
 {
     print(x)
 }
-
-print(y) # Error
 
 foo(x)
 bar(125)

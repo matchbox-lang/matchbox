@@ -738,7 +738,7 @@ static AST* functionDefinition()
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
     ast->funcDef.scope = parser.scope;
     ast->funcDef.id = id;
-    ast->funcDef.typeId = T_NONE;
+    ast->funcDef.typeId = T_INT;
 
     consume(T_IDENTIFIER);
     parser.scope = createScope(parser.scope);
@@ -823,7 +823,7 @@ static AST* variableDefinition()
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
     ast->varDef.scope = parser.scope;
     ast->varDef.id = id;
-    ast->varDef.typeId = T_NONE;
+    ast->varDef.typeId = T_INT;
     ast->varDef.position = getLocalCount(parser.scope);
 
     if (isTypeToken(peek().type)) {

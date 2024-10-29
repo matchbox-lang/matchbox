@@ -21,6 +21,7 @@ Scope* createScope(Scope* parent);
 void freeScope(Scope* scope);
 size_t getLocalCount(Scope* scope);
 size_t getLevel(Scope* scope);
+bool isTopLevel(Scope* scope);
 AST* setLocalSymbol(Scope* scope, StringObject* id, AST* symbol, bool local);
 AST* getLocalSymbol(Scope* scope, StringObject* id);
 AST* getSymbol(Scope* scope, StringObject* id);

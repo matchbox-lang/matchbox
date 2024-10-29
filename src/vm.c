@@ -32,7 +32,7 @@ typedef struct VM
     uint8_t* pc;
     uint8_t* ra;
     FunctionArray* functions;
-    ValueArray* constants;
+    ValueArray* globals;
 } VM;
 
 VM vm;
@@ -49,12 +49,20 @@ static void op_syscall()
     vm.service[opcode]();
 }
 
-static void op_ldc()
+static void op_ldg()
 {
     int8_t n = READ_UINT8();
-    Value constant = getValueAt(vm.constants, n);
+    Value global = getValueAt(vm.globals, n);
 
-    PUSH(constant);
+    PUSH(global);
+}
+
+static void op_stg()
+{
+    int8_t n = READ_UINT8();
+
+    setValueAt(vm.globals, n, vm.sp[-1]);
+    POP();
 }
 
 static void op_ldl()
@@ -84,21 +92,25 @@ static void op_stl()
     int8_t n = READ_UINT8();
 
     vm.fp[n] = vm.sp[-1];
+    POP();
 }
 
 static void op_stl_0()
 {
     vm.fp[0] = vm.sp[-1];
+    POP();
 }
 
 static void op_stl_1()
 {
     vm.fp[1] = vm.sp[-1];
+    POP();
 }
 
 static void op_stl_2()
 {
     vm.fp[2] = vm.sp[-1];
+    POP();
 }
 
 static void op_push()
@@ -128,18 +140,19 @@ static void op_pop()
     POP();
 }
 
+static void op_dup()
+{
+    PUSH(vm.sp[-1]);
+}
+
 static void op_inc()
 {
-    int8_t n = READ_UINT8();
-
-    AS_INT(vm.fp[n])++;
+    AS_INT(vm.sp[-1])++;
 }
 
 static void op_dec()
 {
-    int8_t n = READ_UINT8();
-
-    AS_INT(vm.fp[n])--;
+    AS_INT(vm.sp[-1])--;
 }
 
 static void op_add()
@@ -399,7 +412,8 @@ static void initInstructions()
 {
     vm.opcode[OP_HLT] = op_hlt;
     vm.opcode[OP_SYSCALL] = op_syscall;
-    vm.opcode[OP_LDC] = op_ldc;
+    vm.opcode[OP_LDG] = op_ldg;
+    vm.opcode[OP_STG] = op_stg;
     vm.opcode[OP_LDL] = op_ldl;
     vm.opcode[OP_LDL_0] = op_ldl_0;
     vm.opcode[OP_LDL_1] = op_ldl_1;
@@ -413,6 +427,7 @@ static void initInstructions()
     vm.opcode[OP_PUSH_1] = op_push_1;
     vm.opcode[OP_PUSH_2] = op_push_2;
     vm.opcode[OP_POP] = op_pop;
+    vm.opcode[OP_DUP] = op_dup;
     vm.opcode[OP_ADD] = op_add;
     vm.opcode[OP_SUB] = op_sub;
     vm.opcode[OP_MUL] = op_mul;
@@ -478,8 +493,8 @@ static void interpretChunk(Chunk* chunk)
 {
     vm.bc = chunk->data;
     vm.pc = chunk->data;
-    vm.constants = &chunk->constants;
     vm.functions = &chunk->functions;
+    vm.globals = &chunk->globals;
 
     run();
 }

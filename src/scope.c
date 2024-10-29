@@ -2,7 +2,6 @@
 #include "ast.h"
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 Scope* createScope(Scope* parent)
 {
@@ -38,6 +37,11 @@ size_t getLocalCount(Scope* scope)
 size_t getLevel(Scope* scope)
 {
     return scope ? scope->level : 0;
+}
+
+bool isTopLevel(Scope* scope)
+{
+    return scope->level == 1;
 }
 
 AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast, bool local)

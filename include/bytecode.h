@@ -7,7 +7,8 @@ typedef enum Opcode
 {
     OP_HLT,         // hlt
     OP_SYSCALL,     // syscall
-    OP_LDC,         // ldc imm8
+    OP_LDG,         // ldg imm8
+    OP_STG,         // stg imm8
     OP_LDL,         // ldl imm8
     OP_LDL_0,       // ldl_0
     OP_LDL_1,       // ldl_1
@@ -21,8 +22,9 @@ typedef enum Opcode
     OP_PUSH_1,      // push_1
     OP_PUSH_2,      // push_2
     OP_POP,         // pop
-    OP_INC,         // inc imm8
-    OP_DEC,         // dec imm8
+    OP_DUP,         // dup
+    OP_INC,         // inc
+    OP_DEC,         // dec
     OP_ADD,         // add
     OP_SUB,         // sub
     OP_MUL,         // mul

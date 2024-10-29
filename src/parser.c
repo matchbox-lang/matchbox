@@ -648,7 +648,7 @@ static void arguments(Vector* args)
 
     while (peek().type != T_RPAREN) {
         AST* expr = argument();
-        pushVector(args, expr);
+        pushVectorItem(args, expr);
 
         if (peek().type != T_COMMA) {
             break;
@@ -669,7 +669,7 @@ static void parameters(Vector* params)
     while (peek().type != T_RPAREN) {
         AST* expr = parameter();
         expr->param.position = paramCount++;
-        pushVector(params, expr);
+        pushVectorItem(params, expr);
 
         if (peek().type != T_COMMA) {
             break;
@@ -883,7 +883,7 @@ static AST* statements(TokenType type)
             consume(T_SEMICOLON);
         }
 
-        pushVector(&ast->compound.statements, stmt);
+        pushVectorItem(&ast->compound.statements, stmt);
         token = peek();
     }
 

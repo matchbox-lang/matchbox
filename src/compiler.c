@@ -13,15 +13,9 @@ static void expression();
 static void references();
 static AST* statements(AST* ast);
 
-static void write16(int16_t n)
+static void patch8(size_t position, int8_t n)
 {
-    pushByte(currentChunk, (n >> 8) & 0xFF);
-    pushByte(currentChunk, n & 0xFF);
-}
-
-static void write8(uint8_t n)
-{
-    pushByte(currentChunk, n);
+    setByteAt(currentChunk, position, n);
 }
 
 static void patch16(size_t position, int16_t n)
@@ -30,15 +24,21 @@ static void patch16(size_t position, int16_t n)
     setByteAt(currentChunk, position + 1, n & 0xFF);
 }
 
-static void patch8(size_t position, int8_t n)
+static void write8(uint8_t n)
 {
-    setByteAt(currentChunk, position, n);
+    pushByte(currentChunk, n);
+}
+
+static void write16(int16_t n)
+{
+    pushByte(currentChunk, (n >> 8) & 0xFF);
+    pushByte(currentChunk, n & 0xFF);
 }
 
 static void createFunctionReference(AST* ast, size_t position)
 {
     Reference ref = {ast, position};
-    pushReferenceArray(&functions, ref);
+    pushReference(&functions, ref);
 }
 
 static Reference getFunctionReference(StringObject* id)
@@ -58,7 +58,7 @@ static Reference getFunctionReference(StringObject* id)
     return ref;
 }
 
-static int getLocalPosition(AST* ast)
+static int getPosition(AST* ast)
 {
     if (ast->type == AST_PARAMETER) {
         return -(ast->param.position + 4);
@@ -77,9 +77,15 @@ static void op_syscall()
     write8(OP_SYSCALL);
 }
 
-static void op_ldc(uint8_t imm)
+static void op_ldg(uint8_t imm)
 {
-    write8(OP_LDC);
+    write8(OP_LDG);
+    write8(imm);
+}
+
+static void op_stg(uint8_t imm)
+{
+    write8(OP_STG);
     write8(imm);
 }
 
@@ -118,16 +124,19 @@ static void op_pop()
     write8(OP_POP);
 }
 
-static void op_inc(uint8_t imm)
+static void op_dup()
 {
-    write8(OP_INC);
-    write8(imm);
+    write8(OP_DUP);
 }
 
-static void op_dec(uint8_t imm)
+static void op_inc()
+{
+    write8(OP_INC);
+}
+
+static void op_dec()
 {
     write8(OP_DEC);
-    write8(imm);
 }
 
 static void op_add()
@@ -245,6 +254,28 @@ static void op_retv()
     write8(OP_RETV);
 }
 
+static void loadVariable(AST* ast)
+{
+    int position = getPosition(ast);
+
+    if (isTopLevel(ast->varDef.scope)) {
+        op_ldg(position);
+    } else {
+        op_ldl(position);
+    }
+}
+
+static void storeVariable(AST* ast)
+{
+    int position = getPosition(ast);
+
+    if (isTopLevel(ast->varDef.scope)) {
+        op_stg(position);
+    } else {
+        op_stl(position);
+    }
+}
+
 static void number(AST* ast)
 {
     op_push(ast->intVal);
@@ -286,46 +317,53 @@ static void not(AST* ast)
 static void negate(AST* ast)
 {
     expression(ast->prefix.expr);
-}
-
-static void preIncrement(AST* ast)
-{
-    AST* expr = ast->postfix.expr;
-    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
-    int position = getLocalPosition(symbol);
-
-    op_inc(position);
-    expression(expr);
+    op_neg();
 }
 
 static void preDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
-    int position = getLocalPosition(symbol);
 
-    op_dec(position);
     expression(expr);
+    op_dec();
+    op_dup();
+    storeVariable(symbol);
 }
 
-static void postIncrement(AST* ast)
+static void preIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
-    int position = getLocalPosition(symbol);
 
     expression(expr);
-    op_inc(position);
+    op_inc();
+    op_dup();
+    storeVariable(symbol);
 }
 
 static void postDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
     AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
-    int position = getLocalPosition(symbol);
+    int position = getPosition(symbol);
 
     expression(expr);
-    op_dec(position);
+    op_dup();
+    op_dec();
+    storeVariable(symbol);
+}
+
+static void postIncrement(AST* ast)
+{
+    AST* expr = ast->postfix.expr;
+    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
+    int position = getPosition(symbol);
+
+    expression(expr);
+    op_dup();
+    op_inc();
+    storeVariable(symbol);
 }
 
 static void postfix(AST* ast)
@@ -357,84 +395,76 @@ static void prefix(AST* ast)
 static void variable(AST* ast)
 {
     AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
 }
 
 static void additionAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
     expression(ast->assignment.expr);
     op_add();
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void subtractionAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
     expression(ast->assignment.expr);
     op_sub();
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void muliplicationAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
     expression(ast->assignment.expr);
     op_mul();
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void divisionAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
     expression(ast->assignment.expr);
     op_div();
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void remainderAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
     expression(ast->assignment.expr);
     op_rem();
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void exponentiationAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
-    op_ldl(position);
+    loadVariable(symbol);
     expression(ast->assignment.expr);
     op_pow();
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void simpleAssignment(AST* ast)
 {
     AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-    int position = getLocalPosition(symbol);
 
     expression(ast->assignment.expr);
-    op_stl(position);
+    storeVariable(symbol);
 }
 
 static void assignment(AST* ast)
@@ -467,7 +497,7 @@ static void functionCall(AST* ast)
 
     size_t position = countChunk(currentChunk);
     Reference ref = {ast, position};
-    pushReferenceArray(&currentScope->references, ref);
+    pushReference(&currentScope->references, ref);
     op_call(0);
 }
 
@@ -505,8 +535,7 @@ static size_t functionDefinition(AST* ast)
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
     size_t level = getLevel(body->compound.scope);
 
-    setMaxScopeLevel(currentChunk, level);
-    pushFunctionArray(&currentChunk->functions, func);
+    pushFunction(&currentChunk->functions, func);
     functionBody(body);
     createFunctionReference(ast, functionsIndex);
     currentScope = ast->funcDef.scope;
@@ -530,10 +559,8 @@ static void variableDefinition(AST* ast)
         return;
     }
 
-    int position = getLocalPosition(ast);
-
     expression(ast->varDef.expr);
-    op_stl(position);
+    storeVariable(ast);
 }
 
 static void references()
@@ -604,21 +631,14 @@ static AST* statements(AST* ast)
     return statement;
 }
 
-static void entry()
-{
-    Function func = {0, 0, 3};
-    pushFunctionArray(&currentChunk->functions, func);
-    op_call(0);
-}
-
 static void topLevelStatements(AST* ast)
 {
-    size_t count = countVector(&ast->compound.statements);
+    size_t localCount = getLocalCount(ast->compound.scope);
 
-    if (count) {
-        entry();
+    for (int i = 0; i < localCount; i++) {
+        pushValue(&currentChunk->globals, INT_VALUE(0));
     }
-    
+
     statements(ast);
     op_hlt();
     references();

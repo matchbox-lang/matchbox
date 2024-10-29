@@ -1,10 +1,14 @@
 #include "value.h"
 #include <stdlib.h>
 
+#include <stdio.h>
+
+#define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
+
 void initValueArray(ValueArray* array)
 {
-    array->capacity = ARRAY_INIT_CAPACITY;
-    array->data = malloc(array->capacity * sizeof(Value));
+    array->data = NULL;
+    array->capacity = 0;
     array->count = 0;
 }
 
@@ -18,16 +22,16 @@ size_t countValueArray(ValueArray* array)
     return array->count;
 }
 
-void resizeValueArray(ValueArray* array, size_t capacity)
+void reserveValueArray(ValueArray* array, size_t capacity)
 {
     array->data = realloc(array->data, sizeof(Value) * capacity);
     array->capacity = capacity;
 }
 
-void pushValueArray(ValueArray* array, Value value)
+void pushValue(ValueArray* array, Value value)
 {
-    if (array->capacity == array->count) {
-        resizeValueArray(array, array->capacity * 2);
+    if (array->count == array->capacity) {
+        reserveValueArray(array, GROW_CAPACITY(array->capacity));
     }
     
     array->data[array->count++] = value;

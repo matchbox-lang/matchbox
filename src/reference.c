@@ -1,10 +1,12 @@
 #include "reference.h"
 #include <stdlib.h>
 
+#define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
+
 void initReferenceArray(ReferenceArray* array)
 {
-    array->capacity = ARRAY_INIT_CAPACITY;
-    array->data = malloc(array->capacity * sizeof(Reference));
+    array->data = NULL;
+    array->capacity = 0;
     array->count = 0;
 }
 
@@ -18,16 +20,16 @@ size_t countReferenceArray(ReferenceArray* array)
     return array->count;
 }
 
-void resizeReferenceArray(ReferenceArray* array, size_t capacity)
+void reserveReferenceArray(ReferenceArray* array, size_t capacity)
 {
     array->data = realloc(array->data, sizeof(Reference) * capacity);
     array->capacity = capacity;
 }
 
-void pushReferenceArray(ReferenceArray* array, Reference ref)
+void pushReference(ReferenceArray* array, Reference ref)
 {
     if (array->capacity == array->count) {
-        resizeReferenceArray(array, array->capacity * 2);
+        reserveReferenceArray(array, GROW_CAPACITY(array->capacity));
     }
     
     array->data[array->count++] = ref;

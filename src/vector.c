@@ -1,10 +1,12 @@
 #include "vector.h"
 #include <stdlib.h>
 
+#define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
+
 void initVector(Vector* vector)
 {
-    vector->capacity = VECTOR_INIT_CAPACITY;
-    vector->data = malloc(vector->capacity * sizeof(void*));
+    vector->data = NULL;
+    vector->capacity = 0;
     vector->count = 0;
 }
 
@@ -18,22 +20,22 @@ size_t countVector(Vector* vector)
     return vector->count;
 }
 
-void resizeVector(Vector* vector, size_t capacity)
+void reserveVector(Vector* vector, size_t capacity)
 {
     vector->data = realloc(vector->data, sizeof(void*) * capacity);
     vector->capacity = capacity;
 }
 
-void pushVector(Vector* vector, void* item)
+void pushVectorItem(Vector* vector, void* item)
 {
     if (vector->capacity == vector->count) {
-        resizeVector(vector, vector->capacity * 2);
+        reserveVector(vector, GROW_CAPACITY(vector->capacity));
     }
     
     vector->data[vector->count++] = item;
 }
 
-void* popVector(Vector* vector)
+void* popVectorItem(Vector* vector)
 {
     if (vector->count > 0) {
         return vector->data[vector->count--];
@@ -44,11 +46,7 @@ void* popVector(Vector* vector)
 
 void* getVectorAt(Vector* vector, size_t index)
 {
-    if (index >= 0 && index < vector->count) {
-        return vector->data[index];
-    }
-
-    return NULL;
+    return vector->data[index];
 }
 
 void setVectorAt(Vector* vector, size_t index, void* item)

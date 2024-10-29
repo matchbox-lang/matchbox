@@ -1,10 +1,12 @@
 #include "function.h"
 #include <stdlib.h>
 
+#define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
+
 void initFunctionArray(FunctionArray* array)
 {
-    array->capacity = ARRAY_INIT_CAPACITY;
-    array->data = malloc(array->capacity * sizeof(Function));
+    array->data = NULL;
+    array->capacity = 0;
     array->count = 0;
 }
 
@@ -18,16 +20,16 @@ size_t countFunctionArray(FunctionArray* array)
     return array->count;
 }
 
-void resizeFunctionArray(FunctionArray* array, size_t capacity)
+void reserveFunctionArray(FunctionArray* array, size_t capacity)
 {
     array->data = realloc(array->data, sizeof(Function) * capacity);
     array->capacity = capacity;
 }
 
-void pushFunctionArray(FunctionArray* array, Function func)
+void pushFunction(FunctionArray* array, Function func)
 {
     if (array->capacity == array->count) {
-        resizeFunctionArray(array, array->capacity * 2);
+        reserveFunctionArray(array, GROW_CAPACITY(array->capacity));
     }
     
     array->data[array->count++] = func;

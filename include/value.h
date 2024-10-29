@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define ARRAY_INIT_CAPACITY 4
-
 #define BOOL_VALUE(value) ((Value){.boolVal = value})
 #define FLOAT_VALUE(value) ((Value){.floatVal = value})
 #define INT_VALUE(value) ((Value){.intVal = value})
@@ -34,8 +32,8 @@ typedef struct ValueArray
 void initValueArray(ValueArray* array);
 void freeValueArray(ValueArray* array);
 size_t countValueArray(ValueArray* array);
-void resizeValueArray(ValueArray* array, size_t capacity);
-void pushValueArray(ValueArray* array, Value value);
+void reserveValueArray(ValueArray* array, size_t capacity);
+void pushValue(ValueArray* array, Value value);
 Value getValueAt(ValueArray* array, size_t index);
 void setValueAt(ValueArray* array, size_t index, Value item);
 

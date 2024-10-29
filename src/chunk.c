@@ -1,21 +1,21 @@
 #include "chunk.h"
 #include <stdlib.h>
-#include <stdio.h>
+
+#define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
 
 void initChunk(Chunk* chunk)
 {
-    chunk->capacity = CHUNK_INIT_CAPACITY;
-    chunk->data = calloc(chunk->capacity, sizeof(uint8_t));
+    chunk->data = NULL;
+    chunk->capacity = 0;
     chunk->count = 0;
-    chunk->maxScopeLevel = 1;
 
     initFunctionArray(&chunk->functions);
-    initValueArray(&chunk->constants);
+    initValueArray(&chunk->globals);
 }
 
 void freeChunk(Chunk* chunk)
 {
-    freeValueArray(&chunk->constants);
+    freeValueArray(&chunk->globals);
     freeFunctionArray(&chunk->functions);
     free(chunk->data);
 }
@@ -25,19 +25,7 @@ size_t countChunk(Chunk* chunk)
     return chunk->count;
 }
 
-size_t getMaxScopeLevel(Chunk* chunk)
-{
-    return chunk->maxScopeLevel;
-}
-
-size_t setMaxScopeLevel(Chunk* chunk, size_t level)
-{
-    if (level > chunk->maxScopeLevel) {
-        chunk->maxScopeLevel = level;
-    }
-}
-
-void resizeChunk(Chunk* chunk, size_t capacity)
+void reserveChunk(Chunk* chunk, size_t capacity)
 {
     chunk->data = realloc(chunk->data, sizeof(uint8_t) * capacity);
     chunk->capacity = capacity;
@@ -46,7 +34,7 @@ void resizeChunk(Chunk* chunk, size_t capacity)
 void pushByte(Chunk* chunk, uint8_t byte)
 {
     if (chunk->capacity <= chunk->count) {
-        resizeChunk(chunk, chunk->capacity * 2);
+        reserveChunk(chunk, GROW_CAPACITY(chunk->capacity));
     }
 
     chunk->data[chunk->count] = byte;

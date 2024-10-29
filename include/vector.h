@@ -3,8 +3,6 @@
 
 #include <stddef.h>
 
-#define VECTOR_INIT_CAPACITY 4
-
 typedef struct Vector
 {
     void** data;
@@ -15,9 +13,9 @@ typedef struct Vector
 void initVector(Vector* vector);
 void freeVector(Vector* vector);
 size_t countVector(Vector* vector);
-void resizeVector(Vector* vector, size_t capacity);
-void pushVector(Vector* vector, void* item);
-void* popVector(Vector* vector);
+void reserveVector(Vector* vector, size_t capacity);
+void pushVectorItem(Vector* vector, void* item);
+void* popVectorItem(Vector* vector);
 void* getVectorAt(Vector* vector, size_t index);
 void setVectorAt(Vector* vector, size_t index, void* item);
 void* vectorBegin(Vector* vector);

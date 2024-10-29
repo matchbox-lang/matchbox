@@ -1,6 +1,5 @@
 #include "service.h"
 #include "lexer.h"
-#include <stdio.h>
 #include <string.h>
 
 static Service services[] = {

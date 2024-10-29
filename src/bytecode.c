@@ -11,7 +11,8 @@ static int printInstruction(int8_t c)
     switch (c) {
         case OP_HLT:        return printf("hlt\n");
         case OP_SYSCALL:    return printf("syscall\n");
-        case OP_LDC:        return printf("ldc\t%d\n", READ_INT8());
+        case OP_LDG:        return printf("ldg\t%d\n", READ_INT8());
+        case OP_STG:        return printf("stg\t%d\n", READ_INT8());
         case OP_LDL:        return printf("ldl\t%d\n", READ_INT8());
         case OP_LDL_0:      return printf("ldl_0\n");
         case OP_LDL_1:      return printf("ldl_1\n");
@@ -25,8 +26,9 @@ static int printInstruction(int8_t c)
         case OP_PUSH_1:     return printf("push_1\n");
         case OP_PUSH_2:     return printf("push_2\n");
         case OP_POP:        return printf("pop\n");
-        case OP_INC:        return printf("inc\t%d\n", READ_INT8());
-        case OP_DEC:        return printf("dec\t%d\n", READ_INT8());
+        case OP_DUP:        return printf("dup\n");
+        case OP_INC:        return printf("inc\n");
+        case OP_DEC:        return printf("dec\n");
         case OP_ADD:        return printf("add\n");
         case OP_SUB:        return printf("sub\n");
         case OP_MUL:        return printf("mul\n");

@@ -1,6 +1,5 @@
 #include "table.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next)

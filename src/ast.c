@@ -94,30 +94,55 @@ void freeAST(AST* ast)
     free(ast);
 }
 
-int getTypeId(AST* expr)
+int getTypeId(AST* ast)
 {
-    switch (expr->type) {
+    switch (ast->type) {
         case AST_BINARY:
-            return expr->binary.typeId;
+            return ast->binary.typeId;
         case AST_FUNCTION_CALL:
-            return getTypeId(expr->funcCall.symbol);
+            return getTypeId(ast->funcCall.symbol);
         case AST_FUNCTION_DEFINITION:
-            return expr->funcDef.typeId;
+            return ast->funcDef.typeId;
         case AST_PARAMETER:
-            return expr->param.typeId;
+            return ast->param.typeId;
         case AST_SYSCALL:
-            return expr->syscall.service->typeId;
+            return ast->syscall.service->typeId;
         case AST_VARIABLE:
-            return getTypeId(expr->var.symbol);
+            return getTypeId(ast->var.symbol);
         case AST_VARIABLE_DEFINITION:
-            return expr->varDef.typeId;
+            return ast->varDef.typeId;
         case AST_PREFIX:
-            return getTypeId(expr->prefix.expr);
+            return getTypeId(ast->prefix.expr);
         case AST_POSTFIX:
-            return getTypeId(expr->postfix.expr);
+            return getTypeId(ast->postfix.expr);
         case AST_INTEGER:
             return T_INT;
     }
 
     return -1;
+}
+
+bool isParameter(AST* ast)
+{
+    return ast->type == AST_PARAMETER;
+}
+
+bool isVariable(AST* ast)
+{
+    return ast->type == AST_VARIABLE;
+}
+
+bool isVariableDefinition(AST* ast)
+{
+    return ast->type == AST_VARIABLE_DEFINITION;
+}
+
+bool isVariableType(AST* ast)
+{
+    return isParameter(ast) || isVariableDefinition(ast);
+}
+
+bool isNone(AST* ast)
+{
+    return ast->type == AST_NONE;
 }

@@ -21,7 +21,6 @@ typedef enum ASTType
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
-    AST_NONE,
     AST_PARAMETER,
     AST_POSTFIX,
     AST_PREFIX,
@@ -29,7 +28,8 @@ typedef enum ASTType
     AST_STRING,
     AST_SYSCALL,
     AST_VARIABLE,
-    AST_VARIABLE_DEFINITION
+    AST_VARIABLE_DEFINITION,
+    AST_NONE
 } ASTType;
 
 typedef struct AST
@@ -120,6 +120,11 @@ typedef struct AST
 
 AST* createAST(TokenType type);
 void freeAST(AST* ast);
-int getTypeId(AST* expr);
+int getTypeId(AST* ast);
+bool isParameter(AST* ast);
+bool isVariable(AST* ast);
+bool isVariableDefinition(AST* ast);
+bool isVariableType(AST* ast);
+bool isNone(AST* ast);
 
 #endif

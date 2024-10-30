@@ -191,7 +191,6 @@ static bool isPrefixToken(TokenType type)
 
 static bool isPostfixToken(TokenType type)
 {
-
     switch (type) {
         case T_INCREMENT:
         case T_DECREMENT:
@@ -271,7 +270,7 @@ static AST* primary()
         consume(T_LPAREN);
         AST* ast = expression();
         
-        if (ast->type == AST_NONE) {
+        if (isNone(ast)) {
             tokenError();
         }
 
@@ -330,7 +329,7 @@ static AST* prefix()
 
 static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
 {
-    if (rightExpr->type == AST_NONE) {
+    if (isNone(rightExpr)) {
         tokenError();
     }
 
@@ -529,7 +528,7 @@ static AST* argument()
 {
     AST* expr = expression();
 
-    if (expr->type == AST_NONE) {
+    if (isNone(expr)) {
         tokenError();
     }
 
@@ -565,7 +564,7 @@ static AST* parameter()
 
 static void initialize(AST* ast)
 {
-    if (ast->type == AST_VARIABLE_DEFINITION) {
+    if (isVariableDefinition(ast)) {
         ast->varDef.initialized = true;
     }
 }
@@ -595,7 +594,8 @@ static AST* assignment()
     ast->assignment.operator = operator;
 
     AST* expr = expression();
-    if (expr->type == AST_NONE) {
+
+    if (isNone(expr)) {
         tokenError();
     }
 
@@ -682,8 +682,17 @@ static void parameters(Vector* params)
     consume(T_RPAREN);
 }
 
-static AST* systemCall(Service* service, Token token)
+static AST* systemCall(StringObject* id)
 {
+    Token token = prev();
+    Service* service = getServiceByName(id->chars);
+    
+    freeString(id);
+
+    if (!service) {
+        error(undefinedError, token);
+    }
+
     AST* ast = createAST(AST_SYSCALL);
     ast->syscall.opcode = service->opcode;
     ast->syscall.service = service;
@@ -698,14 +707,13 @@ static AST* functionCall()
 {
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    Service* service = getServiceByName(id->chars);
+    AST* symbol = getSymbol(parser.scope, id);
     
-    if (service) {
-        return systemCall(service, token);
+    if (!symbol) {
+        return systemCall(id);
     }
 
-    AST* symbol = getSymbol(parser.scope, id);
-    if (!symbol) {
+    if (!symbol || symbol->type != AST_FUNCTION_DEFINITION) {
         error(undefinedError, token);
     }
 
@@ -773,11 +781,11 @@ static AST* identifier()
         symbol = getLocalSymbol(parser.topLevel, id);
     }
 
-    if (!symbol) {
+    if (!symbol || !isVariableType(symbol)) {
         error(undefinedError, token);
     }
     
-    if (symbol->type == AST_VARIABLE_DEFINITION && !symbol->varDef.initialized) {
+    if (isVariableDefinition(symbol) && !symbol->varDef.initialized) {
         error(uninitializedError, token);
     }
 
@@ -793,7 +801,7 @@ static void variableExpression(AST* ast, Token token)
 {
     AST* expr = expression();
 
-    if (expr->type == AST_NONE) {
+    if (isNone(expr)) {
         tokenError();
     }
 

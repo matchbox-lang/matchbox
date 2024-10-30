@@ -60,7 +60,7 @@ static Reference getFunctionReference(StringObject* id)
 
 static int getPosition(AST* ast)
 {
-    if (ast->type == AST_PARAMETER) {
+    if (isParameter(ast)) {
         return -(ast->param.position + 4);
     }
     
@@ -542,7 +542,7 @@ static size_t functionDefinition(AST* ast)
 
 static void ret(AST* ast)
 {
-    if (ast->expr->type == AST_NONE) {
+    if (isNone(ast->expr)) {
         return op_ret();
     }
 
@@ -552,7 +552,7 @@ static void ret(AST* ast)
 
 static void variableDefinition(AST* ast)
 {
-    if (ast->varDef.expr->type == AST_NONE) {
+    if (isNone(ast->varDef.expr)) {
         return;
     }
 

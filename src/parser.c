@@ -13,6 +13,7 @@ typedef struct Parser
 {
     Token current;
     Token previous;
+    Scope* topLevel;
     Scope* scope;
 } Parser;
 
@@ -769,6 +770,10 @@ static AST* identifier()
     AST* symbol = getLocalSymbol(parser.scope, id);
 
     if (!symbol) {
+        symbol = getLocalSymbol(parser.topLevel, id);
+    }
+
+    if (!symbol) {
         error(undefinedError, token);
     }
     
@@ -894,6 +899,7 @@ AST* parse(char* source)
 {
     initLexer(source);
     parser.scope = createScope(NULL);
+    parser.topLevel = parser.scope;
     advance();
     
     return statements(T_EOF);

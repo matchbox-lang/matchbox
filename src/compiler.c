@@ -394,9 +394,7 @@ static void prefix(AST* ast)
 
 static void variable(AST* ast)
 {
-    AST *symbol = getLocalSymbol(ast->var.scope, ast->var.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->var.symbol);
 }
 
 static void additionAssignment(AST* ast)
@@ -533,7 +531,6 @@ static size_t functionDefinition(AST* ast)
     size_t position = countChunk(currentChunk);
     Function func = {paramCount, localCount, position};
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
-    size_t level = getLevel(body->compound.scope);
 
     pushFunction(&currentChunk->functions, func);
     functionBody(body);

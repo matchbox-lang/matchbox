@@ -10,9 +10,10 @@ func foo(y int)
     print(y)
 }
 
-func bar(x int)
+func bar(y int)
 {
     print(x)
+    print(y)
 }
 
 foo(x)

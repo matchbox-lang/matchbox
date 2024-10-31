@@ -72,9 +72,10 @@ static void op_hlt()
     write8(OP_HLT);
 }
 
-static void op_syscall()
+static void op_syscall(uint8_t imm)
 {
     write8(OP_SYSCALL);
+    write8(imm);
 }
 
 static void op_ldg(uint8_t imm)
@@ -502,8 +503,7 @@ static void functionCall(AST* ast)
 static void systemCall(AST* ast)
 {
     arguments(&ast->syscall.args);
-    op_push(ast->syscall.opcode);
-    op_syscall();
+    op_syscall(ast->syscall.opcode);
 }
 
 static void functionBody(AST* ast)

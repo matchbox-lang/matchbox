@@ -44,9 +44,9 @@ static void op_hlt()
 
 static void op_syscall()
 {
-    int32_t opcode = AS_INT(POP());
+    int8_t n = READ_UINT8();
 
-    vm.service[opcode]();
+    vm.service[n]();
 }
 
 static void op_ldg()
@@ -514,6 +514,7 @@ void interpret(char* source)
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
+    disassemble(&chunk);
     initVM();
     interpretChunk(&chunk);
     freeChunk(&chunk);

@@ -89,6 +89,28 @@ void freeAST(AST* ast)
     free(ast);
 }
 
+Scope* getScope(AST* ast)
+{
+    switch (ast->type) {
+        case AST_ASSIGNMENT:
+            return ast->assignment.scope;
+        case AST_COMPOUND:
+            return ast->compound.scope;
+        case AST_FUNCTION_CALL:
+            return ast->funcCall.scope;
+        case AST_FUNCTION_DEFINITION:
+            return ast->funcDef.scope;
+        case AST_PARAMETER:
+            return ast->param.scope;
+        case AST_VARIABLE:
+            return ast->var.scope;
+        case AST_VARIABLE_DEFINITION:
+            return ast->varDef.scope;
+    }
+
+    return NULL;
+}
+
 int getTypeId(AST* ast)
 {
     switch (ast->type) {
@@ -140,4 +162,20 @@ bool isVariableType(AST* ast)
 bool isNone(AST* ast)
 {
     return ast->type == AST_NONE;
+}
+
+bool isInitialized(AST* ast)
+{
+    if (ast->type == AST_VARIABLE_DEFINITION) {
+        return ast->varDef.initialized;
+    }
+
+    return ast->type == AST_PARAMETER;
+}
+
+void initialize(AST* ast)
+{
+    if (isVariableDefinition(ast)) {
+        ast->varDef.initialized = true;
+    }
 }

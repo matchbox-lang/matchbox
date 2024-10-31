@@ -12,6 +12,8 @@ func foo(y int)
 
 func bar(y int)
 {
+    x = 25
+    
     print(x)
     print(y)
 }

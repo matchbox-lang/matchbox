@@ -562,13 +562,6 @@ static AST* parameter()
     return ast;
 }
 
-static void initialize(AST* ast)
-{
-    if (isVariableDefinition(ast)) {
-        ast->varDef.initialized = true;
-    }
-}
-
 static AST* assignment()
 {
     consume(T_IDENTIFIER);
@@ -584,6 +577,10 @@ static AST* assignment()
 
     if (!symbol) {
         error(undefinedError, token);
+    }
+
+    if (parser.scope != getScope(symbol) && !isInitialized(symbol)) {
+        error(uninitializedError, token);
     }
 
     consume(operator.type);
@@ -787,7 +784,7 @@ static AST* identifier()
         error(undefinedError, token);
     }
     
-    if (isVariableDefinition(symbol) && !symbol->varDef.initialized) {
+    if (!isInitialized(symbol)) {
         error(uninitializedError, token);
     }
 

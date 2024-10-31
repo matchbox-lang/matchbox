@@ -118,11 +118,14 @@ typedef struct AST
 
 AST* createAST(TokenType type);
 void freeAST(AST* ast);
+Scope* getScope(AST* ast);
 int getTypeId(AST* ast);
 bool isParameter(AST* ast);
 bool isVariable(AST* ast);
 bool isVariableDefinition(AST* ast);
 bool isVariableType(AST* ast);
 bool isNone(AST* ast);
+bool isInitialized(AST* ast);
+void initialize(AST* ast);
 
 #endif

@@ -590,8 +590,8 @@ static AST* assignment()
 
     AST* ast = createAST(AST_ASSIGNMENT);
     ast->assignment.scope = parser.scope;
-    ast->assignment.id = id;
     ast->assignment.operator = operator;
+    ast->assignment.symbol = symbol;
 
     AST* expr = expression();
 
@@ -600,6 +600,8 @@ static AST* assignment()
     }
 
     initialize(symbol);
+    freeString(id);
+    
     ast->assignment.expr = expr;
 
     return ast;
@@ -719,11 +721,11 @@ static AST* functionCall()
 
     AST* ast = createAST(AST_FUNCTION_CALL);
     ast->funcCall.scope = parser.scope;
-    ast->funcCall.id = id;
     ast->funcCall.symbol = symbol;
     
     arguments(&ast->funcCall.args);
     compareFunctionSignature(ast, symbol, token);
+    freeString(id);
 
     return ast;
 }
@@ -789,9 +791,10 @@ static AST* identifier()
         error(uninitializedError, token);
     }
 
+    freeString(id);
+
     AST* ast = createAST(AST_VARIABLE);
     ast->var.scope = parser.scope;
-    ast->var.id = id;
     ast->var.symbol = symbol;
 
     return ast;

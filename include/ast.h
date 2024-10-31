@@ -39,9 +39,9 @@ typedef struct AST
     union {
         struct {
             Scope* scope;
-            StringObject* id;
             Token operator;
             AST* expr;
+            AST* symbol;
         } assignment;
 
         struct {
@@ -58,7 +58,6 @@ typedef struct AST
 
         struct {
             Scope* scope;
-            StringObject* id;
             Vector args;
             AST* symbol;
         } funcCall;
@@ -96,7 +95,6 @@ typedef struct AST
 
         struct {
             Scope* scope;
-            StringObject* id;
             AST* symbol;
         } var;
 

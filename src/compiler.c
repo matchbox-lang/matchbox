@@ -324,47 +324,43 @@ static void negate(AST* ast)
 static void preDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
 
     expression(expr);
     op_dec();
     op_dup();
-    storeVariable(symbol);
+    storeVariable(expr->var.symbol);
 }
 
 static void preIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
 
     expression(expr);
     op_inc();
     op_dup();
-    storeVariable(symbol);
+    storeVariable(expr->var.symbol);
 }
 
 static void postDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
-    int position = getPosition(symbol);
+    int position = getPosition(expr->var.symbol);
 
     expression(expr);
     op_dup();
     op_dec();
-    storeVariable(symbol);
+    storeVariable(expr->var.symbol);
 }
 
 static void postIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    AST* symbol = getLocalSymbol(expr->var.scope, expr->var.id);
-    int position = getPosition(symbol);
+    int position = getPosition(expr->var.symbol);
 
     expression(expr);
     op_dup();
     op_inc();
-    storeVariable(symbol);
+    storeVariable(expr->var.symbol);
 }
 
 static void postfix(AST* ast)
@@ -400,70 +396,56 @@ static void variable(AST* ast)
 
 static void additionAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->assignment.symbol);
     expression(ast->assignment.expr);
     op_add();
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void subtractionAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->assignment.symbol);
     expression(ast->assignment.expr);
     op_sub();
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void muliplicationAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->assignment.symbol);
     expression(ast->assignment.expr);
     op_mul();
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void divisionAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->assignment.symbol);
     expression(ast->assignment.expr);
     op_div();
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void remainderAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->assignment.symbol);
     expression(ast->assignment.expr);
     op_rem();
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void exponentiationAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
-    loadVariable(symbol);
+    loadVariable(ast->assignment.symbol);
     expression(ast->assignment.expr);
     op_pow();
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void simpleAssignment(AST* ast)
 {
-    AST* symbol = getLocalSymbol(ast->assignment.scope, ast->assignment.id);
-
     expression(ast->assignment.expr);
-    storeVariable(symbol);
+    storeVariable(ast->assignment.symbol);
 }
 
 static void assignment(AST* ast)
@@ -566,8 +548,7 @@ static void references()
 
     for (int i = 0; i < count; i++) {
         Reference ref = getReferenceAt(&currentScope->references, i);
-        AST* symbol = getSymbol(ref.ast->funcCall.scope, ref.ast->funcCall.id);
-        size_t position = functionDefinition(symbol);
+        size_t position = functionDefinition(ref.ast->funcCall.symbol);
 
         patch16(ref.position + 1, position);
     }
@@ -645,7 +626,6 @@ void compile(char* source, Chunk* chunk)
 {
     currentChunk = chunk;
     AST* ast = parse(source);
-
     initReferenceArray(&functions);
     topLevelStatements(ast);
     freeReferenceArray(&functions);

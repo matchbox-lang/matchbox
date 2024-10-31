@@ -514,7 +514,6 @@ void interpret(char* source)
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
-    disassemble(&chunk);
     initVM();
     interpretChunk(&chunk);
     freeChunk(&chunk);

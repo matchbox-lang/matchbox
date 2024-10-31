@@ -50,7 +50,6 @@ void freeAST(AST* ast)
 
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            freeString(ast->assignment.id);
             freeAST(ast->assignment.expr);
             break;
         case AST_BINARY:
@@ -62,7 +61,6 @@ void freeAST(AST* ast)
             freeASTVector(&ast->compound.statements);
             break;
         case AST_FUNCTION_CALL:
-            freeString(ast->funcCall.id);
             freeASTVector(&ast->funcCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
@@ -81,9 +79,6 @@ void freeAST(AST* ast)
             break;
         case AST_RETURN:
             freeAST(ast->expr);
-            break;
-        case AST_VARIABLE:
-            freeString(ast->var.id);
             break;
         case AST_VARIABLE_DEFINITION:
             freeString(ast->varDef.id);

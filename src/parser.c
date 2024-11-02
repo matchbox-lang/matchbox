@@ -22,6 +22,7 @@ Parser parser;
 static AST* expression();
 static AST* identifier();
 static AST* statements();
+static AST* variable();
 
 const char* assignmentError = "Error: Invalid assignment for variable %.*s on line %d:%d\n";
 const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
@@ -278,27 +279,26 @@ static AST* primary()
 
         return ast;
     }
+
+    if (token.type == T_IDENTIFIER) {
+        return identifier();
+    }
     
     return createAST(AST_NONE);
 }
 
 static AST* postfix()
 {
-    if (peek().type != T_IDENTIFIER) {
+    if (!isPostfixToken(peek().type)) {
         return primary();
     }
 
-    AST* expr = identifier();
     Token token = peek();
-
-    if (!isPostfixToken(token.type)) {
-        return expr;
-    }
-
     AST* ast = createAST(AST_POSTFIX);
     ast->postfix.operator = token;
+    ast->postfix.expr = variable();
+
     consume(token.type);
-    ast->postfix.expr = expr;
 
     return ast;
 }
@@ -312,6 +312,7 @@ static AST* prefix()
     Token token = peek();
     AST* ast = createAST(AST_PREFIX);
     ast->prefix.operator = token;
+
     consume(token.type);
 
     if (peek().type == T_IDENTIFIER) {
@@ -559,6 +560,33 @@ static AST* parameter()
     return ast;
 }
 
+static AST* variable()
+{
+    Token token = prev();
+    StringObject* id = copyString(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.scope, id);
+
+    if (!symbol) {
+        symbol = getLocalSymbol(parser.topLevel, id);
+    }
+
+    if (!symbol || !isVariableType(symbol)) {
+        error(undefinedError, token);
+    }
+    
+    if (!isInitialized(symbol)) {
+        error(uninitializedError, token);
+    }
+
+    freeString(id);
+
+    AST* ast = createAST(AST_VARIABLE);
+    ast->var.scope = parser.scope;
+    ast->var.symbol = symbol;
+
+    return ast;
+}
+
 static AST* assignment()
 {
     Token operator = peek();
@@ -761,6 +789,10 @@ static AST* identifier()
 {
     consume(T_IDENTIFIER);
     
+    if (isPostfixToken(peek().type)) {
+        return postfix();
+    }
+    
     if (isAssignmentToken(peek().type)) {
         return assignment();
     }
@@ -768,30 +800,8 @@ static AST* identifier()
     if (peek().type == T_LPAREN) {
         return functionCall();
     }
-    
-    Token token = prev();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
 
-    if (!symbol) {
-        symbol = getLocalSymbol(parser.topLevel, id);
-    }
-
-    if (!symbol || !isVariableType(symbol)) {
-        error(undefinedError, token);
-    }
-    
-    if (!isInitialized(symbol)) {
-        error(uninitializedError, token);
-    }
-
-    freeString(id);
-
-    AST* ast = createAST(AST_VARIABLE);
-    ast->var.scope = parser.scope;
-    ast->var.symbol = symbol;
-
-    return ast;
+    return variable();
 }
 
 static void variableExpression(AST* ast, Token token)

@@ -316,7 +316,8 @@ static AST* prefix()
     consume(token.type);
 
     if (peek().type == T_IDENTIFIER) {
-        ast->prefix.expr = identifier();
+        consume(T_IDENTIFIER);
+        ast->prefix.expr = variable();
     } else if (!isPostfixToken(token.type)) {
         ast->prefix.expr = prefix();
     } else {
@@ -509,7 +510,7 @@ static AST* expression()
     return booleanOR();
 }
 
-static AST* returnStmt()
+static AST* returnStatement()
 {
     if (parser.scope->level < 2) {
         tokenError();
@@ -788,6 +789,8 @@ static AST* functionDefinition()
 
 static AST* identifier()
 {
+    Token token = peek();
+
     consume(T_IDENTIFIER);
     
     if (isPostfixToken(peek().type)) {
@@ -882,7 +885,7 @@ static AST* statement()
         case T_IDENTIFIER:
             return identifier();
         case T_RETURN:
-            return returnStmt();
+            return returnStatement();
         default:
             return expression();
     }

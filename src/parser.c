@@ -317,12 +317,13 @@ static AST* prefix()
 
     if (peek().type == T_IDENTIFIER) {
         ast->prefix.expr = identifier();
-    } else {
+    } else if (!isPostfixToken(token.type)) {
         ast->prefix.expr = prefix();
+    } else {
+        tokenError();
     }
 
     return ast;
-
 }
 
 static AST* binary(AST* leftExpr, AST* rightExpr, Token token)

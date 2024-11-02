@@ -288,8 +288,6 @@ static AST* postfix()
         return primary();
     }
 
-    consume(T_IDENTIFIER);
-
     AST* expr = identifier();
     Token token = peek();
 
@@ -317,7 +315,6 @@ static AST* prefix()
     consume(token.type);
 
     if (peek().type == T_IDENTIFIER) {
-        consume(T_IDENTIFIER);
         ast->prefix.expr = identifier();
     } else {
         ast->prefix.expr = prefix();
@@ -564,12 +561,6 @@ static AST* parameter()
 
 static AST* assignment()
 {
-    consume(T_IDENTIFIER);
-
-    if (!isAssignmentToken(peek().type)) {
-        return identifier();
-    }
-
     Token operator = peek();
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
@@ -768,6 +759,12 @@ static AST* functionDefinition()
 
 static AST* identifier()
 {
+    consume(T_IDENTIFIER);
+    
+    if (isAssignmentToken(peek().type)) {
+        return assignment();
+    }
+
     if (peek().type == T_LPAREN) {
         return functionCall();
     }
@@ -872,7 +869,7 @@ static AST* statement()
         case T_FUNC:
             return functionDefinition();
         case T_IDENTIFIER:
-            return assignment();
+            return identifier();
         case T_RETURN:
             return returnStmt();
         default:

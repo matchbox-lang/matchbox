@@ -4,7 +4,6 @@
 #include "scope.h"
 #include "table.h"
 #include "service.h"
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -75,130 +74,6 @@ static void tokenError()
     }
 
     error(unexpectedTokenError, token);
-}
-
-static bool isBoolToken(TokenType type)
-{
-    switch (type) {
-        case T_TRUE:
-        case T_FALSE:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isAssignmentToken(TokenType type)
-{
-    switch (type) {
-        case T_EQUAL:
-        case T_PLUS_EQUAL:
-        case T_MINUS_EQUAL:
-        case T_STAR_EQUAL:
-        case T_SLASH_EQUAL:
-        case T_FLOOR_EQUAL:
-        case T_PERCENT_EQUAL:
-        case T_POWER_EQUAL:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isTypeToken(TokenType type)
-{
-    return type == T_INT;
-}
-
-static bool isComparisonToken(TokenType type)
-{
-    switch (type) {
-        case T_GREATER:
-        case T_GREATER_EQUAL:
-        case T_LESS:
-        case T_LESS_EQUAL:
-        case T_SPACESHIP:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isEqualityToken(TokenType type)
-{
-    switch (type) {
-        case T_EQUAL_EQUAL:
-        case T_NOT_EQUAL:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isBoolOperatorToken(TokenType type)
-{
-    return isComparisonToken(type) || isEqualityToken(type);
-}
-
-static bool isShiftToken(TokenType type)
-{
-    switch (type) {
-        case T_LSHIFT:
-        case T_RSHIFT:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isTermToken(TokenType type)
-{
-    switch (type) {
-        case T_PLUS:
-        case T_MINUS:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isFactorToken(TokenType type)
-{
-    switch (type) {
-        case T_STAR:
-        case T_SLASH:
-        case T_FLOOR:
-        case T_PERCENT:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isPrefixToken(TokenType type)
-{
-    switch (type) {
-        case T_INCREMENT:
-        case T_DECREMENT:
-        case T_PLUS:
-        case T_MINUS:
-        case T_EXCLAMATION:
-        case T_TILDE:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isPostfixToken(TokenType type)
-{
-    switch (type) {
-        case T_INCREMENT:
-        case T_DECREMENT:
-            return true;
-    }
-
-    return false;
 }
 
 static void consume(TokenType type)

@@ -93,17 +93,6 @@ static Token makeToken(TokenType type)
     return token;
 }
 
-void printToken(Token* token)
-{
-    printf("Token\n");
-    printf("{\n");
-    printf("\ttype: %d\n", token->type);
-    printf("\tvalue: ");
-    printf("%.*s\n", token->length, token->chars);
-    printf("\tline: %i:%i\n", token->line, token->column);
-    printf("}\n");
-}
-
 static bool isAlpha(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';

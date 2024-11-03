@@ -11,17 +11,6 @@ void printToken(Token* token)
     printf("}\n");
 }
 
-bool isBoolToken(TokenType type)
-{
-    switch (type) {
-        case T_TRUE:
-        case T_FALSE:
-            return true;
-    }
-
-    return false;
-}
-
 bool isAssignmentToken(TokenType type)
 {
     switch (type) {

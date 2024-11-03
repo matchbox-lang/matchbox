@@ -152,7 +152,6 @@ typedef struct Token
 } Token;
 
 void printToken(Token* token);
-bool isBoolToken(TokenType type);
 bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
 bool isComparisonToken(TokenType type);

@@ -98,65 +98,85 @@ static void consumeType()
     consume(token.type);
 }
 
+static AST* booleanLiteral(Token token)
+{
+    AST* ast = createAST(AST_BOOLEAN);
+    ast->boolVal = token.type == T_TRUE;
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* decimalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intVal = strtol(token.chars, NULL, 10);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* floatLiteral(Token token)
+{
+    AST* ast = createAST(AST_FLOAT);
+    ast->floatVal = strtod(token.chars, NULL);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* stringLiteral(Token token)
+{
+    AST* ast = createAST(AST_STRING);
+    ast->string = token;
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* characterLiteral(Token token)
+{
+    AST* ast = createAST(AST_CHARACTER);
+    ast->character = token;
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* groupExpression()
+{
+    consume(T_LPAREN);
+    AST* ast = expression();
+    
+    if (isNone(ast)) {
+        tokenError();
+    }
+
+    consume(T_RPAREN);
+
+    return ast;
+}
+
 static AST* primary()
 {
     Token token = peek();
-
-    if (isBoolToken(token.type)) {
-        AST* ast = createAST(AST_BOOLEAN);
-        ast->boolVal = token.type == T_TRUE;
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_DECIMAL_LITERAL) {
-        AST* ast = createAST(AST_INTEGER);
-        ast->intVal = strtol(token.chars, NULL, 10);
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_FLOAT_LITERAL) {
-        AST* ast = createAST(AST_FLOAT);
-        ast->floatVal = strtod(token.chars, NULL);
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_CHARACTER_LITERAL) {
-        AST* ast = createAST(AST_CHARACTER);
-        ast->character = token;
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_STRING_LITERAL) {
-        AST* ast = createAST(AST_STRING);
-        ast->string = token;
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_LPAREN) {
-        consume(T_LPAREN);
-        AST* ast = expression();
-        
-        if (isNone(ast)) {
-            tokenError();
-        }
-
-        consume(T_RPAREN);
-
-        return ast;
-    }
-
-    if (token.type == T_IDENTIFIER) {
-        return identifier();
+    
+    switch (token.type) {
+        case T_TRUE:
+        case T_FALSE:
+            return booleanLiteral(token);
+        case T_DECIMAL_LITERAL:
+            return decimalLiteral(token);
+        case T_FLOAT_LITERAL:
+            return floatLiteral(token);
+        case T_STRING_LITERAL:
+            return stringLiteral(token);
+        case T_CHARACTER_LITERAL:
+            return characterLiteral(token);
+        case T_LPAREN:
+            return groupExpression();
+        case T_IDENTIFIER:
+            return identifier();
     }
     
     return createAST(AST_NONE);

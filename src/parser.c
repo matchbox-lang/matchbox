@@ -773,19 +773,17 @@ static AST* statement()
     Token token = peek();
     
     switch (token.type) {
-        case T_UNKNOWN:
-            tokenError();
-        case T_VAR:
-            return variableDefinition();
         case T_FUNC:
             return functionDefinition();
-        case T_IDENTIFIER:
-            return identifier();
+        case T_VAR:
+            return variableDefinition();
         case T_RETURN:
             return returnStatement();
         default:
             return expression();
     }
+
+    tokenError();
 }
 
 static AST* statements(TokenType type)

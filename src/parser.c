@@ -464,42 +464,6 @@ static AST* variable()
     return ast;
 }
 
-static AST* assignment()
-{
-    Token operator = peek();
-    Token token = prev();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
-
-    if (!symbol) {
-        error(undefinedError, token);
-    }
-
-    if (parser.scope != getScope(symbol) && !isInitialized(symbol)) {
-        error(uninitializedError, token);
-    }
-
-    consume(operator.type);
-
-    AST* ast = createAST(AST_ASSIGNMENT);
-    ast->assignment.scope = parser.scope;
-    ast->assignment.operator = operator;
-    ast->assignment.symbol = symbol;
-
-    AST* expr = expression();
-
-    if (isNone(expr)) {
-        tokenError();
-    }
-
-    initialize(symbol);
-    freeString(id);
-    
-    ast->assignment.expr = expr;
-
-    return ast;
-}
-
 static void compareFunctionSignature(AST* caller, AST* callee, Token token)
 {
     size_t argCount = countVector(&caller->funcCall.args);
@@ -662,28 +626,7 @@ static AST* functionDefinition()
     return ast;
 }
 
-static AST* identifier()
-{
-    Token token = peek();
-
-    consume(T_IDENTIFIER);
-    
-    if (isPostfixToken(peek().type)) {
-        return postfix();
-    }
-    
-    if (isAssignmentToken(peek().type)) {
-        return assignment();
-    }
-
-    if (peek().type == T_LPAREN) {
-        return functionCall();
-    }
-
-    return variable();
-}
-
-static void variableExpression(AST* ast, Token token)
+static void assignmentExpression(AST* ast, Token token)
 {
     AST* expr = expression();
 
@@ -696,9 +639,46 @@ static void variableExpression(AST* ast, Token token)
         error(assignmentError, token);
     }
 
-    ast->varDef.expr = expr;
-    ast->varDef.typeId = typeId;
-    initialize(ast);
+    switch (ast->type) {
+        case AST_VARIABLE_DEFINITION:
+            ast->varDef.expr = expr;
+            ast->varDef.typeId = typeId;
+            return;
+        case AST_ASSIGNMENT:
+            ast->assignment.expr = expr;
+            return;
+    }
+
+    tokenError();
+}
+
+static AST* assignment()
+{
+    Token operator = peek();
+    Token token = prev();
+    StringObject* id = copyString(token.chars, token.length);
+    AST* symbol = getSymbol(parser.scope, id);
+
+    if (!symbol) {
+        error(undefinedError, token);
+    }
+
+    if (parser.scope != getScope(symbol) && !isInitialized(symbol)) {
+        error(uninitializedError, token);
+    }
+    
+    freeString(id);
+
+    AST* ast = createAST(AST_ASSIGNMENT);
+    ast->assignment.scope = parser.scope;
+    ast->assignment.operator = operator;
+    ast->assignment.symbol = symbol;
+
+    consume(operator.type);
+    assignmentExpression(ast, token);
+    initialize(symbol);
+
+    return ast;
 }
 
 static AST* variableDefinition()
@@ -734,7 +714,8 @@ static AST* variableDefinition()
         ast->varDef.expr = createAST(AST_NONE);
     } else {
         consume(T_EQUAL);
-        variableExpression(ast, token);
+        assignmentExpression(ast, token);
+        initialize(ast);
     }
 
     if (ast->varDef.typeId == T_NONE) {
@@ -744,6 +725,27 @@ static AST* variableDefinition()
     setLocalSymbol(parser.scope, id, ast, true);
 
     return ast;
+}
+
+static AST* identifier()
+{
+    Token token = peek();
+
+    consume(T_IDENTIFIER);
+    
+    if (isPostfixToken(peek().type)) {
+        return postfix();
+    }
+    
+    if (isAssignmentToken(peek().type)) {
+        return assignment();
+    }
+
+    if (peek().type == T_LPAREN) {
+        return functionCall();
+    }
+
+    return variable();
 }
 
 static AST* statement()

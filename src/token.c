@@ -103,7 +103,6 @@ bool isPrefixToken(TokenType type)
     switch (type) {
         case T_INCREMENT:
         case T_DECREMENT:
-        case T_PLUS:
         case T_MINUS:
         case T_EXCLAMATION:
         case T_TILDE:

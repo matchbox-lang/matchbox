@@ -11,8 +11,8 @@ typedef struct Position
     int column;
 } Position;
 
-Position current;
-Position start;
+static Position current;
+static Position start;
 
 const char* stringError = "Error: Missing terminating %c character on line %d:%d\n";
 const char* characterError = "Error: Missing terminating ' character on line %d:%d\n";

@@ -4,13 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct Position
-{
-    char* chars;
-    int line;
-    int column;
-} Position;
-
 static Position current;
 static Position start;
 

@@ -12,47 +12,41 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PUSH(value) (vm.sp[0] = value, vm.sp++)
-#define POP() ((--vm.sp)[0])
-#define READ_UINT16() (vm.pc += 2, (uint16_t)((vm.pc[-2] << 8) | vm.pc[-1]))
-#define READ_UINT8() (*(vm.pc++))
+#define PUSH(value) (sp[0] = value, sp++)
+#define POP() ((--sp)[0])
+#define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
+#define READ_UINT8() (*(pc++))
 
 typedef void (*service_t)();
 typedef void (*instruction_t)();
 
-typedef struct VM
-{
-    bool running;
-    instruction_t opcode[OP_SIZE];
-    service_t service[SERVICE_SIZE];
-    Value stack[STACK_SIZE];
-    Value* sp;
-    Value* fp;
-    uint8_t* bc;
-    uint8_t* pc;
-    uint8_t* ra;
-    FunctionArray* functions;
-    ValueArray* globals;
-} VM;
-
-VM vm;
+static bool running;
+static instruction_t opcode[OP_SIZE];
+static service_t service[SERVICE_SIZE];
+static Value stack[STACK_SIZE];
+static Value* sp;
+static Value* fp;
+static uint8_t* pc;
+static uint8_t* bc;
+static FunctionArray* functions;
+static ValueArray* globals;
 
 static void op_hlt()
 {
-    vm.running = false;
+    running = false;
 }
 
 static void op_syscall()
 {
     int8_t n = READ_UINT8();
 
-    vm.service[n]();
+    service[n]();
 }
 
 static void op_ldg()
 {
     int8_t n = READ_UINT8();
-    Value global = getValueAt(vm.globals, n);
+    Value global = getValueAt(globals, n);
 
     PUSH(global);
 }
@@ -61,7 +55,7 @@ static void op_stg()
 {
     int8_t n = READ_UINT8();
 
-    setValueAt(vm.globals, n, vm.sp[-1]);
+    setValueAt(globals, n, sp[-1]);
     POP();
 }
 
@@ -69,47 +63,47 @@ static void op_ldl()
 {
     int8_t n = READ_UINT8();
 
-    PUSH(vm.fp[n]);
+    PUSH(fp[n]);
 }
 
 static void op_ldl_0()
 {
-    PUSH(vm.fp[0]);
+    PUSH(fp[0]);
 }
 
 static void op_ldl_1()
 {
-    PUSH(vm.fp[1]);
+    PUSH(fp[1]);
 }
 
 static void op_ldl_2()
 {
-    PUSH(vm.fp[2]);
+    PUSH(fp[2]);
 }
 
 static void op_stl()
 {
     int8_t n = READ_UINT8();
 
-    vm.fp[n] = vm.sp[-1];
+    fp[n] = sp[-1];
     POP();
 }
 
 static void op_stl_0()
 {
-    vm.fp[0] = vm.sp[-1];
+    fp[0] = sp[-1];
     POP();
 }
 
 static void op_stl_1()
 {
-    vm.fp[1] = vm.sp[-1];
+    fp[1] = sp[-1];
     POP();
 }
 
 static void op_stl_2()
 {
-    vm.fp[2] = vm.sp[-1];
+    fp[2] = sp[-1];
     POP();
 }
 
@@ -142,17 +136,17 @@ static void op_pop()
 
 static void op_dup()
 {
-    PUSH(vm.sp[-1]);
+    PUSH(sp[-1]);
 }
 
 static void op_inc()
 {
-    AS_INT(vm.sp[-1])++;
+    AS_INT(sp[-1])++;
 }
 
 static void op_dec()
 {
-    AS_INT(vm.sp[-1])--;
+    AS_INT(sp[-1])--;
 }
 
 static void op_add()
@@ -229,9 +223,9 @@ static void op_bxor()
 
 static void op_bnot()
 {
-    int32_t n = AS_INT(vm.sp[-1]);
+    int32_t n = AS_INT(sp[-1]);
 
-    vm.sp[-1] = INT_VALUE(~n);
+    sp[-1] = INT_VALUE(~n);
 }
 
 static void op_lsl()
@@ -260,78 +254,79 @@ static void op_asr()
 
 static void op_not()
 {
-    int32_t n = AS_INT(vm.sp[-1]);
+    int32_t n = AS_INT(sp[-1]);
 
-    vm.sp[-1] = INT_VALUE(!n);
+    sp[-1] = INT_VALUE(!n);
 }
 
 static void op_neg()
 {
-    int32_t n = AS_INT(vm.sp[-1]);
+    int32_t n = AS_INT(sp[-1]);
 
-    vm.sp[-1] = INT_VALUE(-n);
+    sp[-1] = INT_VALUE(-n);
 }
 
 static void op_beq()
 {
     int16_t n = READ_UINT16();
-    Value b = vm.sp[-1];
-    Value a = vm.sp[-2];
+    Value b = sp[-1];
+    Value a = sp[-2];
 
     if (AS_INT(a) == AS_INT(b)) {
-        vm.pc += n;
+        pc += n;
     }
 }
 
 static void op_blt()
 {
     int16_t n = READ_UINT16();
-    Value b = vm.sp[-1];
-    Value a = vm.sp[-2];
+    Value b = sp[-1];
+    Value a = sp[-2];
 
     if (AS_INT(a) < AS_INT(b)) {
-        vm.pc += n;
+        pc += n;
     }
 }
 
 static void op_ble()
 {
     int16_t n = READ_UINT16();
-    Value b = vm.sp[-1];
-    Value a = vm.sp[-2];
+    Value b = sp[-1];
+    Value a = sp[-2];
 
     if (AS_INT(a) <= AS_INT(b)) {
-        vm.pc += n;
+        pc += n;
     }
 }
 
 static void op_jmp()
 {
-    vm.pc += READ_UINT16();
+    pc += READ_UINT16();
 }
 
 static void op_call()
 {
     int16_t n = READ_UINT16();
-    Function func = getFunctionAt(vm.functions, n);
-    Value sp = POINTER_VALUE(vm.sp - func.paramCount);
-    Value ra = POINTER_VALUE(vm.pc);
-    Value fp = POINTER_VALUE(vm.fp);
+    Function func = getFunctionAt(functions, n);
+    
+    Value pcx = POINTER_VALUE(pc);
+    Value fpx = POINTER_VALUE(fp);
+    Value spx = POINTER_VALUE(sp - func.paramCount);
 
-    PUSH(ra);
-    PUSH(sp);
-    PUSH(fp);
+    PUSH(pcx);
+    PUSH(spx);
+    PUSH(fpx);
 
-    vm.pc = &vm.bc[func.position];
-    vm.fp = vm.sp;
-    vm.sp += func.localCount;
+    pc = &bc[func.position];
+    fp = sp;
+    sp += func.localCount;
 }
 
 static void op_ret()
 {
-    vm.pc = AS_POINTER(vm.fp[-3]);
-    vm.sp = AS_POINTER(vm.fp[-2]);
-    vm.fp = AS_POINTER(vm.fp[-1]);
+    pc = AS_POINTER(fp[-3]);
+    sp = AS_POINTER(fp[-2]);
+    fp = AS_POINTER(fp[-1]);
 
     op_push_0();
 }
@@ -340,9 +335,9 @@ static void op_retv()
 {
     Value value = POP();
 
-    vm.pc = AS_POINTER(vm.fp[-3]);
-    vm.sp = AS_POINTER(vm.fp[-2]);
-    vm.fp = AS_POINTER(vm.fp[-1]);
+    pc = AS_POINTER(fp[-3]);
+    sp = AS_POINTER(fp[-2]);
+    fp = AS_POINTER(fp[-1]);
 
     PUSH(value);
 }
@@ -410,65 +405,65 @@ static void sys_byteorder()
 
 static void initInstructions()
 {
-    vm.opcode[OP_HLT] = op_hlt;
-    vm.opcode[OP_SYSCALL] = op_syscall;
-    vm.opcode[OP_LDG] = op_ldg;
-    vm.opcode[OP_STG] = op_stg;
-    vm.opcode[OP_LDL] = op_ldl;
-    vm.opcode[OP_LDL_0] = op_ldl_0;
-    vm.opcode[OP_LDL_1] = op_ldl_1;
-    vm.opcode[OP_LDL_2] = op_ldl_2;
-    vm.opcode[OP_STL] = op_stl;
-    vm.opcode[OP_STL_0] = op_stl_0;
-    vm.opcode[OP_STL_1] = op_stl_1;
-    vm.opcode[OP_STL_2] = op_stl_2;
-    vm.opcode[OP_PUSH] = op_push;
-    vm.opcode[OP_PUSH_0] = op_push_0;
-    vm.opcode[OP_PUSH_1] = op_push_1;
-    vm.opcode[OP_PUSH_2] = op_push_2;
-    vm.opcode[OP_POP] = op_pop;
-    vm.opcode[OP_DUP] = op_dup;
-    vm.opcode[OP_ADD] = op_add;
-    vm.opcode[OP_SUB] = op_sub;
-    vm.opcode[OP_MUL] = op_mul;
-    vm.opcode[OP_DIV] = op_div;
-    vm.opcode[OP_REM] = op_rem;
-    vm.opcode[OP_POW] = op_pow;
-    vm.opcode[OP_BAND] = op_band;
-    vm.opcode[OP_BOR] = op_bor;
-    vm.opcode[OP_BXOR] = op_bxor;
-    vm.opcode[OP_BNOT] = op_bnot;
-    vm.opcode[OP_LSL] = op_lsl;
-    vm.opcode[OP_LSR] = op_lsr;
-    vm.opcode[OP_ASR] = op_asr;
-    vm.opcode[OP_NOT] = op_not;
-    vm.opcode[OP_NEG] = op_neg;
-    vm.opcode[OP_INC] = op_inc;
-    vm.opcode[OP_DEC] = op_dec;
-    vm.opcode[OP_BEQ] = op_beq;
-    vm.opcode[OP_BLT] = op_blt;
-    vm.opcode[OP_BLE] = op_ble;
-    vm.opcode[OP_JMP] = op_jmp;
-    vm.opcode[OP_CALL] = op_call;
-    vm.opcode[OP_RET] = op_ret;
-    vm.opcode[OP_RETV] = op_retv;
+    opcode[OP_HLT] = op_hlt;
+    opcode[OP_SYSCALL] = op_syscall;
+    opcode[OP_LDG] = op_ldg;
+    opcode[OP_STG] = op_stg;
+    opcode[OP_LDL] = op_ldl;
+    opcode[OP_LDL_0] = op_ldl_0;
+    opcode[OP_LDL_1] = op_ldl_1;
+    opcode[OP_LDL_2] = op_ldl_2;
+    opcode[OP_STL] = op_stl;
+    opcode[OP_STL_0] = op_stl_0;
+    opcode[OP_STL_1] = op_stl_1;
+    opcode[OP_STL_2] = op_stl_2;
+    opcode[OP_PUSH] = op_push;
+    opcode[OP_PUSH_0] = op_push_0;
+    opcode[OP_PUSH_1] = op_push_1;
+    opcode[OP_PUSH_2] = op_push_2;
+    opcode[OP_POP] = op_pop;
+    opcode[OP_DUP] = op_dup;
+    opcode[OP_ADD] = op_add;
+    opcode[OP_SUB] = op_sub;
+    opcode[OP_MUL] = op_mul;
+    opcode[OP_DIV] = op_div;
+    opcode[OP_REM] = op_rem;
+    opcode[OP_POW] = op_pow;
+    opcode[OP_BAND] = op_band;
+    opcode[OP_BOR] = op_bor;
+    opcode[OP_BXOR] = op_bxor;
+    opcode[OP_BNOT] = op_bnot;
+    opcode[OP_LSL] = op_lsl;
+    opcode[OP_LSR] = op_lsr;
+    opcode[OP_ASR] = op_asr;
+    opcode[OP_NOT] = op_not;
+    opcode[OP_NEG] = op_neg;
+    opcode[OP_INC] = op_inc;
+    opcode[OP_DEC] = op_dec;
+    opcode[OP_BEQ] = op_beq;
+    opcode[OP_BLT] = op_blt;
+    opcode[OP_BLE] = op_ble;
+    opcode[OP_JMP] = op_jmp;
+    opcode[OP_CALL] = op_call;
+    opcode[OP_RET] = op_ret;
+    opcode[OP_RETV] = op_retv;
 }
 
 static void initServices()
 {
-    vm.service[SYS_EXIT] = sys_exit;
-    vm.service[SYS_PRINT] = sys_print;
-    vm.service[SYS_CLAMP] = sys_clamp;
-    vm.service[SYS_ABS] = sys_abs;
-    vm.service[SYS_MIN] = sys_min;
-    vm.service[SYS_MAX] = sys_max;
-    vm.service[SYS_BYTEORDER] = sys_byteorder;
+    service[SYS_EXIT] = sys_exit;
+    service[SYS_PRINT] = sys_print;
+    service[SYS_CLAMP] = sys_clamp;
+    service[SYS_ABS] = sys_abs;
+    service[SYS_MIN] = sys_min;
+    service[SYS_MAX] = sys_max;
+    service[SYS_BYTEORDER] = sys_byteorder;
 }
 
 static void resetStack()
 {
-    vm.sp = vm.stack;
-    vm.fp = vm.stack;
+    sp = stack;
+    fp = stack;
 }
 
 void initVM()
@@ -480,21 +475,21 @@ void initVM()
 
 static void run()
 {
-    vm.running = true;
+    running = true;
 
-    while (vm.running) {
+    while (running) {
         uint8_t c = READ_UINT8();
 
-        vm.opcode[c]();
+        opcode[c]();
     }
 }
 
 static void interpretChunk(Chunk* chunk)
 {
-    vm.bc = chunk->data;
-    vm.pc = chunk->data;
-    vm.functions = &chunk->functions;
-    vm.globals = &chunk->globals;
+    bc = chunk->data;
+    pc = chunk->data;
+    functions = &chunk->functions;
+    globals = &chunk->globals;
 
     run();
 }
@@ -502,8 +497,8 @@ static void interpretChunk(Chunk* chunk)
 void inspectStack()
 {
     for (int i = 0; i < STACK_SIZE; i++) {
-        char* arrow = &vm.stack[i] == vm.sp ? " <-" : "";
-        int n = AS_INT(vm.stack[i]);
+        char* arrow = &stack[i] == sp ? " <-" : "";
+        int n = AS_INT(stack[i]);
 
         printf("%d: %d%s\n", i, n, arrow);
     }

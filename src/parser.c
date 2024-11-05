@@ -8,20 +8,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-typedef struct Parser
-{
-    Token current;
-    Token previous;
-    Scope* topLevel;
-    Scope* scope;
-} Parser;
-
-Parser parser;
-
 static AST* expression();
 static AST* identifier();
 static AST* statements();
 static AST* variable();
+
+static Token currentToken;
+static Token prevToken;
+static Scope* currentScope;
+static Scope* topLevel;
 
 const char* assignmentError = "Error: Invalid assignment for variable %.*s on line %d:%d\n";
 const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
@@ -37,18 +32,18 @@ const char* uninitializedError = "Error: %.*s is uninitialized on line %d:%d\n";
 
 static void advance()
 {
-    parser.previous = parser.current;
-    parser.current = scanToken();
+    prevToken = currentToken;
+    currentToken = scanToken();
 }
 
 static Token peek()
 {
-    return parser.current;
+    return currentToken;
 }
 
 static Token prev()
 {
-    return parser.previous;
+    return prevToken;
 }
 
 static void error(const char* message, Token token)
@@ -67,13 +62,11 @@ static void lineError(const char* message, Token token)
 
 static void tokenError()
 {
-    Token token = peek();
-
-    if (token.type == T_EOF) {
-        lineError(unexpectedLastTokenError, prev());
+    if (currentToken.type == T_EOF) {
+        lineError(unexpectedLastTokenError, prevToken);
     }
 
-    error(unexpectedTokenError, token);
+    error(unexpectedTokenError, currentToken);
 }
 
 static void consume(TokenType type)
@@ -407,7 +400,7 @@ static AST* expression()
 
 static AST* returnStatement()
 {
-    if (parser.scope->level < 2) {
+    if (currentScope->level < 2) {
         tokenError();
     }
 
@@ -434,7 +427,7 @@ static AST* parameter()
 {
     Token token = peek();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
+    AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
         error(redefinitionError, token);
@@ -443,7 +436,7 @@ static AST* parameter()
     consume(T_IDENTIFIER);
 
     AST* ast = createAST(AST_PARAMETER);
-    ast->param.scope = parser.scope;
+    ast->param.scope = currentScope;
     ast->param.id = id;
     ast->param.typeId = T_INT;
 
@@ -452,7 +445,7 @@ static AST* parameter()
         consumeType();
     }
 
-    setLocalSymbol(parser.scope, id, ast, false);
+    setLocalSymbol(currentScope, id, ast, false);
 
     return ast;
 }
@@ -461,10 +454,10 @@ static AST* variable()
 {
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
+    AST* symbol = getLocalSymbol(currentScope, id);
 
     if (!symbol) {
-        symbol = getLocalSymbol(parser.topLevel, id);
+        symbol = getLocalSymbol(topLevel, id);
     }
 
     if (!symbol || !isVariableType(symbol)) {
@@ -478,7 +471,7 @@ static AST* variable()
     freeString(id);
 
     AST* ast = createAST(AST_VARIABLE);
-    ast->var.scope = parser.scope;
+    ast->var.scope = currentScope;
     ast->var.symbol = symbol;
 
     return ast;
@@ -586,7 +579,7 @@ static AST* functionCall()
 {
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
+    AST* symbol = getSymbol(currentScope, id);
     
     if (!symbol) {
         return systemCall(id);
@@ -597,7 +590,7 @@ static AST* functionCall()
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->funcCall.scope = parser.scope;
+    ast->funcCall.scope = currentScope;
     ast->funcCall.symbol = symbol;
     
     arguments(&ast->funcCall.args);
@@ -613,7 +606,7 @@ static AST* functionDefinition()
 
     Token token = peek();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
+    AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
         error(redefinitionError, token);
@@ -624,12 +617,12 @@ static AST* functionDefinition()
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
-    ast->funcDef.scope = parser.scope;
+    ast->funcDef.scope = currentScope;
     ast->funcDef.id = id;
     ast->funcDef.typeId = T_INT;
 
     consume(T_IDENTIFIER);
-    parser.scope = createScope(parser.scope);
+    currentScope = createScope(currentScope);
     parameters(&ast->funcDef.params);
 
     if (isTypeToken(peek().type)) {
@@ -640,8 +633,8 @@ static AST* functionDefinition()
     consume(T_LBRACE);
     ast->funcDef.body = statements(T_RBRACE);
     consume(T_RBRACE);
-    parser.scope = parser.scope->parent;
-    setLocalSymbol(parser.scope, id, ast, false);
+    currentScope = currentScope->parent;
+    setLocalSymbol(currentScope, id, ast, false);
 
     return ast;
 }
@@ -677,20 +670,20 @@ static AST* assignment()
     Token operator = peek();
     Token token = prev();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
+    AST* symbol = getSymbol(currentScope, id);
 
     if (!symbol) {
         error(undefinedError, token);
     }
 
-    if (parser.scope != getScope(symbol) && !isInitialized(symbol)) {
+    if (currentScope != getScope(symbol) && !isInitialized(symbol)) {
         error(uninitializedError, token);
     }
     
     freeString(id);
 
     AST* ast = createAST(AST_ASSIGNMENT);
-    ast->assignment.scope = parser.scope;
+    ast->assignment.scope = currentScope;
     ast->assignment.operator = operator;
     ast->assignment.symbol = symbol;
 
@@ -707,7 +700,7 @@ static AST* variableDefinition()
 
     Token token = peek();
     StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
+    AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
         error(redefinitionError, token);
@@ -720,10 +713,10 @@ static AST* variableDefinition()
     consume(T_IDENTIFIER);
 
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->varDef.scope = parser.scope;
+    ast->varDef.scope = currentScope;
     ast->varDef.id = id;
     ast->varDef.typeId = T_INT;
-    ast->varDef.position = getLocalCount(parser.scope);
+    ast->varDef.position = getLocalCount(currentScope);
 
     if (isTypeToken(peek().type)) {
         ast->varDef.typeId = peek().type;
@@ -742,7 +735,7 @@ static AST* variableDefinition()
         error(invalidTypeError, token);
     }
 
-    setLocalSymbol(parser.scope, id, ast, true);
+    setLocalSymbol(currentScope, id, ast, true);
 
     return ast;
 }
@@ -791,7 +784,7 @@ static AST* statements(TokenType type)
     Token token = peek();
     AST* ast = createAST(AST_COMPOUND);
 
-    ast->compound.scope = parser.scope;
+    ast->compound.scope = currentScope;
 
     while (token.type != type) {
         AST* stmt = statement();
@@ -812,8 +805,8 @@ static AST* statements(TokenType type)
 AST* parse(char* source)
 {
     initLexer(source);
-    parser.scope = createScope(NULL);
-    parser.topLevel = parser.scope;
+    currentScope = createScope(NULL);
+    topLevel = currentScope;
     advance();
     
     return statements(T_EOF);

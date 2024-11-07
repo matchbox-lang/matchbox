@@ -19,31 +19,21 @@ static Scope* currentScope;
 static Scope* topLevel;
 
 const char* assignmentError = "Error: Invalid assignment for variable %.*s on line %d:%d\n";
+const char* identifierError = "Error: Expected identifier on line %d:%d\n";
 const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
 const char* invalidOperandError = "Error: Invalid operand to unary %.*s on line %d:%d\n";
 const char* invalidOperandsError = "Error: Invalid operands to binary %.*s on line %d:%d\n";
 const char* invalidTypeError = "Error: Invalid type for variable %.*s on line %d:%d\n";
-const char* identifierError = "Error: Expected identifier on line %d:%d\n";
 const char* redefinitionError = "Error: Redefinition of %.*s on line %d:%d\n";
 const char* undefinedError = "Error: %.*s is undefined on line %d:%d\n";
-const char* unexpectedTokenError = "Error: Unexpected %.*s on line %d:%d\n";
 const char* unexpectedLastTokenError = "Error: Unexpected end of input on line %d:%d\n";
+const char* unexpectedTokenError = "Error: Unexpected %.*s on line %d:%d\n";
 const char* uninitializedError = "Error: %.*s is uninitialized on line %d:%d\n";
 
 static void advance()
 {
     prevToken = currentToken;
     currentToken = scanToken();
-}
-
-static Token peek()
-{
-    return currentToken;
-}
-
-static Token prev()
-{
-    return prevToken;
 }
 
 static void error(const char* message, Token token)
@@ -71,9 +61,7 @@ static void tokenError()
 
 static void consume(TokenType type)
 {
-    Token token = peek();
-
-    if (token.type != type) {
+    if (currentToken.type != type) {
         tokenError();
     }
     
@@ -82,13 +70,11 @@ static void consume(TokenType type)
 
 static void consumeType()
 {
-    Token token = peek();
-
-    if (!isTypeToken(token.type)) {
+    if (!isTypeToken(currentToken.type)) {
         tokenError();
     }
 
-    consume(token.type);
+    consume(currentToken.type);
 }
 
 static AST* booleanLiteral(Token token)
@@ -152,20 +138,18 @@ static AST* groupExpression()
 
 static AST* primary()
 {
-    Token token = peek();
-    
-    switch (token.type) {
+    switch (currentToken.type) {
         case T_TRUE:
         case T_FALSE:
-            return booleanLiteral(token);
+            return booleanLiteral(currentToken);
         case T_DECIMAL_LITERAL:
-            return decimalLiteral(token);
+            return decimalLiteral(currentToken);
         case T_FLOAT_LITERAL:
-            return floatLiteral(token);
+            return floatLiteral(currentToken);
         case T_STRING_LITERAL:
-            return stringLiteral(token);
+            return stringLiteral(currentToken);
         case T_CHARACTER_LITERAL:
-            return characterLiteral(token);
+            return characterLiteral(currentToken);
         case T_LPAREN:
             return groupExpression();
         case T_IDENTIFIER:
@@ -177,11 +161,11 @@ static AST* primary()
 
 static AST* postfix()
 {
-    if (!isPostfixToken(peek().type)) {
+    if (!isPostfixToken(currentToken.type)) {
         return primary();
     }
 
-    Token token = peek();
+    Token token = currentToken;
     AST* ast = createAST(AST_POSTFIX);
     ast->postfix.operator = token;
     ast->postfix.expr = variable();
@@ -193,17 +177,17 @@ static AST* postfix()
 
 static AST* prefix()
 {
-    if (!isPrefixToken(peek().type)) {
+    if (!isPrefixToken(currentToken.type)) {
         return postfix();
     }
 
-    Token token = peek();
+    Token token = currentToken;
     AST* ast = createAST(AST_PREFIX);
     ast->prefix.operator = token;
 
     consume(token.type);
 
-    if (peek().type == T_IDENTIFIER) {
+    if (currentToken.type == T_IDENTIFIER) {
         consume(T_IDENTIFIER);
         ast->prefix.expr = variable();
     } else if (!isPostfixToken(token.type)) {
@@ -242,12 +226,12 @@ static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
 static AST* exponent()
 {
     AST* expr = prefix();
-    Token token = peek();
+    Token token = currentToken;
 
     while (token.type == T_POWER) {
         consume(token.type);
         expr = binary(expr, prefix(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -256,12 +240,12 @@ static AST* exponent()
 static AST* factor()
 {
     AST* expr = exponent();
-    Token token = peek();
+    Token token = currentToken;
 
     while (isFactorToken(token.type)) {
         consume(token.type);
         expr = binary(expr, exponent(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -270,12 +254,12 @@ static AST* factor()
 static AST* term()
 {
     AST* expr = factor();
-    Token token = peek();
+    Token token = currentToken;
 
     while (isTermToken(token.type)) {
         consume(token.type);
         expr = binary(expr, factor(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -284,12 +268,12 @@ static AST* term()
 static AST* shift()
 {
     AST* expr = term();
-    Token token = peek();
+    Token token = currentToken;
 
     while (isShiftToken(token.type)) {
         consume(token.type);
         expr = binary(expr, term(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -298,12 +282,12 @@ static AST* shift()
 static AST* comparison()
 {
     AST* expr = shift();
-    Token token = peek();
+    Token token = currentToken;
 
     while (isComparisonToken(token.type)) {
         consume(token.type);
         expr = binary(expr, shift(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -312,12 +296,12 @@ static AST* comparison()
 static AST* equality()
 {
     AST* expr = comparison();
-    Token token = peek();
+    Token token = currentToken;
 
     while (isEqualityToken(token.type)) {
         consume(token.type);
         expr = binary(expr, comparison(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -326,12 +310,12 @@ static AST* equality()
 static AST* bitwiseAND()
 {
     AST* expr = equality();
-    Token token = peek();
+    Token token = currentToken;
 
     while (token.type == T_AMPERSAND) {
         consume(token.type);
         expr = binary(expr, equality(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -340,12 +324,12 @@ static AST* bitwiseAND()
 static AST* bitwiseXOR()
 {
     AST* expr = bitwiseAND();
-    Token token = peek();
+    Token token = currentToken;
 
     while (token.type == T_CIRCUMFLEX) {
         consume(token.type);
         expr = binary(expr, bitwiseAND(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -354,12 +338,12 @@ static AST* bitwiseXOR()
 static AST* bitwiseOR()
 {
     AST* expr = bitwiseXOR();
-    Token token = peek();
+    Token token = currentToken;
 
     while (token.type == T_PIPE) {
         consume(token.type);
         expr = binary(expr, bitwiseXOR(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -368,12 +352,12 @@ static AST* bitwiseOR()
 static AST* booleanAND()
 {
     AST* expr = bitwiseOR();
-    Token token = peek();
+    Token token = currentToken;
 
     while (token.type == T_BOOLEAN_AND) {
         consume(token.type);
         expr = binary(expr, bitwiseOR(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -382,12 +366,12 @@ static AST* booleanAND()
 static AST* booleanOR()
 {
     AST* expr = booleanAND();
-    Token token = peek();
+    Token token = currentToken;
 
     while (token.type == T_BOOLEAN_OR) {
         consume(token.type);
         expr = binary(expr, booleanAND(), token);
-        token = peek();
+        token = currentToken;
     }
 
     return expr;
@@ -425,7 +409,7 @@ static AST* argument()
 
 static AST* parameter()
 {
-    Token token = peek();
+    Token token = currentToken;
     StringObject* id = copyString(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
@@ -440,8 +424,8 @@ static AST* parameter()
     ast->param.id = id;
     ast->param.typeId = T_INT;
 
-    if (isTypeToken(peek().type)) {
-        ast->param.typeId = peek().type;
+    if (isTypeToken(currentToken.type)) {
+        ast->param.typeId = currentToken.type;
         consumeType();
     }
 
@@ -452,7 +436,7 @@ static AST* parameter()
 
 static AST* variable()
 {
-    Token token = prev();
+    Token token = prevToken;
     StringObject* id = copyString(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
@@ -519,11 +503,11 @@ static void arguments(Vector* args)
 {
     consume(T_LPAREN);
 
-    while (peek().type != T_RPAREN) {
+    while (currentToken.type != T_RPAREN) {
         AST* expr = argument();
         pushVectorItem(args, expr);
 
-        if (peek().type != T_COMMA) {
+        if (currentToken.type != T_COMMA) {
             break;
         }
         
@@ -539,12 +523,12 @@ static void parameters(Vector* params)
 
     int paramCount = 0;
 
-    while (peek().type != T_RPAREN) {
+    while (currentToken.type != T_RPAREN) {
         AST* expr = parameter();
         expr->param.position = paramCount++;
         pushVectorItem(params, expr);
 
-        if (peek().type != T_COMMA) {
+        if (currentToken.type != T_COMMA) {
             break;
         }
         
@@ -556,7 +540,7 @@ static void parameters(Vector* params)
 
 static AST* systemCall(StringObject* id)
 {
-    Token token = prev();
+    Token token = prevToken;
     Service* service = getServiceByName(id->chars);
     
     freeString(id);
@@ -577,7 +561,7 @@ static AST* systemCall(StringObject* id)
 
 static AST* functionCall()
 {
-    Token token = prev();
+    Token token = prevToken;
     StringObject* id = copyString(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
     
@@ -604,7 +588,7 @@ static AST* functionDefinition()
 {
     consume(T_FUNC);
 
-    Token token = peek();
+    Token token = currentToken;
     StringObject* id = copyString(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
@@ -612,8 +596,8 @@ static AST* functionDefinition()
         error(redefinitionError, token);
     }
 
-    if (peek().type != T_IDENTIFIER) {
-        lineError(identifierError, prev());
+    if (currentToken.type != T_IDENTIFIER) {
+        lineError(identifierError, prevToken);
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
@@ -625,8 +609,8 @@ static AST* functionDefinition()
     currentScope = createScope(currentScope);
     parameters(&ast->funcDef.params);
 
-    if (isTypeToken(peek().type)) {
-        ast->funcDef.typeId = peek().type;
+    if (isTypeToken(currentToken.type)) {
+        ast->funcDef.typeId = currentToken.type;
         consumeType();
     }
 
@@ -667,8 +651,8 @@ static void assignmentExpression(AST* ast, Token token)
 
 static AST* assignment()
 {
-    Token operator = peek();
-    Token token = prev();
+    Token operator = currentToken;
+    Token token = prevToken;
     StringObject* id = copyString(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
 
@@ -698,7 +682,7 @@ static AST* variableDefinition()
 {
     consume(T_VAR);
 
-    Token token = peek();
+    Token token = currentToken;
     StringObject* id = copyString(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
@@ -706,8 +690,8 @@ static AST* variableDefinition()
         error(redefinitionError, token);
     }
 
-    if (peek().type != T_IDENTIFIER) {
-        lineError(identifierError, prev());
+    if (currentToken.type != T_IDENTIFIER) {
+        lineError(identifierError, prevToken);
     }
 
     consume(T_IDENTIFIER);
@@ -718,12 +702,12 @@ static AST* variableDefinition()
     ast->varDef.typeId = T_INT;
     ast->varDef.position = getLocalCount(currentScope);
 
-    if (isTypeToken(peek().type)) {
-        ast->varDef.typeId = peek().type;
+    if (isTypeToken(currentToken.type)) {
+        ast->varDef.typeId = currentToken.type;
         consumeType();
     }
     
-    if (peek().type != T_EQUAL) {
+    if (currentToken.type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
     } else {
         consume(T_EQUAL);
@@ -742,19 +726,13 @@ static AST* variableDefinition()
 
 static AST* identifier()
 {
-    Token token = peek();
-
     consume(T_IDENTIFIER);
     
-    if (isPostfixToken(peek().type)) {
-        return postfix();
-    }
-    
-    if (isAssignmentToken(peek().type)) {
+    if (isAssignmentToken(currentToken.type)) {
         return assignment();
-    }
-
-    if (peek().type == T_LPAREN) {
+    } else if (isPostfixToken(currentToken.type)) {
+        return postfix();
+    } else if (currentToken.type == T_LPAREN) {
         return functionCall();
     }
 
@@ -763,25 +741,21 @@ static AST* identifier()
 
 static AST* statement()
 {
-    Token token = peek();
-    
-    switch (token.type) {
+    switch (currentToken.type) {
         case T_FUNC:
             return functionDefinition();
         case T_VAR:
             return variableDefinition();
         case T_RETURN:
             return returnStatement();
-        default:
-            return expression();
     }
 
-    tokenError();
+    return expression();
 }
 
 static AST* statements(TokenType type)
 {
-    Token token = peek();
+    Token token = currentToken;
     AST* ast = createAST(AST_COMPOUND);
 
     ast->compound.scope = currentScope;
@@ -789,14 +763,14 @@ static AST* statements(TokenType type)
     while (token.type != type) {
         AST* stmt = statement();
         
-        if (peek().line == token.line &&
-            peek().type != type &&
-            prev().type != T_RBRACE) {
+        if (currentToken.line == token.line &&
+            currentToken.type != type &&
+            prevToken.type != T_RBRACE) {
             consume(T_SEMICOLON);
         }
 
         pushVectorItem(&ast->compound.statements, stmt);
-        token = peek();
+        token = currentToken;
     }
 
     return ast;

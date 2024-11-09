@@ -46,8 +46,7 @@ typedef enum Opcode
     OP_JMP,         // jmp imm16
     OP_CALL,        // call imm16
     OP_RET,         // ret
-    OP_RETV,        // retv
-    OP_SIZE
+    OP_RETV         // retv
 } Opcode;
 
 void disassemble(Chunk* chunk);

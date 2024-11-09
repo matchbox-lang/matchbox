@@ -11,8 +11,7 @@ AST* createAST(TokenType type)
     AST* ast = malloc(sizeof(AST));
     ast->type = type;
 
-    switch (type)
-    {
+    switch (type) {
         case AST_COMPOUND:
             initVector(&ast->compound.statements);
             break;

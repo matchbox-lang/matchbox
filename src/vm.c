@@ -10,18 +10,14 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define PUSH(value) (sp[0] = value, sp++)
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
-#define READ_UINT8() (*(pc++))
+#define READ_UINT8() ((uint8_t)*(pc++))
 
 typedef void (*service_t)();
-typedef void (*instruction_t)();
 
-static bool running;
-static instruction_t opcode[OP_SIZE];
 static service_t service[SERVICE_SIZE];
 static Value stack[STACK_SIZE];
 static Value* sp;
@@ -30,317 +26,6 @@ static uint8_t* pc;
 static uint8_t* bc;
 static FunctionArray* functions;
 static ValueArray* globals;
-
-static void op_hlt()
-{
-    running = false;
-}
-
-static void op_syscall()
-{
-    int8_t n = READ_UINT8();
-
-    service[n]();
-}
-
-static void op_ldg()
-{
-    int8_t n = READ_UINT8();
-    Value global = getValueAt(globals, n);
-
-    PUSH(global);
-}
-
-static void op_stg()
-{
-    int8_t n = READ_UINT8();
-
-    setValueAt(globals, n, sp[-1]);
-    POP();
-}
-
-static void op_ldl()
-{
-    int8_t n = READ_UINT8();
-
-    PUSH(fp[n]);
-}
-
-static void op_ldl_0()
-{
-    PUSH(fp[0]);
-}
-
-static void op_ldl_1()
-{
-    PUSH(fp[1]);
-}
-
-static void op_ldl_2()
-{
-    PUSH(fp[2]);
-}
-
-static void op_stl()
-{
-    int8_t n = READ_UINT8();
-
-    fp[n] = sp[-1];
-    POP();
-}
-
-static void op_stl_0()
-{
-    fp[0] = sp[-1];
-    POP();
-}
-
-static void op_stl_1()
-{
-    fp[1] = sp[-1];
-    POP();
-}
-
-static void op_stl_2()
-{
-    fp[2] = sp[-1];
-    POP();
-}
-
-static void op_push()
-{
-    int8_t n = READ_UINT8();
-
-    PUSH(INT_VALUE(n));
-}
-
-static void op_push_0()
-{
-    PUSH(INT_VALUE(0));
-}
-
-static void op_push_1()
-{
-    PUSH(INT_VALUE(1));
-}
-
-static void op_push_2()
-{
-    PUSH(INT_VALUE(2));
-}
-
-static void op_pop()
-{
-    POP();
-}
-
-static void op_dup()
-{
-    PUSH(sp[-1]);
-}
-
-static void op_inc()
-{
-    AS_INT(sp[-1])++;
-}
-
-static void op_dec()
-{
-    AS_INT(sp[-1])--;
-}
-
-static void op_add()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a + b));
-}
-
-static void op_sub()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a - b));
-}
-
-static void op_mul()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a * b));
-}
-
-static void op_div()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a / b));
-}
-
-static void op_rem()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a % b));
-}
-
-static void op_pow()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(pow(a, b)));
-}
-
-static void op_band()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a & b));
-}
-
-static void op_bor()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a | b));
-}
-
-static void op_bxor()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a ^ b));
-}
-
-static void op_bnot()
-{
-    int32_t n = AS_INT(sp[-1]);
-
-    sp[-1] = INT_VALUE(~n);
-}
-
-static void op_lsl()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a << b));
-}
-
-static void op_lsr()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(a >> b));
-}
-
-static void op_asr()
-{
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
-
-    PUSH(INT_VALUE(~(~a >> b)));
-}
-
-static void op_not()
-{
-    int32_t n = AS_INT(sp[-1]);
-
-    sp[-1] = INT_VALUE(!n);
-}
-
-static void op_neg()
-{
-    int32_t n = AS_INT(sp[-1]);
-
-    sp[-1] = INT_VALUE(-n);
-}
-
-static void op_beq()
-{
-    int16_t n = READ_UINT16();
-    Value b = sp[-1];
-    Value a = sp[-2];
-
-    if (AS_INT(a) == AS_INT(b)) {
-        pc += n;
-    }
-}
-
-static void op_blt()
-{
-    int16_t n = READ_UINT16();
-    Value b = sp[-1];
-    Value a = sp[-2];
-
-    if (AS_INT(a) < AS_INT(b)) {
-        pc += n;
-    }
-}
-
-static void op_ble()
-{
-    int16_t n = READ_UINT16();
-    Value b = sp[-1];
-    Value a = sp[-2];
-
-    if (AS_INT(a) <= AS_INT(b)) {
-        pc += n;
-    }
-}
-
-static void op_jmp()
-{
-    pc += READ_UINT16();
-}
-
-static void op_call()
-{
-    int16_t n = READ_UINT16();
-    Function func = getFunctionAt(functions, n);
-    
-    Value pcx = POINTER_VALUE(pc);
-    Value fpx = POINTER_VALUE(fp);
-    Value spx = POINTER_VALUE(sp - func.paramCount);
-
-    PUSH(pcx);
-    PUSH(spx);
-    PUSH(fpx);
-
-    pc = &bc[func.position];
-    fp = sp;
-    sp += func.localCount;
-}
-
-static void op_ret()
-{
-    pc = AS_POINTER(fp[-3]);
-    sp = AS_POINTER(fp[-2]);
-    fp = AS_POINTER(fp[-1]);
-
-    op_push_0();
-}
-
-static void op_retv()
-{
-    Value value = POP();
-
-    pc = AS_POINTER(fp[-3]);
-    sp = AS_POINTER(fp[-2]);
-    fp = AS_POINTER(fp[-1]);
-
-    PUSH(value);
-}
 
 static void sys_exit()
 {
@@ -354,7 +39,7 @@ static void sys_print()
     int32_t n = AS_INT(POP());
     
     printf("%d\n", n);
-    op_push_0();
+    PUSH(INT_VALUE(0));
 }
 
 static void sys_clamp()
@@ -403,52 +88,6 @@ static void sys_byteorder()
     PUSH(INT_VALUE((int32_t)*c));
 }
 
-static void initInstructions()
-{
-    opcode[OP_HLT] = op_hlt;
-    opcode[OP_SYSCALL] = op_syscall;
-    opcode[OP_LDG] = op_ldg;
-    opcode[OP_STG] = op_stg;
-    opcode[OP_LDL] = op_ldl;
-    opcode[OP_LDL_0] = op_ldl_0;
-    opcode[OP_LDL_1] = op_ldl_1;
-    opcode[OP_LDL_2] = op_ldl_2;
-    opcode[OP_STL] = op_stl;
-    opcode[OP_STL_0] = op_stl_0;
-    opcode[OP_STL_1] = op_stl_1;
-    opcode[OP_STL_2] = op_stl_2;
-    opcode[OP_PUSH] = op_push;
-    opcode[OP_PUSH_0] = op_push_0;
-    opcode[OP_PUSH_1] = op_push_1;
-    opcode[OP_PUSH_2] = op_push_2;
-    opcode[OP_POP] = op_pop;
-    opcode[OP_DUP] = op_dup;
-    opcode[OP_ADD] = op_add;
-    opcode[OP_SUB] = op_sub;
-    opcode[OP_MUL] = op_mul;
-    opcode[OP_DIV] = op_div;
-    opcode[OP_REM] = op_rem;
-    opcode[OP_POW] = op_pow;
-    opcode[OP_BAND] = op_band;
-    opcode[OP_BOR] = op_bor;
-    opcode[OP_BXOR] = op_bxor;
-    opcode[OP_BNOT] = op_bnot;
-    opcode[OP_LSL] = op_lsl;
-    opcode[OP_LSR] = op_lsr;
-    opcode[OP_ASR] = op_asr;
-    opcode[OP_NOT] = op_not;
-    opcode[OP_NEG] = op_neg;
-    opcode[OP_INC] = op_inc;
-    opcode[OP_DEC] = op_dec;
-    opcode[OP_BEQ] = op_beq;
-    opcode[OP_BLT] = op_blt;
-    opcode[OP_BLE] = op_ble;
-    opcode[OP_JMP] = op_jmp;
-    opcode[OP_CALL] = op_call;
-    opcode[OP_RET] = op_ret;
-    opcode[OP_RETV] = op_retv;
-}
-
 static void initServices()
 {
     service[SYS_EXIT] = sys_exit;
@@ -468,19 +107,250 @@ static void resetStack()
 
 void initVM()
 {
-    resetStack();
-    initInstructions();
     initServices();
+    resetStack();
 }
 
 static void run()
 {
-    running = true;
+    uint8_t opcode;
+    Value v;
+    int32_t a;
+    int32_t b;
+    int32_t x;
 
-    while (running) {
-        uint8_t c = READ_UINT8();
+    while (opcode = READ_UINT8()) {
+        switch (opcode)
+        {
+            case OP_SYSCALL:
+                x = READ_UINT8();
+                service[x]();
+                break;
 
-        opcode[c]();
+            case OP_LDG:
+                x = READ_UINT8();
+                v = getValueAt(globals, x);
+                PUSH(v);
+                break;
+
+            case OP_STG:
+                x = READ_UINT8();
+                setValueAt(globals, x, sp[-1]);
+                POP();
+                break;
+
+            case OP_LDL:
+                x = (int8_t) READ_UINT8();
+                PUSH(fp[x]);
+                break;
+
+            case OP_LDL_0:
+                PUSH(fp[0]);
+                break;
+
+            case OP_LDL_1:
+                PUSH(fp[1]);
+                break;
+
+            case OP_LDL_2:
+                PUSH(fp[2]);
+                break;
+
+            case OP_STL:
+                x = (int8_t) READ_UINT8();
+                fp[x] = POP();
+                break;
+
+            case OP_STL_0:
+                fp[0] = POP();
+                break;
+
+            case OP_STL_1:
+                fp[1] = POP();
+                break;
+
+            case OP_STL_2:
+                fp[1] = POP();
+                break;
+
+            case OP_PUSH:
+                x = (int8_t) READ_UINT8();
+                PUSH(INT_VALUE(x));
+                break;
+
+            case OP_PUSH_0:
+                PUSH(INT_VALUE(0));
+                break;
+
+            case OP_PUSH_1:
+                PUSH(INT_VALUE(1));
+                break;
+
+            case OP_PUSH_2:
+                PUSH(INT_VALUE(2));
+                break;
+
+            case OP_POP:
+                POP();
+                break;
+
+            case OP_DUP:
+                PUSH(sp[-1]);
+                break;
+
+            case OP_INC:
+                AS_INT(sp[-1])++;
+                break;
+
+            case OP_DEC:
+                AS_INT(sp[-1])--;
+                break;
+            
+            case OP_ADD:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a + b));
+                break;
+
+            case OP_SUB:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a - b));
+                break;
+
+            case OP_MUL:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a * b));
+                break;
+
+            case OP_DIV:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a / b));
+                break;
+
+            case OP_REM:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a % b));
+                break;
+
+            case OP_POW:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                x = pow(a, b);
+                PUSH(INT_VALUE(x));
+                break;
+
+            case OP_BAND:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a & b));
+                break;
+
+            case OP_BOR:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a | b));
+                break;
+
+            case OP_BXOR:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a ^ b));
+                break;
+
+            case OP_BNOT:
+                x = AS_INT(sp[-1]);
+                sp[-1] = INT_VALUE(~x);
+                break;
+
+            case OP_LSL:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a << b));
+                break;
+
+            case OP_LSR:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(a >> b));
+                break;
+
+            case OP_ASR:
+                b = AS_INT(POP());
+                a = AS_INT(POP());
+                PUSH(INT_VALUE(~(~a >> b)));
+                break;
+
+            case OP_NOT:
+                x = AS_INT(sp[-1]);
+                sp[-1] = INT_VALUE(!x);
+                break;
+
+            case OP_NEG:
+                x = AS_INT(sp[-1]);
+                sp[-1] = INT_VALUE(-x);
+                break;
+
+            case OP_BEQ:
+                b = AS_INT(sp[-1]);
+                a = AS_INT(sp[-2]);
+                if (a == b) pc += READ_UINT16();
+                break;
+
+            case OP_BLT:
+                b = AS_INT(sp[-1]);
+                a = AS_INT(sp[-2]);
+                if (a < b) pc += READ_UINT16();
+                break;
+
+            case OP_BLE:
+                b = AS_INT(sp[-1]);
+                a = AS_INT(sp[-2]);
+                if (a <= b) pc += READ_UINT16();
+                break;
+
+            case OP_JMP:
+                pc += READ_UINT16();
+                break;
+
+            case OP_CALL: {
+                x = READ_UINT16();
+                Function func = getFunctionAt(functions, x);
+                Value pcx = POINTER_VALUE(pc);
+                Value fpx = POINTER_VALUE(fp);
+                Value spx = POINTER_VALUE(sp - func.paramCount);
+
+                PUSH(pcx);
+                PUSH(spx);
+                PUSH(fpx);
+
+                pc = &bc[func.position];
+                fp = sp;
+                sp += func.localCount;
+                break;
+            }
+
+            case OP_RET:
+                pc = AS_POINTER(fp[-3]);
+                sp = AS_POINTER(fp[-2]);
+                fp = AS_POINTER(fp[-1]);
+                PUSH(INT_VALUE(0));
+                break;
+
+            case OP_RETV:
+                v = POP();
+                pc = AS_POINTER(fp[-3]);
+                sp = AS_POINTER(fp[-2]);
+                fp = AS_POINTER(fp[-1]);
+                PUSH(v);
+                break;
+
+            default:
+                return;
+        }
     }
 }
 

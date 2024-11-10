@@ -492,7 +492,7 @@ static void functionBody(AST* ast)
 {
     AST* last = statements(ast);
 
-    if (last == NULL || last->type != AST_RETURN) {
+    if (!last || last->type != AST_RETURN) {
         op_ret();
     }
 

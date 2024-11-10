@@ -1,6 +1,5 @@
 #include "table.h"
 #include <stdlib.h>
-#include <string.h>
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next)
 {
@@ -14,6 +13,10 @@ TableItem* createTableItem(StringObject* key, void* value, TableItem* next)
 
 void freeTableItem(TableItem* item)
 {
+    if (item->next) {
+        freeTableItem(item->next);
+    }
+
     free(item);
 }
 
@@ -26,6 +29,14 @@ void initTable(Table* table, int capacity)
 
 void freeTable(Table* table)
 {
+    for (int i = 0; i < table->capacity; i++) {
+        TableItem* item = table->data[i];
+
+        if (item) {
+            freeTableItem(item);
+        }
+    }
+
     free(table->data);
 }
 
@@ -43,7 +54,7 @@ void* getTableAt(Table* table, StringObject* key)
     size_t index = key->hash % table->capacity;
     TableItem* current = table->data[index];
 
-    while (current != NULL && !compareString(current->key, key)) {
+    while (current && !compareString(current->key, key)) {
         current = current->next;
     }
 
@@ -59,7 +70,7 @@ bool setTableAt(Table* table, StringObject* key, void* value)
     size_t index = key->hash % table->capacity;
     TableItem* current = table->data[index];
 
-    while (current != NULL) {
+    while (current) {
         if (compareString(current->key, key)) {
             return false;
         }
@@ -80,16 +91,16 @@ bool deleteTableAt(Table* table, StringObject* key)
     TableItem* prev = NULL;
     TableItem* current = table->data[index];
 
-    while (current != NULL && !compareString(current->key, key)) {
+    while (current && !compareString(current->key, key)) {
         prev = current;
         current = current->next;
     }
 
-    if (current == NULL) {
+    if (!current) {
         return false;
     }
 
-    if (prev == NULL) {
+    if (!prev) {
         table->data[index] = current->next;
     } else {
         prev->next = current->next;

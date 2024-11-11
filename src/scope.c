@@ -18,12 +18,6 @@ Scope* createScope(Scope* parent)
 
 void freeScope(Scope* scope)
 {
-    size_t count = countReferenceArray(&scope->references);
-
-    for (size_t i = 0; i < count; i++) {
-        Reference ref = getReferenceAt(&scope->references, i);
-    }
-
     freeReferenceArray(&scope->references);
     freeTable(&scope->symbols);
     free(scope);

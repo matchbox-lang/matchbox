@@ -1,15 +1,10 @@
 #include "file.h"
+#include "config.h"
 #include "vm.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-static void usage(char* prog)
-{
-    printf("Usage: %s <file>\n", prog);
-    exit(1);
-}
-
-static void repl()
+static void repl(CommandArgs* args)
 {
     char line[1024];
     
@@ -23,32 +18,33 @@ static void repl()
             break;
         }
 
-        interpret(line);
+        interpret(line, args);
     }
 }
 
-static void runFile(const char* filename)
+static void file(CommandArgs* args)
 {
-    char* source = getFileContents(filename);
+    char* source = getFileContents(args->filename);
 
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", filename);
-        exit(1);
+        fprintf(stderr, "Error: Could not read file %s\n", args->filename);
+        usage();
     }
-
+    
     initVM();
-    interpret(source);
+    interpret(source, args);
     free(source);
 }
 
 int main(int argc, char* argv[])
 {
+    CommandArgs args;
+    initCommandArgs(&args, argc, argv);
+
     if (argc == 1) {
-        repl();
-    } else if (argc == 2) {
-        runFile(argv[1]);
+        repl(&args);
     } else {
-        usage(argv[0]);
+        file(&args);
     }
 
     return 0;

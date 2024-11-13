@@ -1,8 +1,6 @@
 #ifndef SERVICE_H
 #define SERVICE_H
 
-#define SERVICE_SIZE 7
-
 typedef struct Service
 {
     char* name;
@@ -20,7 +18,8 @@ typedef enum ServiceCode
     SYS_ABS,
     SYS_MIN,
     SYS_MAX,
-    SYS_BYTEORDER
+    SYS_BYTEORDER,
+    SYS_SIZE
 } ServiceCode;
 
 Service* getServiceByName(char* name);

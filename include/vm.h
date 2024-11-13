@@ -1,10 +1,10 @@
 #ifndef VM_H
 #define VM_H
 
-#define STACK_SIZE 32
+typedef struct CommandArgs CommandArgs;
 
 void initVM();
-void interpret(char* source);
+void interpret(char* source, CommandArgs* args);
 void inspectVM();
 
 #endif

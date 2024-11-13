@@ -2,11 +2,11 @@
 #include "bytecode.h"
 #include "chunk.h"
 #include "compiler.h"
+#include "config.h"
 #include "function.h"
 #include "service.h"
 #include "value.h"
 #include <math.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,10 +15,11 @@
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
+#define STACK_SIZE 32
 
 typedef void (*service_t)();
 
-static service_t service[SERVICE_SIZE];
+static service_t service[SYS_SIZE];
 static Value stack[STACK_SIZE];
 static Value* sp;
 static Value* fp;
@@ -346,8 +347,12 @@ static void run()
     }
 }
 
-static void interpretChunk(Chunk* chunk)
+static void interpretChunk(Chunk* chunk, CommandArgs* args)
 {
+    if (args->disassemble) {
+        return disassemble(chunk);
+    }
+
     bc = chunk->data;
     pc = chunk->data;
     functions = &chunk->functions;
@@ -372,12 +377,12 @@ void initVM()
     resetStack();
 }
 
-void interpret(char* source)
+void interpret(char* source, CommandArgs* args)
 {
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
-    interpretChunk(&chunk);
+    interpretChunk(&chunk, args);
     freeChunk(&chunk);
 }
 

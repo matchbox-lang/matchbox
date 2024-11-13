@@ -28,11 +28,6 @@ char* getFileContents(const char* filename)
     return data;
 }
 
-void freeFileContents(void* data)
-{
-    free(data);
-}
-
 size_t putFileContents(const char* filename, const void* data)
 {
     FILE* fp = fopen(filename, "wb");

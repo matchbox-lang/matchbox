@@ -12,6 +12,8 @@ static void usage(char* prog)
 static void repl()
 {
     char line[1024];
+    
+    initVM();
 
     while (1) {
         printf("> ");
@@ -34,8 +36,9 @@ static void runFile(const char* filename)
         exit(1);
     }
 
+    initVM();
     interpret(source);
-    freeFileContents(source);
+    free(source);
 }
 
 int main(int argc, char* argv[])

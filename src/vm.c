@@ -105,12 +105,6 @@ static void resetStack()
     fp = stack;
 }
 
-void initVM()
-{
-    initServices();
-    resetStack();
-}
-
 static void run()
 {
     uint8_t opcode;
@@ -374,12 +368,17 @@ void inspectStack()
     }
 }
 
+void initVM()
+{
+    initServices();
+    resetStack();
+}
+
 void interpret(char* source)
 {
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
-    initVM();
     interpretChunk(&chunk);
     freeChunk(&chunk);
 }

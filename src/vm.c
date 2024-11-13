@@ -29,9 +29,7 @@ static ValueArray* globals;
 
 static void sys_exit()
 {
-    int32_t status = AS_INT(POP());
-    
-    exit(status);
+    exit(0);
 }
 
 static void sys_print()

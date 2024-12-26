@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <util.h>
 
-StringObject* createString(char* chars, size_t length, size_t hash)
+StringObject* createStringObject(char* chars, size_t length, size_t hash)
 {
     StringObject* str = malloc(sizeof(StringObject));
     str->obj.type = OBJ_STRING;
@@ -16,21 +16,21 @@ StringObject* createString(char* chars, size_t length, size_t hash)
     return str;
 }
 
-StringObject* copyString(const char* src, size_t len)
+StringObject* copyStringObject(const char* src, size_t len)
 {
-    size_t hash = hashString(src, len);
-    char* dst = strndup(src, len);
+    size_t hash = hashStringObject(src, len);
+    char* dst = dupnstr(src, len);
 
-    return createString(dst, len, hash);
+    return createStringObject(dst, len, hash);
 }
 
-void freeString(StringObject* str)
+void freeStringObject(StringObject* str)
 {
     free(str->chars);
     free(str);
 }
 
-bool compareString(StringObject* a, StringObject* b)
+bool compareStringObject(StringObject* a, StringObject* b)
 {
     if (a->length == b->length) {
         return strncmp(a->chars, b->chars, b->length) == 0;
@@ -39,7 +39,7 @@ bool compareString(StringObject* a, StringObject* b)
     return false;
 }
 
-size_t hashString(const char* chars, size_t len)
+size_t hashStringObject(const char* chars, size_t len)
 {
     size_t hash = 0;
 
@@ -50,7 +50,7 @@ size_t hashString(const char* chars, size_t len)
     return hash;
 }
 
-void printString(StringObject* str)
+void printStringObject(StringObject* str)
 {
     printf("%.*s", str->length, str->chars);
 }

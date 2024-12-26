@@ -81,7 +81,7 @@ static void consumeType()
 static char* cleanNumberLiteral(Token token)
 {
     size_t len = token.length;
-    char* str = strndup(token.chars, len);
+    char* str = dupnstr(token.chars, len);
     stripUnderscores(str, &len);
 
     return str;
@@ -424,7 +424,7 @@ static AST* argument()
 static AST* parameter()
 {
     Token token = currentToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
@@ -451,7 +451,7 @@ static AST* parameter()
 static AST* variable()
 {
     Token token = prevToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (!symbol) {
@@ -466,7 +466,7 @@ static AST* variable()
         error(uninitializedError, token);
     }
 
-    freeString(id);
+    freeStringObject(id);
 
     AST* ast = createAST(AST_VARIABLE);
     ast->var.scope = currentScope;
@@ -557,7 +557,7 @@ static AST* systemCall(StringObject* id)
     Token token = prevToken;
     Service* service = getServiceByName(id->chars);
     
-    freeString(id);
+    freeStringObject(id);
 
     if (!service) {
         error(undefinedError, token);
@@ -576,7 +576,7 @@ static AST* systemCall(StringObject* id)
 static AST* functionCall()
 {
     Token token = prevToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
     
     if (!symbol) {
@@ -593,7 +593,7 @@ static AST* functionCall()
     
     arguments(&ast->funcCall.args);
     compareFunctionSignature(ast, symbol, token);
-    freeString(id);
+    freeStringObject(id);
 
     return ast;
 }
@@ -603,7 +603,7 @@ static AST* functionDefinition()
     consume(T_FUNC);
 
     Token token = currentToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
@@ -667,7 +667,7 @@ static AST* assignment()
 {
     Token operator = currentToken;
     Token token = prevToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
 
     if (!symbol) {
@@ -678,7 +678,7 @@ static AST* assignment()
         error(uninitializedError, token);
     }
     
-    freeString(id);
+    freeStringObject(id);
 
     AST* ast = createAST(AST_ASSIGNMENT);
     ast->assignment.scope = currentScope;
@@ -697,7 +697,7 @@ static AST* variableDefinition()
     consume(T_VAR);
 
     Token token = currentToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {

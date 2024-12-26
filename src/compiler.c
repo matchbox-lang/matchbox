@@ -48,7 +48,7 @@ static Reference getFunctionReference(StringObject* id)
     for (int i = 0; i < count; i++) {
         Reference ref = getReferenceAt(&functions, i);
 
-        if (compareString(id, ref.ast->funcDef.id)) {
+        if (compareStringObject(id, ref.ast->funcDef.id)) {
             return ref;
         }
     }

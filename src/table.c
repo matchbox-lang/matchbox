@@ -54,7 +54,7 @@ void* getTableAt(Table* table, StringObject* key)
     size_t index = key->hash % table->capacity;
     TableItem* current = table->data[index];
 
-    while (current && !compareString(current->key, key)) {
+    while (current && !compareStringObject(current->key, key)) {
         current = current->next;
     }
 
@@ -71,7 +71,7 @@ bool setTableAt(Table* table, StringObject* key, void* value)
     TableItem* current = table->data[index];
 
     while (current) {
-        if (compareString(current->key, key)) {
+        if (compareStringObject(current->key, key)) {
             return false;
         }
 
@@ -91,7 +91,7 @@ bool deleteTableAt(Table* table, StringObject* key)
     TableItem* prev = NULL;
     TableItem* current = table->data[index];
 
-    while (current && !compareString(current->key, key)) {
+    while (current && !compareStringObject(current->key, key)) {
         prev = current;
         current = current->next;
     }

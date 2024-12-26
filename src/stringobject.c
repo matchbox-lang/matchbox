@@ -19,7 +19,7 @@ StringObject* createStringObject(char* chars, size_t length, size_t hash)
 StringObject* copyStringObject(const char* src, size_t len)
 {
     size_t hash = hashStringObject(src, len);
-    char* dst = dupnstr(src, len);
+    char* dst = strndup(src, len);
 
     return createStringObject(dst, len, hash);
 }

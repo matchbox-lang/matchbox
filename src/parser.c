@@ -81,7 +81,7 @@ static void consumeType()
 static char* cleanNumberLiteral(Token token)
 {
     size_t len = token.length;
-    char* str = dupnstr(token.chars, len);
+    char* str = strndup(token.chars, len);
     stripUnderscores(str, &len);
 
     return str;

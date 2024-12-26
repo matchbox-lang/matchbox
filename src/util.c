@@ -21,7 +21,7 @@ void stripUnderscores(char *str, size_t *len)
 	*dst = '\0';
 }
 
-char* dupnstr(const char *src, size_t len)
+char* strndup(const char *src, size_t len)
 {
     char* dst = malloc(len + 1);
     memcpy(dst, src, len);

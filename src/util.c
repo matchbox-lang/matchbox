@@ -5,12 +5,12 @@
 void stripUnderscores(char *str, size_t *len)
 {
 	char *src = str;
-    char *dest = str;
+    char *dst = str;
 
 	while (*src != '\0') {
 		if (*src != '_') {
-			*dest = *src;
-			dest++;
+			*dst = *src;
+			dst++;
 		} else {
 			--(*len);
 		}
@@ -18,7 +18,7 @@ void stripUnderscores(char *str, size_t *len)
 		src++;
 	}
 
-	*dest = '\0';
+	*dst = '\0';
 }
 
 char* strndup(const char *src, size_t len)

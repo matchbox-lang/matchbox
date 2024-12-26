@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <util.h>
 
 static AST* expression();
 static AST* identifier();
@@ -77,6 +78,15 @@ static void consumeType()
     consume(currentToken.type);
 }
 
+static char* cleanNumberLiteral(Token token)
+{
+    size_t len = token.length;
+    char* str = strndup(token.chars, len);
+    stripUnderscores(str, &len);
+
+    return str;
+}
+
 static AST* booleanLiteral(Token token)
 {
     AST* ast = createAST(AST_BOOLEAN);
@@ -89,7 +99,9 @@ static AST* booleanLiteral(Token token)
 static AST* decimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intVal = strtol(token.chars, NULL, 10);
+    char* str = cleanNumberLiteral(token);
+    ast->intVal = strtol(str, NULL, 10);
+    free(str);
     consume(token.type);
 
     return ast;
@@ -98,7 +110,9 @@ static AST* decimalLiteral(Token token)
 static AST* floatLiteral(Token token)
 {
     AST* ast = createAST(AST_FLOAT);
-    ast->floatVal = strtod(token.chars, NULL);
+    char* str = cleanNumberLiteral(token);
+    ast->floatVal = strtod(str, NULL);
+    free(str);
     consume(token.type);
 
     return ast;

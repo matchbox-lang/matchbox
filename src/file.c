@@ -12,17 +12,17 @@ char* getFileContents(const char* filename)
     }
     
     fseek(fp, 0, SEEK_END);
-    size_t length = ftell(fp);
+    size_t len = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     
-    char* data = malloc(sizeof(char) * (length + 1));
+    char* data = malloc(sizeof(char) * (len + 1));
     
     if (!data) {
         return NULL;
     }
     
-    fread(data, sizeof(char), length, fp);
-    data[length] = '\0';
+    fread(data, sizeof(char), len, fp);
+    data[len] = '\0';
     fclose(fp);
 
     return data;

@@ -14,11 +14,11 @@ typedef struct StringObject
     size_t hash;
 } StringObject;
 
-StringObject* createString(char* chars, int length, size_t hash);
-StringObject* copyString(const char* chars, int length);
+StringObject* createString(char* chars, size_t len, size_t hash);
+StringObject* copyString(const char* chars, size_t len);
 void freeString(StringObject* str);
 bool compareString(StringObject* a, StringObject* b);
-size_t hashString(const char* chars, int length);
+size_t hashString(const char* chars, size_t len);
 void printString(StringObject* str);
 
 #endif

@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <util.h>
 
-StringObject* createString(char* chars, int length, size_t hash)
+StringObject* createString(char* chars, size_t length, size_t hash)
 {
     StringObject* str = malloc(sizeof(StringObject));
     str->obj.type = OBJ_STRING;
@@ -15,14 +16,12 @@ StringObject* createString(char* chars, int length, size_t hash)
     return str;
 }
 
-StringObject* copyString(const char* src, int length)
+StringObject* copyString(const char* src, size_t len)
 {
-    size_t hash = hashString(src, length);
-    char* dst = malloc(sizeof(char) * length + 1);
-    memcpy(dst, src, length);
-    dst[length] = '\0';
+    size_t hash = hashString(src, len);
+    char* dst = strndup(src, len);
 
-    return createString(dst, length, hash);
+    return createString(dst, len, hash);
 }
 
 void freeString(StringObject* str)
@@ -40,11 +39,11 @@ bool compareString(StringObject* a, StringObject* b)
     return false;
 }
 
-size_t hashString(const char* chars, int length)
+size_t hashString(const char* chars, size_t len)
 {
     size_t hash = 0;
 
-    for (size_t i = 0; i < length; i++) {
+    for (size_t i = 0; i < len; i++) {
         hash = chars[i] + 31 * hash;
     }
 

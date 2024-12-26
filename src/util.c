@@ -1,0 +1,31 @@
+#include "util.h"
+#include <stdlib.h>
+#include <string.h>
+
+void stripUnderscores(char *str, size_t *len)
+{
+	char *src = str;
+    char *dest = str;
+
+	while (*src != '\0') {
+		if (*src != '_') {
+			*dest = *src;
+			dest++;
+		} else {
+			--(*len);
+		}
+
+		src++;
+	}
+
+	*dest = '\0';
+}
+
+char* strndup(const char *src, size_t len)
+{
+    char* dst = malloc(sizeof(char) * len + 1);
+    memcpy(dst, src, len);
+    dst[len] = '\0';
+
+    return dst;
+}

@@ -5,6 +5,5 @@
 
 void stripUnderscores(char *str, size_t *len);
 char* strndup(const char *src, size_t len);
-char* cleanNumberLiteral(char* src, size_t len);
 
 #endif

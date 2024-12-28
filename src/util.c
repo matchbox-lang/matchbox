@@ -30,11 +30,3 @@ char* strndup(const char *src, size_t len)
 
     return dst;
 }
-
-char* cleanNumberLiteral(char* src, size_t len)
-{
-    char* str = strndup(src, len);
-    stripUnderscores(str, &len);
-
-    return str;
-}

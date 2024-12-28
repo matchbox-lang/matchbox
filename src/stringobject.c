@@ -1,9 +1,9 @@
 #include "stringobject.h"
 #include "object.h"
+#include "util.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <util.h>
 
 StringObject* createStringObject(char* chars, size_t length, size_t hash)
 {

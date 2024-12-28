@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "ast.h"
+#include "conversion.h"
 #include "lexer.h"
 #include "scope.h"
 #include "table.h"
@@ -7,7 +8,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <util.h>
 
 static AST* expression();
 static AST* identifier();
@@ -90,9 +90,7 @@ static AST* booleanLiteral(Token token)
 static AST* decimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    char* str = cleanNumberLiteral(token.chars, token.length);
-    ast->intVal = strtol(str, NULL, 10);
-    free(str);
+    ast->intVal = decimalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -101,9 +99,7 @@ static AST* decimalLiteral(Token token)
 static AST* binaryLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    char* str = cleanNumberLiteral(token.chars + 2, token.length - 2);
-    ast->intVal = strtol(str, NULL, 2);
-    free(str);
+    ast->intVal = binaryLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -112,9 +108,7 @@ static AST* binaryLiteral(Token token)
 static AST* hexadecimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    char* str = cleanNumberLiteral(token.chars + 2, token.length - 2);
-    ast->intVal = strtol(str, NULL, 16);
-    free(str);
+    ast->intVal = hexadecimalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -123,9 +117,7 @@ static AST* hexadecimalLiteral(Token token)
 static AST* octalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    char* str = cleanNumberLiteral(token.chars + 2, token.length - 2);
-    ast->intVal = strtol(str, NULL, 8);
-    free(str);
+    ast->intVal = octalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -134,9 +126,7 @@ static AST* octalLiteral(Token token)
 static AST* floatLiteral(Token token)
 {
     AST* ast = createAST(AST_FLOAT);
-    char* str = cleanNumberLiteral(token.chars, token.length);
-    ast->floatVal = strtod(str, NULL);
-    free(str);
+    ast->floatVal = floatLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;

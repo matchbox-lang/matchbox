@@ -78,15 +78,6 @@ static void consumeType()
     consume(currentToken.type);
 }
 
-static char* cleanNumberLiteral(Token token)
-{
-    size_t len = token.length;
-    char* str = strndup(token.chars, len);
-    stripUnderscores(str, &len);
-
-    return str;
-}
-
 static AST* booleanLiteral(Token token)
 {
     AST* ast = createAST(AST_BOOLEAN);
@@ -99,8 +90,41 @@ static AST* booleanLiteral(Token token)
 static AST* decimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    char* str = cleanNumberLiteral(token);
+    char* str = cleanNumberLiteral(token.chars, token.length);
     ast->intVal = strtol(str, NULL, 10);
+    free(str);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* binaryLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    char* str = cleanNumberLiteral(token.chars + 2, token.length - 2);
+    ast->intVal = strtol(str, NULL, 2);
+    free(str);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* hexadecimalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    char* str = cleanNumberLiteral(token.chars + 2, token.length - 2);
+    ast->intVal = strtol(str, NULL, 16);
+    free(str);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* octalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    char* str = cleanNumberLiteral(token.chars + 2, token.length - 2);
+    ast->intVal = strtol(str, NULL, 8);
     free(str);
     consume(token.type);
 
@@ -110,18 +134,9 @@ static AST* decimalLiteral(Token token)
 static AST* floatLiteral(Token token)
 {
     AST* ast = createAST(AST_FLOAT);
-    char* str = cleanNumberLiteral(token);
+    char* str = cleanNumberLiteral(token.chars, token.length);
     ast->floatVal = strtod(str, NULL);
     free(str);
-    consume(token.type);
-
-    return ast;
-}
-
-static AST* stringLiteral(Token token)
-{
-    AST* ast = createAST(AST_STRING);
-    ast->string = token;
     consume(token.type);
 
     return ast;
@@ -131,6 +146,15 @@ static AST* characterLiteral(Token token)
 {
     AST* ast = createAST(AST_CHARACTER);
     ast->character = token;
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* stringLiteral(Token token)
+{
+    AST* ast = createAST(AST_STRING);
+    ast->string = token;
     consume(token.type);
 
     return ast;
@@ -158,12 +182,18 @@ static AST* primary()
             return booleanLiteral(currentToken);
         case T_DECIMAL_LITERAL:
             return decimalLiteral(currentToken);
+        case T_BINARY_LITERAL:
+            return binaryLiteral(currentToken);
+        case T_HEXADECIMAL_LITERAL:
+            return hexadecimalLiteral(currentToken);
+        case T_OCTAL_LITERAL:
+            return octalLiteral(currentToken);
         case T_FLOAT_LITERAL:
             return floatLiteral(currentToken);
-        case T_STRING_LITERAL:
-            return stringLiteral(currentToken);
         case T_CHARACTER_LITERAL:
             return characterLiteral(currentToken);
+        case T_STRING_LITERAL:
+            return stringLiteral(currentToken);
         case T_LPAREN:
             return groupExpression();
         case T_IDENTIFIER:

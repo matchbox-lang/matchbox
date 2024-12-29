@@ -287,8 +287,7 @@ static void storeVariable(AST* ast)
 static void number(AST* ast)
 {
     if (isLargerThan8BitSigned(ast->intVal)) {
-        pushValue(&currentChunk->constants, INT_VALUE(ast->intVal));
-        size_t count = countValueArray(&currentChunk->constants);
+        size_t count = pushValue(&currentChunk->constants, INT_VALUE(ast->intVal));
         
         return op_ldc(count - 1);
     }

@@ -28,13 +28,14 @@ void reserveValueArray(ValueArray* array, size_t capacity)
     array->capacity = capacity;
 }
 
-void pushValue(ValueArray* array, Value value)
+size_t pushValue(ValueArray* array, Value value)
 {
     if (array->count == array->capacity) {
         reserveValueArray(array, GROW_CAPACITY(array->capacity));
     }
-    
+
     array->data[array->count++] = value;
+    return array->count;
 }
 
 Value getValueAt(ValueArray* array, size_t index)

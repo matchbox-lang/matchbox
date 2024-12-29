@@ -27,6 +27,7 @@ static uint8_t* pc;
 static uint8_t* bc;
 static FunctionArray* functions;
 static ValueArray* globals;
+static ValueArray* constants;
 
 static void sys_exit()
 {
@@ -118,6 +119,12 @@ static void run()
             case OP_SYSCALL:
                 x = READ_UINT8();
                 service[x]();
+                break;
+
+            case OP_LDC:
+                x = READ_UINT8();
+                v = getValueAt(constants, x);
+                PUSH(v);
                 break;
 
             case OP_LDG:
@@ -357,6 +364,7 @@ static void interpretChunk(Chunk* chunk, CommandArgs* args)
     pc = chunk->data;
     functions = &chunk->functions;
     globals = &chunk->globals;
+    constants = &chunk->constants;
 
     run();
 }

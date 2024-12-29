@@ -11,6 +11,7 @@ static int printInstruction(int8_t c)
     switch (c) {
         case OP_HLT:        return printf("hlt\n");
         case OP_SYSCALL:    return printf("syscall\t\t%d\n", READ_INT8());
+        case OP_LDC:        return printf("ldc\t\t%d\n", READ_INT8());
         case OP_LDG:        return printf("ldg\t\t%d\n", READ_INT8());
         case OP_STG:        return printf("stg\t\t%d\n", READ_INT8());
         case OP_LDL:        return printf("ldl\t\t%d\n", READ_INT8());

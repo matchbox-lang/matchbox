@@ -13,6 +13,7 @@ typedef struct Chunk
     size_t count;
     FunctionArray functions;
     ValueArray globals;
+    ValueArray constants;
 } Chunk;
 
 void initChunk(Chunk* chunk);

@@ -7,6 +7,7 @@ typedef enum Opcode
 {
     OP_HLT,         // hlt
     OP_SYSCALL,     // syscall imm8
+    OP_LDC,         // ldc imm8
     OP_LDG,         // ldg imm8
     OP_STG,         // stg imm8
     OP_LDL,         // ldl imm8

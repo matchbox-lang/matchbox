@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "reference.h"
 #include "scope.h"
+#include "util.h"
 
 static void expression();
 static void references();
@@ -75,6 +76,12 @@ static void op_hlt()
 static void op_syscall(uint8_t imm)
 {
     write8(OP_SYSCALL);
+    write8(imm);
+}
+
+static void op_ldc(uint8_t imm)
+{
+    write8(OP_LDC);
     write8(imm);
 }
 
@@ -279,6 +286,13 @@ static void storeVariable(AST* ast)
 
 static void number(AST* ast)
 {
+    if (isLargerThan8BitSigned(ast->intVal)) {
+        pushValue(&currentChunk->constants, INT_VALUE(ast->intVal));
+        size_t count = countValueArray(&currentChunk->constants);
+        
+        return op_ldc(count - 1);
+    }
+
     op_push(ast->intVal);
 }
 

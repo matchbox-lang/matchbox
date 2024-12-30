@@ -102,6 +102,7 @@ static void op_ldl(int8_t imm)
     if (imm == 0) return write8(OP_LDL_0);
     if (imm == 1) return write8(OP_LDL_1);
     if (imm == 2) return write8(OP_LDL_2);
+    if (imm == 3) return write8(OP_LDL_3);
 
     write8(OP_LDL);
     write8(imm);
@@ -112,18 +113,27 @@ static void op_stl(int8_t imm)
     if (imm == 0) return write8(OP_STL_0);
     if (imm == 1) return write8(OP_STL_1);
     if (imm == 2) return write8(OP_STL_2);
+    if (imm == 3) return write8(OP_STL_3);
 
     write8(OP_STL);
     write8(imm);
 }
 
-static void op_push(int8_t imm)
+static void op_pushb(int8_t imm)
 {
+    if (imm == -1) return write8(OP_PUSH_N1);
     if (imm == 0) return write8(OP_PUSH_0);
     if (imm == 1) return write8(OP_PUSH_1);
     if (imm == 2) return write8(OP_PUSH_2);
+    if (imm == 3) return write8(OP_PUSH_3);
 
-    write8(OP_PUSH);
+    write8(OP_PUSHB);
+    write8(imm);
+}
+
+static void op_pushh(int16_t imm)
+{
+    write8(OP_PUSHH);
     write8(imm);
 }
 
@@ -286,13 +296,14 @@ static void storeVariable(AST* ast)
 
 static void number(AST* ast)
 {
-    if (isLargerThan8BitSigned(ast->intVal)) {
+    if (isLargerThan16BitSigned(ast->intVal)) {
         size_t count = pushValue(&currentChunk->constants, INT_VALUE(ast->intVal));
-        
-        return op_ldc(count - 1);
+        op_ldc(count - 1);
+    } else if (isLargerThan8BitSigned(ast->intVal)) {
+        op_pushh(ast->intVal);
+    } else {
+        op_pushb(ast->intVal);
     }
-
-    op_push(ast->intVal);
 }
 
 static void binary(AST* ast)

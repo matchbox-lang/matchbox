@@ -156,6 +156,10 @@ static void run()
                 PUSH(fp[2]);
                 break;
 
+            case OP_LDL_3:
+                PUSH(fp[3]);
+                break;
+
             case OP_STL:
                 x = (int8_t) READ_UINT8();
                 fp[x] = POP();
@@ -170,12 +174,25 @@ static void run()
                 break;
 
             case OP_STL_2:
-                fp[1] = POP();
+                fp[2] = POP();
                 break;
 
-            case OP_PUSH:
+            case OP_STL_3:
+                fp[3] = POP();
+                break;
+
+            case OP_PUSHB:
                 x = (int8_t) READ_UINT8();
                 PUSH(INT_VALUE(x));
+                break;
+
+            case OP_PUSHH:
+                x = (int16_t) READ_UINT16();
+                PUSH(INT_VALUE(x));
+                break;
+
+            case OP_PUSH_N1:
+                PUSH(INT_VALUE(-1));
                 break;
 
             case OP_PUSH_0:
@@ -188,6 +205,10 @@ static void run()
 
             case OP_PUSH_2:
                 PUSH(INT_VALUE(2));
+                break;
+
+            case OP_PUSH_3:
+                PUSH(INT_VALUE(3));
                 break;
 
             case OP_POP:

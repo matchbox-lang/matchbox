@@ -83,7 +83,7 @@ static void sys_max()
 static void sys_byteorder()
 {
     int32_t i = 1;
-    char *c = (char*)&i;
+    char* c = (char*)&i;
 
     PUSH(INT_VALUE((int32_t)*c));
 }

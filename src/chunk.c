@@ -11,10 +11,12 @@ void initChunk(Chunk* chunk)
 
     initFunctionArray(&chunk->functions);
     initValueArray(&chunk->globals);
+    initValueArray(&chunk->constants);
 }
 
 void freeChunk(Chunk* chunk)
 {
+    freeValueArray(&chunk->constants);
     freeValueArray(&chunk->globals);
     freeFunctionArray(&chunk->functions);
     free(chunk->data);
@@ -31,14 +33,14 @@ void reserveChunk(Chunk* chunk, size_t capacity)
     chunk->capacity = capacity;
 }
 
-void pushByte(Chunk* chunk, uint8_t byte)
+size_t pushByte(Chunk* chunk, uint8_t byte)
 {
     if (chunk->capacity <= chunk->count) {
         reserveChunk(chunk, GROW_CAPACITY(chunk->capacity));
     }
 
     chunk->data[chunk->count] = byte;
-    chunk->count++;
+    return ++chunk->count;
 }
 
 uint8_t getByteAt(Chunk* chunk, size_t index)

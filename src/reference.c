@@ -26,13 +26,14 @@ void reserveReferenceArray(ReferenceArray* array, size_t capacity)
     array->capacity = capacity;
 }
 
-void pushReference(ReferenceArray* array, Reference ref)
+size_t pushReference(ReferenceArray* array, Reference ref)
 {
     if (array->capacity == array->count) {
         reserveReferenceArray(array, GROW_CAPACITY(array->capacity));
     }
     
     array->data[array->count++] = ref;
+    return array->count;
 }
 
 Reference getReferenceAt(ReferenceArray* array, size_t index)

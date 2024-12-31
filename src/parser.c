@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "ast.h"
+#include "conversion.h"
 #include "lexer.h"
 #include "scope.h"
 #include "table.h"
@@ -89,7 +90,34 @@ static AST* booleanLiteral(Token token)
 static AST* decimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intVal = strtol(token.chars, NULL, 10);
+    ast->intVal = decimalLiteralToValue(token.chars, token.length);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* binaryLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intVal = binaryLiteralToValue(token.chars, token.length);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* hexadecimalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intVal = hexadecimalLiteralToValue(token.chars, token.length);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* octalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intVal = octalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -98,16 +126,7 @@ static AST* decimalLiteral(Token token)
 static AST* floatLiteral(Token token)
 {
     AST* ast = createAST(AST_FLOAT);
-    ast->floatVal = strtod(token.chars, NULL);
-    consume(token.type);
-
-    return ast;
-}
-
-static AST* stringLiteral(Token token)
-{
-    AST* ast = createAST(AST_STRING);
-    ast->string = token;
+    ast->floatVal = floatLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -117,6 +136,15 @@ static AST* characterLiteral(Token token)
 {
     AST* ast = createAST(AST_CHARACTER);
     ast->character = token;
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* stringLiteral(Token token)
+{
+    AST* ast = createAST(AST_STRING);
+    ast->string = token;
     consume(token.type);
 
     return ast;
@@ -144,12 +172,18 @@ static AST* primary()
             return booleanLiteral(currentToken);
         case T_DECIMAL_LITERAL:
             return decimalLiteral(currentToken);
+        case T_BINARY_LITERAL:
+            return binaryLiteral(currentToken);
+        case T_HEXADECIMAL_LITERAL:
+            return hexadecimalLiteral(currentToken);
+        case T_OCTAL_LITERAL:
+            return octalLiteral(currentToken);
         case T_FLOAT_LITERAL:
             return floatLiteral(currentToken);
-        case T_STRING_LITERAL:
-            return stringLiteral(currentToken);
         case T_CHARACTER_LITERAL:
             return characterLiteral(currentToken);
+        case T_STRING_LITERAL:
+            return stringLiteral(currentToken);
         case T_LPAREN:
             return groupExpression();
         case T_IDENTIFIER:
@@ -410,7 +444,7 @@ static AST* argument()
 static AST* parameter()
 {
     Token token = currentToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
@@ -437,7 +471,7 @@ static AST* parameter()
 static AST* variable()
 {
     Token token = prevToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (!symbol) {
@@ -452,7 +486,7 @@ static AST* variable()
         error(uninitializedError, token);
     }
 
-    freeString(id);
+    freeStringObject(id);
 
     AST* ast = createAST(AST_VARIABLE);
     ast->var.scope = currentScope;
@@ -543,7 +577,7 @@ static AST* systemCall(StringObject* id)
     Token token = prevToken;
     Service* service = getServiceByName(id->chars);
     
-    freeString(id);
+    freeStringObject(id);
 
     if (!service) {
         error(undefinedError, token);
@@ -562,7 +596,7 @@ static AST* systemCall(StringObject* id)
 static AST* functionCall()
 {
     Token token = prevToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
     
     if (!symbol) {
@@ -579,7 +613,7 @@ static AST* functionCall()
     
     arguments(&ast->funcCall.args);
     compareFunctionSignature(ast, symbol, token);
-    freeString(id);
+    freeStringObject(id);
 
     return ast;
 }
@@ -589,7 +623,7 @@ static AST* functionDefinition()
     consume(T_FUNC);
 
     Token token = currentToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {
@@ -653,7 +687,7 @@ static AST* assignment()
 {
     Token operator = currentToken;
     Token token = prevToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
 
     if (!symbol) {
@@ -664,7 +698,7 @@ static AST* assignment()
         error(uninitializedError, token);
     }
     
-    freeString(id);
+    freeStringObject(id);
 
     AST* ast = createAST(AST_ASSIGNMENT);
     ast->assignment.scope = currentScope;
@@ -683,7 +717,7 @@ static AST* variableDefinition()
     consume(T_VAR);
 
     Token token = currentToken;
-    StringObject* id = copyString(token.chars, token.length);
+    StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
 
     if (symbol) {

@@ -26,13 +26,14 @@ void reserveFunctionArray(FunctionArray* array, size_t capacity)
     array->capacity = capacity;
 }
 
-void pushFunction(FunctionArray* array, Function func)
+size_t pushFunction(FunctionArray* array, Function func)
 {
     if (array->capacity == array->count) {
         reserveFunctionArray(array, GROW_CAPACITY(array->capacity));
     }
     
     array->data[array->count++] = func;
+    return array->count;
 }
 
 Function getFunctionAt(FunctionArray* array, size_t index)

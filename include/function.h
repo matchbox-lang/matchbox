@@ -22,7 +22,7 @@ void initFunctionArray(FunctionArray* array);
 void freeFunctionArray(FunctionArray* array);
 size_t countFunctionArray(FunctionArray* array);
 void reserveFunctionArray(FunctionArray* array, size_t capacity);
-void pushFunction(FunctionArray* array, Function func);
+size_t pushFunction(FunctionArray* array, Function func);
 Function getFunctionAt(FunctionArray* array, size_t index);
 void setFunctionAt(FunctionArray* array, size_t index, Function func);
 

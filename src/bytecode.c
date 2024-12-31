@@ -11,20 +11,26 @@ static int printInstruction(int8_t c)
     switch (c) {
         case OP_HLT:        return printf("hlt\n");
         case OP_SYSCALL:    return printf("syscall\t\t%d\n", READ_INT8());
+        case OP_LDC:        return printf("ldc\t\t%d\n", READ_INT8());
         case OP_LDG:        return printf("ldg\t\t%d\n", READ_INT8());
         case OP_STG:        return printf("stg\t\t%d\n", READ_INT8());
         case OP_LDL:        return printf("ldl\t\t%d\n", READ_INT8());
         case OP_LDL_0:      return printf("ldl_0\n");
         case OP_LDL_1:      return printf("ldl_1\n");
         case OP_LDL_2:      return printf("ldl_2\n");
+        case OP_LDL_3:      return printf("ldl_3\n");
         case OP_STL:        return printf("stl\t\t%d\n", READ_INT8());
         case OP_STL_0:      return printf("stl_0\n");
         case OP_STL_1:      return printf("stl_1\n");
         case OP_STL_2:      return printf("stl_2\n");
-        case OP_PUSH:       return printf("push\t\t%d\n", READ_INT8());
+        case OP_STL_3:      return printf("stl_3\n");
+        case OP_PUSHB:      return printf("push\t\t%d\n", READ_INT8());
+        case OP_PUSHH:      return printf("push\t\t%d\n", READ_INT16());
+        case OP_PUSH_N1:    return printf("push_n1\n");
         case OP_PUSH_0:     return printf("push_0\n");
         case OP_PUSH_1:     return printf("push_1\n");
         case OP_PUSH_2:     return printf("push_2\n");
+        case OP_PUSH_3:     return printf("push_3\n");
         case OP_POP:        return printf("pop\n");
         case OP_DUP:        return printf("dup\n");
         case OP_INC:        return printf("inc\n");

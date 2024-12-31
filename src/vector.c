@@ -26,13 +26,14 @@ void reserveVector(Vector* vector, size_t capacity)
     vector->capacity = capacity;
 }
 
-void pushVectorItem(Vector* vector, void* item)
+size_t pushVectorItem(Vector* vector, void* item)
 {
     if (vector->capacity == vector->count) {
         reserveVector(vector, GROW_CAPACITY(vector->capacity));
     }
     
     vector->data[vector->count++] = item;
+    return vector->count;
 }
 
 void* popVectorItem(Vector* vector)

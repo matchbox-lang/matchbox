@@ -1,6 +1,7 @@
 # Instructions
     hlt             Halt
     syscall         System call
+    ldc             Load constant
     ldg             Load global
     stg             Store global
     ldl             Load local

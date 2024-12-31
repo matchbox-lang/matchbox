@@ -172,13 +172,13 @@ static void skipWhitespace()
     }
 }
 
-static int checkKeyword(int chars, int length, const char* rest)
+static int checkKeyword(int chars, size_t len, const char* rest)
 {
-    if (current.chars - start.chars != chars + length) {
+    if (current.chars - start.chars != chars + len) {
         return 0;
     }
 
-    return memcmp(start.chars + chars, rest, length) == 0;
+    return memcmp(start.chars + chars, rest, len) == 0;
 }
 
 static TokenType getIdentifierType()

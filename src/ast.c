@@ -63,12 +63,12 @@ void freeAST(AST* ast)
             freeASTVector(&ast->funcCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
-            freeString(ast->funcDef.id);
+            freeStringObject(ast->funcDef.id);
             freeASTVector(&ast->funcDef.params);
             freeAST(ast->funcDef.body);
             break;
         case AST_PARAMETER:
-            freeString(ast->param.id);
+            freeStringObject(ast->param.id);
             break;
         case AST_POSTFIX:
             freeAST(ast->postfix.expr);
@@ -80,7 +80,7 @@ void freeAST(AST* ast)
             freeAST(ast->expr);
             break;
         case AST_VARIABLE_DEFINITION:
-            freeString(ast->varDef.id);
+            freeStringObject(ast->varDef.id);
             freeAST(ast->varDef.expr);
             break;
     }

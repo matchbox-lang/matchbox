@@ -14,14 +14,14 @@ bool isLargerThan16BitSigned(int n)
     return n < SHRT_MIN || n > SHRT_MAX;
 }
 
-void stripUnderscores(char *str, size_t *len)
+void stripUnderscores(char* str, size_t* len)
 {
-	char *src = str;
-    char *dst = str;
+	char* src = str;
+    char* dst = str;
 
 	while (*src != '\0') {
 		if (*src != '_') {
-			*dst = *src;
+			*dst =* src;
 			dst++;
 		} else {
 			--(*len);
@@ -33,7 +33,7 @@ void stripUnderscores(char *str, size_t *len)
 	*dst = '\0';
 }
 
-char* strndup(const char *src, size_t len)
+char* strndup(const char* src, size_t len)
 {
     char* dst = malloc(len + 1);
     memcpy(dst, src, len);

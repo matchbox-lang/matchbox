@@ -10,9 +10,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define PUSH(value) (sp[0] = value, sp++)
 #define POP() ((--sp)[0])
+#define RESERVE(n) (sp += n)
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
 #define STACK_SIZE 32
@@ -201,6 +203,10 @@ static void run()
                 PUSH(INT_VALUE(x));
                 break;
 
+            case OP_PUSH_N1:
+                PUSH(INT_VALUE(-1));
+                break;
+
             case OP_PUSH_0:
                 PUSH(INT_VALUE(0));
                 break;
@@ -343,19 +349,16 @@ static void run()
                 pc += READ_UINT16();
                 break;
 
-            case OP_RES:
-                sp += READ_UINT8();
-                break;
-
             case OP_CALL: {
                 x = READ_UINT16();
                 Function func = getFunctionAt(functions, x);
 
                 sp -= func.paramCount;
-                sp[-1] = POINTER_VALUE(pc);
-                sp[-2] = POINTER_VALUE(fp);
+                memmove(sp + 2, sp, func.paramCount * sizeof(Value));
+                PUSH(POINTER_VALUE(fp));
+                PUSH(POINTER_VALUE(pc));
                 fp = sp;
-                sp += func.localCount;
+                sp += func.paramCount;
                 pc = &bc[func.position];
                 break;
             }

@@ -121,6 +121,7 @@ static void op_stl(int8_t imm)
 
 static void op_pushb(int8_t imm)
 {
+    if (imm == -1) return write8(OP_PUSH_N1);
     if (imm == 0) return write8(OP_PUSH_0);
     if (imm == 1) return write8(OP_PUSH_1);
     if (imm == 2) return write8(OP_PUSH_2);
@@ -253,12 +254,6 @@ static void op_jmp(uint16_t imm)
 {
     write8(OP_JMP);
     write16(imm);
-}
-
-static void op_res(int8_t imm)
-{
-    write8(OP_RES);
-    write8(imm);
 }
 
 static void op_call(uint16_t imm)
@@ -503,7 +498,6 @@ static void arguments(Vector* args)
 
 static void functionCall(AST* ast)
 {
-    op_res(2);
     arguments(&ast->funcCall.args);
 
     size_t position = countChunk(currentChunk);

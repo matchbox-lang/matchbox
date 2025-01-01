@@ -26,6 +26,7 @@ static int printInstruction(int8_t c)
         case OP_STL_3:      return printf("stl_3\n");
         case OP_PUSHB:      return printf("push\t\t%d\n", READ_INT8());
         case OP_PUSHH:      return printf("push\t\t%d\n", READ_INT16());
+        case OP_PUSH_N1:    return printf("push_n1\n");
         case OP_PUSH_0:     return printf("push_0\n");
         case OP_PUSH_1:     return printf("push_1\n");
         case OP_PUSH_2:     return printf("push_2\n");
@@ -53,7 +54,6 @@ static int printInstruction(int8_t c)
         case OP_BLT:        return printf("blt\t\t%d\n", READ_INT16());
         case OP_BLE:        return printf("ble\t\t%d\n", READ_INT16());
         case OP_JMP:        return printf("jmp\t\t%d\n", READ_INT16());
-        case OP_RES:        return printf("res\t\t%d\n", READ_INT8());
         case OP_CALL:       return printf("call\t\t%d\n", READ_INT16());
         case OP_RET:        return printf("ret\n");
         case OP_RETV:       return printf("retv\n");

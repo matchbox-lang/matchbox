@@ -22,6 +22,7 @@ typedef enum Opcode
     OP_STL_3,       // stl_3
     OP_PUSHB,       // push imm8
     OP_PUSHH,       // push imm16
+    OP_PUSH_N1,     // push_n1
     OP_PUSH_0,      // push_0
     OP_PUSH_1,      // push_1
     OP_PUSH_2,      // push_2
@@ -49,7 +50,6 @@ typedef enum Opcode
     OP_BLT,         // blt imm16
     OP_BLE,         // ble imm16
     OP_JMP,         // jmp imm16
-    OP_RES,         // res imm8
     OP_CALL,        // call imm16
     OP_RET,         // ret
     OP_RETV         // retv

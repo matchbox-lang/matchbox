@@ -49,8 +49,8 @@ typedef enum Opcode
     OP_BLT,         // blt imm16
     OP_BLE,         // ble imm16
     OP_JMP,         // jmp imm16
-    OP_CALL,        // call imm16
     OP_RES,         // res imm8
+    OP_CALL,        // call imm16
     OP_RET,         // ret
     OP_RETV         // retv
 } Opcode;

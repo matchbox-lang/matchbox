@@ -343,6 +343,10 @@ static void run()
                 pc += READ_UINT16();
                 break;
 
+            case OP_RES:
+                sp += READ_UINT8();
+                break;
+
             case OP_CALL: {
                 x = READ_UINT16();
                 Function func = getFunctionAt(functions, x);
@@ -355,10 +359,6 @@ static void run()
                 pc = &bc[func.position];
                 break;
             }
-
-            case OP_RES:
-                sp += READ_UINT8();
-                break;
 
             case OP_RET:
                 sp = fp - 2;

@@ -53,8 +53,8 @@ static int printInstruction(int8_t c)
         case OP_BLT:        return printf("blt\t\t%d\n", READ_INT16());
         case OP_BLE:        return printf("ble\t\t%d\n", READ_INT16());
         case OP_JMP:        return printf("jmp\t\t%d\n", READ_INT16());
-        case OP_CALL:       return printf("call\t\t%d\n", READ_INT16());
         case OP_RES:        return printf("res\t\t%d\n", READ_INT8());
+        case OP_CALL:       return printf("call\t\t%d\n", READ_INT16());
         case OP_RET:        return printf("ret\n");
         case OP_RETV:       return printf("retv\n");
     }

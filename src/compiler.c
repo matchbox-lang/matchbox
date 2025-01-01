@@ -255,16 +255,16 @@ static void op_jmp(uint16_t imm)
     write16(imm);
 }
 
-static void op_call(uint16_t imm)
-{
-    write8(OP_CALL);
-    write16(imm);
-}
-
 static void op_res(int8_t imm)
 {
     write8(OP_RES);
     write8(imm);
+}
+
+static void op_call(uint16_t imm)
+{
+    write8(OP_CALL);
+    write16(imm);
 }
 
 static void op_ret()

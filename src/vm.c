@@ -99,6 +99,16 @@ static void initServices()
     service[SYS_BYTEORDER] = sys_byteorder;
 }
 
+void inspectStack()
+{
+    for (int i = 0; i < STACK_SIZE; i++) {
+        char* arrow = &stack[i] == sp ? " <-" : "";
+        int n = AS_INT(stack[i]);
+
+        printf("%d: %d%s\n", i, n, arrow);
+    }
+}
+
 static void resetStack()
 {
     sp = stack;
@@ -340,32 +350,32 @@ static void run()
             case OP_CALL: {
                 x = READ_UINT16();
                 Function func = getFunctionAt(functions, x);
-                Value pcx = POINTER_VALUE(pc);
-                Value fpx = POINTER_VALUE(fp);
-                Value spx = POINTER_VALUE(sp - func.paramCount);
 
-                PUSH(pcx);
-                PUSH(spx);
-                PUSH(fpx);
-
-                pc = &bc[func.position];
+                sp -= func.paramCount;
+                sp[-1] = POINTER_VALUE(pc);
+                sp[-2] = POINTER_VALUE(fp);
                 fp = sp;
                 sp += func.localCount;
+                pc = &bc[func.position];
                 break;
             }
 
+            case OP_RES:
+                sp += READ_UINT8();
+                break;
+
             case OP_RET:
-                pc = AS_POINTER(fp[-3]);
-                sp = AS_POINTER(fp[-2]);
-                fp = AS_POINTER(fp[-1]);
+                sp = fp - 2;
+                pc = AS_POINTER(fp[-1]);
+                fp = AS_POINTER(fp[-2]);
                 PUSH(INT_VALUE(0));
                 break;
 
             case OP_RETV:
                 v = POP();
-                pc = AS_POINTER(fp[-3]);
-                sp = AS_POINTER(fp[-2]);
-                fp = AS_POINTER(fp[-1]);
+                sp = fp - 2;
+                pc = AS_POINTER(fp[-1]);
+                fp = AS_POINTER(fp[-2]);
                 PUSH(v);
                 break;
 
@@ -388,16 +398,6 @@ static void interpretChunk(Chunk* chunk, CommandArgs* args)
     constants = &chunk->constants;
 
     run();
-}
-
-void inspectStack()
-{
-    for (int i = 0; i < STACK_SIZE; i++) {
-        char* arrow = &stack[i] == sp ? " <-" : "";
-        int n = AS_INT(stack[i]);
-
-        printf("%d: %d%s\n", i, n, arrow);
-    }
 }
 
 void initVM()

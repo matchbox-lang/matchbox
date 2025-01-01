@@ -62,7 +62,7 @@ static Reference getFunctionReference(StringObject* id)
 static int getPosition(AST* ast)
 {
     if (isParameter(ast)) {
-        return -(ast->param.position + 4);
+        return ast->param.position;
     }
     
     return ast->varDef.position;
@@ -134,7 +134,7 @@ static void op_pushb(int8_t imm)
 static void op_pushh(int16_t imm)
 {
     write8(OP_PUSHH);
-    write8(imm);
+    write16(imm);
 }
 
 static void op_pop()
@@ -260,6 +260,12 @@ static void op_call(uint16_t imm)
 {
     write8(OP_CALL);
     write16(imm);
+}
+
+static void op_res(int8_t imm)
+{
+    write8(OP_RES);
+    write8(imm);
 }
 
 static void op_ret()
@@ -490,14 +496,15 @@ static void arguments(Vector* args)
 {
     int count = countVector(args);
 
-    while (count--) {
-        AST* arg = getVectorAt(args, count);
+    for (int i = 0; i < count; i++) {
+        AST* arg = getVectorAt(args, i);
         expression(arg);
     }
 }
 
 static void functionCall(AST* ast)
 {
+    op_res(2);
     arguments(&ast->funcCall.args);
 
     size_t position = countChunk(currentChunk);

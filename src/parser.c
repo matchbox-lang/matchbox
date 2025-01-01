@@ -457,13 +457,14 @@ static AST* parameter()
     ast->param.scope = currentScope;
     ast->param.id = id;
     ast->param.typeId = T_INT;
+    ast->param.position = getLocalCount(currentScope);
 
     if (isTypeToken(currentToken.type)) {
         ast->param.typeId = currentToken.type;
         consumeType();
     }
 
-    setLocalSymbol(currentScope, id, ast, false);
+    setLocalSymbol(currentScope, id, ast, true);
 
     return ast;
 }
@@ -555,11 +556,8 @@ static void parameters(Vector* params)
 {
     consume(T_LPAREN);
 
-    int paramCount = 0;
-
     while (currentToken.type != T_RPAREN) {
         AST* expr = parameter();
-        expr->param.position = paramCount++;
         pushVectorItem(params, expr);
 
         if (currentToken.type != T_COMMA) {

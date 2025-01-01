@@ -22,7 +22,6 @@ typedef enum Opcode
     OP_STL_3,       // stl_3
     OP_PUSHB,       // push imm8
     OP_PUSHH,       // push imm16
-    OP_PUSH_N1,     // push_n1
     OP_PUSH_0,      // push_0
     OP_PUSH_1,      // push_1
     OP_PUSH_2,      // push_2

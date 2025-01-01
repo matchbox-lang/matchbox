@@ -121,7 +121,6 @@ static void op_stl(int8_t imm)
 
 static void op_pushb(int8_t imm)
 {
-    if (imm == -1) return write8(OP_PUSH_N1);
     if (imm == 0) return write8(OP_PUSH_0);
     if (imm == 1) return write8(OP_PUSH_1);
     if (imm == 2) return write8(OP_PUSH_2);

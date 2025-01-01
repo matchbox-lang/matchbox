@@ -201,10 +201,6 @@ static void run()
                 PUSH(INT_VALUE(x));
                 break;
 
-            case OP_PUSH_N1:
-                PUSH(INT_VALUE(-1));
-                break;
-
             case OP_PUSH_0:
                 PUSH(INT_VALUE(0));
                 break;

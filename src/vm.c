@@ -14,7 +14,6 @@
 
 #define PUSH(value) (sp[0] = value, sp++)
 #define POP() ((--sp)[0])
-#define RESERVE(n) (sp += n)
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
 #define STACK_SIZE 32

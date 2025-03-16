@@ -16,7 +16,7 @@
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
-#define STACK_SIZE 1
+#define STACK_SIZE 1024
 
 typedef void (*service_t)();
 

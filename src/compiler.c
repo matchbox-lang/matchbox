@@ -526,14 +526,16 @@ static void assignment(AST* ast)
     }
 }
 
-static void arguments(Vector* args)
+static size_t arguments(Vector* args)
 {
-    int count = countVector(args);
+    size_t count = countVector(args);
 
     for (int i = 0; i < count; i++) {
         AST* arg = getVectorAt(args, i);
         expression(arg);
     }
+
+    return count;
 }
 
 static void functionCall(AST* ast)
@@ -548,7 +550,10 @@ static void functionCall(AST* ast)
 
 static void systemCall(AST* ast)
 {
-    arguments(&ast->syscall.args);
+    if (arguments(&ast->syscall.args) == 0) {
+        op_pushb(0);
+    }
+
     op_syscall(ast->syscall.opcode);
 }
 

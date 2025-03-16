@@ -16,7 +16,7 @@
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
-#define STACK_SIZE 1024
+#define STACK_SIZE 1
 
 typedef void (*service_t)();
 
@@ -94,7 +94,7 @@ static void sys_byteorder()
     int32_t i = 1;
     char* c = (char*)&i;
 
-    PUSH(INT_VALUE((int32_t)*c));
+    sp[-1] = INT_VALUE((int32_t)*c);
 }
 
 static void initServices()

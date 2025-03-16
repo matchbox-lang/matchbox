@@ -324,14 +324,14 @@ static void run()
                 PUSH(INT_VALUE(~(~a >> b)));
                 break;
 
-            case OP_NOT:
-                x = AS_INT(sp[-1]);
-                sp[-1] = INT_VALUE(!x);
-                break;
-
             case OP_NEG:
                 x = AS_INT(sp[-1]);
                 sp[-1] = INT_VALUE(-x);
+                break;
+
+            case OP_NOT:
+                x = AS_INT(sp[-1]);
+                sp[-1] = INT_VALUE(!x);
                 break;
 
             case OP_BEQ:
@@ -360,7 +360,7 @@ static void run()
                 x = READ_UINT16();
                 Function func = getFunctionAt(functions, x);
 
-                if (sp - stack + func.stackCount >= STACK_SIZE) {
+                if (sp - stack + func.maxStackCount > STACK_SIZE) {
                     error(stackOverflowError);
                 }
 
@@ -369,7 +369,7 @@ static void run()
                 PUSH(POINTER_VALUE(fp));
                 PUSH(POINTER_VALUE(pc));
                 fp = sp;
-                sp += func.paramCount;
+                sp += func.localCount;
                 pc = &bc[func.position];
                 break;
 

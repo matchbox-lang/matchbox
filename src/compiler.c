@@ -13,6 +13,20 @@ static AST* statements(AST* ast);
 static Chunk* currentChunk;
 static Scope* currentScope;
 static ReferenceArray functions;
+static int stackCount = 0;
+static int maxStackCount = 0;
+
+static void incStackCount()
+{
+    if (++stackCount > maxStackCount) {
+        maxStackCount = stackCount;
+    }
+}
+
+static void decStackCount()
+{
+    stackCount--;
+}
 
 static void patch8(size_t position, int8_t n)
 {
@@ -81,24 +95,29 @@ static void op_syscall(uint8_t imm)
 
 static void op_ldc(uint8_t imm)
 {
+    incStackCount();
     write8(OP_LDC);
     write8(imm);
 }
 
 static void op_ldg(uint8_t imm)
 {
+    incStackCount();
     write8(OP_LDG);
     write8(imm);
 }
 
 static void op_stg(uint8_t imm)
 {
+    decStackCount();
     write8(OP_STG);
     write8(imm);
 }
 
 static void op_ldl(int8_t imm)
 {
+    incStackCount();
+
     if (imm == 0) return write8(OP_LDL_0);
     if (imm == 1) return write8(OP_LDL_1);
     if (imm == 2) return write8(OP_LDL_2);
@@ -110,6 +129,8 @@ static void op_ldl(int8_t imm)
 
 static void op_stl(int8_t imm)
 {
+    decStackCount();
+
     if (imm == 0) return write8(OP_STL_0);
     if (imm == 1) return write8(OP_STL_1);
     if (imm == 2) return write8(OP_STL_2);
@@ -121,6 +142,8 @@ static void op_stl(int8_t imm)
 
 static void op_pushb(int8_t imm)
 {
+    incStackCount();
+
     if (imm == -1) return write8(OP_PUSH_N1);
     if (imm == 0) return write8(OP_PUSH_0);
     if (imm == 1) return write8(OP_PUSH_1);
@@ -133,17 +156,20 @@ static void op_pushb(int8_t imm)
 
 static void op_pushh(int16_t imm)
 {
+    incStackCount();
     write8(OP_PUSHH);
     write16(imm);
 }
 
 static void op_pop()
 {
+    decStackCount();
     write8(OP_POP);
 }
 
 static void op_dup()
 {
+    incStackCount();
     write8(OP_DUP);
 }
 
@@ -159,66 +185,79 @@ static void op_dec()
 
 static void op_add()
 {
+    decStackCount();
     write8(OP_ADD);
 }
 
 static void op_sub()
 {
+    decStackCount();
     write8(OP_SUB);
 }
 
 static void op_mul()
 {
+    decStackCount();
     write8(OP_MUL);
 }
 
 static void op_div()
 {
+    decStackCount();
     write8(OP_DIV);
 }
 
 static void op_rem()
 {
+    decStackCount();
     write8(OP_REM);
 }
 
 static void op_pow()
 {
+    decStackCount();
     write8(OP_POW);
 }
 
 static void op_band()
 {
+    decStackCount();
     write8(OP_BAND);
 }
 
 static void op_bor()
 {
+    decStackCount();
     write8(OP_BOR);
 }
 
 static void op_bxor()
 {
+    decStackCount();
     write8(OP_BXOR);
 }
 
 static void op_bnot()
 {
+    decStackCount();
     write8(OP_BNOT);
 }
 
 static void op_lsl()
 {
+    decStackCount();
     write8(OP_LSL);
 }
 
 static void op_lsr()
 {
+    decStackCount();
     write8(OP_LSR);
 }
 
 static void op_asr()
 {
+    decStackCount();
     write8(OP_ASR);
 }
 
@@ -264,6 +303,7 @@ static void op_call(uint16_t imm)
 
 static void op_ret()
 {
+    incStackCount();
     write8(OP_RET);
 }
 
@@ -535,11 +575,15 @@ static size_t functionDefinition(AST* ast)
     size_t localCount = body->compound.scope->localCount;
     size_t paramCount = countVector(&ast->funcDef.params);
     size_t position = countChunk(currentChunk);
-    Function func = {paramCount, localCount, UINT8_MAX, position};
+    Function func = {paramCount, localCount, 0, position};
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
-
-    pushFunction(&currentChunk->functions, func);
+    
+    maxStackCount = localCount + 2;
+    stackCount = maxStackCount;
+    
     functionBody(body);
+    func.maxStackCount = maxStackCount;
+    pushFunction(&currentChunk->functions, func);
     createFunctionReference(ast, functionsIndex);
     currentScope = ast->funcDef.scope;
 

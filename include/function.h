@@ -8,7 +8,7 @@ typedef struct Function
 {
     int paramCount;
     int localCount;
-    int stackCount;
+    int maxStackCount;
     size_t position;
 } Function;
 

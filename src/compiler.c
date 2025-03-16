@@ -535,7 +535,7 @@ static size_t functionDefinition(AST* ast)
     size_t localCount = body->compound.scope->localCount;
     size_t paramCount = countVector(&ast->funcDef.params);
     size_t position = countChunk(currentChunk);
-    Function func = {paramCount, localCount, position};
+    Function func = {paramCount, localCount, UINT8_MAX, position};
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
 
     pushFunction(&currentChunk->functions, func);

@@ -8,6 +8,7 @@ typedef struct Function
 {
     int paramCount;
     int localCount;
+    int stackCount;
     size_t position;
 } Function;
 

@@ -16,7 +16,7 @@
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
-#define STACK_SIZE 32
+#define STACK_SIZE 1024
 
 typedef void (*service_t)();
 
@@ -29,6 +29,14 @@ static uint8_t* bc;
 static FunctionArray* functions;
 static ValueArray* globals;
 static ValueArray* constants;
+
+const char* stackOverflowError = "Error: Stack overflow\n";
+
+static void error(const char* message)
+{
+    fprintf(stderr, message);
+    exit(1);
+}
 
 static void sys_exit()
 {
@@ -348,9 +356,13 @@ static void run()
                 pc += READ_UINT16();
                 break;
 
-            case OP_CALL: {
+            case OP_CALL:
                 x = READ_UINT16();
                 Function func = getFunctionAt(functions, x);
+
+                if (sp - stack + func.stackCount >= STACK_SIZE) {
+                    error(stackOverflowError);
+                }
 
                 sp -= func.paramCount;
                 memmove(sp + 2, sp, func.paramCount * sizeof(Value));
@@ -360,7 +372,6 @@ static void run()
                 sp += func.paramCount;
                 pc = &bc[func.position];
                 break;
-            }
 
             case OP_RET:
                 sp = fp - 2;

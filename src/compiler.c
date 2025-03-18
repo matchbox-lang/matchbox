@@ -587,9 +587,8 @@ static size_t functionDefinition(AST* ast)
     functionBody(body);
 
     size_t functionsIndex = countFunctionArray(&currentChunk->functions);
-    Function func = {paramCount, localCount, 0, position};
-    func.maxStackCount = maxStackCount;
-
+    Function func = {paramCount, maxStackCount, 0, position};
+    
     pushFunction(&currentChunk->functions, func);
     createFunctionReference(ast, functionsIndex - 1);
     currentScope = ast->funcDef.scope;
@@ -687,14 +686,14 @@ static AST* statements(AST* ast)
 static void topLevelStatements(AST* ast)
 {
     size_t localCount = getLocalCount(ast->compound.scope);
-    Function func = {0, 0, 0, 0};
 
     for (int i = 0; i < localCount; i++) {
         pushValue(&currentChunk->globals, INT_VALUE(0));
     }
 
     statements(ast);
-    func.maxStackCount = maxStackCount;
+
+    Function func = {0, 0, maxStackCount, 0};
     pushFunction(&currentChunk->functions, func);
     op_hlt();
     references();

@@ -580,16 +580,18 @@ static size_t functionDefinition(AST* ast)
     size_t localCount = body->compound.scope->localCount;
     size_t paramCount = countVector(&ast->funcDef.params);
     size_t position = countChunk(currentChunk);
-    Function func = {paramCount, localCount, 0, position};
-    size_t functionsIndex = countFunctionArray(&currentChunk->functions);
     
     maxStackCount = localCount + 2;
     stackCount = maxStackCount;
     
     functionBody(body);
+
+    size_t functionsIndex = countFunctionArray(&currentChunk->functions);
+    Function func = {paramCount, localCount, 0, position};
     func.maxStackCount = maxStackCount;
+
     pushFunction(&currentChunk->functions, func);
-    createFunctionReference(ast, functionsIndex);
+    createFunctionReference(ast, functionsIndex - 1);
     currentScope = ast->funcDef.scope;
 
     return functionsIndex;

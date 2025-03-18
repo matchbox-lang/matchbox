@@ -12,11 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define STACK_SIZE 1024
+#define TEST_STACK_OVERFLOW(n) if (sp - stack + n > STACK_SIZE) error(stackOverflowError);
 #define PUSH(value) (sp[0] = value, sp++)
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
 #define READ_UINT8() ((uint8_t)*(pc++))
-#define STACK_SIZE 1024
 
 typedef void (*service_t)();
 
@@ -127,16 +128,13 @@ static void resetStack()
 static void run()
 {
     uint8_t opcode;
-    Value v;
     int32_t a;
     int32_t b;
     int32_t x;
-
     Function func = getFunctionAt(functions, 0);
+    Value value;
 
-    if (func.maxStackCount > STACK_SIZE) {
-        error(stackOverflowError);
-    }
+    TEST_STACK_OVERFLOW(func.maxStackCount);
 
     while (opcode = READ_UINT8()) {
         switch (opcode)
@@ -148,14 +146,14 @@ static void run()
 
             case OP_LDC:
                 x = READ_UINT8();
-                v = getValueAt(constants, x);
-                PUSH(v);
+                value = getValueAt(constants, x);
+                PUSH(value);
                 break;
 
             case OP_LDG:
                 x = READ_UINT8();
-                v = getValueAt(globals, x);
-                PUSH(v);
+                value = getValueAt(globals, x);
+                PUSH(value);
                 break;
 
             case OP_STG:
@@ -364,12 +362,9 @@ static void run()
 
             case OP_CALL:
                 x = READ_UINT16();
-                func = getFunctionAt(functions, x);
-
-                if (sp - stack + func.maxStackCount > STACK_SIZE) {
-                    error(stackOverflowError);
-                }
-
+                Function func = getFunctionAt(functions, x);
+                
+                TEST_STACK_OVERFLOW(func.maxStackCount);
                 sp -= func.paramCount;
                 memmove(sp + 2, sp, func.paramCount * sizeof(Value));
                 PUSH(POINTER_VALUE(fp));
@@ -387,11 +382,11 @@ static void run()
                 break;
 
             case OP_RETV:
-                v = POP();
+                value = POP();
                 sp = fp - 2;
                 pc = AS_POINTER(fp[-1]);
                 fp = AS_POINTER(fp[-2]);
-                PUSH(v);
+                PUSH(value);
                 break;
 
             default:

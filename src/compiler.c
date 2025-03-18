@@ -687,12 +687,15 @@ static AST* statements(AST* ast)
 static void topLevelStatements(AST* ast)
 {
     size_t localCount = getLocalCount(ast->compound.scope);
+    Function func = {0, 0, 0, 0};
 
     for (int i = 0; i < localCount; i++) {
         pushValue(&currentChunk->globals, INT_VALUE(0));
     }
 
     statements(ast);
+    func.maxStackCount = maxStackCount;
+    pushFunction(&currentChunk->functions, func);
     op_hlt();
     references();
 }

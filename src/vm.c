@@ -132,6 +132,12 @@ static void run()
     int32_t b;
     int32_t x;
 
+    Function func = getFunctionAt(functions, 0);
+
+    if (func.maxStackCount > STACK_SIZE) {
+        error(stackOverflowError);
+    }
+
     while (opcode = READ_UINT8()) {
         switch (opcode)
         {
@@ -358,7 +364,7 @@ static void run()
 
             case OP_CALL:
                 x = READ_UINT16();
-                Function func = getFunctionAt(functions, x);
+                func = getFunctionAt(functions, x);
 
                 if (sp - stack + func.maxStackCount > STACK_SIZE) {
                     error(stackOverflowError);

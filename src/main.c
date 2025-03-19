@@ -1,4 +1,4 @@
-#include "file.h"
+#include "buffer.h"
 #include "config.h"
 #include "vm.h"
 #include <stdlib.h>
@@ -6,20 +6,26 @@
 
 static void repl(CommandArgs* args)
 {
-    char line[1024];
+    char* data = NULL;
+    size_t size = 0;
+    size_t len;
     
     initVM();
 
     while (1) {
-        printf("> ");
+        printf(">>> ");
 
-        if (!fgets(line, 1024, stdin)) {
+        len = getStreamContents(&data, &size, stdin);
+
+        if (len == -1) {
             printf("\n");
             break;
         }
-
-        interpret(line, args);
+        
+        interpret(data, args);
     }
+
+    free(data);
 }
 
 static void file(CommandArgs* args)

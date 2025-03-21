@@ -7,9 +7,8 @@
 static Position current;
 static Position start;
 
-const char* stringError = "Error: Missing terminating %c character on line %d:%d\n";
-const char* characterError = "Error: Missing terminating ' character on line %d:%d\n";
-const char* commentError = "Error: Unterminated comment on line %d:%d\n";
+const char* characterError = "Error: Missing terminating %c character";
+const char* commentError = "Error: Unterminated comment";
 
 void initLexer(char* source)
 {
@@ -18,15 +17,10 @@ void initLexer(char* source)
     current.column = 1;
 }
 
-static void error(const char* message)
+static void error(const char* message, const char c)
 {
-    fprintf(stderr, message, start.line, start.column);
-    exit(1);
-}
-
-static void errorc(const char* message, const char c)
-{
-    fprintf(stderr, message, c, start.line, start.column);
+    fprintf(stderr, message, c);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
@@ -135,7 +129,7 @@ static void skipCommentMulti()
         advance();
     }
 
-    error(commentError);
+    error(commentError, 0);
 }
 
 static void skipComment()
@@ -353,7 +347,7 @@ static Token characterLiteral()
         advance();
     }
 
-    error(characterError);
+    error(characterError, '\'');
 }
 
 static Token stringLiteral(char c)
@@ -367,7 +361,7 @@ static Token stringLiteral(char c)
         advance();
     }
 
-    errorc(stringError, c);
+    error(characterError, c);
 }
 
 static Token identifier()

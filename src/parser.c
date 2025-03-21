@@ -19,17 +19,16 @@ static Token prevToken;
 static Scope* currentScope;
 static Scope* topLevel;
 
-const char* assignmentError = "Error: Invalid assignment for variable %.*s on line %d:%d\n";
-const char* identifierError = "Error: Expected identifier on line %d:%d\n";
-const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s on line %d:%d\n";
-const char* invalidOperandError = "Error: Invalid operand to unary %.*s on line %d:%d\n";
-const char* invalidOperandsError = "Error: Invalid operands to binary %.*s on line %d:%d\n";
-const char* invalidTypeError = "Error: Invalid type for variable %.*s on line %d:%d\n";
-const char* redefinitionError = "Error: Redefinition of %.*s on line %d:%d\n";
-const char* undefinedError = "Error: %.*s is undefined on line %d:%d\n";
-const char* unexpectedLastTokenError = "Error: Unexpected end of input on line %d:%d\n";
-const char* unexpectedTokenError = "Error: Unexpected %.*s on line %d:%d\n";
-const char* uninitializedError = "Error: %.*s is uninitialized on line %d:%d\n";
+const char* assignmentError = "Error: Invalid assignment for variable %.*s";
+const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s";
+const char* invalidOperandError = "Error: Invalid operand to unary %.*s";
+const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
+const char* invalidTypeError = "Error: Invalid type for variable %.*s";
+const char* redefinitionError = "Error: Redefinition of %.*s";
+const char* undefinedError = "Error: %.*s is undefined";
+const char* unexpectedLastTokenError = "Error: Unexpected end of input";
+const char* unexpectedTokenError = "Error: Unexpected %.*s";
+const char* uninitializedError = "Error: %.*s is uninitialized";
 
 static void advance()
 {
@@ -39,22 +38,15 @@ static void advance()
 
 static void error(const char* message, Token token)
 {
-    fprintf(stderr, message, token.length, token.chars, token.line, token.column);
-    exit(1);
-}
-
-static void lineError(const char* message, Token token)
-{
-    int column = token.column + token.length;
-
-    fprintf(stderr, message, token.line, column);
+    fprintf(stderr, message, token.length, token.chars);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
 static void tokenError()
 {
     if (currentToken.type == T_EOF) {
-        lineError(unexpectedLastTokenError, prevToken);
+        error(unexpectedLastTokenError, currentToken);
     }
 
     error(unexpectedTokenError, currentToken);
@@ -629,7 +621,7 @@ static AST* functionDefinition()
     }
 
     if (currentToken.type != T_IDENTIFIER) {
-        lineError(identifierError, prevToken);
+        error(unexpectedTokenError, currentToken);
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
@@ -723,7 +715,7 @@ static AST* variableDefinition()
     }
 
     if (currentToken.type != T_IDENTIFIER) {
-        lineError(identifierError, prevToken);
+        error(unexpectedTokenError, currentToken);
     }
 
     consume(T_IDENTIFIER);

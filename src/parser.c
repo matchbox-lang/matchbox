@@ -19,14 +19,12 @@ static Token prevToken;
 static Scope* currentScope;
 static Scope* topLevel;
 
-const char* assignmentError = "Error: Invalid assignment for variable %.*s";
-const char* invalidArgumentsError = "Error: Invalid arguments to function %.*s";
-const char* invalidOperandError = "Error: Invalid operand to unary %.*s";
+const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
 const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
 const char* invalidTypeError = "Error: Invalid type for variable %.*s";
 const char* redefinitionError = "Error: Redefinition of %.*s";
 const char* undefinedError = "Error: %.*s is undefined";
-const char* unexpectedLastTokenError = "Error: Unexpected end of input";
+const char* unexpectedEndError = "Error: Unexpected end of input";
 const char* unexpectedTokenError = "Error: Unexpected %.*s";
 const char* uninitializedError = "Error: %.*s is uninitialized";
 
@@ -43,19 +41,10 @@ static void error(const char* message, Token token)
     exit(1);
 }
 
-static void tokenError()
-{
-    if (currentToken.type == T_EOF) {
-        error(unexpectedLastTokenError, currentToken);
-    }
-
-    error(unexpectedTokenError, currentToken);
-}
-
 static void consume(TokenType type)
 {
     if (currentToken.type != type) {
-        tokenError();
+        error(unexpectedTokenError, currentToken);
     }
     
     advance();
@@ -64,10 +53,15 @@ static void consume(TokenType type)
 static void consumeType()
 {
     if (!isTypeToken(currentToken.type)) {
-        tokenError();
+        error(unexpectedTokenError, currentToken);
     }
 
     consume(currentToken.type);
+}
+
+static bool isEof()
+{
+    return currentToken.type == T_EOF;
 }
 
 static AST* booleanLiteral(Token token)
@@ -146,9 +140,14 @@ static AST* groupExpression()
 {
     consume(T_LPAREN);
     AST* ast = expression();
+
+    if (!ast && currentToken.type == T_RPAREN) {
+        error(unexpectedTokenError, currentToken);
+    }
     
-    if (isNone(ast)) {
-        tokenError();
+    if (!ast || isEof()) {
+        freeAST(ast);
+        return NULL;
     }
 
     consume(T_RPAREN);
@@ -180,9 +179,11 @@ static AST* primary()
             return groupExpression();
         case T_IDENTIFIER:
             return identifier();
+        case T_EOF:
+            return NULL;
     }
-    
-    return createAST(AST_NONE);
+
+    error(unexpectedTokenError, currentToken);
 }
 
 static AST* postfix()
@@ -192,10 +193,15 @@ static AST* postfix()
     }
 
     Token token = currentToken;
-    AST* ast = createAST(AST_POSTFIX);
-    ast->postfix.operator = token;
-    ast->postfix.expr = variable();
 
+    AST* expr = variable();
+    if (!expr) {
+        return NULL;
+    }
+
+    AST* ast = createAST(AST_POSTFIX);
+    ast->postfix.expr = expr;
+    ast->postfix.operator = token;
     consume(token.type);
 
     return ast;
@@ -208,10 +214,14 @@ static AST* prefix()
     }
 
     Token token = currentToken;
+    consume(token.type);
+
+    if (isEof()) {
+        return NULL;
+    }
+
     AST* ast = createAST(AST_PREFIX);
     ast->prefix.operator = token;
-
-    consume(token.type);
 
     if (currentToken.type == T_IDENTIFIER) {
         consume(T_IDENTIFIER);
@@ -219,7 +229,12 @@ static AST* prefix()
     } else if (!isPostfixToken(token.type)) {
         ast->prefix.expr = prefix();
     } else {
-        tokenError();
+        error(unexpectedTokenError, currentToken);
+    }
+
+    if (!ast->prefix.expr) {
+        freeAST(ast);
+        return NULL;
     }
 
     return ast;
@@ -227,8 +242,8 @@ static AST* prefix()
 
 static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
 {
-    if (isNone(rightExpr)) {
-        tokenError();
+    if (!rightExpr) {
+        return NULL;
     }
 
     int a = getTypeId(leftExpr);
@@ -411,30 +426,28 @@ static AST* expression()
 static AST* returnStatement()
 {
     if (currentScope->level < 2) {
-        tokenError();
+        error(unexpectedTokenError, currentToken);
     }
 
     consume(T_RETURN);
     
+    AST* expr = expression();
+    if (!expr) {
+        return NULL;
+    }
+
     AST* ast = createAST(AST_RETURN);
-    ast->expr = expression();
+    ast->expr = expr;
 
     return ast;
 }
 
-static AST* argument()
-{
-    AST* expr = expression();
-
-    if (isNone(expr)) {
-        tokenError();
-    }
-
-    return expr;
-}
-
 static AST* parameter()
 {
+    if (isEof()) {
+        return NULL;
+    }
+    
     Token token = currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getLocalSymbol(currentScope, id);
@@ -471,6 +484,8 @@ static AST* variable()
         symbol = getLocalSymbol(topLevel, id);
     }
 
+    freeStringObject(id);
+
     if (!symbol || !isVariableType(symbol)) {
         error(undefinedError, token);
     }
@@ -478,8 +493,6 @@ static AST* variable()
     if (!isInitialized(symbol)) {
         error(uninitializedError, token);
     }
-
-    freeStringObject(id);
 
     AST* ast = createAST(AST_VARIABLE);
     ast->var.scope = currentScope;
@@ -494,7 +507,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
     size_t paramCount = countVector(&callee->funcDef.params);
 
     if (argCount != paramCount) {
-        error(invalidArgumentsError, token);
+        error(invalidArgsError, token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -503,7 +516,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
         int typeId = getTypeId(a);
 
         if (typeId != b->param.typeId) {
-            error(invalidArgumentsError, token);
+            error(invalidArgsError, token);
         }
     }
 }
@@ -513,7 +526,7 @@ static void compareServiceSignature(AST* caller, Service* service, Token token)
     size_t argCount = countVector(&caller->syscall.args);
 
     if (argCount != service->paramCount) {
-        error(invalidArgumentsError, token);
+        error(invalidArgsError, token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -521,63 +534,101 @@ static void compareServiceSignature(AST* caller, Service* service, Token token)
         int typeId = getTypeId(expr);
 
         if (typeId != service->params[i]) {
-            error(invalidArgumentsError, token);
+            error(invalidArgsError, token);
         }
     }
 }
 
-static void arguments(Vector* args)
+static bool arguments(Vector* args)
 {
     consume(T_LPAREN);
 
+    if (isEof()) {
+        return false;
+    }
+
     while (currentToken.type != T_RPAREN) {
-        AST* expr = argument();
+        AST* expr = expression();
+
+        if (!expr && (currentToken.type == T_COMMA || currentToken.type == T_RPAREN)) {
+            error(unexpectedTokenError, currentToken);
+        }
+
+        if (!expr) {
+            return false;
+        }
+
         pushVectorItem(args, expr);
 
-        if (currentToken.type != T_COMMA) {
-            break;
+        if (currentToken.type == T_COMMA) {
+            consume(T_COMMA);
         }
-        
-        consume(T_COMMA);
+    }
+
+    if (isEof()) {
+        return false;
     }
 
     consume(T_RPAREN);
+
+    return true;
 }
 
-static void parameters(Vector* params)
+static bool parameters(Vector* params)
 {
     consume(T_LPAREN);
+
+    if (isEof()) {
+        return false;
+    }
 
     while (currentToken.type != T_RPAREN) {
         AST* expr = parameter();
+
+        if (!expr && (currentToken.type == T_COMMA || currentToken.type == T_RPAREN)) {
+            error(unexpectedTokenError, currentToken);
+        }
+
+        if (!expr) {
+            return false;
+        }
+
         pushVectorItem(params, expr);
 
-        if (currentToken.type != T_COMMA) {
-            break;
+        if (currentToken.type == T_COMMA) {
+            consume(T_COMMA);
         }
-        
-        consume(T_COMMA);
+    }
+
+    if (isEof()) {
+        return false;
     }
     
     consume(T_RPAREN);
+
+    return true;
 }
 
-static AST* systemCall(StringObject* id)
+static AST* systemCall(Token token)
 {
-    Token token = prevToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
     Service* service = getServiceByName(id->chars);
-    
-    freeStringObject(id);
 
     if (!service) {
         error(undefinedError, token);
     }
 
+    freeStringObject(id);
+
     AST* ast = createAST(AST_SYSCALL);
     ast->syscall.opcode = service->opcode;
     ast->syscall.service = service;
 
-    arguments(&ast->syscall.args);
+    if (!arguments(&ast->syscall.args)) {
+        freeAST(ast);
+        return NULL;
+    }
+
     compareServiceSignature(ast, service, token);
 
     return ast;
@@ -589,8 +640,10 @@ static AST* functionCall()
     StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
     
+    freeStringObject(id);
+    
     if (!symbol) {
-        return systemCall(id);
+        return systemCall(token);
     }
 
     if (!symbol || symbol->type != AST_FUNCTION_DEFINITION) {
@@ -600,10 +653,13 @@ static AST* functionCall()
     AST* ast = createAST(AST_FUNCTION_CALL);
     ast->funcCall.scope = currentScope;
     ast->funcCall.symbol = symbol;
-    
-    arguments(&ast->funcCall.args);
+
+    if (!arguments(&ast->funcCall.args)) {
+        freeAST(ast);
+        return NULL;
+    }
+
     compareFunctionSignature(ast, symbol, token);
-    freeStringObject(id);
 
     return ast;
 }
@@ -611,6 +667,10 @@ static AST* functionCall()
 static AST* functionDefinition()
 {
     consume(T_FUNC);
+
+    if (isEof()) {
+        return NULL;
+    }
 
     Token token = currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
@@ -624,53 +684,49 @@ static AST* functionDefinition()
         error(unexpectedTokenError, currentToken);
     }
 
+    consume(T_IDENTIFIER);
+
+    if (isEof()) {
+        return NULL;
+    }
+
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
     ast->funcDef.scope = currentScope;
     ast->funcDef.id = id;
     ast->funcDef.typeId = T_INT;
+    ast->funcDef.body = NULL;
 
-    consume(T_IDENTIFIER);
     currentScope = createScope(currentScope);
-    parameters(&ast->funcDef.params);
+    
+    if (!parameters(&ast->funcDef.params)) {
+        freeAST(ast);
+        return NULL;
+    }
 
     if (isTypeToken(currentToken.type)) {
         ast->funcDef.typeId = currentToken.type;
         consumeType();
     }
 
+    if (isEof()) {
+        freeAST(ast);
+        return NULL;
+    }
+
     consume(T_LBRACE);
-    ast->funcDef.body = statements(T_RBRACE);
+
+    AST* body = statements(T_RBRACE);
+    if (!body) {
+        freeAST(ast);
+        return NULL;
+    }
+
+    ast->funcDef.body = body;
     consume(T_RBRACE);
     currentScope = currentScope->parent;
     setLocalSymbol(currentScope, id, ast, false);
 
     return ast;
-}
-
-static void assignmentExpression(AST* ast, Token token)
-{
-    AST* expr = expression();
-
-    if (isNone(expr)) {
-        tokenError();
-    }
-
-    int typeId = getTypeId(expr);
-    if (typeId < 0) {
-        error(assignmentError, token);
-    }
-
-    switch (ast->type) {
-        case AST_VARIABLE_DEFINITION:
-            ast->varDef.expr = expr;
-            ast->varDef.typeId = typeId;
-            return;
-        case AST_ASSIGNMENT:
-            ast->assignment.expr = expr;
-            return;
-    }
-
-    tokenError();
 }
 
 static AST* assignment()
@@ -680,6 +736,8 @@ static AST* assignment()
     StringObject* id = copyStringObject(token.chars, token.length);
     AST* symbol = getSymbol(currentScope, id);
 
+    freeStringObject(id);
+
     if (!symbol) {
         error(undefinedError, token);
     }
@@ -688,15 +746,19 @@ static AST* assignment()
         error(uninitializedError, token);
     }
     
-    freeStringObject(id);
+    consume(operator.type);
+    
+    AST* expr = expression();
+    if (!expr) {
+        return NULL;
+    }
 
     AST* ast = createAST(AST_ASSIGNMENT);
     ast->assignment.scope = currentScope;
     ast->assignment.operator = operator;
     ast->assignment.symbol = symbol;
+    ast->assignment.expr = expr;
 
-    consume(operator.type);
-    assignmentExpression(ast, token);
     initialize(symbol);
 
     return ast;
@@ -705,6 +767,10 @@ static AST* assignment()
 static AST* variableDefinition()
 {
     consume(T_VAR);
+
+    if (isEof()) {
+        return NULL;
+    }
 
     Token token = currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
@@ -720,11 +786,15 @@ static AST* variableDefinition()
 
     consume(T_IDENTIFIER);
 
+    if (isEof()) {
+        return NULL;
+    }
+
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
     ast->varDef.scope = currentScope;
     ast->varDef.id = id;
-    ast->varDef.typeId = T_INT;
     ast->varDef.position = getLocalCount(currentScope);
+    ast->varDef.expr = NULL;
 
     if (isTypeToken(currentToken.type)) {
         ast->varDef.typeId = currentToken.type;
@@ -733,17 +803,29 @@ static AST* variableDefinition()
     
     if (currentToken.type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
-    } else {
-        consume(T_EQUAL);
-        assignmentExpression(ast, token);
-        initialize(ast);
+        ast->varDef.typeId = T_INT;
+        setLocalSymbol(currentScope, id, ast, true);
+
+        return ast;
     }
+    
+    consume(T_EQUAL);
+
+    AST* expr = expression();
+    if (!expr) {
+        freeAST(ast);
+        return NULL;
+    }
+
+    ast->varDef.typeId = getTypeId(expr);
+    ast->varDef.expr = expr;
 
     if (ast->varDef.typeId == T_NONE) {
         error(invalidTypeError, token);
     }
 
     setLocalSymbol(currentScope, id, ast, true);
+    initialize(ast);
 
     return ast;
 }
@@ -786,8 +868,13 @@ static AST* statements(TokenType type)
 
     while (token.type != type) {
         AST* stmt = statement();
+        if (!stmt) {
+            freeAST(ast);
+            return NULL;
+        }
         
-        if (currentToken.line == token.line &&
+        if (!isEof() && 
+            currentToken.line == token.line &&
             currentToken.type != type &&
             prevToken.type != T_RBRACE) {
             consume(T_SEMICOLON);
@@ -806,6 +893,11 @@ AST* parse(char* source)
     currentScope = createScope(NULL);
     topLevel = currentScope;
     advance();
+
+    AST* ast = statements(T_EOF);
+    if (!ast) {
+        error(unexpectedEndError, currentToken);
+    }
     
-    return statements(T_EOF);
+    return ast;
 }

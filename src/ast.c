@@ -112,6 +112,10 @@ Scope* getScope(AST* ast)
 
 int getTypeId(AST* ast)
 {
+    if (!ast) {
+        return T_NONE;
+    }
+
     switch (ast->type) {
         case AST_BINARY:
             return ast->binary.typeId;
@@ -135,7 +139,7 @@ int getTypeId(AST* ast)
             return T_INT;
     }
 
-    return -1;
+    return T_NONE;
 }
 
 bool isParameter(AST* ast)

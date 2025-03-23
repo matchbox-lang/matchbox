@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static void repl(CommandArgs* args)
+CommandArgs cargs;
+
+static void repl()
 {
     char* data = NULL;
     size_t size = 0;
@@ -22,35 +24,34 @@ static void repl(CommandArgs* args)
             break;
         }
         
-        interpret(data, args);
+        interpret(data);
     }
 
     free(data);
 }
 
-static void file(CommandArgs* args)
+static void file()
 {
-    char* source = getFileContents(args->filename);
+    char* source = getFileContents(cargs.filename);
 
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", args->filename);
+        fprintf(stderr, "Error: Could not read file %s\n", cargs.filename);
         usage();
     }
     
     initVM();
-    interpret(source, args);
+    interpret(source);
     free(source);
 }
 
 int main(int argc, char* argv[])
 {
-    CommandArgs args;
-    initCommandArgs(&args, argc, argv);
+    initCommandArgs(&cargs, argc, argv);
 
     if (argc == 1) {
-        repl(&args);
+        repl();
     } else {
-        file(&args);
+        file();
     }
 
     return 0;

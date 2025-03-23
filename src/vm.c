@@ -31,7 +31,8 @@ static FunctionArray* functions;
 static ValueArray* globals;
 static ValueArray* constants;
 
-const char* stackOverflowError = "Error: Stack overflow\n";
+static const char* stackOverflowError = "Error: Stack overflow\n";
+extern CommandArgs cargs;
 
 static void error(const char* message)
 {
@@ -395,9 +396,9 @@ static void run()
     }
 }
 
-static void interpretChunk(Chunk* chunk, CommandArgs* args)
+static void interpretChunk(Chunk* chunk)
 {
-    if (args->disassemble) {
+    if (cargs.disassemble) {
         return disassemble(chunk);
     }
 
@@ -416,12 +417,12 @@ void initVM()
     resetStack();
 }
 
-void interpret(char* source, CommandArgs* args)
+void interpret(char* source)
 {
     Chunk chunk;
     initChunk(&chunk);
     compile(source, &chunk);
-    interpretChunk(&chunk, args);
+    interpretChunk(&chunk);
     freeChunk(&chunk);
 }
 

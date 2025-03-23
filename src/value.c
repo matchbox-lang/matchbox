@@ -1,8 +1,6 @@
 #include "value.h"
 #include <stdlib.h>
 
-#include <stdio.h>
-
 #define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
 
 void initValueArray(ValueArray* array)

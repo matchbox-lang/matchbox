@@ -7,8 +7,8 @@
 static Position current;
 static Position start;
 
-const char* characterError = "Error: Missing terminating %c character";
-const char* commentError = "Error: Unterminated comment";
+static const char* characterError = "Error: Missing terminating %c character";
+static const char* commentError = "Error: Unterminated comment";
 
 void initLexer(char* source)
 {

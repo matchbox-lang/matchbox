@@ -19,14 +19,14 @@ static Token prevToken;
 static Scope* currentScope;
 static Scope* topLevel;
 
-const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
-const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
-const char* invalidTypeError = "Error: Invalid type for variable %.*s";
-const char* redefinitionError = "Error: Redefinition of %.*s";
-const char* undefinedError = "Error: %.*s is undefined";
-const char* unexpectedEndError = "Error: Unexpected end of input";
-const char* unexpectedTokenError = "Error: Unexpected %.*s";
-const char* uninitializedError = "Error: %.*s is uninitialized";
+static const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
+static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
+static const char* invalidTypeError = "Error: Invalid type for variable %.*s";
+static const char* redefinitionError = "Error: Redefinition of %.*s";
+static const char* undefinedError = "Error: %.*s is undefined";
+static const char* unexpectedEndError = "Error: Unexpected end of input";
+static const char* unexpectedTokenError = "Error: Unexpected %.*s";
+static const char* uninitializedError = "Error: %.*s is uninitialized";
 
 static void advance()
 {

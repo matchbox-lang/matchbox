@@ -36,7 +36,7 @@ static void file()
 
     if (!source) {
         fprintf(stderr, "Error: Could not read file %s\n", cargs.filename);
-        usage();
+        printUsage();
     }
     
     initVM();

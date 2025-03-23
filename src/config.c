@@ -1,26 +1,36 @@
 #include "config.h"
 #include "string.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-void usage()
+void printUsage()
 {
     printf("Usage: %s <options> <file>\n", PROGRAM_COMMAND);
     exit(1);
 }
 
+static void printUnknownOption(char* arg)
+{
+    fprintf(stderr, "Unknown option: %s\n", arg);
+    printUsage();
+}
+
+static void printVersion()
+{
+    fprintf(stdout, "%s\n", PROGRAM_VERSION);
+    exit(0);
+}
+
 static void parseOption(CommandArgs* args, char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
-        fprintf(stdout, "%s\n", PROGRAM_VERSION);
-        exit(0);
+        printVersion();
     }
     
     if (strcmp(arg, "-d") == 0) {
         args->disassemble = true;
     } else {
-        fprintf(stderr, "Unknown option: %s\n", arg);
-        usage();
+        printUnknownOption(arg);
     }
 }
 

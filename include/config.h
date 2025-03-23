@@ -12,7 +12,7 @@ typedef struct CommandArgs
     const char* filename;
 } CommandArgs;
 
-void usage();
+void printUsage();
 void initCommandArgs(CommandArgs* args, int count, char* argv[]);
 
 #endif

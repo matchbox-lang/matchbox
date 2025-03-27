@@ -14,6 +14,7 @@ void initVector(Vector* vector);
 void freeVector(Vector* vector);
 size_t countVector(Vector* vector);
 void reserveVector(Vector* vector, size_t capacity);
+void resizeVector(Vector* vector, size_t size);
 size_t pushVectorItem(Vector* vector, void* item);
 void* popVectorItem(Vector* vector);
 void* getVectorAt(Vector* vector, size_t index);

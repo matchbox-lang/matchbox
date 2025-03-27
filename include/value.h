@@ -33,6 +33,7 @@ void initValueArray(ValueArray* array);
 void freeValueArray(ValueArray* array);
 size_t countValueArray(ValueArray* array);
 void reserveValueArray(ValueArray* array, size_t capacity);
+void resizeValueArray(ValueArray* array, size_t size);
 size_t pushValue(ValueArray* array, Value value);
 Value getValueAt(ValueArray* array, size_t index);
 void setValueAt(ValueArray* array, size_t index, Value item);

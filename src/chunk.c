@@ -10,14 +10,12 @@ void initChunk(Chunk* chunk)
     chunk->count = 0;
 
     initFunctionArray(&chunk->functions);
-    initValueArray(&chunk->globals);
     initValueArray(&chunk->constants);
 }
 
 void freeChunk(Chunk* chunk)
 {
     freeValueArray(&chunk->constants);
-    freeValueArray(&chunk->globals);
     freeFunctionArray(&chunk->functions);
     free(chunk->data);
 }

@@ -21,7 +21,7 @@ static void printVersion()
     exit(0);
 }
 
-static void parseOption(CommandArgs* args, char* arg)
+static void parseOption(CommandArguments* args, char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
         printVersion();
@@ -34,7 +34,7 @@ static void parseOption(CommandArgs* args, char* arg)
     }
 }
 
-void initCommandArgs(CommandArgs* args, int argc, char* argv[])
+void initCommandArguments(CommandArguments* args, int argc, char* argv[])
 {
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {

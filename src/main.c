@@ -1,14 +1,19 @@
 #include "buffer.h"
+#include "chunk.h"
+#include "compiler.h"
 #include "config.h"
+#include "parser.h"
+#include "scope.h"
 #include "vm.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-CommandArgs cargs;
+CommandArguments cargs;
+ValueArray globals;
 
 static void repl()
 {
-    char* data = NULL;
+    char* source = NULL;
     size_t size = 0;
     size_t len;
     
@@ -17,17 +22,17 @@ static void repl()
     while (1) {
         printf(">>> ");
 
-        len = getStreamContents(&data, &size, stdin);
+        len = getStreamContents(&source, &size, stdin);
 
         if (len == -1) {
             printf("\n");
             break;
         }
         
-        interpret(data);
+        interpret(source);
     }
 
-    free(data);
+    free(source);
 }
 
 static void file()
@@ -46,13 +51,16 @@ static void file()
 
 int main(int argc, char* argv[])
 {
-    initCommandArgs(&cargs, argc, argv);
+    initCommandArguments(&cargs, argc, argv);
+    initValueArray(&globals);
 
     if (argc == 1) {
         repl();
     } else {
         file();
     }
+
+    freeValueArray(&globals);
 
     return 0;
 }

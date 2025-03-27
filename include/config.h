@@ -6,13 +6,13 @@
 #define PROGRAM_COMMAND "matchbox"
 #define PROGRAM_VERSION "Matchbox 0.2.0"
 
-typedef struct CommandArgs
+typedef struct CommandArguments
 {
     bool disassemble;
     const char* filename;
-} CommandArgs;
+} CommandArguments;
 
 void printUsage();
-void initCommandArgs(CommandArgs* args, int count, char* argv[]);
+void initCommandArguments(CommandArguments* args, int count, char* argv[]);
 
 #endif

@@ -12,7 +12,6 @@ typedef struct Chunk
     size_t capacity;
     size_t count;
     FunctionArray functions;
-    ValueArray globals;
     ValueArray constants;
 } Chunk;
 

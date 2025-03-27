@@ -16,6 +16,8 @@ static ReferenceArray functions;
 static int stackCount = 0;
 static int maxStackCount = 0;
 
+extern ValueArray globals;
+
 static void incStackCount()
 {
     if (++stackCount > maxStackCount) {
@@ -685,11 +687,11 @@ static AST* statements(AST* ast)
 
 static void topLevelStatements(AST* ast)
 {
-    Function func = {0, 0, maxStackCount, 0};
     size_t localCount = getLocalCount(ast->compound.scope);
+    Function func = {0, 0, maxStackCount, 0};
 
+    resizeValueArray(&globals, localCount);
     pushFunction(&currentChunk->functions, func);
-    resizeValueArray(&currentChunk->globals, localCount);
     statements(ast);
     op_hlt();
     references();
@@ -699,6 +701,7 @@ void compile(char* source, Chunk* chunk)
 {
     currentChunk = chunk;
     AST* ast = parse(source);
+    
     initReferenceArray(&functions);
     topLevelStatements(ast);
     freeReferenceArray(&functions);

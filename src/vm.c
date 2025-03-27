@@ -28,11 +28,12 @@ static Value* fp;
 static uint8_t* pc;
 static uint8_t* bc;
 static FunctionArray* functions;
-static ValueArray* globals;
 static ValueArray* constants;
 
+extern CommandArguments cargs;
+extern ValueArray globals;
+
 static const char* stackOverflowError = "Error: Stack overflow\n";
-extern CommandArgs cargs;
 
 static void error(const char* message)
 {
@@ -153,13 +154,13 @@ static void run()
 
             case OP_LDG:
                 x = READ_UINT8();
-                value = getValueAt(globals, x);
+                value = getValueAt(&globals, x);
                 PUSH(value);
                 break;
 
             case OP_STG:
                 x = READ_UINT8();
-                setValueAt(globals, x, sp[-1]);
+                setValueAt(&globals, x, sp[-1]);
                 POP();
                 break;
 
@@ -405,7 +406,6 @@ static void interpretChunk(Chunk* chunk)
     bc = chunk->data;
     pc = chunk->data;
     functions = &chunk->functions;
-    globals = &chunk->globals;
     constants = &chunk->constants;
 
     run();

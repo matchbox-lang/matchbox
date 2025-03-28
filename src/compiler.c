@@ -102,6 +102,12 @@ static void op_ldc(uint8_t imm)
     write8(imm);
 }
 
+static void op_reg()
+{
+    decStackCount();
+    write8(OP_REG);
+}
+
 static void op_ldg(uint8_t imm)
 {
     incStackCount();
@@ -146,7 +152,6 @@ static void op_pushb(int8_t imm)
 {
     incStackCount();
 
-    if (imm == -1) return write8(OP_PUSH_N1);
     if (imm == 0) return write8(OP_PUSH_0);
     if (imm == 1) return write8(OP_PUSH_1);
     if (imm == 2) return write8(OP_PUSH_2);
@@ -615,6 +620,11 @@ static void variableDefinition(AST* ast)
     }
 
     expression(ast->varDef.expr);
+
+    if (isTopLevel(ast->varDef.scope)) {
+        return op_reg();
+    }
+    
     storeVariable(ast);
 }
 
@@ -687,10 +697,8 @@ static AST* statements(AST* ast)
 
 static void topLevelStatements(AST* ast)
 {
-    size_t localCount = getLocalCount(ast->compound.scope);
     Function func = {0, 0, maxStackCount, 0};
-
-    resizeValueArray(&globals, localCount);
+    
     pushFunction(&currentChunk->functions, func);
     statements(ast);
     op_hlt();

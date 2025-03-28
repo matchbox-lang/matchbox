@@ -1,15 +1,9 @@
 #include "buffer.h"
-#include "chunk.h"
-#include "compiler.h"
 #include "config.h"
-#include "parser.h"
-#include "scope.h"
 #include "vm.h"
 #include <stdlib.h>
-#include <stdio.h>
 
 CommandArguments cargs;
-ValueArray globals;
 
 static void repl()
 {
@@ -32,6 +26,7 @@ static void repl()
         interpret(source);
     }
 
+    freeVM();
     free(source);
 }
 
@@ -46,21 +41,19 @@ static void file()
     
     initVM();
     interpret(source);
+    freeVM();
     free(source);
 }
 
 int main(int argc, char* argv[])
 {
     initCommandArguments(&cargs, argc, argv);
-    initValueArray(&globals);
 
     if (argc == 1) {
         repl();
     } else {
         file();
     }
-
-    freeValueArray(&globals);
 
     return 0;
 }

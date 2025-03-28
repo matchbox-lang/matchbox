@@ -29,9 +29,9 @@ static uint8_t* pc;
 static uint8_t* bc;
 static FunctionArray* functions;
 static ValueArray* constants;
+static ValueArray globals;
 
 extern CommandArguments cargs;
-extern ValueArray globals;
 
 static const char* stackOverflowError = "Error: Stack overflow\n";
 
@@ -152,6 +152,10 @@ static void run()
                 PUSH(value);
                 break;
 
+            case OP_REG:
+                pushValue(&globals, POP());
+                break;
+
             case OP_LDG:
                 x = READ_UINT8();
                 value = getValueAt(&globals, x);
@@ -214,10 +218,6 @@ static void run()
             case OP_PUSHH:
                 x = (int16_t) READ_UINT16();
                 PUSH(INT_VALUE(x));
-                break;
-
-            case OP_PUSH_N1:
-                PUSH(INT_VALUE(-1));
                 break;
 
             case OP_PUSH_0:
@@ -415,6 +415,12 @@ void initVM()
 {
     initServices();
     resetStack();
+    initValueArray(&globals);
+}
+
+void freeVM()
+{
+    freeValueArray(&globals);
 }
 
 void interpret(char* source)

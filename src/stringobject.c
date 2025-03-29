@@ -7,13 +7,12 @@
 
 StringObject* createStringObject(char* chars, size_t length, size_t hash)
 {
-    StringObject* str = malloc(sizeof(StringObject));
-    str->obj.type = OBJ_STRING;
-    str->chars = chars;
-    str->length = length;
-    str->hash = hash;
+    StringObject* string = ALLOCATE_OBJECT(StringObject, OBJ_STRING);
+    string->chars = chars;
+    string->length = length;
+    string->hash = hash;
 
-    return str;
+    return string;
 }
 
 StringObject* copyStringObject(const char* src, size_t len)

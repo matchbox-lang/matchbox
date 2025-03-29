@@ -126,10 +126,12 @@ static void op_ldl(int8_t imm)
 {
     incStackCount();
 
-    if (imm == 0) return write8(OP_LDL_0);
-    if (imm == 1) return write8(OP_LDL_1);
-    if (imm == 2) return write8(OP_LDL_2);
-    if (imm == 3) return write8(OP_LDL_3);
+    switch (imm) {
+        case 0: return write8(OP_LDL_0);
+        case 1: return write8(OP_LDL_1);
+        case 2: return write8(OP_LDL_2);
+        case 3: return write8(OP_LDL_3);
+    }
 
     write8(OP_LDL);
     write8(imm);
@@ -139,10 +141,12 @@ static void op_stl(int8_t imm)
 {
     decStackCount();
 
-    if (imm == 0) return write8(OP_STL_0);
-    if (imm == 1) return write8(OP_STL_1);
-    if (imm == 2) return write8(OP_STL_2);
-    if (imm == 3) return write8(OP_STL_3);
+    switch (imm) {
+        case 0: return write8(OP_STL_0);
+        case 1: return write8(OP_STL_1);
+        case 2: return write8(OP_STL_2);
+        case 3: return write8(OP_STL_3);
+    }
 
     write8(OP_STL);
     write8(imm);
@@ -152,10 +156,12 @@ static void op_pushb(int8_t imm)
 {
     incStackCount();
 
-    if (imm == 0) return write8(OP_PUSH_0);
-    if (imm == 1) return write8(OP_PUSH_1);
-    if (imm == 2) return write8(OP_PUSH_2);
-    if (imm == 3) return write8(OP_PUSH_3);
+    switch (imm) {
+        case 0: return write8(OP_PUSH_0);
+        case 1: return write8(OP_PUSH_1);
+        case 2: return write8(OP_PUSH_2);
+        case 3: return write8(OP_PUSH_3);
+    }
 
     write8(OP_PUSHB);
     write8(imm);
@@ -319,25 +325,49 @@ static void op_retv()
     write8(OP_RETV);
 }
 
-static void loadVariable(AST* ast)
+static void loadGlobalVariable(AST* ast)
 {
     int position = getPosition(ast);
 
+    op_ldg(position);
+}
+
+static void loadLocalVariable(AST* ast)
+{
+    int position = getPosition(ast);
+
+    op_ldl(position);
+}
+
+static void loadVariable(AST* ast)
+{
     if (isTopLevel(ast->varDef.scope)) {
-        op_ldg(position);
+        loadGlobalVariable(ast);
     } else {
-        op_ldl(position);
+        loadLocalVariable(ast);
     }
+}
+
+static void storeGlobalVariable(AST* ast)
+{
+    int position = getPosition(ast);
+
+    op_stg(position);
+}
+
+static void storeLocalVariable(AST* ast)
+{
+    int position = getPosition(ast);
+
+    op_stl(position);
 }
 
 static void storeVariable(AST* ast)
 {
-    int position = getPosition(ast);
-
     if (isTopLevel(ast->varDef.scope)) {
-        op_stg(position);
+        storeGlobalVariable(ast);
     } else {
-        op_stl(position);
+        storeLocalVariable(ast);
     }
 }
 
@@ -622,10 +652,10 @@ static void variableDefinition(AST* ast)
     expression(ast->varDef.expr);
 
     if (isTopLevel(ast->varDef.scope)) {
-        return op_reg();
+        op_reg();
+    } else {
+        storeLocalVariable(ast);
     }
-    
-    storeVariable(ast);
 }
 
 static void references()

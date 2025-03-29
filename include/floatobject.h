@@ -8,7 +8,9 @@
 typedef struct FloatObject
 {
     Object obj;
-    float floatValue;
+    float value;
 } FloatObject;
+
+FloatObject* createFloatObject(float value);
 
 #endif

@@ -15,9 +15,9 @@ typedef struct StringObject
 
 StringObject* createStringObject(char* chars, size_t len, size_t hash);
 StringObject* copyStringObject(const char* chars, size_t len);
-void freeStringObject(StringObject* str);
+void freeStringObject(StringObject* string);
 bool compareStringObject(StringObject* a, StringObject* b);
 size_t hashStringObject(const char* chars, size_t len);
-void printStringObject(StringObject* str);
+void printStringObject(StringObject* string);
 
 #endif

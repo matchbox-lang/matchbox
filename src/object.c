@@ -1,4 +1,6 @@
 #include "object.h"
+#include "functionobject.h"
+#include "stringobject.h"
 
 Object* allocateObject(size_t size, ObjectType type)
 {

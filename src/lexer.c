@@ -296,7 +296,7 @@ static Token floatLiteral()
     return makeToken(T_FLOAT_LITERAL);
 }
 
-static Token decimalLiteral()
+static Token integerLiteral()
 {
     while (isDigit(peek()) || (peek() == '_' && isDigit(next()))) {
         advance();
@@ -306,7 +306,7 @@ static Token decimalLiteral()
         return floatLiteral();
     }
 
-    return makeToken(T_DECIMAL_LITERAL);
+    return makeToken(T_INTEGER_LITERAL);
 }
 
 static Token hexadecimalLiteral()
@@ -396,11 +396,11 @@ Token scanToken()
         if (isODigit(next()) && (match('o') || match('O'))) return octalLiteral();
         if (isBDigit(next()) && (match('b') || match('B'))) return binaryLiteral();
 
-        return decimalLiteral();
+        return integerLiteral();
     }
 
     if (isDigit(c)) {
-        return decimalLiteral();
+        return integerLiteral();
     }
 
     switch (c) {
@@ -443,7 +443,7 @@ Token scanToken()
                 match('=') ? T_PLUS_EQUAL : T_PLUS);
         case '-':
             if (isDigit(peek()) || peek() == '.') {
-                return decimalLiteral();
+                return integerLiteral();
             }
             return makeToken(
                 match('-') ? T_DECREMENT :

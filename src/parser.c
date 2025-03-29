@@ -73,10 +73,10 @@ static AST* booleanLiteral(Token token)
     return ast;
 }
 
-static AST* decimalLiteral(Token token)
+static AST* integerLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intValue = decimalLiteralToValue(token.chars, token.length);
+    ast->intValue = integerLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -161,8 +161,8 @@ static AST* primary()
         case T_TRUE:
         case T_FALSE:
             return booleanLiteral(currentToken);
-        case T_DECIMAL_LITERAL:
-            return decimalLiteral(currentToken);
+        case T_INTEGER_LITERAL:
+            return integerLiteral(currentToken);
         case T_BINARY_LITERAL:
             return binaryLiteral(currentToken);
         case T_HEXADECIMAL_LITERAL:

@@ -8,7 +8,9 @@
 typedef struct BoolObject
 {
     Object obj;
-    bool boolValue;
+    bool value;
 } BoolObject;
+
+BoolObject* createBoolObject(bool value);
 
 #endif

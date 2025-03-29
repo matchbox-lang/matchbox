@@ -8,7 +8,9 @@
 typedef struct IntObject
 {
     Object obj;
-    int intValue;
+    int value;
 } IntObject;
+
+IntObject* createIntObject(int value);
 
 #endif

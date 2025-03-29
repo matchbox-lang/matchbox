@@ -13,7 +13,7 @@
 #include <string.h>
 
 #define STACK_SIZE 1024
-#define TEST_STACK_OVERFLOW(n) if (sp - stack + n > STACK_SIZE) error(stackOverflowError);
+#define TEST_STACK_OVERFLOW(n) if (sp - stack + n > STACK_SIZE) error(stackOverflowError)
 #define PUSH(value) (sp[0] = value, sp++)
 #define POP() ((--sp)[0])
 #define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))

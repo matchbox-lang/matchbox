@@ -1,10 +1,9 @@
-#ifndef STRINGOBJECT_H
-#define STRINGOBJECT_H
+#ifndef STRING_OBJECT_H
+#define STRING_OBJECT_H
 
 #include "object.h"
-#include "value.h"
 
-#define AS_STRINGOBJECT(value) ((StringObject*)AS_POINTER(value))
+#define AS_STRING_OBJECT(value) ((StringObject*)AS_OBJECT(value))
 
 typedef struct StringObject
 {

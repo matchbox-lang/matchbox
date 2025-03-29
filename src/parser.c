@@ -67,7 +67,7 @@ static bool isEof()
 static AST* booleanLiteral(Token token)
 {
     AST* ast = createAST(AST_BOOLEAN);
-    ast->boolVal = token.type == T_TRUE;
+    ast->boolValue = token.type == T_TRUE;
     consume(token.type);
 
     return ast;
@@ -76,7 +76,7 @@ static AST* booleanLiteral(Token token)
 static AST* decimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intVal = decimalLiteralToValue(token.chars, token.length);
+    ast->intValue = decimalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -85,7 +85,7 @@ static AST* decimalLiteral(Token token)
 static AST* binaryLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intVal = binaryLiteralToValue(token.chars, token.length);
+    ast->intValue = binaryLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -94,7 +94,7 @@ static AST* binaryLiteral(Token token)
 static AST* hexadecimalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intVal = hexadecimalLiteralToValue(token.chars, token.length);
+    ast->intValue = hexadecimalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -103,7 +103,7 @@ static AST* hexadecimalLiteral(Token token)
 static AST* octalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intVal = octalLiteralToValue(token.chars, token.length);
+    ast->intValue = octalLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;
@@ -112,7 +112,7 @@ static AST* octalLiteral(Token token)
 static AST* floatLiteral(Token token)
 {
     AST* ast = createAST(AST_FLOAT);
-    ast->floatVal = floatLiteralToValue(token.chars, token.length);
+    ast->floatValue = floatLiteralToValue(token.chars, token.length);
     consume(token.type);
 
     return ast;

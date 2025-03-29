@@ -107,9 +107,9 @@ typedef struct AST
             AST* expr;
         } varDef;
 
-        bool boolVal;
-        float floatVal;
-        int intVal;
+        bool boolValue;
+        float floatValue;
+        int intValue;
         Token character;
         Token string;
         AST* expr;

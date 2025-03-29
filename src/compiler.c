@@ -373,13 +373,13 @@ static void storeVariable(AST* ast)
 
 static void number(AST* ast)
 {
-    if (isLargerThan16BitSigned(ast->intVal)) {
-        size_t count = pushValue(&currentChunk->constants, INT_VALUE(ast->intVal));
+    if (isLargerThan16BitSigned(ast->intValue)) {
+        size_t count = pushValue(&currentChunk->constants, INT_VALUE(ast->intValue));
         op_ldc(count - 1);
-    } else if (isLargerThan8BitSigned(ast->intVal)) {
-        op_pushh(ast->intVal);
+    } else if (isLargerThan8BitSigned(ast->intValue)) {
+        op_pushh(ast->intValue);
     } else {
-        op_pushb(ast->intVal);
+        op_pushb(ast->intValue);
     }
 }
 

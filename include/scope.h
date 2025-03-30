@@ -2,7 +2,6 @@
 #define SCOPE_H
 
 #include "object.h"
-#include "reference.h"
 #include "table.h"
 
 typedef struct AST AST;
@@ -13,7 +12,6 @@ typedef struct Scope
     Scope* parent;
     size_t localCount;
     size_t level;
-    ReferenceArray references;
     Table symbols;
 } Scope;
 

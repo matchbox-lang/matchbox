@@ -1,5 +1,8 @@
 #include "buffer.h"
+#include "bytecode.h"
 #include "config.h"
+#include "compiler.h"
+#include "functionobject.h"
 #include "vm.h"
 #include <stdlib.h>
 
@@ -23,7 +26,8 @@ static void repl()
             break;
         }
         
-        interpret(source);
+        FunctionObject* function = compile(source);
+        interpret(function);
     }
 
     freeVM();
@@ -38,9 +42,15 @@ static void file()
         fprintf(stderr, "Error: Could not read file %s\n", cargs.filename);
         printUsage();
     }
-    
+
+    FunctionObject* function = compile(source);
+
+    if (cargs.disassemble) {
+        return disassemble(&function->chunk);
+    }
+
     initVM();
-    interpret(source);
+    interpret(function);
     freeVM();
     free(source);
 }

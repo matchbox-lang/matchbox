@@ -3,7 +3,7 @@
 #include "chunk.h"
 #include "compiler.h"
 #include "config.h"
-#include "function.h"
+#include "functionObject.h"
 #include "service.h"
 #include "value.h"
 #include <math.h>
@@ -12,24 +12,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STACK_SIZE 1024
-#define TEST_STACK_OVERFLOW(n) if (sp - stack + n > STACK_SIZE) error(stackOverflowError)
 #define PUSH(value) (sp[0] = value, sp++)
 #define POP() ((--sp)[0])
-#define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
-#define READ_UINT8() ((uint8_t)*(pc++))
+#define READ_UINT16() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_UINT8() ((uint8_t)*(frame->ip++))
+#define TEST_STACK_OVERFLOW(fn) \
+    if (sp - stack + fn->maxStackCount > STACK_MAX) error(stackOverflowError)
+
+typedef struct StackFrame {
+    FunctionObject* function;
+    uint8_t* ip;
+    Value* slots;
+} StackFrame;
 
 typedef void (*service_t)();
 
-static service_t service[SYS_SIZE];
-static Value stack[STACK_SIZE];
+static StackFrame frames[FRAMES_MAX];
+static service_t service[SERVICES_MAX];
+static Value stack[STACK_MAX];
 static Value* sp;
-static Value* fp;
-static uint8_t* pc;
-static uint8_t* bc;
-static FunctionArray* functions;
-static ValueArray* constants;
 static ValueArray globals;
+static size_t frameCount = 0;
 
 extern CommandArguments cargs;
 
@@ -113,7 +116,7 @@ static void initServices()
 
 void inspectStack()
 {
-    for (int i = 0; i < STACK_SIZE; i++) {
+    for (int i = 0; i < STACK_MAX; i++) {
         char* arrow = &stack[i] == sp ? " <-" : "";
         int n = AS_INT(stack[i]);
 
@@ -124,19 +127,16 @@ void inspectStack()
 static void resetStack()
 {
     sp = stack;
-    fp = stack;
 }
 
 static void run()
 {
     uint8_t opcode;
+    StackFrame* frame = &frames[frameCount - 1];
     int32_t a;
     int32_t b;
     int32_t x;
-    Function func = getFunctionAt(functions, 0);
     Value value;
-
-    TEST_STACK_OVERFLOW(func.maxStackCount);
 
     while (opcode = READ_UINT8()) {
         switch (opcode)
@@ -148,7 +148,7 @@ static void run()
 
             case OP_LDC:
                 x = READ_UINT8();
-                value = getValueAt(constants, x);
+                value = getValueAt(&frame->function->chunk.constants, x);
                 PUSH(value);
                 break;
 
@@ -170,44 +170,44 @@ static void run()
 
             case OP_LDL:
                 x = (int8_t) READ_UINT8();
-                PUSH(fp[x]);
+                PUSH(frame->slots[x]);
                 break;
 
             case OP_LDL_0:
-                PUSH(fp[0]);
+                PUSH(frame->slots[0]);
                 break;
 
             case OP_LDL_1:
-                PUSH(fp[1]);
+                PUSH(frame->slots[1]);
                 break;
 
             case OP_LDL_2:
-                PUSH(fp[2]);
+                PUSH(frame->slots[2]);
                 break;
 
             case OP_LDL_3:
-                PUSH(fp[3]);
+                PUSH(frame->slots[3]);
                 break;
 
             case OP_STL:
                 x = (int8_t) READ_UINT8();
-                fp[x] = POP();
+                frame->slots[x] = POP();
                 break;
 
             case OP_STL_0:
-                fp[0] = POP();
+                frame->slots[0] = POP();
                 break;
 
             case OP_STL_1:
-                fp[1] = POP();
+                frame->slots[1] = POP();
                 break;
 
             case OP_STL_2:
-                fp[2] = POP();
+                frame->slots[2] = POP();
                 break;
 
             case OP_STL_3:
-                fp[3] = POP();
+                frame->slots[3] = POP();
                 break;
 
             case OP_PUSHB:
@@ -343,51 +343,48 @@ static void run()
             case OP_BEQ:
                 b = AS_INT(sp[-1]);
                 a = AS_INT(sp[-2]);
-                if (a == b) pc += READ_UINT16();
+                if (a == b) frame->ip += READ_UINT16();
                 break;
 
             case OP_BLT:
                 b = AS_INT(sp[-1]);
                 a = AS_INT(sp[-2]);
-                if (a < b) pc += READ_UINT16();
+                if (a < b) frame->ip += READ_UINT16();
                 break;
 
             case OP_BLE:
                 b = AS_INT(sp[-1]);
                 a = AS_INT(sp[-2]);
-                if (a <= b) pc += READ_UINT16();
+                if (a <= b) frame->ip += READ_UINT16();
                 break;
 
             case OP_JMP:
-                pc += READ_UINT16();
+                frame->ip += READ_UINT16();
                 break;
 
             case OP_CALL:
                 x = READ_UINT16();
-                Function func = getFunctionAt(functions, x);
+                Value value = getValueAt(&frame->function->chunk.constants, x);
+                FunctionObject* function = AS_FUNCTION_OBJECT(value);
                 
-                TEST_STACK_OVERFLOW(func.maxStackCount);
-                sp -= func.paramCount;
-                memmove(sp + 2, sp, func.paramCount * sizeof(Value));
-                PUSH(POINTER_VALUE(fp));
-                PUSH(POINTER_VALUE(pc));
-                fp = sp;
-                sp += func.localCount;
-                pc = &bc[func.position];
+                TEST_STACK_OVERFLOW(function);
+
+                frame = &frames[frameCount++];
+                frame->function = function;
+                frame->ip = function->chunk.data;
+                frame->slots = sp - function->paramCount;
                 break;
 
             case OP_RET:
-                sp = fp - 2;
-                pc = AS_POINTER(fp[-1]);
-                fp = AS_POINTER(fp[-2]);
+                frameCount--;
+                frame = &frames[frameCount - 1];
                 PUSH(INT_VALUE(0));
                 break;
 
             case OP_RETV:
                 value = POP();
-                sp = fp - 2;
-                pc = AS_POINTER(fp[-1]);
-                fp = AS_POINTER(fp[-2]);
+                frameCount--;
+                frame = &frames[frameCount - 1];
                 PUSH(value);
                 break;
 
@@ -395,20 +392,6 @@ static void run()
                 return;
         }
     }
-}
-
-static void interpretChunk(Chunk* chunk)
-{
-    if (cargs.disassemble) {
-        return disassemble(chunk);
-    }
-
-    bc = chunk->data;
-    pc = chunk->data;
-    functions = &chunk->functions;
-    constants = &chunk->constants;
-
-    run();
 }
 
 void initVM()
@@ -423,13 +406,16 @@ void freeVM()
     freeValueArray(&globals);
 }
 
-void interpret(char* source)
+void interpret(FunctionObject* function)
 {
-    Chunk chunk;
-    initChunk(&chunk);
-    compile(source, &chunk);
-    interpretChunk(&chunk);
-    freeChunk(&chunk);
+    TEST_STACK_OVERFLOW(function);
+
+    StackFrame* frame = &frames[frameCount++];
+    frame->function = function;
+    frame->ip = function->chunk.data;
+    frame->slots = sp;
+
+    run();
 }
 
 #undef READ_UINT8

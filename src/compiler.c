@@ -1,27 +1,25 @@
 #include "compiler.h"
 #include "ast.h"
 #include "bytecode.h"
+#include "functionobject.h"
 #include "parser.h"
-#include "reference.h"
 #include "scope.h"
 #include "util.h"
 
-static void expression();
-static void references();
 static AST* statements(AST* ast);
-
-static Chunk* currentChunk;
-static Scope* currentScope;
-static ReferenceArray functions;
+static void expression();
+static FunctionObject* currentFunction;
 static int stackCount = 0;
-static int maxStackCount = 0;
 
-extern ValueArray globals;
+static Chunk* currentChunk()
+{
+    return &currentFunction->chunk;
+}
 
 static void incStackCount()
 {
-    if (++stackCount > maxStackCount) {
-        maxStackCount = stackCount;
+    if (++stackCount > currentFunction->maxStackCount) {
+        currentFunction->maxStackCount = stackCount;
     }
 }
 
@@ -32,47 +30,24 @@ static void decStackCount()
 
 static void patch8(size_t position, int8_t n)
 {
-    setByteAt(currentChunk, position, n);
+    setByteAt(currentChunk(), position, n);
 }
 
 static void patch16(size_t position, int16_t n)
 {
-    setByteAt(currentChunk, position, (n >> 8) & 0xFF);
-    setByteAt(currentChunk, position + 1, n & 0xFF);
+    setByteAt(currentChunk(), position, (n >> 8) & 0xFF);
+    setByteAt(currentChunk(), position + 1, n & 0xFF);
 }
 
 static void write8(uint8_t n)
 {
-    pushByte(currentChunk, n);
+    pushByte(currentChunk(), n);
 }
 
 static void write16(int16_t n)
 {
-    pushByte(currentChunk, (n >> 8) & 0xFF);
-    pushByte(currentChunk, n & 0xFF);
-}
-
-static void createFunctionReference(AST* ast, size_t position)
-{
-    Reference ref = {ast, position};
-    pushReference(&functions, ref);
-}
-
-static Reference getFunctionReference(StringObject* id)
-{
-    size_t count = countReferenceArray(&functions);
-
-    for (int i = 0; i < count; i++) {
-        Reference ref = getReferenceAt(&functions, i);
-
-        if (compareStringObject(id, ref.ast->funcDef.id)) {
-            return ref;
-        }
-    }
-
-    Reference ref = {NULL};
-
-    return ref;
+    pushByte(currentChunk(), (n >> 8) & 0xFF);
+    pushByte(currentChunk(), n & 0xFF);
 }
 
 static int getPosition(AST* ast)
@@ -325,6 +300,11 @@ static void op_retv()
     write8(OP_RETV);
 }
 
+static size_t makeConstant(Value value)
+{
+    return addConstant(currentChunk(), value);
+}
+
 static void loadGlobalVariable(AST* ast)
 {
     int position = getPosition(ast);
@@ -374,8 +354,8 @@ static void storeVariable(AST* ast)
 static void number(AST* ast)
 {
     if (isLargerThan16BitSigned(ast->intValue)) {
-        size_t count = pushValue(&currentChunk->constants, INT_VALUE(ast->intValue));
-        op_ldc(count - 1);
+        size_t position = makeConstant(INT_VALUE(ast->intValue));
+        op_ldc(position);
     } else if (isLargerThan8BitSigned(ast->intValue)) {
         op_pushh(ast->intValue);
     } else {
@@ -578,10 +558,6 @@ static size_t arguments(Vector* args)
 static void functionCall(AST* ast)
 {
     arguments(&ast->funcCall.args);
-
-    size_t position = countChunk(currentChunk);
-    Reference ref = {ast, position};
-    pushReference(&currentScope->references, ref);
     op_call(0);
 }
 
@@ -601,36 +577,24 @@ static void functionBody(AST* ast)
     if (!last || last->type != AST_RETURN) {
         op_ret();
     }
-
-    references();
 }
 
-static size_t functionDefinition(AST* ast)
+static void functionDefinition(AST* ast)
 {
-    Reference ref = getFunctionReference(ast->funcDef.id);
-
-    if (ref.ast) {
-        return ref.position;
-    }
-
     AST* body = ast->funcDef.body;
-    size_t localCount = body->compound.scope->localCount;
-    size_t paramCount = countVector(&ast->funcDef.params);
-    size_t position = countChunk(currentChunk);
+    FunctionObject* previousFunction = currentFunction;
+    FunctionObject* function = createFunctionObject();
+    function->paramCount = countVector(&ast->funcDef.params);
+    function->localCount = body->compound.scope->localCount;
+    function->maxStackCount = function->localCount;
     
-    maxStackCount = localCount + 2;
-    stackCount = maxStackCount;
-    
+    stackCount = function->maxStackCount;
+    currentFunction = function;
     functionBody(body);
-
-    size_t functionsIndex = countFunctionArray(&currentChunk->functions);
-    Function func = {paramCount, maxStackCount, 0, position};
+    currentFunction = previousFunction;
     
-    pushFunction(&currentChunk->functions, func);
-    createFunctionReference(ast, functionsIndex - 1);
-    currentScope = ast->funcDef.scope;
-
-    return functionsIndex;
+    size_t position = makeConstant(POINTER_VALUE(function));
+    op_ldc(position);
 }
 
 static void ret(AST* ast)
@@ -658,18 +622,6 @@ static void variableDefinition(AST* ast)
     }
 }
 
-static void references()
-{
-    size_t count = countReferenceArray(&currentScope->references);
-
-    for (int i = 0; i < count; i++) {
-        Reference ref = getReferenceAt(&currentScope->references, i);
-        size_t position = functionDefinition(ref.ast->funcCall.symbol);
-
-        patch16(ref.position + 1, position);
-    }
-}
-
 static void expression(AST* ast)
 {
     switch (ast->type) {
@@ -694,7 +646,6 @@ static AST* statements(AST* ast)
 {
     size_t count = countVector(&ast->compound.statements);
     AST* statement = NULL;
-    currentScope = ast->compound.scope;
 
     for (size_t i = 0; i < count; i++) {
         statement = getVectorAt(&ast->compound.statements, i);
@@ -706,6 +657,9 @@ static AST* statements(AST* ast)
             case AST_FUNCTION_CALL:
                 functionCall(statement);
                 op_pop();
+                break;
+            case AST_FUNCTION_DEFINITION:
+                functionDefinition(statement);
                 break;
             case AST_RETURN:
                 ret(statement);
@@ -727,21 +681,19 @@ static AST* statements(AST* ast)
 
 static void topLevelStatements(AST* ast)
 {
-    Function func = {0, 0, maxStackCount, 0};
-    
-    pushFunction(&currentChunk->functions, func);
     statements(ast);
     op_hlt();
-    references();
 }
 
-void compile(char* source, Chunk* chunk)
+FunctionObject* compile(char* source)
 {
-    currentChunk = chunk;
+    FunctionObject* function = createFunctionObject();
+    currentFunction = function;
+
     AST* ast = parse(source);
-    
-    initReferenceArray(&functions);
+
     topLevelStatements(ast);
-    freeReferenceArray(&functions);
     freeAST(ast);
+
+    return function;
 }

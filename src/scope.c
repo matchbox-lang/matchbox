@@ -10,7 +10,6 @@ Scope* createScope(Scope* parent)
     scope->localCount = 0;
     scope->level = getLevel(parent) + 1;
 
-    initReferenceArray(&scope->references);
     initTable(&scope->symbols, 32);
     
     return scope;
@@ -18,7 +17,6 @@ Scope* createScope(Scope* parent)
 
 void freeScope(Scope* scope)
 {
-    freeReferenceArray(&scope->references);
     freeTable(&scope->symbols);
     free(scope);
 }

@@ -9,14 +9,12 @@ void initChunk(Chunk* chunk)
     chunk->capacity = 0;
     chunk->count = 0;
 
-    initFunctionArray(&chunk->functions);
     initValueArray(&chunk->constants);
 }
 
 void freeChunk(Chunk* chunk)
 {
     freeValueArray(&chunk->constants);
-    freeFunctionArray(&chunk->functions);
     free(chunk->data);
 }
 
@@ -61,4 +59,9 @@ uint8_t* chunkBegin(Chunk* chunk)
 uint8_t* chunkEnd(Chunk* chunk)
 {
     return chunk->data + chunk->count;
+}
+
+size_t addConstant(Chunk* chunk, Value value)
+{
+    return pushValue(&chunk->constants, value) - 1;
 }

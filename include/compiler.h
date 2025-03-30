@@ -2,8 +2,8 @@
 #define COMPILER_H
 
 #include "chunk.h"
+#include "functionobject.h"
 
-void initCompiler();
-void compile(char* source, Chunk* chunk);
+FunctionObject* compile(char* source);
 
 #endif

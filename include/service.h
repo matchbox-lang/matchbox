@@ -1,7 +1,7 @@
 #ifndef SERVICE_H
 #define SERVICE_H
 
-#define SERVICES_MAX 8
+#define SERVICES_MAX 7
 
 typedef struct Service
 {

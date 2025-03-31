@@ -55,6 +55,10 @@ static int getPosition(AST* ast)
     if (isParameter(ast)) {
         return ast->param.position;
     }
+
+    if (isFunctionDefinition(ast)) {
+        return ast->funcDef.position;
+    }
     
     return ast->varDef.position;
 }
@@ -305,37 +309,28 @@ static size_t makeConstant(Value value)
     return addConstant(currentChunk(), value);
 }
 
-static void loadGlobalVariable(AST* ast)
+static void loadGlobalValue(AST* ast)
 {
     int position = getPosition(ast);
 
     op_ldg(position);
 }
 
-static void loadLocalVariable(AST* ast)
+static void loadLocalValue(AST* ast)
 {
     int position = getPosition(ast);
 
     op_ldl(position);
 }
 
-static void loadVariable(AST* ast)
-{
-    if (isTopLevel(ast->varDef.scope)) {
-        loadGlobalVariable(ast);
-    } else {
-        loadLocalVariable(ast);
-    }
-}
-
-static void storeGlobalVariable(AST* ast)
+static void storeGlobalValue(AST* ast)
 {
     int position = getPosition(ast);
 
     op_stg(position);
 }
 
-static void storeLocalVariable(AST* ast)
+static void storeLocalValue(AST* ast)
 {
     int position = getPosition(ast);
 
@@ -345,9 +340,36 @@ static void storeLocalVariable(AST* ast)
 static void storeVariable(AST* ast)
 {
     if (isTopLevel(ast->varDef.scope)) {
-        storeGlobalVariable(ast);
+        storeGlobalValue(ast);
     } else {
-        storeLocalVariable(ast);
+        storeLocalValue(ast);
+    }
+}
+
+static void loadVariable(AST* ast)
+{
+    if (isTopLevel(ast->varDef.scope)) {
+        loadGlobalValue(ast);
+    } else {
+        loadLocalValue(ast);
+    }
+}
+
+static void loadFunction(AST* ast)
+{
+    if (isTopLevel(ast->funcDef.scope)) {
+        loadGlobalValue(ast);
+    } else {
+        loadLocalValue(ast);
+    }
+}
+
+static void storeFunction(AST* ast)
+{
+    if (isTopLevel(ast->funcDef.scope)) {
+        storeGlobalValue(ast);
+    } else {
+        storeLocalValue(ast);
     }
 }
 
@@ -557,8 +579,10 @@ static size_t arguments(Vector* args)
 
 static void functionCall(AST* ast)
 {
+    size_t paramCount = countVector(&ast->funcCall.symbol->funcDef.params);
+    loadFunction(ast->funcCall.symbol);
     arguments(&ast->funcCall.args);
-    op_call(0);
+    op_call(paramCount);
 }
 
 static void systemCall(AST* ast)
@@ -595,6 +619,12 @@ static void functionDefinition(AST* ast)
     
     size_t position = makeConstant(POINTER_VALUE(function));
     op_ldc(position);
+
+    if (isTopLevel(ast->funcDef.scope)) {
+        op_reg();
+    } else {
+        storeFunction(ast);
+    }
 }
 
 static void ret(AST* ast)
@@ -618,7 +648,7 @@ static void variableDefinition(AST* ast)
     if (isTopLevel(ast->varDef.scope)) {
         op_reg();
     } else {
-        storeLocalVariable(ast);
+        storeLocalValue(ast);
     }
 }
 

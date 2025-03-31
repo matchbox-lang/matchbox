@@ -147,6 +147,11 @@ bool isParameter(AST* ast)
     return ast->type == AST_PARAMETER;
 }
 
+bool isFunctionDefinition(AST* ast)
+{
+    return ast->type == AST_FUNCTION_DEFINITION;
+}
+
 bool isVariable(AST* ast)
 {
     return ast->type == AST_VARIABLE;

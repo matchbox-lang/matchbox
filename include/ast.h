@@ -67,6 +67,7 @@ typedef struct AST
             StringObject* id;
             Vector params;
             int typeId;
+            int position;
             AST* body;
         } funcDef;
 
@@ -121,6 +122,7 @@ void freeAST(AST* ast);
 Scope* getScope(AST* ast);
 int getTypeId(AST* ast);
 bool isParameter(AST* ast);
+bool isFunctionDefinition(AST* ast);
 bool isVariable(AST* ast);
 bool isVariableDefinition(AST* ast);
 bool isVariableType(AST* ast);

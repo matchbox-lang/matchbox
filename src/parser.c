@@ -469,7 +469,7 @@ static AST* parameter()
         consumeType();
     }
 
-    setLocalSymbol(currentScope, id, ast, true);
+    setLocalSymbol(currentScope, id, ast);
 
     return ast;
 }
@@ -693,6 +693,7 @@ static AST* functionDefinition()
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
     ast->funcDef.scope = currentScope;
     ast->funcDef.id = id;
+    ast->funcDef.position = getLocalCount(currentScope);
     ast->funcDef.typeId = T_INT;
     ast->funcDef.body = NULL;
 
@@ -724,7 +725,7 @@ static AST* functionDefinition()
     ast->funcDef.body = body;
     consume(T_RBRACE);
     currentScope = currentScope->parent;
-    setLocalSymbol(currentScope, id, ast, false);
+    setLocalSymbol(currentScope, id, ast);
 
     return ast;
 }
@@ -804,7 +805,7 @@ static AST* variableDefinition()
     if (currentToken.type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
         ast->varDef.typeId = T_INT;
-        setLocalSymbol(currentScope, id, ast, true);
+        setLocalSymbol(currentScope, id, ast);
 
         return ast;
     }
@@ -824,7 +825,7 @@ static AST* variableDefinition()
         error(invalidTypeError, token);
     }
 
-    setLocalSymbol(currentScope, id, ast, true);
+    setLocalSymbol(currentScope, id, ast);
     initialize(ast);
 
     return ast;

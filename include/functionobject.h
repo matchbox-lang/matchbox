@@ -3,7 +3,6 @@
 
 #include "object.h"
 #include "chunk.h"
-#include "stringobject.h"
 
 #define AS_FUNCTION_OBJECT(value) ((FunctionObject*)AS_OBJECT(value))
 

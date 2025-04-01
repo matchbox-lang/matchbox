@@ -18,9 +18,9 @@ func bar(y int)
 
     x = 25
     
+    inner(250)
     print(x)
     print(y)
-    inner(250)
 }
 
 foo(x)

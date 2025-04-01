@@ -379,7 +379,7 @@ static void run()
             case OP_RET:
                 frameCount--;
                 frame = &frames[frameCount - 1];
-                sp = frame->slots;
+                sp = frame->slots - 1;
                 PUSH(INT_VALUE(0));
                 break;
 
@@ -387,7 +387,7 @@ static void run()
                 value = POP();
                 frameCount--;
                 frame = &frames[frameCount - 1];
-                sp = frame->slots;
+                sp = frame->slots - 1;
                 PUSH(value);
                 break;
 
@@ -411,13 +411,6 @@ void freeVM()
 
 void interpret(FunctionObject* function)
 {
-    // printf("frameCount: %d\n", frameCount);
-    // printf("constantCount: %d\n", countValueArray(&function->chunk.constants));
-    // printf("paramCount: %d\n", function->paramCount);
-    // printf("localCount: %d\n\n", function->localCount);
-    // disassemble(&function->chunk);
-    // printf("\n");
-
     TEST_STACK_OVERFLOW(function);
 
     StackFrame* frame = &frames[frameCount++];

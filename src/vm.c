@@ -3,9 +3,9 @@
 #include "chunk.h"
 #include "compiler.h"
 #include "config.h"
-#include "functionObject.h"
-#include "service.h"
+#include "functionobject.h"
 #include "value.h"
+#include "service.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>

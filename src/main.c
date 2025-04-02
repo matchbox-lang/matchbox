@@ -14,7 +14,6 @@ static void repl()
     char* source = NULL;
     size_t size = 0;
     size_t len;
-    ModuleObject* module = createModuleObject();
     
     initVM();
 
@@ -28,11 +27,13 @@ static void repl()
             break;
         }
         
+        ModuleObject* module = createModuleObject();
+        
         compile(source, module);
         interpret(module);
+        freeModuleObject(module);
     }
 
-    freeModuleObject(module);
     freeVM();
     free(source);
 }

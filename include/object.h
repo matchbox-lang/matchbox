@@ -13,6 +13,7 @@ typedef enum ObjectType
     OBJ_FLOAT,
     OBJ_INT,
     OBJ_FUNCTION,
+    OBJ_MODULE,
     OBJ_STRING
 } ObjectType;
 

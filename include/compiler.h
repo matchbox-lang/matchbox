@@ -1,8 +1,8 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include "functionobject.h"
+#include "moduleobject.h"
 
-FunctionObject* compile(char* source);
+void compile(char* source, ModuleObject* module);
 
 #endif

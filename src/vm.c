@@ -4,6 +4,7 @@
 #include "compiler.h"
 #include "config.h"
 #include "functionobject.h"
+#include "moduleobject.h"
 #include "value.h"
 #include "service.h"
 #include <math.h>
@@ -33,6 +34,7 @@ static Value stack[STACK_MAX];
 static Value* sp;
 static ValueArray globals;
 static size_t frameCount = 0;
+static ModuleObject* module;
 
 extern CommandArguments cargs;
 
@@ -148,7 +150,7 @@ static void run()
 
             case OP_LDC:
                 x = READ_UINT8();
-                value = getValueAt(&frame->function->chunk.constants, x);
+                value = module->constants.data[x];
                 PUSH(value);
                 break;
 
@@ -158,7 +160,7 @@ static void run()
 
             case OP_LDG:
                 x = READ_UINT8();
-                value = getValueAt(&globals, x);
+                value = globals.data[x];
                 PUSH(value);
                 break;
 
@@ -364,7 +366,7 @@ static void run()
 
             case OP_CALL:
                 x = READ_UINT16();
-                FunctionObject* function = AS_FUNCTION_OBJECT(sp[-1 - x]);
+                FunctionObject* function = AS_FUNCTION_OBJECT(module->constants.data[x]);
                 
                 TEST_STACK_OVERFLOW(function);
 
@@ -373,21 +375,21 @@ static void run()
                 frame->ip = function->chunk.data;
                 frame->slots = sp - function->paramCount;
 
-                sp += function->localCount;
+                sp = frame->slots + function->localCount;
                 break;
 
             case OP_RET:
+                sp = frame->slots;
                 frameCount--;
                 frame = &frames[frameCount - 1];
-                sp = frame->slots - 1;
                 PUSH(INT_VALUE(0));
                 break;
 
             case OP_RETV:
                 value = POP();
+                sp = frame->slots;
                 frameCount--;
                 frame = &frames[frameCount - 1];
-                sp = frame->slots - 1;
                 PUSH(value);
                 break;
 
@@ -409,9 +411,16 @@ void freeVM()
     freeValueArray(&globals);
 }
 
-void interpret(FunctionObject* function)
+void interpret(ModuleObject* moduleObject)
 {
+    FunctionObject* function = getValueAsPointer(&moduleObject->constants, 0);
+
+    if (!function) {
+        return;
+    }
+
     TEST_STACK_OVERFLOW(function);
+    module = moduleObject;
 
     StackFrame* frame = &frames[frameCount++];
     frame->function = function;

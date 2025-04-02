@@ -45,9 +45,13 @@ size_t pushValue(ValueArray* array, Value value)
     return array->count;
 }
 
-Value getValueAt(ValueArray* array, size_t index)
+void* getValueAsPointer(ValueArray* array, size_t index)
 {
-    return array->data[index];
+    if (index < 0 || index >= array->count) {
+        return NULL;
+    }
+
+    return AS_POINTER(array->data[index]);
 }
 
 void setValueAt(ValueArray* array, size_t index, Value item)

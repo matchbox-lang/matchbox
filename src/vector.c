@@ -53,6 +53,10 @@ void* popVectorItem(Vector* vector)
 
 void* getVectorAt(Vector* vector, size_t index)
 {
+    if (index < 0 || index >= vector->count) {
+        return NULL;
+    }
+
     return vector->data[index];
 }
 

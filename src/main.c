@@ -3,6 +3,7 @@
 #include "config.h"
 #include "compiler.h"
 #include "functionobject.h"
+#include "moduleobject.h"
 #include "vm.h"
 #include <stdlib.h>
 
@@ -13,6 +14,7 @@ static void repl()
     char* source = NULL;
     size_t size = 0;
     size_t len;
+    ModuleObject* module = createModuleObject();
     
     initVM();
 
@@ -26,10 +28,11 @@ static void repl()
             break;
         }
         
-        FunctionObject* function = compile(source);
-        interpret(function);
+        compile(source, module);
+        interpret(module);
     }
 
+    freeModuleObject(module);
     freeVM();
     free(source);
 }
@@ -43,14 +46,16 @@ static void file()
         printUsage();
     }
 
-    FunctionObject* function = compile(source);
+    ModuleObject* module = createModuleObject();
+    compile(source, module);
 
     if (cargs.disassemble) {
-        return disassemble(&function->chunk);
+        return disassembleModule(module);
     }
 
     initVM();
-    interpret(function);
+    interpret(module);
+    freeModuleObject(module);
     freeVM();
     free(source);
 }

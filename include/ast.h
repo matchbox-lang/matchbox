@@ -67,7 +67,6 @@ typedef struct AST
             StringObject* id;
             Vector params;
             int typeId;
-            int position;
             AST* body;
         } funcDef;
 

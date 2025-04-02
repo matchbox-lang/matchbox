@@ -8,7 +8,9 @@
 
 static AST* statements(AST* ast);
 static void expression();
+static Vector functionReferences;
 static FunctionObject* currentFunction;
+static ModuleObject* currentModule;
 static int stackCount = 0;
 
 static Chunk* currentChunk()
@@ -48,19 +50,6 @@ static void write16(int16_t n)
 {
     pushByte(currentChunk(), (n >> 8) & 0xFF);
     pushByte(currentChunk(), n & 0xFF);
-}
-
-static int getPosition(AST* ast)
-{
-    if (isParameter(ast)) {
-        return ast->param.position;
-    }
-
-    if (isFunctionDefinition(ast)) {
-        return ast->funcDef.position;
-    }
-    
-    return ast->varDef.position;
 }
 
 static void op_hlt()
@@ -306,33 +295,51 @@ static void op_retv()
 
 static size_t makeConstant(Value value)
 {
-    return addConstant(currentChunk(), value);
+    return pushValue(&currentModule->constants, value) - 1;
 }
 
-static void loadGlobalValue(AST* ast)
+static int getLocalPosition(AST* ast)
 {
-    int position = getPosition(ast);
+    if (isParameter(ast)) {
+        return ast->param.position;
+    }
+    
+    return ast->varDef.position;
+}
+
+static void loadGlobalVariable(AST* ast)
+{
+    int position = getLocalPosition(ast);
 
     op_ldg(position);
 }
 
-static void loadLocalValue(AST* ast)
+static void loadLocalVariable(AST* ast)
 {
-    int position = getPosition(ast);
+    int position = getLocalPosition(ast);
 
     op_ldl(position);
 }
 
-static void storeGlobalValue(AST* ast)
+static void loadVariable(AST* ast)
 {
-    int position = getPosition(ast);
+    if (isTopLevel(ast->varDef.scope)) {
+        loadGlobalVariable(ast);
+    } else {
+        loadLocalVariable(ast);
+    }
+}
+
+static void storeGlobalVariable(AST* ast)
+{
+    int position = getLocalPosition(ast);
 
     op_stg(position);
 }
 
-static void storeLocalValue(AST* ast)
+static void storeLocalVariable(AST* ast)
 {
-    int position = getPosition(ast);
+    int position = getLocalPosition(ast);
 
     op_stl(position);
 }
@@ -340,36 +347,9 @@ static void storeLocalValue(AST* ast)
 static void storeVariable(AST* ast)
 {
     if (isTopLevel(ast->varDef.scope)) {
-        storeGlobalValue(ast);
+        storeGlobalVariable(ast);
     } else {
-        storeLocalValue(ast);
-    }
-}
-
-static void loadVariable(AST* ast)
-{
-    if (isTopLevel(ast->varDef.scope)) {
-        loadGlobalValue(ast);
-    } else {
-        loadLocalValue(ast);
-    }
-}
-
-static void loadFunction(AST* ast)
-{
-    if (isTopLevel(ast->funcDef.scope)) {
-        loadGlobalValue(ast);
-    } else {
-        loadLocalValue(ast);
-    }
-}
-
-static void storeFunction(AST* ast)
-{
-    if (isTopLevel(ast->funcDef.scope)) {
-        storeGlobalValue(ast);
-    } else {
-        storeLocalValue(ast);
+        storeLocalVariable(ast);
     }
 }
 
@@ -378,6 +358,7 @@ static void number(AST* ast)
     if (isLargerThan16BitSigned(ast->intValue)) {
         size_t position = makeConstant(INT_VALUE(ast->intValue));
         op_ldc(position);
+        pushVectorItem(&functionReferences, ast);
     } else if (isLargerThan8BitSigned(ast->intValue)) {
         op_pushh(ast->intValue);
     } else {
@@ -447,7 +428,7 @@ static void preIncrement(AST* ast)
 static void postDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    int position = getPosition(expr->var.symbol);
+    int position = getLocalPosition(expr->var.symbol);
 
     expression(expr);
     op_dup();
@@ -458,7 +439,7 @@ static void postDecrement(AST* ast)
 static void postIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    int position = getPosition(expr->var.symbol);
+    int position = getLocalPosition(expr->var.symbol);
 
     expression(expr);
     op_dup();
@@ -577,12 +558,24 @@ static size_t arguments(Vector* args)
     return count;
 }
 
+static int getFunctionPosition(AST* ast)
+{
+    size_t functionCount = countVector(&functionReferences);
+    
+    for (int i = 0; i < functionCount; i++) {
+        if (ast == functionReferences.data[i]) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 static void functionCall(AST* ast)
 {
-    size_t paramCount = countVector(&ast->funcCall.symbol->funcDef.params);
-    loadFunction(ast->funcCall.symbol);
+    uint16_t position = getFunctionPosition(ast->funcCall.symbol);
     arguments(&ast->funcCall.args);
-    op_call(paramCount);
+    op_call(position);
 }
 
 static void systemCall(AST* ast)
@@ -614,17 +607,10 @@ static void functionDefinition(AST* ast)
     
     stackCount = function->maxStackCount;
     currentFunction = function;
+    makeConstant(POINTER_VALUE(function));
+    pushVectorItem(&functionReferences, ast);
     functionBody(body);
     currentFunction = previousFunction;
-    
-    size_t position = makeConstant(POINTER_VALUE(function));
-    op_ldc(position);
-
-    if (isTopLevel(ast->funcDef.scope)) {
-        op_reg();
-    } else {
-        storeFunction(ast);
-    }
 }
 
 static void ret(AST* ast)
@@ -648,7 +634,7 @@ static void variableDefinition(AST* ast)
     if (isTopLevel(ast->varDef.scope)) {
         op_reg();
     } else {
-        storeLocalValue(ast);
+        storeLocalVariable(ast);
     }
 }
 
@@ -715,15 +701,18 @@ static void topLevelStatements(AST* ast)
     op_hlt();
 }
 
-FunctionObject* compile(char* source)
+void compile(char* source, ModuleObject* module)
 {
-    FunctionObject* function = createFunctionObject();
-    currentFunction = function;
-
     AST* ast = parse(source);
+    FunctionObject* function = createFunctionObject();
 
+    currentFunction = function;
+    currentModule = module;
+
+    makeConstant(POINTER_VALUE(function));
+    initVector(&functionReferences);
+    pushVectorItem(&functionReferences, ast);
     topLevelStatements(ast);
+    freeVector(&functionReferences);
     freeAST(ast);
-
-    return function;
 }

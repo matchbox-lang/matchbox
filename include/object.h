@@ -10,6 +10,7 @@
 typedef enum ObjectType
 {
     OBJ_BOOL,
+    OBJ_CODE,
     OBJ_FLOAT,
     OBJ_INT,
     OBJ_FUNCTION,

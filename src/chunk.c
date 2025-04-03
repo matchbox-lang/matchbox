@@ -1,59 +1,54 @@
-#include "chunk.h"
+#include "codeobject.h"
 #include <stdlib.h>
 
 #define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
 
-void initChunk(Chunk* chunk)
+void initCodeObject(CodeObject* code)
 {
-    chunk->data = NULL;
-    chunk->capacity = 0;
-    chunk->count = 0;
+    code->data = NULL;
+    code->capacity = 0;
+    code->count = 0;
 }
 
-void freeChunk(Chunk* chunk)
+void freeCodeObject(CodeObject* code)
 {
-    free(chunk->data);
+    free(code->data);
 }
 
-size_t countChunk(Chunk* chunk)
+size_t countCodeObject(CodeObject* code)
 {
-    return chunk->count;
+    return code->count;
 }
 
-void reserveChunk(Chunk* chunk, size_t capacity)
+void reserveCodeObject(CodeObject* code, size_t capacity)
 {
-    chunk->data = realloc(chunk->data, sizeof(uint8_t) * capacity);
-    chunk->capacity = capacity;
+    code->data = realloc(code->data, sizeof(uint8_t) * capacity);
+    code->capacity = capacity;
 }
 
-size_t pushByte(Chunk* chunk, uint8_t byte)
+size_t pushByte(CodeObject* code, uint8_t byte)
 {
-    if (chunk->capacity <= chunk->count) {
-        reserveChunk(chunk, GROW_CAPACITY(chunk->capacity));
+    if (code->capacity <= code->count) {
+        reserveCodeObject(code, GROW_CAPACITY(code->capacity));
     }
 
-    chunk->data[chunk->count] = byte;
-    return ++chunk->count;
+    code->data[code->count] = byte;
+    return ++code->count;
 }
 
-uint8_t getByteAt(Chunk* chunk, size_t index)
+void setByteAt(CodeObject* code, size_t index, uint8_t byte)
 {
-    return chunk->data[index];
-}
-
-void setByteAt(Chunk* chunk, size_t index, uint8_t byte)
-{
-    if (index >= 0 && index < chunk->count) {
-        chunk->data[index] = byte;
+    if (index >= 0 && index < code->count) {
+        code->data[index] = byte;
     }
 }
 
-uint8_t* chunkBegin(Chunk* chunk)
+uint8_t* codeBegin(CodeObject* code)
 {
-    return chunk->data;
+    return code->data;
 }
 
-uint8_t* chunkEnd(Chunk* chunk)
+uint8_t* codeEnd(CodeObject* code)
 {
-    return chunk->data + chunk->count;
+    return code->data + code->count;
 }

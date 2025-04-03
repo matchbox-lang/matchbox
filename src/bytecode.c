@@ -60,11 +60,11 @@ static int printInstruction(int8_t c)
     }
 }
 
-void disassemble(Chunk* chunk)
+void disassemble(CodeObject* code)
 {
-    ptr = chunk->data;
+    ptr = code->data;
 
-    while (ptr != chunkEnd(chunk)) {
+    while (ptr != codeEnd(code)) {
         int8_t c = READ_INT8();
 
         printInstruction(c);

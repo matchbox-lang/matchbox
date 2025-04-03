@@ -1,7 +1,7 @@
 #ifndef BYTECODE_H
 #define BYTECODE_H
 
-#include "chunk.h"
+#include "codeobject.h"
 
 typedef enum Opcode
 {
@@ -55,6 +55,6 @@ typedef enum Opcode
     OP_RETV         // retv
 } Opcode;
 
-void disassemble(Chunk* chunk);
+void disassemble(CodeObject* code);
 
 #endif

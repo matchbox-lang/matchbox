@@ -1,6 +1,6 @@
 #include "vm.h"
 #include "bytecode.h"
-#include "chunk.h"
+#include "codeobject.h"
 #include "compiler.h"
 #include "config.h"
 #include "functionobject.h"
@@ -372,7 +372,7 @@ static void run()
 
                 frame = &frames[frameCount++];
                 frame->function = function;
-                frame->ip = function->chunk.data;
+                frame->ip = function->code.data;
                 frame->slots = sp - function->paramCount;
 
                 sp = frame->slots + function->localCount;
@@ -424,7 +424,7 @@ void interpret(ModuleObject* moduleObject)
 
     StackFrame* frame = &frames[frameCount++];
     frame->function = function;
-    frame->ip = function->chunk.data;
+    frame->ip = function->code.data;
     frame->slots = sp;
 
     run();

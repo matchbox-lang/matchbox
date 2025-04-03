@@ -13,9 +13,9 @@ static FunctionObject* currentFunction;
 static ModuleObject* currentModule;
 static int stackCount = 0;
 
-static Chunk* currentChunk()
+static CodeObject* currentCodeObject()
 {
-    return &currentFunction->chunk;
+    return &currentFunction->code;
 }
 
 static void incStackCount()
@@ -32,24 +32,24 @@ static void decStackCount()
 
 static void patch8(size_t position, int8_t n)
 {
-    setByteAt(currentChunk(), position, n);
+    setByteAt(currentCodeObject(), position, n);
 }
 
 static void patch16(size_t position, int16_t n)
 {
-    setByteAt(currentChunk(), position, (n >> 8) & 0xFF);
-    setByteAt(currentChunk(), position + 1, n & 0xFF);
+    setByteAt(currentCodeObject(), position, (n >> 8) & 0xFF);
+    setByteAt(currentCodeObject(), position + 1, n & 0xFF);
 }
 
 static void write8(uint8_t n)
 {
-    pushByte(currentChunk(), n);
+    pushByte(currentCodeObject(), n);
 }
 
 static void write16(int16_t n)
 {
-    pushByte(currentChunk(), (n >> 8) & 0xFF);
-    pushByte(currentChunk(), n & 0xFF);
+    pushByte(currentCodeObject(), (n >> 8) & 0xFF);
+    pushByte(currentCodeObject(), n & 0xFF);
 }
 
 static void op_hlt()

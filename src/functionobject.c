@@ -8,13 +8,13 @@ FunctionObject* createFunctionObject()
     function->paramCount = 0;
     function->localCount = 0;
     function->maxStackCount = 0;
-    initChunk(&function->chunk);
+    initCodeObject(&function->code);
 
     return function;
 }
 
 void freeFunctionObject(FunctionObject* function)
 {
-    freeChunk(&function->chunk);
+    freeCodeObject(&function->code);
     free(function);
 }

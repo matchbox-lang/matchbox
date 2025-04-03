@@ -24,7 +24,7 @@ void disassembleModule(ModuleObject* module)
 
     for (int i = 0; i < functionCount; i++) {
         function = AS_FUNCTION_OBJECT(module->constants.data[i]);
-        disassemble(&function->chunk);
+        disassemble(&function->code);
 
         if (i < functionCount - 1) {
             printf("\n");

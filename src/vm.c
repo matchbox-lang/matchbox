@@ -170,7 +170,7 @@ static void run()
                 break;
 
             case OP_LDL:
-                x = (int8_t) READ_UINT8();
+                x = READ_UINT8();
                 PUSH(frame->slots[x]);
                 break;
 
@@ -191,7 +191,7 @@ static void run()
                 break;
 
             case OP_STL:
-                x = (int8_t) READ_UINT8();
+                x = READ_UINT8();
                 frame->slots[x] = POP();
                 break;
 

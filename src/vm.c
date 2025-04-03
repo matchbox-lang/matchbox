@@ -166,7 +166,7 @@ static void run()
 
             case OP_STG:
                 x = READ_UINT8();
-                setValueAt(&globals, x, sp[-1]);
+                globals.data[x] = sp[-1];
                 POP();
                 break;
 

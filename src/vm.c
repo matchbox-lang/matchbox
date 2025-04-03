@@ -166,8 +166,7 @@ static void run()
 
             case OP_STG:
                 x = READ_UINT8();
-                globals.data[x] = sp[-1];
-                POP();
+                globals.data[x] = POP();
                 break;
 
             case OP_LDL:

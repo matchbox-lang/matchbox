@@ -21,7 +21,6 @@
     if (sp - stack + fn->maxStackCount > STACK_MAX) error(stackOverflowError)
 
 typedef struct StackFrame {
-    FunctionObject* function;
     uint8_t* ip;
     Value* slots;
 } StackFrame;
@@ -238,7 +237,7 @@ static void run()
                 break;
 
             case OP_POP:
-                POP();
+                sp--;
                 break;
 
             case OP_DUP:
@@ -370,7 +369,6 @@ static void run()
                 TEST_STACK_OVERFLOW(function);
 
                 frame = &frames[frameCount++];
-                frame->function = function;
                 frame->ip = function->code.data;
                 frame->slots = sp - function->paramCount;
 
@@ -422,7 +420,6 @@ void interpret(ModuleObject* moduleObject)
     module = moduleObject;
 
     StackFrame* frame = &frames[frameCount++];
-    frame->function = function;
     frame->ip = function->code.data;
     frame->slots = sp;
 

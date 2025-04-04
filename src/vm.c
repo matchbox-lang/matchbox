@@ -237,7 +237,7 @@ static void run()
                 break;
 
             case OP_POP:
-                sp--;
+                POP();
                 break;
 
             case OP_DUP:

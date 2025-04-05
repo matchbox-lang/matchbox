@@ -580,10 +580,7 @@ static void functionCall(AST* ast)
 
 static void systemCall(AST* ast)
 {
-    if (arguments(&ast->syscall.args) == 0) {
-        op_pushb(0);
-    }
-
+    arguments(&ast->syscall.args);
     op_syscall(ast->syscall.opcode);
 }
 

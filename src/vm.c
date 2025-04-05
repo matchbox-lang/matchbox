@@ -45,6 +45,16 @@ static void error(const char* message)
     exit(1);
 }
 
+void inspectStack()
+{
+    for (int i = 0; i < STACK_MAX; i++) {
+        char* arrow = &stack[i] == sp ? " <-" : "";
+        int n = AS_INT(stack[i]);
+
+        printf("%d: %d%s\n", i, n, arrow);
+    }
+}
+
 static void sys_exit()
 {
     exit(0);
@@ -100,8 +110,9 @@ static void sys_byteorder()
 {
     int32_t i = 1;
     char* c = (char*)&i;
+    Value value = INT_VALUE((int32_t)*c);
 
-    sp[-1] = INT_VALUE((int32_t)*c);
+    PUSH(value);
 }
 
 static void initServices()
@@ -113,16 +124,6 @@ static void initServices()
     service[SYS_MIN] = sys_min;
     service[SYS_MAX] = sys_max;
     service[SYS_BYTEORDER] = sys_byteorder;
-}
-
-void inspectStack()
-{
-    for (int i = 0; i < STACK_MAX; i++) {
-        char* arrow = &stack[i] == sp ? " <-" : "";
-        int n = AS_INT(stack[i]);
-
-        printf("%d: %d%s\n", i, n, arrow);
-    }
 }
 
 static void resetStack()

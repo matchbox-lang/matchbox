@@ -371,8 +371,6 @@ static void run()
                 frame = &frames[frameCount++];
                 frame->ip = function->code.data;
                 frame->slots = sp - function->paramCount;
-
-                sp = frame->slots + function->localCount;
                 break;
 
             case OP_RET:

@@ -633,8 +633,6 @@ static void variableDefinition(AST* ast)
 
     if (isTopLevel(ast->varDef.scope)) {
         op_reg();
-    } else {
-        storeLocalVariable(ast);
     }
 }
 
@@ -689,6 +687,7 @@ static AST* statements(AST* ast)
                 break;
             default:
                 expression(statement);
+                op_pop();
         }
     }
 

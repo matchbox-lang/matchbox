@@ -700,14 +700,12 @@ static void topLevelStatements(AST* ast)
 void compile(char* source, ModuleObject* module)
 {
     AST* ast = parse(source);
-    FunctionObject* function = createFunctionObject();
 
-    currentFunction = function;
+    currentFunction = getValueAsPointer(&module->constants, 0);
     currentModule = module;
 
-    makeConstant(POINTER_VALUE(function));
     initVector(&functionReferences);
-    pushVectorItem(&functionReferences, ast);
+    pushVectorItem(&functionReferences, NULL);
     topLevelStatements(ast);
     freeVector(&functionReferences);
     freeAST(ast);

@@ -6,7 +6,10 @@
 ModuleObject* createModuleObject()
 {
     ModuleObject* module = ALLOCATE_OBJECT(ModuleObject, OBJ_MODULE);
+    FunctionObject* function = createFunctionObject();
+
     initValueArray(&module->constants);
+    pushValue(&module->constants, POINTER_VALUE(function));
 
     return module;
 }

@@ -8,26 +8,32 @@
 
 static AST* statements(AST* ast);
 static void expression();
-static Vector functionReferences;
-static FunctionObject* currentFunction;
-static ModuleObject* currentModule;
-static int stackCount = 0;
+
+typedef struct Compiler
+{
+    Vector functionReferences;
+    ModuleObject* module;
+    FunctionObject* function;
+    int stackCount;
+} Compiler;
+
+Compiler compiler;
 
 static CodeObject* currentCodeObject()
 {
-    return &currentFunction->code;
+    return &compiler.function->code;
 }
 
 static void incStackCount()
 {
-    if (++stackCount > currentFunction->maxStackCount) {
-        currentFunction->maxStackCount = stackCount;
+    if (++compiler.stackCount > compiler.function->maxStackCount) {
+        compiler.function->maxStackCount = compiler.stackCount;
     }
 }
 
 static void decStackCount()
 {
-    stackCount--;
+    compiler.stackCount--;
 }
 
 static void patch8(size_t position, int8_t n)
@@ -295,7 +301,7 @@ static void op_retv()
 
 static size_t makeConstant(Value value)
 {
-    return pushValue(&currentModule->constants, value) - 1;
+    return pushValue(&compiler.module->constants, value) - 1;
 }
 
 static int getLocalPosition(AST* ast)
@@ -358,7 +364,7 @@ static void number(AST* ast)
     if (isLargerThan16BitSigned(ast->intValue)) {
         size_t position = makeConstant(INT_VALUE(ast->intValue));
         op_ldc(position);
-        pushVectorItem(&functionReferences, ast);
+        pushVectorItem(&compiler.functionReferences, ast);
     } else if (isLargerThan8BitSigned(ast->intValue)) {
         op_pushh(ast->intValue);
     } else {
@@ -560,10 +566,10 @@ static size_t arguments(Vector* args)
 
 static int getFunctionPosition(AST* ast)
 {
-    size_t functionCount = countVector(&functionReferences);
+    size_t functionCount = countVector(&compiler.functionReferences);
     
     for (int i = 0; i < functionCount; i++) {
-        if (ast == functionReferences.data[i]) {
+        if (ast == compiler.functionReferences.data[i]) {
             return i;
         }
     }
@@ -596,18 +602,18 @@ static void functionBody(AST* ast)
 static void functionDefinition(AST* ast)
 {
     AST* body = ast->funcDef.body;
-    FunctionObject* previousFunction = currentFunction;
+    FunctionObject* previousFunction = compiler.function;
     FunctionObject* function = createFunctionObject();
     function->paramCount = countVector(&ast->funcDef.params);
     function->localCount = body->compound.scope->localCount;
     function->maxStackCount = function->localCount;
     
-    stackCount = function->maxStackCount;
-    currentFunction = function;
+    compiler.stackCount = function->maxStackCount;
+    compiler.function = function;
     makeConstant(POINTER_VALUE(function));
-    pushVectorItem(&functionReferences, ast);
+    pushVectorItem(&compiler.functionReferences, ast);
     functionBody(body);
-    currentFunction = previousFunction;
+    compiler.function = previousFunction;
 }
 
 static void ret(AST* ast)
@@ -697,16 +703,27 @@ static void topLevelStatements(AST* ast)
     op_hlt();
 }
 
-void compile(char* source, ModuleObject* module)
+void initCompiler(ModuleObject* module)
+{
+    FunctionObject* function = getValueAsPointer(&module->constants, 0);
+
+    initVector(&compiler.functionReferences);
+    pushVectorItem(&compiler.functionReferences, NULL);
+
+    compiler.module = module;
+    compiler.function = function;
+    compiler.stackCount = 0;
+}
+
+void freeCompiler()
+{
+    freeVector(&compiler.functionReferences);
+}
+
+void compile(char* source)
 {
     AST* ast = parse(source);
 
-    currentFunction = getValueAsPointer(&module->constants, 0);
-    currentModule = module;
-
-    initVector(&functionReferences);
-    pushVectorItem(&functionReferences, NULL);
     topLevelStatements(ast);
-    freeVector(&functionReferences);
     freeAST(ast);
 }

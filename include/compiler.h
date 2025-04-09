@@ -3,6 +3,8 @@
 
 #include "moduleobject.h"
 
-void compile(char* source, ModuleObject* module);
+void initCompiler(ModuleObject* module);
+void freeCompiler();
+void compile(char* source);
 
 #endif

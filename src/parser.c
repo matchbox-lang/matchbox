@@ -14,10 +14,15 @@ static AST* identifier();
 static AST* statements();
 static AST* variable();
 
-static Token currentToken;
-static Token prevToken;
-static Scope* currentScope;
-static Scope* topLevel;
+typedef struct Parser
+{
+    Token currentToken;
+    Token prevToken;
+    Scope* currentScope;
+    Scope* topLevel;
+} Parser;
+
+static Parser parser;
 
 static const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
 static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
@@ -28,12 +33,6 @@ static const char* unexpectedEndError = "Error: Unexpected end of input";
 static const char* unexpectedTokenError = "Error: Unexpected %.*s";
 static const char* uninitializedError = "Error: %.*s is uninitialized";
 
-static void advance()
-{
-    prevToken = currentToken;
-    currentToken = scanToken();
-}
-
 static void error(const char* message, Token token)
 {
     fprintf(stderr, message, token.length, token.chars);
@@ -41,10 +40,16 @@ static void error(const char* message, Token token)
     exit(1);
 }
 
+static void advance()
+{
+    parser.prevToken = parser.currentToken;
+    parser.currentToken = scanToken();
+}
+
 static void consume(TokenType type)
 {
-    if (currentToken.type != type) {
-        error(unexpectedTokenError, currentToken);
+    if (parser.currentToken.type != type) {
+        error(unexpectedTokenError, parser.currentToken);
     }
     
     advance();
@@ -52,16 +57,16 @@ static void consume(TokenType type)
 
 static void consumeType()
 {
-    if (!isTypeToken(currentToken.type)) {
-        error(unexpectedTokenError, currentToken);
+    if (!isTypeToken(parser.currentToken.type)) {
+        error(unexpectedTokenError, parser.currentToken);
     }
 
-    consume(currentToken.type);
+    consume(parser.currentToken.type);
 }
 
 static bool isEof()
 {
-    return currentToken.type == T_EOF;
+    return parser.currentToken.type == T_EOF;
 }
 
 static AST* booleanLiteral(Token token)
@@ -141,8 +146,8 @@ static AST* groupExpression()
     consume(T_LPAREN);
     AST* ast = expression();
 
-    if (!ast && currentToken.type == T_RPAREN) {
-        error(unexpectedTokenError, currentToken);
+    if (!ast && parser.currentToken.type == T_RPAREN) {
+        error(unexpectedTokenError, parser.currentToken);
     }
     
     if (!ast || isEof()) {
@@ -157,24 +162,24 @@ static AST* groupExpression()
 
 static AST* primary()
 {
-    switch (currentToken.type) {
+    switch (parser.currentToken.type) {
         case T_TRUE:
         case T_FALSE:
-            return booleanLiteral(currentToken);
+            return booleanLiteral(parser.currentToken);
         case T_INTEGER_LITERAL:
-            return integerLiteral(currentToken);
+            return integerLiteral(parser.currentToken);
         case T_BINARY_LITERAL:
-            return binaryLiteral(currentToken);
+            return binaryLiteral(parser.currentToken);
         case T_HEXADECIMAL_LITERAL:
-            return hexadecimalLiteral(currentToken);
+            return hexadecimalLiteral(parser.currentToken);
         case T_OCTAL_LITERAL:
-            return octalLiteral(currentToken);
+            return octalLiteral(parser.currentToken);
         case T_FLOAT_LITERAL:
-            return floatLiteral(currentToken);
+            return floatLiteral(parser.currentToken);
         case T_CHARACTER_LITERAL:
-            return characterLiteral(currentToken);
+            return characterLiteral(parser.currentToken);
         case T_STRING_LITERAL:
-            return stringLiteral(currentToken);
+            return stringLiteral(parser.currentToken);
         case T_LPAREN:
             return groupExpression();
         case T_IDENTIFIER:
@@ -183,16 +188,16 @@ static AST* primary()
             return NULL;
     }
 
-    error(unexpectedTokenError, currentToken);
+    error(unexpectedTokenError, parser.currentToken);
 }
 
 static AST* postfix()
 {
-    if (!isPostfixToken(currentToken.type)) {
+    if (!isPostfixToken(parser.currentToken.type)) {
         return primary();
     }
 
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     AST* expr = variable();
     if (!expr) {
@@ -209,11 +214,11 @@ static AST* postfix()
 
 static AST* prefix()
 {
-    if (!isPrefixToken(currentToken.type)) {
+    if (!isPrefixToken(parser.currentToken.type)) {
         return postfix();
     }
 
-    Token token = currentToken;
+    Token token = parser.currentToken;
     consume(token.type);
 
     if (isEof()) {
@@ -223,13 +228,13 @@ static AST* prefix()
     AST* ast = createAST(AST_PREFIX);
     ast->prefix.operator = token;
 
-    if (currentToken.type == T_IDENTIFIER) {
+    if (parser.currentToken.type == T_IDENTIFIER) {
         consume(T_IDENTIFIER);
         ast->prefix.expr = variable();
     } else if (!isPostfixToken(token.type)) {
         ast->prefix.expr = prefix();
     } else {
-        error(unexpectedTokenError, currentToken);
+        error(unexpectedTokenError, parser.currentToken);
     }
 
     if (!ast->prefix.expr) {
@@ -267,12 +272,12 @@ static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
 static AST* exponent()
 {
     AST* expr = prefix();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (token.type == T_POWER) {
         consume(token.type);
         expr = binary(expr, prefix(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -281,12 +286,12 @@ static AST* exponent()
 static AST* factor()
 {
     AST* expr = exponent();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (isFactorToken(token.type)) {
         consume(token.type);
         expr = binary(expr, exponent(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -295,12 +300,12 @@ static AST* factor()
 static AST* term()
 {
     AST* expr = factor();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (isTermToken(token.type)) {
         consume(token.type);
         expr = binary(expr, factor(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -309,12 +314,12 @@ static AST* term()
 static AST* shift()
 {
     AST* expr = term();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (isShiftToken(token.type)) {
         consume(token.type);
         expr = binary(expr, term(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -323,12 +328,12 @@ static AST* shift()
 static AST* comparison()
 {
     AST* expr = shift();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (isComparisonToken(token.type)) {
         consume(token.type);
         expr = binary(expr, shift(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -337,12 +342,12 @@ static AST* comparison()
 static AST* equality()
 {
     AST* expr = comparison();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (isEqualityToken(token.type)) {
         consume(token.type);
         expr = binary(expr, comparison(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -351,12 +356,12 @@ static AST* equality()
 static AST* bitwiseAND()
 {
     AST* expr = equality();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (token.type == T_AMPERSAND) {
         consume(token.type);
         expr = binary(expr, equality(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -365,12 +370,12 @@ static AST* bitwiseAND()
 static AST* bitwiseXOR()
 {
     AST* expr = bitwiseAND();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (token.type == T_CIRCUMFLEX) {
         consume(token.type);
         expr = binary(expr, bitwiseAND(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -379,12 +384,12 @@ static AST* bitwiseXOR()
 static AST* bitwiseOR()
 {
     AST* expr = bitwiseXOR();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (token.type == T_PIPE) {
         consume(token.type);
         expr = binary(expr, bitwiseXOR(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -393,12 +398,12 @@ static AST* bitwiseOR()
 static AST* booleanAND()
 {
     AST* expr = bitwiseOR();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (token.type == T_BOOLEAN_AND) {
         consume(token.type);
         expr = binary(expr, bitwiseOR(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -407,12 +412,12 @@ static AST* booleanAND()
 static AST* booleanOR()
 {
     AST* expr = booleanAND();
-    Token token = currentToken;
+    Token token = parser.currentToken;
 
     while (token.type == T_BOOLEAN_OR) {
         consume(token.type);
         expr = binary(expr, booleanAND(), token);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return expr;
@@ -425,8 +430,8 @@ static AST* expression()
 
 static AST* returnStatement()
 {
-    if (currentScope->level < 2) {
-        error(unexpectedTokenError, currentToken);
+    if (parser.currentScope->level < 2) {
+        error(unexpectedTokenError, parser.currentToken);
     }
 
     consume(T_RETURN);
@@ -448,9 +453,9 @@ static AST* parameter()
         return NULL;
     }
     
-    Token token = currentToken;
+    Token token = parser.currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(currentScope, id);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (symbol) {
         error(redefinitionError, token);
@@ -459,29 +464,29 @@ static AST* parameter()
     consume(T_IDENTIFIER);
 
     AST* ast = createAST(AST_PARAMETER);
-    ast->param.scope = currentScope;
+    ast->param.scope = parser.currentScope;
     ast->param.id = id;
     ast->param.typeId = T_INT;
-    ast->param.position = getLocalCount(currentScope);
+    ast->param.position = getLocalCount(parser.currentScope);
 
-    if (isTypeToken(currentToken.type)) {
-        ast->param.typeId = currentToken.type;
+    if (isTypeToken(parser.currentToken.type)) {
+        ast->param.typeId = parser.currentToken.type;
         consumeType();
     }
 
-    setLocalVariableSymbol(currentScope, id, ast);
+    setLocalVariableSymbol(parser.currentScope, id, ast);
 
     return ast;
 }
 
 static AST* variable()
 {
-    Token token = prevToken;
+    Token token = parser.prevToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(currentScope, id);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (!symbol) {
-        symbol = getLocalSymbol(topLevel, id);
+        symbol = getLocalSymbol(parser.topLevel, id);
     }
 
     freeStringObject(id);
@@ -495,7 +500,7 @@ static AST* variable()
     }
 
     AST* ast = createAST(AST_VARIABLE);
-    ast->var.scope = currentScope;
+    ast->var.scope = parser.currentScope;
     ast->var.symbol = symbol;
 
     return ast;
@@ -547,11 +552,11 @@ static bool arguments(Vector* args)
         return false;
     }
 
-    while (currentToken.type != T_RPAREN) {
+    while (parser.currentToken.type != T_RPAREN) {
         AST* expr = expression();
 
-        if (!expr && (currentToken.type == T_COMMA || currentToken.type == T_RPAREN)) {
-            error(unexpectedTokenError, currentToken);
+        if (!expr && (parser.currentToken.type == T_COMMA || parser.currentToken.type == T_RPAREN)) {
+            error(unexpectedTokenError, parser.currentToken);
         }
 
         if (!expr) {
@@ -560,7 +565,7 @@ static bool arguments(Vector* args)
 
         pushVectorItem(args, expr);
 
-        if (currentToken.type == T_COMMA) {
+        if (parser.currentToken.type == T_COMMA) {
             consume(T_COMMA);
         }
     }
@@ -582,11 +587,11 @@ static bool parameters(Vector* params)
         return false;
     }
 
-    while (currentToken.type != T_RPAREN) {
+    while (parser.currentToken.type != T_RPAREN) {
         AST* expr = parameter();
 
-        if (!expr && (currentToken.type == T_COMMA || currentToken.type == T_RPAREN)) {
-            error(unexpectedTokenError, currentToken);
+        if (!expr && (parser.currentToken.type == T_COMMA || parser.currentToken.type == T_RPAREN)) {
+            error(unexpectedTokenError, parser.currentToken);
         }
 
         if (!expr) {
@@ -595,7 +600,7 @@ static bool parameters(Vector* params)
 
         pushVectorItem(params, expr);
 
-        if (currentToken.type == T_COMMA) {
+        if (parser.currentToken.type == T_COMMA) {
             consume(T_COMMA);
         }
     }
@@ -636,9 +641,9 @@ static AST* systemCall(Token token)
 
 static AST* functionCall()
 {
-    Token token = prevToken;
+    Token token = parser.prevToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getSymbol(currentScope, id);
+    AST* symbol = getSymbol(parser.currentScope, id);
     
     freeStringObject(id);
     
@@ -651,7 +656,7 @@ static AST* functionCall()
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->funcCall.scope = currentScope;
+    ast->funcCall.scope = parser.currentScope;
     ast->funcCall.symbol = symbol;
 
     if (!arguments(&ast->funcCall.args)) {
@@ -672,16 +677,16 @@ static AST* functionDefinition()
         return NULL;
     }
 
-    Token token = currentToken;
+    Token token = parser.currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(currentScope, id);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (symbol) {
         error(redefinitionError, token);
     }
 
-    if (currentToken.type != T_IDENTIFIER) {
-        error(unexpectedTokenError, currentToken);
+    if (parser.currentToken.type != T_IDENTIFIER) {
+        error(unexpectedTokenError, parser.currentToken);
     }
 
     consume(T_IDENTIFIER);
@@ -691,20 +696,20 @@ static AST* functionDefinition()
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
-    ast->funcDef.scope = currentScope;
+    ast->funcDef.scope = parser.currentScope;
     ast->funcDef.id = id;
     ast->funcDef.typeId = T_INT;
     ast->funcDef.body = NULL;
 
-    currentScope = createScope(currentScope);
+    parser.currentScope = createScope(parser.currentScope);
     
     if (!parameters(&ast->funcDef.params)) {
         freeAST(ast);
         return NULL;
     }
 
-    if (isTypeToken(currentToken.type)) {
-        ast->funcDef.typeId = currentToken.type;
+    if (isTypeToken(parser.currentToken.type)) {
+        ast->funcDef.typeId = parser.currentToken.type;
         consumeType();
     }
 
@@ -723,18 +728,18 @@ static AST* functionDefinition()
 
     ast->funcDef.body = body;
     consume(T_RBRACE);
-    currentScope = currentScope->parent;
-    setLocalSymbol(currentScope, id, ast);
+    parser.currentScope = parser.currentScope->parent;
+    setLocalSymbol(parser.currentScope, id, ast);
 
     return ast;
 }
 
 static AST* assignment()
 {
-    Token operator = currentToken;
-    Token token = prevToken;
+    Token operator = parser.currentToken;
+    Token token = parser.prevToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getSymbol(currentScope, id);
+    AST* symbol = getSymbol(parser.currentScope, id);
 
     freeStringObject(id);
 
@@ -742,7 +747,7 @@ static AST* assignment()
         error(undefinedError, token);
     }
 
-    if (currentScope != getScope(symbol) && !isInitialized(symbol)) {
+    if (parser.currentScope != getScope(symbol) && !isInitialized(symbol)) {
         error(uninitializedError, token);
     }
     
@@ -754,7 +759,7 @@ static AST* assignment()
     }
 
     AST* ast = createAST(AST_ASSIGNMENT);
-    ast->assignment.scope = currentScope;
+    ast->assignment.scope = parser.currentScope;
     ast->assignment.operator = operator;
     ast->assignment.symbol = symbol;
     ast->assignment.expr = expr;
@@ -772,16 +777,16 @@ static AST* variableDefinition()
         return NULL;
     }
 
-    Token token = currentToken;
+    Token token = parser.currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(currentScope, id);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (symbol) {
         error(redefinitionError, token);
     }
 
-    if (currentToken.type != T_IDENTIFIER) {
-        error(unexpectedTokenError, currentToken);
+    if (parser.currentToken.type != T_IDENTIFIER) {
+        error(unexpectedTokenError, parser.currentToken);
     }
 
     consume(T_IDENTIFIER);
@@ -791,20 +796,20 @@ static AST* variableDefinition()
     }
 
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->varDef.scope = currentScope;
+    ast->varDef.scope = parser.currentScope;
     ast->varDef.id = id;
-    ast->varDef.position = getLocalCount(currentScope);
+    ast->varDef.position = getLocalCount(parser.currentScope);
     ast->varDef.expr = NULL;
 
-    if (isTypeToken(currentToken.type)) {
-        ast->varDef.typeId = currentToken.type;
+    if (isTypeToken(parser.currentToken.type)) {
+        ast->varDef.typeId = parser.currentToken.type;
         consumeType();
     }
     
-    if (currentToken.type != T_EQUAL) {
+    if (parser.currentToken.type != T_EQUAL) {
         ast->varDef.expr = createAST(AST_NONE);
         ast->varDef.typeId = T_INT;
-        setLocalVariableSymbol(currentScope, id, ast);
+        setLocalVariableSymbol(parser.currentScope, id, ast);
 
         return ast;
     }
@@ -824,7 +829,7 @@ static AST* variableDefinition()
         error(invalidTypeError, token);
     }
 
-    setLocalVariableSymbol(currentScope, id, ast);
+    setLocalVariableSymbol(parser.currentScope, id, ast);
     initialize(ast);
 
     return ast;
@@ -834,11 +839,11 @@ static AST* identifier()
 {
     consume(T_IDENTIFIER);
     
-    if (isAssignmentToken(currentToken.type)) {
+    if (isAssignmentToken(parser.currentToken.type)) {
         return assignment();
-    } else if (isPostfixToken(currentToken.type)) {
+    } else if (isPostfixToken(parser.currentToken.type)) {
         return postfix();
-    } else if (currentToken.type == T_LPAREN) {
+    } else if (parser.currentToken.type == T_LPAREN) {
         return functionCall();
     }
 
@@ -847,7 +852,7 @@ static AST* identifier()
 
 static AST* statement()
 {
-    switch (currentToken.type) {
+    switch (parser.currentToken.type) {
         case T_FUNC:
             return functionDefinition();
         case T_VAR:
@@ -861,10 +866,10 @@ static AST* statement()
 
 static AST* statements(TokenType type)
 {
-    Token token = currentToken;
+    Token token = parser.currentToken;
     AST* ast = createAST(AST_COMPOUND);
 
-    ast->compound.scope = currentScope;
+    ast->compound.scope = parser.currentScope;
 
     while (token.type != type) {
         AST* stmt = statement();
@@ -874,14 +879,14 @@ static AST* statements(TokenType type)
         }
         
         if (!isEof() && 
-            currentToken.line == token.line &&
-            currentToken.type != type &&
-            prevToken.type != T_RBRACE) {
+            parser.currentToken.line == token.line &&
+            parser.currentToken.type != type &&
+            parser.prevToken.type != T_RBRACE) {
             consume(T_SEMICOLON);
         }
 
         pushVectorItem(&ast->compound.statements, stmt);
-        token = currentToken;
+        token = parser.currentToken;
     }
 
     return ast;
@@ -890,13 +895,13 @@ static AST* statements(TokenType type)
 AST* parse(char* source)
 {
     initLexer(source);
-    currentScope = createScope(NULL);
-    topLevel = currentScope;
+    parser.currentScope = createScope(NULL);
+    parser.topLevel = parser.currentScope;
     advance();
 
     AST* ast = statements(T_EOF);
     if (!ast) {
-        error(unexpectedEndError, currentToken);
+        error(unexpectedEndError, parser.currentToken);
     }
     
     return ast;

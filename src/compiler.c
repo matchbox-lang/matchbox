@@ -17,7 +17,7 @@ typedef struct Compiler
     int stackCount;
 } Compiler;
 
-Compiler compiler;
+static Compiler compiler;
 
 static CodeObject* currentCodeObject()
 {

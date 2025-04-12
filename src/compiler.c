@@ -722,6 +722,10 @@ void freeCompiler()
 
 void compile(char* source)
 {
+    if (!compiler.module) {
+        return;
+    }
+    
     AST* ast = parse(source);
 
     topLevelStatements(ast);

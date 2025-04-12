@@ -393,7 +393,7 @@ void initVM(ModuleObject* module)
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
 
-    FunctionObject* function = AS_POINTER(module->constants.data[0]);
+    FunctionObject* function = AS_POINTER(vm.module->constants.data[0]);
     StackFrame* frame = &vm.frames[vm.frameCount++];
 
     frame->ip = function->code.data;

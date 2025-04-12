@@ -705,7 +705,7 @@ static void topLevelStatements(AST* ast)
 
 void initCompiler(ModuleObject* module)
 {
-    FunctionObject* function = getValueAsPointer(&module->constants, 0);
+    FunctionObject* function = AS_POINTER(module->constants.data[0]);
 
     initVector(&compiler.functionReferences);
     pushVectorItem(&compiler.functionReferences, NULL);

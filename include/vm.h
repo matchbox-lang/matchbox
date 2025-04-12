@@ -6,9 +6,9 @@
 #define STACK_MAX 1024
 #define FRAMES_MAX 64
 
-void initVM();
+void initVM(ModuleObject* module);
 void freeVM();
-void interpret(ModuleObject* module);
+void interpret();
 void inspectVM();
 
 #endif

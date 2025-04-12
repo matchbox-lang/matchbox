@@ -26,7 +26,7 @@ void disassembleModule(ModuleObject* module)
     FunctionObject* function;
 
     for (int i = 0; i < functionCount; i++) {
-        function = AS_FUNCTION_OBJECT(module->constants.data[i]);
+        function = AS_POINTER(module->constants.data[i]);
         disassemble(&function->code);
 
         if (i < functionCount - 1) {

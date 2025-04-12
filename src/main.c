@@ -29,8 +29,9 @@ static void repl()
         
         initCompiler(module);
         compile(source);
-        initVM();
-        interpret(module);
+
+        initVM(module);
+        interpret();
         freeVM();
         freeModuleObject(module);
         freeCompiler();
@@ -57,8 +58,8 @@ static void file()
         return disassembleModule(module);
     }
 
-    initVM();
-    interpret(module);
+    initVM(module);
+    interpret();
     freeVM();
     freeModuleObject(module);
     freeCompiler();

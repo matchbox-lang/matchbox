@@ -6,8 +6,8 @@
 #include "scope.h"
 #include "util.h"
 
-static AST* statements(AST* ast);
 static void expression();
+static void statements(Vector* statements);
 
 typedef struct Compiler
 {
@@ -591,15 +591,6 @@ static void systemCall(AST* ast)
     op_syscall(ast->syscall.opcode);
 }
 
-static void functionBody(AST* ast)
-{
-    AST* last = statements(ast);
-
-    if (!last || last->type != AST_RETURN) {
-        op_ret();
-    }
-}
-
 static void functionDefinition(AST* ast)
 {
     AST* body = ast->funcDef.body;
@@ -613,7 +604,14 @@ static void functionDefinition(AST* ast)
     compiler.function = function;
     makeConstant(POINTER_VALUE(function));
     pushVectorItem(&compiler.functionReferences, ast);
-    functionBody(body);
+    statements(&body->compound.statements);
+
+    AST* last = vectorEnd(&body->compound.statements);
+
+    if (!last || last->type != AST_RETURN) {
+        op_ret();
+    }
+    
     compiler.function = previousFunction;
 }
 
@@ -660,13 +658,12 @@ static void expression(AST* ast)
     }
 }
 
-static AST* statements(AST* ast)
+static void statements(Vector* statements)
 {
-    size_t count = countVector(&ast->compound.statements);
-    AST* statement = NULL;
+    size_t count = countVector(statements);
 
     for (size_t i = 0; i < count; i++) {
-        statement = getVectorAt(&ast->compound.statements, i);
+        AST* statement = getVectorAt(statements, i);
 
         switch (statement->type) {
             case AST_ASSIGNMENT:
@@ -694,13 +691,11 @@ static AST* statements(AST* ast)
                 op_pop();
         }
     }
-
-    return statement;
 }
 
 static void topLevelStatements()
 {
-    statements(compiler.ast);
+    statements(&compiler.ast->compound.statements);
     op_hlt();
 }
 
@@ -720,7 +715,6 @@ void initCompiler(ModuleObject* module)
 void freeCompiler()
 {
     freeVector(&compiler.functionReferences);
-    freeAST(compiler.ast);
 }
 
 void compile(char* source)

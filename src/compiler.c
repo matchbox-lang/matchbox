@@ -14,6 +14,7 @@ typedef struct Compiler
     Vector functionReferences;
     ModuleObject* module;
     FunctionObject* function;
+    AST* ast;
     int stackCount;
 } Compiler;
 
@@ -697,9 +698,9 @@ static AST* statements(AST* ast)
     return statement;
 }
 
-static void topLevelStatements(AST* ast)
+static void topLevelStatements()
 {
-    statements(ast);
+    statements(compiler.ast);
     op_hlt();
 }
 
@@ -712,12 +713,14 @@ void initCompiler(ModuleObject* module)
 
     compiler.module = module;
     compiler.function = function;
+    compiler.ast = NULL;
     compiler.stackCount = 0;
 }
 
 void freeCompiler()
 {
     freeVector(&compiler.functionReferences);
+    freeAST(compiler.ast);
 }
 
 void compile(char* source)
@@ -726,8 +729,6 @@ void compile(char* source)
         return;
     }
     
-    AST* ast = parse(source);
-
-    topLevelStatements(ast);
-    freeAST(ast);
+    compiler.ast = parse(source);
+    topLevelStatements();
 }

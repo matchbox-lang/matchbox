@@ -15,11 +15,10 @@ static bool blocklevelStatements(Vector* nodes);
 
 typedef struct Parser
 {
-    AST* ast;
     Token currentToken;
     Token prevToken;
     Scope* currentScope;
-    Scope* topLevel;
+    AST* topLevel;
 } Parser;
 
 static Parser parser;
@@ -72,7 +71,7 @@ static bool isEof()
 
 static Vector* getTopLevelStatements()
 {
-    return &parser.ast->compound.statements;
+    return &parser.topLevel->compound.statements;
 }
 
 static AST* booleanLiteral(Token token)
@@ -173,7 +172,7 @@ static AST* variable()
     AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (!symbol) {
-        symbol = getLocalSymbol(parser.topLevel, id);
+        symbol = getLocalSymbol(parser.topLevel->compound.scope, id);
     }
 
     freeStringObject(id);
@@ -903,14 +902,13 @@ static bool blocklevelStatements(Vector* nodes)
 
 static bool toplevelStatements()
 {
-    return statements(&parser.ast->compound.statements, T_EOF);
+    return statements(&parser.topLevel->compound.statements, T_EOF);
 }
 
 void initParser(AST* ast)
 {
-    parser.ast = ast;
     parser.currentScope = ast->compound.scope;
-    parser.topLevel = parser.currentScope;
+    parser.topLevel = ast;
 }
 
 void parse(char* source)

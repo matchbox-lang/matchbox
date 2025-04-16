@@ -7,7 +7,7 @@
 #include "util.h"
 
 static void expression();
-static void statements(Vector* statements);
+static void statements(Vector* nodes);
 
 typedef struct Compiler
 {
@@ -658,12 +658,12 @@ static void expression(AST* ast)
     }
 }
 
-static void statements(Vector* statements)
+static void statements(Vector* nodes)
 {
-    size_t count = countVector(statements);
+    size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        AST* statement = getVectorAt(statements, i);
+        AST* statement = getVectorAt(nodes, i);
 
         switch (statement->type) {
             case AST_ASSIGNMENT:
@@ -693,28 +693,26 @@ static void statements(Vector* statements)
     }
 }
 
-static void topLevelStatements()
-{
-    statements(&compiler.ast->compound.statements);
-    op_hlt();
-}
-
 void initCompiler(ModuleObject* module)
 {
-    FunctionObject* function = AS_POINTER(module->constants.data[0]);
-
     initVector(&compiler.functionReferences);
     pushVectorItem(&compiler.functionReferences, NULL);
 
+    AST* ast = createAST(AST_COMPOUND);
+    ast->compound.scope = createScope(NULL);
+
+    initParser(ast);
+
     compiler.module = module;
-    compiler.function = function;
-    compiler.ast = NULL;
+    compiler.function = AS_POINTER(module->constants.data[0]);
+    compiler.ast = ast;
     compiler.stackCount = 0;
 }
 
 void freeCompiler()
 {
     freeVector(&compiler.functionReferences);
+    freeAST(compiler.ast);
 }
 
 void compile(char* source)
@@ -723,6 +721,7 @@ void compile(char* source)
         return;
     }
     
-    compiler.ast = parse(source);
-    topLevelStatements();
+    parse(source);
+    statements(&compiler.ast->compound.statements);
+    op_hlt();
 }

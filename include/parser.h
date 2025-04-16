@@ -3,6 +3,7 @@
 
 #include "ast.h"
 
-AST* parse(char* source);
+void initParser(AST* ast);
+void parse(char* source);
 
 #endif

@@ -11,10 +11,11 @@
 
 static AST* expression();
 static AST* identifier();
-static bool statements(Vector* statements, TokenType type);
+static bool blocklevelStatements(Vector* nodes);
 
 typedef struct Parser
 {
+    AST* ast;
     Token currentToken;
     Token prevToken;
     Scope* currentScope;
@@ -66,6 +67,12 @@ static void consumeType()
 static bool isEof()
 {
     return parser.currentToken.type == T_EOF;
+}
+
+
+static Vector* getTopLevelStatements()
+{
+    return &parser.ast->compound.statements;
 }
 
 static AST* booleanLiteral(Token token)
@@ -722,7 +729,7 @@ static AST* functionDefinition()
     AST* body = createAST(AST_COMPOUND);
     body->compound.scope = parser.currentScope;
 
-    if (!statements(&body->compound.statements, T_RBRACE)) {
+    if (!blocklevelStatements(&body->compound.statements)) {
         freeAST(ast);
         return NULL;
     }
@@ -865,7 +872,7 @@ static AST* statement()
     return expression();
 }
 
-static bool statements(Vector* statements, TokenType type)
+static bool statements(Vector* nodes, TokenType type)
 {
     Token token = parser.currentToken;
 
@@ -882,32 +889,36 @@ static bool statements(Vector* statements, TokenType type)
             consume(T_SEMICOLON);
         }
 
-        pushVectorItem(statements, stmt);
+        pushVectorItem(nodes, stmt);
         token = parser.currentToken;
     }
 
     return true;
 }
 
-static AST* topLevelStatements()
+static bool blocklevelStatements(Vector* nodes)
 {
-    AST* ast = createAST(AST_COMPOUND);
-    ast->compound.scope = parser.currentScope;
-
-    if (!statements(&ast->compound.statements, T_EOF)) {
-        error(unexpectedEndError, parser.currentToken);
-    }
-
-    return ast;
+    return statements(nodes, T_RBRACE);
 }
 
-AST* parse(char* source)
+static bool toplevelStatements()
+{
+    return statements(&parser.ast->compound.statements, T_EOF);
+}
+
+void initParser(AST* ast)
+{
+    parser.ast = ast;
+    parser.currentScope = ast->compound.scope;
+    parser.topLevel = parser.currentScope;
+}
+
+void parse(char* source)
 {
     initLexer(source);
     advance();
 
-    parser.currentScope = createScope(NULL);
-    parser.topLevel = parser.currentScope;
-
-    return topLevelStatements();
+    if (!toplevelStatements()) {
+        error(unexpectedEndError, parser.currentToken);
+    }
 }

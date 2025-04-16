@@ -29,16 +29,16 @@ AST* createAST(TokenType type)
     return ast;
 }
 
-static void freeASTVector(Vector* statements)
+static void freeASTVector(Vector* nodes)
 {
-    size_t count = countVector(statements);
+    size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        AST* ast = getVectorAt(statements, i);
+        AST* ast = getVectorAt(nodes, i);
         freeAST(ast);
     }
 
-    freeVector(statements);
+    freeVector(nodes);
 }
 
 void freeAST(AST* ast)

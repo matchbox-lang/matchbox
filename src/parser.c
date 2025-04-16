@@ -702,12 +702,12 @@ static AST* functionDefinition()
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
-    ast->funcDef.scope = parser.currentScope;
+    ast->funcDef.scope = createScope(parser.currentScope);
     ast->funcDef.id = id;
     ast->funcDef.typeId = T_INT;
     ast->funcDef.body = NULL;
 
-    parser.currentScope = createScope(parser.currentScope);
+    parser.currentScope = ast->funcDef.scope;
     
     if (!parameters(&ast->funcDef.params)) {
         freeAST(ast);

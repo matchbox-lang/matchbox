@@ -8,6 +8,7 @@ FunctionObject* createFunctionObject()
     function->paramCount = 0;
     function->localCount = 0;
     function->maxStackCount = 0;
+    
     initCodeObject(&function->code);
 
     return function;

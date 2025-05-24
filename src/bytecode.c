@@ -64,7 +64,7 @@ void disassemble(CodeObject* code)
 {
     ptr = code->data;
 
-    while (ptr != codeEnd(code)) {
+    while (ptr != codeObjectEnd(code)) {
         int8_t c = READ_INT8();
 
         printInstruction(c);

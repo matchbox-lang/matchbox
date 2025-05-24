@@ -14,6 +14,10 @@ static void repl()
     char* source = NULL;
     size_t size = 0;
     size_t len;
+    ModuleObject* module = createModuleObject();
+    
+    initCompiler(module);
+    initVM(module);
 
     while (1) {
         printf(">>> ");
@@ -25,18 +29,13 @@ static void repl()
             break;
         }
 
-        ModuleObject* module = createModuleObject();
-        
-        initCompiler(module);
         compile(source);
-
-        initVM(module);
         interpret();
-        freeVM();
-        freeModuleObject(module);
-        freeCompiler();
     }
 
+    freeVM();
+    freeCompiler();
+    freeModuleObject(module);
     free(source);
 }
 
@@ -61,8 +60,8 @@ static void file()
     initVM(module);
     interpret();
     freeVM();
-    freeModuleObject(module);
     freeCompiler();
+    freeModuleObject(module);
     free(source);
 }
 

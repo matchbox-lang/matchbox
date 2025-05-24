@@ -17,11 +17,13 @@ typedef struct CodeObject
 
 void initCodeObject(CodeObject* code);
 void freeCodeObject(CodeObject* code);
+void clearCodeObject(CodeObject* code);
 size_t countCodeObject(CodeObject* code);
 void reserveCodeObject(CodeObject* code, size_t capacity);
+void resizeCodeObject(CodeObject* code, size_t size);
 size_t pushByte(CodeObject* code, uint8_t byte);
 void setByteAt(CodeObject* code, size_t index, uint8_t byte);
-uint8_t* codeBegin(CodeObject* code);
-uint8_t* codeEnd(CodeObject* code);
+uint8_t* codeObjectBegin(CodeObject* code);
+uint8_t* codeObjectEnd(CodeObject* code);
 
 #endif

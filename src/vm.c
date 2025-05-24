@@ -123,11 +123,16 @@ static void initServices()
 static void run()
 {
     uint8_t opcode;
+    FunctionObject* function = AS_POINTER(vm.module->constants.data[0]);
     StackFrame* frame = &vm.frames[vm.frameCount - 1];
     int32_t a;
     int32_t b;
     int32_t x;
     Value value;
+
+    frame->ip = function->code.data;
+    
+    TEST_OVERFLOW(function);
 
     while (opcode = READ_UINT8()) {
         switch (opcode)
@@ -393,28 +398,14 @@ void initVM(ModuleObject* module)
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
 
-    FunctionObject* function = AS_POINTER(vm.module->constants.data[0]);
     StackFrame* frame = &vm.frames[vm.frameCount++];
-
-    frame->ip = function->code.data;
-    frame->slots = vm.stackTop;
+    frame->ip = NULL;
+    frame->slots = vm.stack;
 }
 
 void freeVM()
 {
     freeValueArray(&vm.globals);
-}
-
-void interpret()
-{
-    if (!vm.module) {
-        return;
-    }
-
-    FunctionObject* function = AS_POINTER(vm.module->constants.data[0]);
-
-    TEST_OVERFLOW(function);
-    run();
 }
 
 void inspectStack()
@@ -425,6 +416,15 @@ void inspectStack()
 
         printf("%d: %d%s\n", i, n, arrow);
     }
+}
+
+void interpret()
+{
+    if (!vm.module) {
+        return;
+    }
+
+    run();
 }
 
 #undef READ_UINT8

@@ -8,7 +8,7 @@
 
 void initVM(ModuleObject* module);
 void freeVM();
-void interpret();
 void inspectVM();
+void interpret();
 
 #endif

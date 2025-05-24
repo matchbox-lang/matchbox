@@ -7,7 +7,8 @@
 #include "util.h"
 
 static void expression();
-static void statements(Vector* nodes);
+static void blocklevelStatements(Vector* nodes);
+static void toplevelStatements(Vector* nodes);
 
 typedef struct Compiler
 {
@@ -604,7 +605,7 @@ static void functionDefinition(AST* ast)
     compiler.function = function;
     makeConstant(POINTER_VALUE(function));
     pushVectorItem(&compiler.functionReferences, ast);
-    statements(&body->compound.statements);
+    blocklevelStatements(&body->compound.statements);
 
     AST* last = vectorEnd(&body->compound.statements);
 
@@ -658,38 +659,55 @@ static void expression(AST* ast)
     }
 }
 
-static void statements(Vector* nodes)
+static void statement(AST* ast)
+{
+    switch (ast->type) {
+        case AST_ASSIGNMENT:
+            assignment(ast);
+            break;
+        case AST_FUNCTION_CALL:
+            functionCall(ast);
+            op_pop();
+            break;
+        case AST_FUNCTION_DEFINITION:
+            functionDefinition(ast);
+            break;
+        case AST_RETURN:
+            ret(ast);
+            break;
+        case AST_SYSCALL:
+            systemCall(ast);
+            op_pop();
+            break;
+        case AST_VARIABLE_DEFINITION:
+            variableDefinition(ast);
+            break;
+        default:
+            expression(ast);
+            op_pop();
+    }
+}
+
+static void blocklevelStatements(Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        AST* statement = getVectorAt(nodes, i);
+        AST* stmt = getVectorAt(nodes, i);
 
-        switch (statement->type) {
-            case AST_ASSIGNMENT:
-                assignment(statement);
-                break;
-            case AST_FUNCTION_CALL:
-                functionCall(statement);
-                op_pop();
-                break;
-            case AST_FUNCTION_DEFINITION:
-                functionDefinition(statement);
-                break;
-            case AST_RETURN:
-                ret(statement);
-                break;
-            case AST_SYSCALL:
-                systemCall(statement);
-                op_pop();
-                break;
-            case AST_VARIABLE_DEFINITION:
-                variableDefinition(statement);
-                break;
-            default:
-                expression(statement);
-                op_pop();
-        }
+        statement(stmt);
+    }
+}
+
+static void toplevelStatements(Vector* nodes)
+{
+    static size_t i = 0;
+    size_t count = countVector(nodes);
+
+    for (; i < count; i++) {
+        AST* stmt = getVectorAt(nodes, i);
+
+        statement(stmt);
     }
 }
 
@@ -722,6 +740,7 @@ void compile(char* source)
     }
     
     parse(source);
-    statements(&compiler.ast->compound.statements);
+    clearCodeObject(currentCodeObject());
+    toplevelStatements(&compiler.ast->compound.statements);
     op_hlt();
 }

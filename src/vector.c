@@ -26,6 +26,12 @@ void reserveVector(Vector* vector, size_t capacity)
     vector->capacity = capacity;
 }
 
+void resizeVector(Vector* vector, size_t size)
+{
+    reserveVector(vector, size);
+    vector->count = size;
+}
+
 size_t pushVectorItem(Vector* vector, void* item)
 {
     if (vector->capacity == vector->count) {
@@ -47,6 +53,10 @@ void* popVectorItem(Vector* vector)
 
 void* getVectorAt(Vector* vector, size_t index)
 {
+    if (index < 0 || index >= vector->count) {
+        return NULL;
+    }
+
     return vector->data[index];
 }
 

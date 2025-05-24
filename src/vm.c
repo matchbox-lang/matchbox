@@ -1,37 +1,47 @@
 #include "vm.h"
 #include "bytecode.h"
-#include "chunk.h"
+#include "codeobject.h"
 #include "compiler.h"
 #include "config.h"
-#include "function.h"
-#include "service.h"
+#include "functionobject.h"
+#include "moduleobject.h"
 #include "value.h"
+#include "service.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define STACK_SIZE 1024
-#define TEST_STACK_OVERFLOW(n) if (sp - stack + n > STACK_SIZE) error(stackOverflowError);
-#define PUSH(value) (sp[0] = value, sp++)
-#define POP() ((--sp)[0])
-#define READ_UINT16() (pc += 2, (uint16_t)((pc[-2] << 8) | pc[-1]))
-#define READ_UINT8() ((uint8_t)*(pc++))
+#define PUSH(value) (vm.stackTop[0] = value, vm.stackTop++)
+#define POP() ((--vm.stackTop)[0])
+#define READ_UINT16() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_UINT8() ((uint8_t)*(frame->ip++))
+#define TEST_OVERFLOW(fn) \
+    if (vm.stackTop - vm.stack + fn->maxStackCount > STACK_MAX) error(stackOverflowError)
 
 typedef void (*service_t)();
 
-static service_t service[SYS_SIZE];
-static Value stack[STACK_SIZE];
-static Value* sp;
-static Value* fp;
-static uint8_t* pc;
-static uint8_t* bc;
-static FunctionArray* functions;
-static ValueArray* globals;
-static ValueArray* constants;
+typedef struct StackFrame
+{
+    uint8_t* ip;
+    Value* slots;
+} StackFrame;
 
-const char* stackOverflowError = "Error: Stack overflow\n";
+typedef struct VM
+{
+    StackFrame frames[FRAMES_MAX];
+    service_t service[SERVICES_MAX];
+    Value stack[STACK_MAX];
+    Value* stackTop;
+    ValueArray globals;
+    size_t frameCount;
+    ModuleObject* module;
+} VM;
+
+static VM vm;
+
+static const char* stackOverflowError = "Error: Stack overflow\n";
 
 static void error(const char* message)
 {
@@ -94,114 +104,105 @@ static void sys_byteorder()
 {
     int32_t i = 1;
     char* c = (char*)&i;
+    Value value = INT_VALUE((int32_t)*c);
 
-    sp[-1] = INT_VALUE((int32_t)*c);
+    PUSH(value);
 }
 
 static void initServices()
 {
-    service[SYS_EXIT] = sys_exit;
-    service[SYS_PRINT] = sys_print;
-    service[SYS_CLAMP] = sys_clamp;
-    service[SYS_ABS] = sys_abs;
-    service[SYS_MIN] = sys_min;
-    service[SYS_MAX] = sys_max;
-    service[SYS_BYTEORDER] = sys_byteorder;
-}
-
-void inspectStack()
-{
-    for (int i = 0; i < STACK_SIZE; i++) {
-        char* arrow = &stack[i] == sp ? " <-" : "";
-        int n = AS_INT(stack[i]);
-
-        printf("%d: %d%s\n", i, n, arrow);
-    }
-}
-
-static void resetStack()
-{
-    sp = stack;
-    fp = stack;
+    vm.service[SYS_EXIT] = sys_exit;
+    vm.service[SYS_PRINT] = sys_print;
+    vm.service[SYS_CLAMP] = sys_clamp;
+    vm.service[SYS_ABS] = sys_abs;
+    vm.service[SYS_MIN] = sys_min;
+    vm.service[SYS_MAX] = sys_max;
+    vm.service[SYS_BYTEORDER] = sys_byteorder;
 }
 
 static void run()
 {
     uint8_t opcode;
+    FunctionObject* function = AS_POINTER(vm.module->constants.data[0]);
+    StackFrame* frame = &vm.frames[vm.frameCount - 1];
     int32_t a;
     int32_t b;
     int32_t x;
-    Function func = getFunctionAt(functions, 0);
     Value value;
 
-    TEST_STACK_OVERFLOW(func.maxStackCount);
+    frame->ip = function->code.data;
+    
+    TEST_OVERFLOW(function);
 
     while (opcode = READ_UINT8()) {
         switch (opcode)
         {
             case OP_SYSCALL:
                 x = READ_UINT8();
-                service[x]();
+                vm.service[x]();
                 break;
 
             case OP_LDC:
                 x = READ_UINT8();
-                value = getValueAt(constants, x);
+                value = vm.module->constants.data[x];
                 PUSH(value);
+                break;
+
+            case OP_REG:
+                pushValue(&vm.globals, POP());
                 break;
 
             case OP_LDG:
                 x = READ_UINT8();
-                value = getValueAt(globals, x);
+                value = vm.globals.data[x];
                 PUSH(value);
                 break;
 
             case OP_STG:
                 x = READ_UINT8();
-                setValueAt(globals, x, sp[-1]);
-                POP();
+                vm.globals.data[x] = POP();
                 break;
 
             case OP_LDL:
-                x = (int8_t) READ_UINT8();
-                PUSH(fp[x]);
+                x = READ_UINT8();
+                PUSH(frame->slots[x]);
                 break;
 
             case OP_LDL_0:
-                PUSH(fp[0]);
+                PUSH(frame->slots[0]);
                 break;
 
             case OP_LDL_1:
-                PUSH(fp[1]);
+                PUSH(frame->slots[1]);
                 break;
 
             case OP_LDL_2:
-                PUSH(fp[2]);
+                PUSH(frame->slots[2]);
                 break;
 
             case OP_LDL_3:
-                PUSH(fp[3]);
+                PUSH(frame->slots[3]);
                 break;
 
             case OP_STL:
-                x = (int8_t) READ_UINT8();
-                fp[x] = POP();
+                x = READ_UINT8();
+                frame->slots[x] = POP();
                 break;
 
             case OP_STL_0:
-                fp[0] = POP();
+                frame->slots[0] = POP();
                 break;
 
             case OP_STL_1:
-                fp[1] = POP();
+                frame->slots[1] = POP();
                 break;
 
             case OP_STL_2:
-                fp[2] = POP();
+                frame->slots[2] = POP();
                 break;
 
             case OP_STL_3:
-                fp[3] = POP();
+                frame->slots[3] = POP();
                 break;
 
             case OP_PUSHB:
@@ -212,10 +213,6 @@ static void run()
             case OP_PUSHH:
                 x = (int16_t) READ_UINT16();
                 PUSH(INT_VALUE(x));
-                break;
-
-            case OP_PUSH_N1:
-                PUSH(INT_VALUE(-1));
                 break;
 
             case OP_PUSH_0:
@@ -239,15 +236,15 @@ static void run()
                 break;
 
             case OP_DUP:
-                PUSH(sp[-1]);
+                PUSH(vm.stackTop[-1]);
                 break;
 
             case OP_INC:
-                AS_INT(sp[-1])++;
+                AS_INT(vm.stackTop[-1])++;
                 break;
 
             case OP_DEC:
-                AS_INT(sp[-1])--;
+                AS_INT(vm.stackTop[-1])--;
                 break;
             
             case OP_ADD:
@@ -306,8 +303,8 @@ static void run()
                 break;
 
             case OP_BNOT:
-                x = AS_INT(sp[-1]);
-                sp[-1] = INT_VALUE(~x);
+                x = AS_INT(vm.stackTop[-1]);
+                vm.stackTop[-1] = INT_VALUE(~x);
                 break;
 
             case OP_LSL:
@@ -329,63 +326,60 @@ static void run()
                 break;
 
             case OP_NEG:
-                x = AS_INT(sp[-1]);
-                sp[-1] = INT_VALUE(-x);
+                x = AS_INT(vm.stackTop[-1]);
+                vm.stackTop[-1] = INT_VALUE(-x);
                 break;
 
             case OP_NOT:
-                x = AS_INT(sp[-1]);
-                sp[-1] = INT_VALUE(!x);
+                x = AS_INT(vm.stackTop[-1]);
+                vm.stackTop[-1] = INT_VALUE(!x);
                 break;
 
             case OP_BEQ:
-                b = AS_INT(sp[-1]);
-                a = AS_INT(sp[-2]);
-                if (a == b) pc += READ_UINT16();
+                b = AS_INT(vm.stackTop[-1]);
+                a = AS_INT(vm.stackTop[-2]);
+                if (a == b) frame->ip += READ_UINT16();
                 break;
 
             case OP_BLT:
-                b = AS_INT(sp[-1]);
-                a = AS_INT(sp[-2]);
-                if (a < b) pc += READ_UINT16();
+                b = AS_INT(vm.stackTop[-1]);
+                a = AS_INT(vm.stackTop[-2]);
+                if (a < b) frame->ip += READ_UINT16();
                 break;
 
             case OP_BLE:
-                b = AS_INT(sp[-1]);
-                a = AS_INT(sp[-2]);
-                if (a <= b) pc += READ_UINT16();
+                b = AS_INT(vm.stackTop[-1]);
+                a = AS_INT(vm.stackTop[-2]);
+                if (a <= b) frame->ip += READ_UINT16();
                 break;
 
             case OP_JMP:
-                pc += READ_UINT16();
+                frame->ip += READ_UINT16();
                 break;
 
             case OP_CALL:
                 x = READ_UINT16();
-                Function func = getFunctionAt(functions, x);
+                FunctionObject* function = AS_POINTER(vm.module->constants.data[x]);
                 
-                TEST_STACK_OVERFLOW(func.maxStackCount);
-                sp -= func.paramCount;
-                memmove(sp + 2, sp, func.paramCount * sizeof(Value));
-                PUSH(POINTER_VALUE(fp));
-                PUSH(POINTER_VALUE(pc));
-                fp = sp;
-                sp += func.localCount;
-                pc = &bc[func.position];
+                TEST_OVERFLOW(function);
+
+                frame = &vm.frames[vm.frameCount++];
+                frame->ip = function->code.data;
+                frame->slots = vm.stackTop - function->paramCount;
                 break;
 
             case OP_RET:
-                sp = fp - 2;
-                pc = AS_POINTER(fp[-1]);
-                fp = AS_POINTER(fp[-2]);
+                vm.stackTop = frame->slots;
+                vm.frameCount--;
+                frame = &vm.frames[vm.frameCount - 1];
                 PUSH(INT_VALUE(0));
                 break;
 
             case OP_RETV:
                 value = POP();
-                sp = fp - 2;
-                pc = AS_POINTER(fp[-1]);
-                fp = AS_POINTER(fp[-2]);
+                vm.stackTop = frame->slots;
+                vm.frameCount--;
+                frame = &vm.frames[vm.frameCount - 1];
                 PUSH(value);
                 break;
 
@@ -395,34 +389,42 @@ static void run()
     }
 }
 
-static void interpretChunk(Chunk* chunk, CommandArgs* args)
+void initVM(ModuleObject* module)
 {
-    if (args->disassemble) {
-        return disassemble(chunk);
+    initValueArray(&vm.globals);
+    initServices();
+    
+    vm.module = module;
+    vm.stackTop = vm.stack;
+    vm.frameCount = 0;
+
+    StackFrame* frame = &vm.frames[vm.frameCount++];
+    frame->ip = NULL;
+    frame->slots = vm.stack;
+}
+
+void freeVM()
+{
+    freeValueArray(&vm.globals);
+}
+
+void inspectStack()
+{
+    for (int i = 0; i < STACK_MAX; i++) {
+        char* arrow = &vm.stack[i] == vm.stackTop ? " <-" : "";
+        int n = AS_INT(vm.stack[i]);
+
+        printf("%d: %d%s\n", i, n, arrow);
+    }
+}
+
+void interpret()
+{
+    if (!vm.module) {
+        return;
     }
 
-    bc = chunk->data;
-    pc = chunk->data;
-    functions = &chunk->functions;
-    globals = &chunk->globals;
-    constants = &chunk->constants;
-
     run();
-}
-
-void initVM()
-{
-    initServices();
-    resetStack();
-}
-
-void interpret(char* source, CommandArgs* args)
-{
-    Chunk chunk;
-    initChunk(&chunk);
-    compile(source, &chunk);
-    interpretChunk(&chunk, args);
-    freeChunk(&chunk);
 }
 
 #undef READ_UINT8

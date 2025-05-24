@@ -29,16 +29,16 @@ AST* createAST(TokenType type)
     return ast;
 }
 
-static void freeASTVector(Vector* statements)
+static void freeASTVector(Vector* nodes)
 {
-    size_t count = countVector(statements);
+    size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        AST* ast = getVectorAt(statements, i);
+        AST* ast = getVectorAt(nodes, i);
         freeAST(ast);
     }
 
-    freeVector(statements);
+    freeVector(nodes);
 }
 
 void freeAST(AST* ast)
@@ -112,6 +112,10 @@ Scope* getScope(AST* ast)
 
 int getTypeId(AST* ast)
 {
+    if (!ast) {
+        return T_NONE;
+    }
+
     switch (ast->type) {
         case AST_BINARY:
             return ast->binary.typeId;
@@ -135,12 +139,17 @@ int getTypeId(AST* ast)
             return T_INT;
     }
 
-    return -1;
+    return T_NONE;
 }
 
 bool isParameter(AST* ast)
 {
     return ast->type == AST_PARAMETER;
+}
+
+bool isFunctionDefinition(AST* ast)
+{
+    return ast->type == AST_FUNCTION_DEFINITION;
 }
 
 bool isVariable(AST* ast)

@@ -10,7 +10,6 @@ Scope* createScope(Scope* parent)
     scope->localCount = 0;
     scope->level = getLevel(parent) + 1;
 
-    initReferenceArray(&scope->references);
     initTable(&scope->symbols, 32);
     
     return scope;
@@ -18,7 +17,6 @@ Scope* createScope(Scope* parent)
 
 void freeScope(Scope* scope)
 {
-    freeReferenceArray(&scope->references);
     freeTable(&scope->symbols);
     free(scope);
 }
@@ -38,17 +36,20 @@ bool isTopLevel(Scope* scope)
     return scope->level == 1;
 }
 
-AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast, bool local)
+AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast)
 {
-    if (local) {
-        scope->localCount++;
-    }
-    
     if (setTableAt(&scope->symbols, id, ast)) {
         return ast;
     }
 
     return NULL;
+}
+
+AST* setLocalVariableSymbol(Scope* scope, StringObject* id, AST* ast)
+{
+    scope->localCount++;
+    
+    return setLocalSymbol(scope, id, ast);
 }
 
 AST* getLocalSymbol(Scope* scope, StringObject* id)

@@ -1,10 +1,14 @@
 #ifndef VM_H
 #define VM_H
 
-typedef struct CommandArgs CommandArgs;
+#include "moduleobject.h"
 
-void initVM();
-void interpret(char* source, CommandArgs* args);
+#define STACK_MAX 1024
+#define FRAMES_MAX 64
+
+void initVM(ModuleObject* module);
+void freeVM();
 void inspectVM();
+void interpret();
 
 #endif

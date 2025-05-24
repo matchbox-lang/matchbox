@@ -107,9 +107,9 @@ typedef struct AST
             AST* expr;
         } varDef;
 
-        bool boolVal;
-        float floatVal;
-        int intVal;
+        bool boolValue;
+        float floatValue;
+        int intValue;
         Token character;
         Token string;
         AST* expr;
@@ -121,6 +121,7 @@ void freeAST(AST* ast);
 Scope* getScope(AST* ast);
 int getTypeId(AST* ast);
 bool isParameter(AST* ast);
+bool isFunctionDefinition(AST* ast);
 bool isVariable(AST* ast);
 bool isVariableDefinition(AST* ast);
 bool isVariableType(AST* ast);

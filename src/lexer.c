@@ -4,68 +4,67 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Position current;
-static Position start;
-
-const char* stringError = "Error: Missing terminating %c character on line %d:%d\n";
-const char* characterError = "Error: Missing terminating ' character on line %d:%d\n";
-const char* commentError = "Error: Unterminated comment on line %d:%d\n";
-
-void initLexer(char* source)
+typedef struct Position
 {
-    current.chars = source;
-    current.line = 1;
-    current.column = 1;
-}
+    char* chars;
+    int line;
+    int column;
+} Position;
 
-static void error(const char* message)
+typedef struct Lexer
 {
-    fprintf(stderr, message, start.line, start.column);
-    exit(1);
-}
+    Position current;
+    Position start;
+} Lexer;
 
-static void errorc(const char* message, const char c)
+static Lexer lexer;
+
+static const char* characterError = "Error: Missing terminating %c character";
+static const char* commentError = "Error: Unterminated comment";
+
+static void error(const char* message, const char c)
 {
-    fprintf(stderr, message, c, start.line, start.column);
+    fprintf(stderr, message, c);
+    fprintf(stderr, " on line %d:%d\n", lexer.start.line, lexer.start.column);
     exit(1);
 }
 
 static char peek()
 {
-    return *current.chars;
+    return *lexer.current.chars;
 }
 
 static char prev()
 {
-    return current.chars[-1];
+    return lexer.current.chars[-1];
 }
 
 static char next()
 {
-    return current.chars[1];
+    return lexer.current.chars[1];
 }
 
 static char advance()
 {
-    current.column++;
+    lexer.current.column++;
     
-    if (*current.chars == '\n') {
-        current.line++;
-        current.column = 1;
+    if (*lexer.current.chars == '\n') {
+        lexer.current.line++;
+        lexer.current.column = 1;
     }
 
-    current.chars++;
-    return current.chars[-1];
+    lexer.current.chars++;
+    return lexer.current.chars[-1];
 }
 
 static bool isEof()
 {
-    return *current.chars == '\0';
+    return *lexer.current.chars == '\0';
 }
 
 static bool match(char c)
 {
-    if (*current.chars != c) {
+    if (*lexer.current.chars != c) {
         return false;
     }
 
@@ -78,10 +77,10 @@ static Token makeToken(TokenType type)
 {
     Token token;
     token.type = type;
-    token.length = current.chars - start.chars;
-    token.chars = start.chars;
-    token.line = start.line;
-    token.column = start.column;
+    token.length = lexer.current.chars - lexer.start.chars;
+    token.chars = lexer.start.chars;
+    token.line = lexer.start.line;
+    token.column = lexer.start.column;
 
     return token;
 }
@@ -135,14 +134,14 @@ static void skipCommentMulti()
         advance();
     }
 
-    error(commentError);
+    error(commentError, 0);
 }
 
 static void skipComment()
 {
-    start.chars = current.chars;
-    start.line = current.line;
-    start.column = current.column;
+    lexer.start.chars = lexer.current.chars;
+    lexer.start.line = lexer.current.line;
+    lexer.start.column = lexer.current.column;
     
     if (next() == '#') {
         return skipCommentMulti();
@@ -174,16 +173,16 @@ static void skipWhitespace()
 
 static int checkKeyword(int chars, size_t len, const char* rest)
 {
-    if (current.chars - start.chars != chars + len) {
+    if (lexer.current.chars - lexer.start.chars != chars + len) {
         return 0;
     }
 
-    return memcmp(start.chars + chars, rest, len) == 0;
+    return memcmp(lexer.start.chars + chars, rest, len) == 0;
 }
 
 static TokenType getIdentifierType()
 {
-    char c =* start.chars;
+    char c =* lexer.start.chars;
 
     switch (c) {
         case 'a':
@@ -302,7 +301,7 @@ static Token floatLiteral()
     return makeToken(T_FLOAT_LITERAL);
 }
 
-static Token decimalLiteral()
+static Token integerLiteral()
 {
     while (isDigit(peek()) || (peek() == '_' && isDigit(next()))) {
         advance();
@@ -312,7 +311,7 @@ static Token decimalLiteral()
         return floatLiteral();
     }
 
-    return makeToken(T_DECIMAL_LITERAL);
+    return makeToken(T_INTEGER_LITERAL);
 }
 
 static Token hexadecimalLiteral()
@@ -353,7 +352,7 @@ static Token characterLiteral()
         advance();
     }
 
-    error(characterError);
+    error(characterError, '\'');
 }
 
 static Token stringLiteral(char c)
@@ -367,7 +366,7 @@ static Token stringLiteral(char c)
         advance();
     }
 
-    errorc(stringError, c);
+    error(characterError, c);
 }
 
 static Token identifier()
@@ -379,13 +378,20 @@ static Token identifier()
     return makeToken(getIdentifierType());
 }
 
+void initLexer(char* source)
+{
+    lexer.current.chars = source;
+    lexer.current.line = 1;
+    lexer.current.column = 1;
+}
+
 Token scanToken()
 {
     skipWhitespace();
 
-    start.chars = current.chars;
-    start.line = current.line;
-    start.column = current.column;
+    lexer.start.chars = lexer.current.chars;
+    lexer.start.line = lexer.current.line;
+    lexer.start.column = lexer.current.column;
 
     if (isEof()) {
         return makeToken(T_EOF);
@@ -402,11 +408,11 @@ Token scanToken()
         if (isODigit(next()) && (match('o') || match('O'))) return octalLiteral();
         if (isBDigit(next()) && (match('b') || match('B'))) return binaryLiteral();
 
-        return decimalLiteral();
+        return integerLiteral();
     }
 
     if (isDigit(c)) {
-        return decimalLiteral();
+        return integerLiteral();
     }
 
     switch (c) {
@@ -449,7 +455,7 @@ Token scanToken()
                 match('=') ? T_PLUS_EQUAL : T_PLUS);
         case '-':
             if (isDigit(peek()) || peek() == '.') {
-                return decimalLiteral();
+                return integerLiteral();
             }
             return makeToken(
                 match('-') ? T_DECREMENT :

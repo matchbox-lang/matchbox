@@ -7,13 +7,12 @@
 
 StringObject* createStringObject(char* chars, size_t length, size_t hash)
 {
-    StringObject* str = malloc(sizeof(StringObject));
-    str->obj.type = OBJ_STRING;
-    str->chars = chars;
-    str->length = length;
-    str->hash = hash;
+    StringObject* string = ALLOCATE_OBJECT(StringObject, OBJ_STRING);
+    string->chars = chars;
+    string->length = length;
+    string->hash = hash;
 
-    return str;
+    return string;
 }
 
 StringObject* copyStringObject(const char* src, size_t len)
@@ -24,10 +23,10 @@ StringObject* copyStringObject(const char* src, size_t len)
     return createStringObject(dst, len, hash);
 }
 
-void freeStringObject(StringObject* str)
+void freeStringObject(StringObject* string)
 {
-    free(str->chars);
-    free(str);
+    free(string->chars);
+    free(string);
 }
 
 bool compareStringObject(StringObject* a, StringObject* b)
@@ -50,7 +49,7 @@ size_t hashStringObject(const char* chars, size_t len)
     return hash;
 }
 
-void printStringObject(StringObject* str)
+void printStringObject(StringObject* string)
 {
-    printf("%.*s", str->length, str->chars);
+    printf("%.*s", string->length, string->chars);
 }

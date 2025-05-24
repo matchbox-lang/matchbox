@@ -1,15 +1,16 @@
-#ifndef BOOLOBJECT_H
-#define BOOLOBJECT_H
+#ifndef BOOL_OBJECT_H
+#define BOOL_OBJECT_H
 
 #include "object.h"
-#include "value.h"
 
-#define AS_BOOLOBJECT(value) ((BoolObject*)AS_POINTER(value))
+#define AS_BOOL_OBJECT(value) ((BoolObject*)AS_OBJECT(value))
 
 typedef struct BoolObject
 {
     Object obj;
-    bool boolVal;
+    bool value;
 } BoolObject;
+
+BoolObject* createBoolObject(bool value);
 
 #endif

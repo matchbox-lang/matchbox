@@ -2,7 +2,7 @@
 #include "util.h"
 #include <stdlib.h>
 
-float decimalLiteralToValue(char* str, size_t len)
+float integerLiteralToValue(char* str, size_t len)
 {
     char* tmp = strndup(str, len);
     stripUnderscores(tmp, &len);

@@ -14,7 +14,7 @@ static Service services[] = {
 
 Service* getServiceByName(char* name)
 {
-    for (int i = 0; i < SYS_SIZE; i++) {
+    for (int i = 0; i < SERVICES_MAX; i++) {
         Service* service = &services[i];
 
         if (strcmp(name, service->name) == 0) {

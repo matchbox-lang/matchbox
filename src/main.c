@@ -1,50 +1,78 @@
-#include "file.h"
+#include "buffer.h"
+#include "bytecode.h"
 #include "config.h"
+#include "compiler.h"
+#include "functionobject.h"
+#include "moduleobject.h"
 #include "vm.h"
 #include <stdlib.h>
-#include <stdio.h>
 
-static void repl(CommandArgs* args)
+CommandArguments cargs;
+
+static void repl()
 {
-    char line[1024];
+    char* source = NULL;
+    size_t size = 0;
+    size_t len;
+    ModuleObject* module = createModuleObject();
     
-    initVM();
+    initCompiler(module);
+    initVM(module);
 
     while (1) {
-        printf("> ");
+        printf(">>> ");
 
-        if (!fgets(line, 1024, stdin)) {
+        len = getStreamContents(&source, &size, stdin);
+
+        if (len == -1) {
             printf("\n");
             break;
         }
 
-        interpret(line, args);
+        compile(source);
+        interpret();
     }
+
+    freeVM();
+    freeCompiler();
+    freeModuleObject(module);
+    free(source);
 }
 
-static void file(CommandArgs* args)
+static void file()
 {
-    char* source = getFileContents(args->filename);
+    char* source = getFileContents(cargs.filename);
 
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", args->filename);
-        usage();
+        fprintf(stderr, "Error: Could not read file %s\n", cargs.filename);
+        printUsage();
     }
+
+    ModuleObject* module = createModuleObject();
     
-    initVM();
-    interpret(source, args);
+    initCompiler(module);
+    compile(source);
+
+    if (cargs.disassemble) {
+        return disassembleModule(module);
+    }
+
+    initVM(module);
+    interpret();
+    freeVM();
+    freeCompiler();
+    freeModuleObject(module);
     free(source);
 }
 
 int main(int argc, char* argv[])
 {
-    CommandArgs args;
-    initCommandArgs(&args, argc, argv);
+    initCommandArguments(&cargs, argc, argv);
 
     if (argc == 1) {
-        repl(&args);
+        repl();
     } else {
-        file(&args);
+        file();
     }
 
     return 0;

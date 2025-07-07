@@ -14,7 +14,9 @@
 #include <string.h>
 
 #define PUSH(value) (vm.stackTop[0] = value, vm.stackTop++)
+#define PUSH_INT(i) (PUSH(INT_VALUE(i)))
 #define POP() ((--vm.stackTop)[0])
+#define POP_INT() (AS_INT(POP()))
 #define READ_UINT16() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 #define READ_UINT8() ((uint8_t)*(frame->ip++))
 #define TEST_OVERFLOW(fn) \
@@ -56,48 +58,48 @@ static void sys_exit()
 
 static void sys_print()
 {
-    int32_t n = AS_INT(POP());
+    int32_t n = POP_INT();
     
     printf("%d\n", n);
-    PUSH(INT_VALUE(0));
+    PUSH_INT(0);
 }
 
 static void sys_clamp()
 {
-    int32_t num = AS_INT(POP());
-    int32_t min = AS_INT(POP());
-    int32_t max = AS_INT(POP());
+    int32_t num = POP_INT();
+    int32_t min = POP_INT();
+    int32_t max = POP_INT();
 
     if (num < min) {
-        PUSH(INT_VALUE(min));
+        PUSH_INT(min);
     } else if (num > max) {
-        PUSH(INT_VALUE(max));
+        PUSH_INT(max);
     } else {
-        PUSH(INT_VALUE(num));
+        PUSH_INT(num);
     }
 }
 
 static void sys_abs()
 {
-    int32_t n = AS_INT(POP());
+    int32_t n = POP_INT();
 
-    PUSH(INT_VALUE(n < 0 ? -n : n));
+    PUSH_INT(n < 0 ? -n : n);
 }
 
 static void sys_min()
 {
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
+    int32_t b = POP_INT();
+    int32_t a = POP_INT();
 
-    PUSH(INT_VALUE(a < b ? a : b));
+    PUSH_INT(a < b ? a : b);
 }
 
 static void sys_max()
 {
-    int32_t b = AS_INT(POP());
-    int32_t a = AS_INT(POP());
+    int32_t b = POP_INT();
+    int32_t a = POP_INT();
 
-    PUSH(INT_VALUE(a > b ? a : b));
+    PUSH_INT(a > b ? a : b);
 }
 
 static void sys_byteorder()
@@ -207,32 +209,32 @@ static void run()
 
             case OP_PUSHB:
                 x = (int8_t) READ_UINT8();
-                PUSH(INT_VALUE(x));
+                PUSH_INT(x);
                 break;
 
             case OP_PUSHH:
                 x = (int16_t) READ_UINT16();
-                PUSH(INT_VALUE(x));
+                PUSH_INT(x);
                 break;
 
             case OP_PUSH_0:
-                PUSH(INT_VALUE(0));
+                PUSH_INT(0);
                 break;
 
             case OP_PUSH_1:
-                PUSH(INT_VALUE(1));
+                PUSH_INT(1);
                 break;
 
             case OP_PUSH_2:
-                PUSH(INT_VALUE(2));
+                PUSH_INT(2);
                 break;
 
             case OP_PUSH_3:
-                PUSH(INT_VALUE(3));
+                PUSH_INT(3);
                 break;
 
             case OP_POP:
-                POP();
+                vm.stackTop--;
                 break;
 
             case OP_DUP:
@@ -248,58 +250,58 @@ static void run()
                 break;
             
             case OP_ADD:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a + b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a + b);
                 break;
 
             case OP_SUB:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a - b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a - b);
                 break;
 
             case OP_MUL:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a * b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a * b);
                 break;
 
             case OP_DIV:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a / b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a / b);
                 break;
 
             case OP_REM:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a % b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a % b);
                 break;
 
             case OP_POW:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
+                b = POP_INT();
+                a = POP_INT();
                 x = pow(a, b);
-                PUSH(INT_VALUE(x));
+                PUSH_INT(x);
                 break;
 
             case OP_BAND:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a & b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a & b);
                 break;
 
             case OP_BOR:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a | b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a | b);
                 break;
 
             case OP_BXOR:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a ^ b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a ^ b);
                 break;
 
             case OP_BNOT:
@@ -308,21 +310,21 @@ static void run()
                 break;
 
             case OP_LSL:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a << b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a << b);
                 break;
 
             case OP_LSR:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(a >> b));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a >> b);
                 break;
 
             case OP_ASR:
-                b = AS_INT(POP());
-                a = AS_INT(POP());
-                PUSH(INT_VALUE(~(~a >> b)));
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(~(~a >> b));
                 break;
 
             case OP_NEG:
@@ -372,7 +374,7 @@ static void run()
                 vm.stackTop = frame->slots;
                 vm.frameCount--;
                 frame = &vm.frames[vm.frameCount - 1];
-                PUSH(INT_VALUE(0));
+                PUSH_INT(0);
                 break;
 
             case OP_RETV:

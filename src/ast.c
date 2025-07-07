@@ -34,8 +34,7 @@ static void freeASTVector(Vector* nodes)
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        AST* ast = getVectorAt(nodes, i);
-        freeAST(ast);
+        freeAST(nodes->data[i]);
     }
 
     freeVector(nodes);

@@ -38,17 +38,6 @@ static void decStackCount()
     compiler.stackCount--;
 }
 
-static void patch8(size_t position, int8_t n)
-{
-    setByteAt(currentCodeObject(), position, n);
-}
-
-static void patch16(size_t position, int16_t n)
-{
-    setByteAt(currentCodeObject(), position, (n >> 8) & 0xFF);
-    setByteAt(currentCodeObject(), position + 1, n & 0xFF);
-}
-
 static void write8(uint8_t n)
 {
     pushByte(currentCodeObject(), n);
@@ -559,8 +548,7 @@ static size_t arguments(Vector* args)
     size_t count = countVector(args);
 
     for (int i = 0; i < count; i++) {
-        AST* arg = getVectorAt(args, i);
-        expression(arg);
+        expression(args->data[i]);
     }
 
     return count;
@@ -693,9 +681,7 @@ static void blocklevelStatements(Vector* nodes)
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        AST* stmt = getVectorAt(nodes, i);
-
-        statement(stmt);
+        statement(nodes->data[i]);
     }
 }
 
@@ -705,9 +691,7 @@ static void toplevelStatements(Vector* nodes)
     size_t count = countVector(nodes);
 
     for (; i < count; i++) {
-        AST* stmt = getVectorAt(nodes, i);
-
-        statement(stmt);
+        statement(nodes->data[i]);
     }
 }
 

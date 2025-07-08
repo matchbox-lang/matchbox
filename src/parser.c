@@ -648,7 +648,11 @@ static AST* functionCall()
 {
     Token token = parser.prevToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getSymbol(parser.currentScope, id);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
+
+    if (!symbol) {
+        symbol = getLocalSymbol(parser.topLevel->compound.scope, id);
+    }
     
     freeStringObject(id);
     
@@ -746,7 +750,11 @@ static AST* assignment()
     Token operator = parser.currentToken;
     Token token = parser.prevToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getSymbol(parser.currentScope, id);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
+
+    if (!symbol) {
+        symbol = getLocalSymbol(parser.topLevel->compound.scope, id);
+    }
 
     freeStringObject(id);
 

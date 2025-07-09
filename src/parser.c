@@ -279,7 +279,7 @@ static AST* postfix()
 static AST* prefix()
 {
     if (!isPrefixToken(parser.currentToken.type)) {
-        return postfix();
+        return primary();
     }
 
     Token token = parser.currentToken;

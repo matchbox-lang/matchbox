@@ -24,6 +24,7 @@ typedef struct Parser
 static Parser parser;
 
 static const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
+static const char* invalidLeftHandError = "Error: Invalid left-hand side expression";
 static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
 static const char* invalidTypeError = "Error: Invalid type for variable %.*s";
 static const char* redefinitionError = "Error: Redefinition of %.*s";
@@ -257,21 +258,16 @@ static AST* primary()
 
 static AST* postfix()
 {
-    if (!isPostfixToken(parser.currentToken.type)) {
-        return primary();
-    }
+    AST* expr = primary();
 
-    Token token = parser.currentToken;
-
-    AST* expr = variable();
-    if (!expr) {
-        return NULL;
+    if (!isVariable(expr) || !isPostfixToken(parser.currentToken.type)) {
+        return expr;
     }
 
     AST* ast = createAST(AST_POSTFIX);
     ast->postfix.expr = expr;
-    ast->postfix.operator = token;
-    consume(token.type);
+    ast->postfix.operator = parser.currentToken;
+    consume(parser.currentToken.type);
 
     return ast;
 }
@@ -279,32 +275,29 @@ static AST* postfix()
 static AST* prefix()
 {
     if (!isPrefixToken(parser.currentToken.type)) {
-        return primary();
+        return postfix();
     }
 
     Token token = parser.currentToken;
     consume(token.type);
-
-    if (isEof()) {
+    Token nextToken = parser.currentToken;
+    AST* expr = primary();
+    
+    if (!expr) {
         return NULL;
+    }
+
+    if (!isVariable(expr) && !isFunctionCall(expr)) {
+        error(unexpectedTokenError, nextToken);
+    }
+
+    if (isFunctionCall(expr) && isPostfixToken(token.type)) {
+        error(invalidLeftHandError, nextToken);
     }
 
     AST* ast = createAST(AST_PREFIX);
+    ast->prefix.expr = expr;
     ast->prefix.operator = token;
-
-    if (parser.currentToken.type == T_IDENTIFIER) {
-        consume(T_IDENTIFIER);
-        ast->prefix.expr = variable();
-    } else if (!isPostfixToken(token.type)) {
-        ast->prefix.expr = prefix();
-    } else {
-        error(unexpectedTokenError, parser.currentToken);
-    }
-
-    if (!ast->prefix.expr) {
-        freeAST(ast);
-        return NULL;
-    }
 
     return ast;
 }
@@ -660,7 +653,7 @@ static AST* functionCall()
         return systemCall(token);
     }
 
-    if (!symbol || symbol->type != AST_FUNCTION_DEFINITION) {
+    if (!symbol || !isFunctionDefinition(symbol)) {
         error(undefinedError, token);
     }
 
@@ -856,8 +849,6 @@ static AST* identifier()
     
     if (isAssignmentToken(parser.currentToken.type)) {
         return assignment();
-    } else if (isPostfixToken(parser.currentToken.type)) {
-        return postfix();
     } else if (parser.currentToken.type == T_LPAREN) {
         return functionCall();
     }

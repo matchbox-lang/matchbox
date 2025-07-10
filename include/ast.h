@@ -123,6 +123,8 @@ int getTypeId(AST* ast);
 bool isFunctionCall(AST* ast);
 bool isFunctionDefinition(AST* ast);
 bool isParameter(AST* ast);
+bool isPrefix(AST* ast);
+bool isPrefixOnlyOperand(AST* ast);
 bool isVariable(AST* ast);
 bool isVariableDefinition(AST* ast);
 bool isVariableType(AST* ast);

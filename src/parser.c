@@ -24,7 +24,6 @@ typedef struct Parser
 static Parser parser;
 
 static const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
-static const char* invalidLeftHandError = "Error: Invalid left-hand side expression";
 static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
 static const char* invalidTypeError = "Error: Invalid type for variable %.*s";
 static const char* redefinitionError = "Error: Redefinition of %.*s";
@@ -260,6 +259,10 @@ static AST* postfix()
 {
     AST* expr = primary();
 
+    if (!expr) {
+        return NULL;
+    }
+
     if (!isVariable(expr) || !isPostfixToken(parser.currentToken.type)) {
         return expr;
     }
@@ -272,27 +275,56 @@ static AST* postfix()
     return ast;
 }
 
-static AST* prefix()
+static AST* prefixOnly()
 {
-    if (!isPrefixToken(parser.currentToken.type)) {
-        return postfix();
-    }
-
     Token token = parser.currentToken;
     consume(token.type);
     Token nextToken = parser.currentToken;
-    AST* expr = primary();
+    AST* expr;
+    
+    if (isPrefixToken(nextToken.type)) {
+        expr = prefixOnly();
+    } else {
+        expr = primary();
+    }
     
     if (!expr) {
         return NULL;
     }
 
-    if (!isVariable(expr) && !isFunctionCall(expr)) {
+    if (!isPrefix(expr) && !isPrefixOnlyOperand(expr)) {
         error(unexpectedTokenError, nextToken);
     }
 
-    if (isFunctionCall(expr) && isPostfixToken(token.type)) {
-        error(invalidLeftHandError, nextToken);
+    AST* ast = createAST(AST_PREFIX);
+    ast->prefix.expr = expr;
+    ast->prefix.operator = token;
+
+    return ast;
+}
+
+static AST* prefix()
+{
+    Token token = parser.currentToken;
+
+    if (!isPrefixToken(token.type)) {
+        return postfix();
+    }
+
+    if (isPrefixOnlyToken(token.type)) {
+        return prefixOnly();
+    }
+
+    consume(token.type);
+    Token nextToken = parser.currentToken;
+    AST* expr = primary();
+
+    if (!expr) {
+        return NULL;
+    }
+
+    if (!isVariable(expr)) {
+        error(unexpectedTokenError, nextToken);
     }
 
     AST* ast = createAST(AST_PREFIX);
@@ -492,8 +524,8 @@ static AST* returnStatement()
     }
 
     consume(T_RETURN);
-    
     AST* expr = expression();
+
     if (!expr) {
         return NULL;
     }
@@ -760,8 +792,8 @@ static AST* assignment()
     }
     
     consume(operator.type);
-    
     AST* expr = expression();
+
     if (!expr) {
         return NULL;
     }
@@ -823,8 +855,8 @@ static AST* variableDefinition()
     }
     
     consume(T_EQUAL);
-
     AST* expr = expression();
+    
     if (!expr) {
         freeAST(ast);
         return NULL;

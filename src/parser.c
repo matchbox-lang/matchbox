@@ -187,8 +187,8 @@ static AST* variable()
     }
 
     AST* ast = createAST(AST_VARIABLE);
-    ast->var.scope = parser.currentScope;
-    ast->var.symbol = symbol;
+    ast->variable.scope = parser.currentScope;
+    ast->variable.symbol = symbol;
 
     return ast;
 }
@@ -210,13 +210,13 @@ static AST* parameter()
     consume(T_IDENTIFIER);
 
     AST* ast = createAST(AST_PARAMETER);
-    ast->param.scope = parser.currentScope;
-    ast->param.id = id;
-    ast->param.typeId = T_INT;
-    ast->param.position = getLocalCount(parser.currentScope);
+    ast->parameter.scope = parser.currentScope;
+    ast->parameter.id = id;
+    ast->parameter.typeId = T_INT;
+    ast->parameter.position = getLocalCount(parser.currentScope);
 
     if (isTypeToken(parser.currentToken.type)) {
-        ast->param.typeId = parser.currentToken.type;
+        ast->parameter.typeId = parser.currentToken.type;
         consumeType();
     }
 
@@ -532,26 +532,26 @@ static AST* returnStatement()
     }
 
     AST* ast = createAST(AST_RETURN);
-    ast->expr = expr;
+    ast->expression = expr;
 
     return ast;
 }
 
 static void compareFunctionSignature(AST* caller, AST* callee, Token token)
 {
-    size_t argCount = countVector(&caller->funcCall.args);
-    size_t paramCount = countVector(&callee->funcDef.params);
+    size_t argCount = countVector(&caller->functionCall.args);
+    size_t paramCount = countVector(&callee->functionDefinition.params);
 
     if (argCount != paramCount) {
         error(invalidArgsError, token);
     }
 
     for (int i = 0; i < argCount; i++) {
-        AST* a = getVectorAt(&caller->funcCall.args, i);
-        AST* b = getVectorAt(&callee->funcDef.params, i);
+        AST* a = getVectorAt(&caller->functionCall.args, i);
+        AST* b = getVectorAt(&callee->functionDefinition.params, i);
         int typeId = getTypeId(a);
 
-        if (typeId != b->param.typeId) {
+        if (typeId != b->parameter.typeId) {
             error(invalidArgsError, token);
         }
     }
@@ -559,14 +559,14 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
 
 static void compareServiceSignature(AST* caller, Service* service, Token token)
 {
-    size_t argCount = countVector(&caller->syscall.args);
+    size_t argCount = countVector(&caller->serviceRequest.args);
 
     if (argCount != service->paramCount) {
         error(invalidArgsError, token);
     }
 
     for (int i = 0; i < argCount; i++) {
-        AST* expr = getVectorAt(&caller->syscall.args, i);
+        AST* expr = getVectorAt(&caller->serviceRequest.args, i);
         int typeId = getTypeId(expr);
 
         if (typeId != service->params[i]) {
@@ -645,7 +645,7 @@ static bool parameters(Vector* params)
     return true;
 }
 
-static AST* systemCall(Token token)
+static AST* serviceRequest(Token token)
 {
     StringObject* id = copyStringObject(token.chars, token.length);
     Service* service = getServiceByName(id->chars);
@@ -656,11 +656,11 @@ static AST* systemCall(Token token)
 
     freeStringObject(id);
 
-    AST* ast = createAST(AST_SYSCALL);
-    ast->syscall.opcode = service->opcode;
-    ast->syscall.service = service;
+    AST* ast = createAST(AST_SERVICE_REQUEST);
+    ast->serviceRequest.opcode = service->opcode;
+    ast->serviceRequest.service = service;
 
-    if (!arguments(&ast->syscall.args)) {
+    if (!arguments(&ast->serviceRequest.args)) {
         freeAST(ast);
         return NULL;
     }
@@ -683,7 +683,7 @@ static AST* functionCall()
     freeStringObject(id);
     
     if (!symbol) {
-        return systemCall(token);
+        return serviceRequest(token);
     }
 
     if (!symbol || !isFunctionDefinition(symbol)) {
@@ -691,10 +691,10 @@ static AST* functionCall()
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->funcCall.scope = parser.currentScope;
-    ast->funcCall.symbol = symbol;
+    ast->functionCall.scope = parser.currentScope;
+    ast->functionCall.symbol = symbol;
 
-    if (!arguments(&ast->funcCall.args)) {
+    if (!arguments(&ast->functionCall.args)) {
         freeAST(ast);
         return NULL;
     }
@@ -731,20 +731,20 @@ static AST* functionDefinition()
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
-    ast->funcDef.scope = createScope(parser.currentScope);
-    ast->funcDef.id = id;
-    ast->funcDef.typeId = T_INT;
-    ast->funcDef.body = NULL;
+    ast->functionDefinition.scope = createScope(parser.currentScope);
+    ast->functionDefinition.id = id;
+    ast->functionDefinition.typeId = T_INT;
+    ast->functionDefinition.body = NULL;
 
-    parser.currentScope = ast->funcDef.scope;
+    parser.currentScope = ast->functionDefinition.scope;
     
-    if (!parameters(&ast->funcDef.params)) {
+    if (!parameters(&ast->functionDefinition.params)) {
         freeAST(ast);
         return NULL;
     }
 
     if (isTypeToken(parser.currentToken.type)) {
-        ast->funcDef.typeId = parser.currentToken.type;
+        ast->functionDefinition.typeId = parser.currentToken.type;
         consumeType();
     }
 
@@ -763,7 +763,7 @@ static AST* functionDefinition()
         return NULL;
     }
 
-    ast->funcDef.body = body;
+    ast->functionDefinition.body = body;
     consume(T_RBRACE);
     parser.currentScope = parser.currentScope->parent;
     setLocalSymbol(parser.currentScope, id, ast);
@@ -837,19 +837,19 @@ static AST* variableDefinition()
     }
 
     AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->varDef.scope = parser.currentScope;
-    ast->varDef.id = id;
-    ast->varDef.position = getLocalCount(parser.currentScope);
-    ast->varDef.expr = NULL;
+    ast->variableDefinition.scope = parser.currentScope;
+    ast->variableDefinition.id = id;
+    ast->variableDefinition.position = getLocalCount(parser.currentScope);
+    ast->variableDefinition.expr = NULL;
 
     if (isTypeToken(parser.currentToken.type)) {
-        ast->varDef.typeId = parser.currentToken.type;
+        ast->variableDefinition.typeId = parser.currentToken.type;
         consumeType();
     }
     
     if (parser.currentToken.type != T_EQUAL) {
-        ast->varDef.expr = createAST(AST_NONE);
-        ast->varDef.typeId = T_INT;
+        ast->variableDefinition.expr = createAST(AST_NONE);
+        ast->variableDefinition.typeId = T_INT;
         setLocalVariableSymbol(parser.currentScope, id, ast);
 
         return ast;
@@ -863,10 +863,10 @@ static AST* variableDefinition()
         return NULL;
     }
 
-    ast->varDef.typeId = getTypeId(expr);
-    ast->varDef.expr = expr;
+    ast->variableDefinition.typeId = getTypeId(expr);
+    ast->variableDefinition.expr = expr;
 
-    if (ast->varDef.typeId == T_NONE) {
+    if (ast->variableDefinition.typeId == T_NONE) {
         error(invalidTypeError, token);
     }
 

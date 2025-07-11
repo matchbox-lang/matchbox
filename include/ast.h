@@ -24,9 +24,9 @@ typedef enum ASTType
     AST_PARAMETER,
     AST_POSTFIX,
     AST_PREFIX,
+    AST_SERVICE_REQUEST,
     AST_RETURN,
     AST_STRING,
-    AST_SYSCALL,
     AST_VARIABLE,
     AST_VARIABLE_DEFINITION,
     AST_NONE
@@ -60,7 +60,7 @@ typedef struct AST
             Scope* scope;
             Vector args;
             AST* symbol;
-        } funcCall;
+        } functionCall;
 
         struct {
             Scope* scope;
@@ -68,14 +68,14 @@ typedef struct AST
             Vector params;
             int typeId;
             AST* body;
-        } funcDef;
+        } functionDefinition;
 
         struct {
             Scope* scope;
             StringObject* id;
             int typeId;
             int position;
-        } param;
+        } parameter;
 
         struct {
             Token operator;
@@ -91,12 +91,12 @@ typedef struct AST
             int opcode;
             Vector args;
             Service* service;
-        } syscall;
+        } serviceRequest;
 
         struct {
             Scope* scope;
             AST* symbol;
-        } var;
+        } variable;
 
         struct {
             Scope* scope;
@@ -105,14 +105,14 @@ typedef struct AST
             int typeId;
             int position;
             AST* expr;
-        } varDef;
+        } variableDefinition;
 
         bool boolValue;
         float floatValue;
         int intValue;
         Token character;
         Token string;
-        AST* expr;
+        AST* expression;
     };
 } AST;
 

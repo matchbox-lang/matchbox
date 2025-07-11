@@ -16,13 +16,13 @@ AST* createAST(TokenType type)
             initVector(&ast->compound.statements);
             break;
         case AST_FUNCTION_CALL:
-            initVector(&ast->funcCall.args);
+            initVector(&ast->functionCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
-            initVector(&ast->funcDef.params);
+            initVector(&ast->functionDefinition.params);
             break;
-        case AST_SYSCALL:
-            initVector(&ast->syscall.args);
+        case AST_SERVICE_REQUEST:
+            initVector(&ast->serviceRequest.args);
             break;
     }
     
@@ -59,15 +59,15 @@ void freeAST(AST* ast)
             freeASTVector(&ast->compound.statements);
             break;
         case AST_FUNCTION_CALL:
-            freeASTVector(&ast->funcCall.args);
+            freeASTVector(&ast->functionCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
-            freeStringObject(ast->funcDef.id);
-            freeASTVector(&ast->funcDef.params);
-            freeAST(ast->funcDef.body);
+            freeStringObject(ast->functionDefinition.id);
+            freeASTVector(&ast->functionDefinition.params);
+            freeAST(ast->functionDefinition.body);
             break;
         case AST_PARAMETER:
-            freeStringObject(ast->param.id);
+            freeStringObject(ast->parameter.id);
             break;
         case AST_POSTFIX:
             freeAST(ast->postfix.expr);
@@ -76,11 +76,11 @@ void freeAST(AST* ast)
             freeAST(ast->prefix.expr);
             break;
         case AST_RETURN:
-            freeAST(ast->expr);
+            freeAST(ast->expression);
             break;
         case AST_VARIABLE_DEFINITION:
-            freeStringObject(ast->varDef.id);
-            freeAST(ast->varDef.expr);
+            freeStringObject(ast->variableDefinition.id);
+            freeAST(ast->variableDefinition.expr);
             break;
     }
 
@@ -95,15 +95,15 @@ Scope* getScope(AST* ast)
         case AST_COMPOUND:
             return ast->compound.scope;
         case AST_FUNCTION_CALL:
-            return ast->funcCall.scope;
+            return ast->functionCall.scope;
         case AST_FUNCTION_DEFINITION:
-            return ast->funcDef.scope;
+            return ast->functionDefinition.scope;
         case AST_PARAMETER:
-            return ast->param.scope;
+            return ast->parameter.scope;
         case AST_VARIABLE:
-            return ast->var.scope;
+            return ast->variable.scope;
         case AST_VARIABLE_DEFINITION:
-            return ast->varDef.scope;
+            return ast->variableDefinition.scope;
     }
 
     return NULL;
@@ -119,17 +119,17 @@ int getTypeId(AST* ast)
         case AST_BINARY:
             return ast->binary.typeId;
         case AST_FUNCTION_CALL:
-            return getTypeId(ast->funcCall.symbol);
+            return getTypeId(ast->functionCall.symbol);
         case AST_FUNCTION_DEFINITION:
-            return ast->funcDef.typeId;
+            return ast->functionDefinition.typeId;
         case AST_PARAMETER:
-            return ast->param.typeId;
-        case AST_SYSCALL:
-            return ast->syscall.service->typeId;
+            return ast->parameter.typeId;
+        case AST_SERVICE_REQUEST:
+            return ast->serviceRequest.service->typeId;
         case AST_VARIABLE:
-            return getTypeId(ast->var.symbol);
+            return getTypeId(ast->variable.symbol);
         case AST_VARIABLE_DEFINITION:
-            return ast->varDef.typeId;
+            return ast->variableDefinition.typeId;
         case AST_PREFIX:
             return getTypeId(ast->prefix.expr);
         case AST_POSTFIX:
@@ -168,7 +168,7 @@ bool isPrefixOnlyOperand(AST* ast)
         case AST_BINARY:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
-        case AST_SYSCALL:
+        case AST_SERVICE_REQUEST:
         case AST_VARIABLE:
             return true;
     }
@@ -199,7 +199,7 @@ bool isNone(AST* ast)
 bool isInitialized(AST* ast)
 {
     if (ast->type == AST_VARIABLE_DEFINITION) {
-        return ast->varDef.initialized;
+        return ast->variableDefinition.initialized;
     }
 
     return ast->type == AST_PARAMETER;
@@ -208,6 +208,6 @@ bool isInitialized(AST* ast)
 void initialize(AST* ast)
 {
     if (isVariableDefinition(ast)) {
-        ast->varDef.initialized = true;
+        ast->variableDefinition.initialized = true;
     }
 }

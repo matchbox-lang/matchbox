@@ -10,23 +10,23 @@ static int printInstruction(int8_t c)
 {
     switch (c) {
         case OP_HLT:        return printf("hlt\n");
-        case OP_SYSCALL:    return printf("syscall\t\t%d\n", READ_INT8());
-        case OP_LDC:        return printf("ldc\t\t%d\n", READ_INT8());
+        case OP_REQ:        return printf("req\t%d\n", READ_INT8());
+        case OP_LDC:        return printf("ldc\t%d\n", READ_INT8());
         case OP_REG:        return printf("reg\n");
-        case OP_LDG:        return printf("ldg\t\t%d\n", READ_INT8());
-        case OP_STG:        return printf("stg\t\t%d\n", READ_INT8());
-        case OP_LDL:        return printf("ldl\t\t%d\n", READ_INT8());
+        case OP_LDG:        return printf("ldg\t%d\n", READ_INT8());
+        case OP_STG:        return printf("stg\t%d\n", READ_INT8());
+        case OP_LDL:        return printf("ldl\t%d\n", READ_INT8());
         case OP_LDL_0:      return printf("ldl_0\n");
         case OP_LDL_1:      return printf("ldl_1\n");
         case OP_LDL_2:      return printf("ldl_2\n");
         case OP_LDL_3:      return printf("ldl_3\n");
-        case OP_STL:        return printf("stl\t\t%d\n", READ_INT8());
+        case OP_STL:        return printf("stl\t%d\n", READ_INT8());
         case OP_STL_0:      return printf("stl_0\n");
         case OP_STL_1:      return printf("stl_1\n");
         case OP_STL_2:      return printf("stl_2\n");
         case OP_STL_3:      return printf("stl_3\n");
-        case OP_PUSHB:      return printf("push\t\t%d\n", READ_INT8());
-        case OP_PUSHH:      return printf("push\t\t%d\n", READ_INT16());
+        case OP_PUSHB:      return printf("push\t%d\n", READ_INT8());
+        case OP_PUSHH:      return printf("push\t%d\n", READ_INT16());
         case OP_PUSH_0:     return printf("push_0\n");
         case OP_PUSH_1:     return printf("push_1\n");
         case OP_PUSH_2:     return printf("push_2\n");
@@ -50,11 +50,11 @@ static int printInstruction(int8_t c)
         case OP_ASR:        return printf("asr\n");
         case OP_NOT:        return printf("not\n");
         case OP_NEG:        return printf("neg\n");
-        case OP_BEQ:        return printf("beq\t\t%d\n", READ_INT16());
-        case OP_BLT:        return printf("blt\t\t%d\n", READ_INT16());
-        case OP_BLE:        return printf("ble\t\t%d\n", READ_INT16());
-        case OP_JMP:        return printf("jmp\t\t%d\n", READ_INT16());
-        case OP_CALL:       return printf("call\t\t%d\n", READ_INT16());
+        case OP_BEQ:        return printf("beq\t%d\n", READ_INT16());
+        case OP_BLT:        return printf("blt\t%d\n", READ_INT16());
+        case OP_BLE:        return printf("ble\t%d\n", READ_INT16());
+        case OP_JMP:        return printf("jmp\t%d\n", READ_INT16());
+        case OP_CALL:       return printf("call\t%d\n", READ_INT16());
         case OP_RET:        return printf("ret\n");
         case OP_RETV:       return printf("retv\n");
     }

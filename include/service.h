@@ -1,5 +1,5 @@
-#ifndef SERVICE_H
-#define SERVICE_H
+#ifndef SVC_H
+#define SVC_H
 
 #define SERVICES_MAX 7
 
@@ -12,16 +12,16 @@ typedef struct Service
     int typeId;
 } Service;
 
-typedef enum ServiceCode
+typedef enum ServiceOpcode
 {
-    SYS_EXIT,
-    SYS_PRINT,
-    SYS_CLAMP,
-    SYS_ABS,
-    SYS_MIN,
-    SYS_MAX,
-    SYS_BYTEORDER
-} ServiceCode;
+    SOP_EXIT,
+    SOP_PRINT,
+    SOP_CLAMP,
+    SOP_ABS,
+    SOP_MIN,
+    SOP_MAX,
+    SOP_BYTEORDER
+} ServiceOpcode;
 
 Service* getServiceByName(char* name);
 

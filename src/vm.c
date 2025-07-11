@@ -5,8 +5,8 @@
 #include "config.h"
 #include "functionobject.h"
 #include "moduleobject.h"
-#include "value.h"
 #include "service.h"
+#include "value.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -51,12 +51,12 @@ static void error(const char* message)
     exit(1);
 }
 
-static void sys_exit()
+static void service_exit()
 {
     exit(0);
 }
 
-static void sys_print()
+static void service_print()
 {
     int32_t n = POP_INT();
     
@@ -64,7 +64,7 @@ static void sys_print()
     PUSH_INT(0);
 }
 
-static void sys_clamp()
+static void service_clamp()
 {
     int32_t num = POP_INT();
     int32_t min = POP_INT();
@@ -79,14 +79,14 @@ static void sys_clamp()
     }
 }
 
-static void sys_abs()
+static void service_abs()
 {
     int32_t n = POP_INT();
 
     PUSH_INT(n < 0 ? -n : n);
 }
 
-static void sys_min()
+static void service_min()
 {
     int32_t b = POP_INT();
     int32_t a = POP_INT();
@@ -94,7 +94,7 @@ static void sys_min()
     PUSH_INT(a < b ? a : b);
 }
 
-static void sys_max()
+static void service_max()
 {
     int32_t b = POP_INT();
     int32_t a = POP_INT();
@@ -102,7 +102,7 @@ static void sys_max()
     PUSH_INT(a > b ? a : b);
 }
 
-static void sys_byteorder()
+static void service_byteorder()
 {
     int32_t i = 1;
     char* c = (char*)&i;
@@ -113,13 +113,13 @@ static void sys_byteorder()
 
 static void initServices()
 {
-    vm.service[SYS_EXIT] = sys_exit;
-    vm.service[SYS_PRINT] = sys_print;
-    vm.service[SYS_CLAMP] = sys_clamp;
-    vm.service[SYS_ABS] = sys_abs;
-    vm.service[SYS_MIN] = sys_min;
-    vm.service[SYS_MAX] = sys_max;
-    vm.service[SYS_BYTEORDER] = sys_byteorder;
+    vm.service[SOP_EXIT] = service_exit;
+    vm.service[SOP_PRINT] = service_print;
+    vm.service[SOP_CLAMP] = service_clamp;
+    vm.service[SOP_ABS] = service_abs;
+    vm.service[SOP_MIN] = service_min;
+    vm.service[SOP_MAX] = service_max;
+    vm.service[SOP_BYTEORDER] = service_byteorder;
 }
 
 static void run()
@@ -139,7 +139,7 @@ static void run()
     while (opcode = READ_UINT8()) {
         switch (opcode)
         {
-            case OP_SYSCALL:
+            case OP_REQ:
                 x = READ_UINT8();
                 vm.service[x]();
                 break;

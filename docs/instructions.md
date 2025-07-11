@@ -1,6 +1,6 @@
 # Instructions
     hlt             Halt
-    syscall         System call
+    req             Request service
     ldc             Load constant
     reg             Register global
     ldg             Load global

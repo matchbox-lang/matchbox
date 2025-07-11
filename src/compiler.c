@@ -54,9 +54,9 @@ static void op_hlt()
     write8(OP_HLT);
 }
 
-static void op_syscall(uint8_t imm)
+static void op_req(uint8_t imm)
 {
-    write8(OP_SYSCALL);
+    write8(OP_REQ);
     write8(imm);
 }
 
@@ -298,10 +298,10 @@ static size_t makeConstant(Value value)
 static int getLocalPosition(AST* ast)
 {
     if (isParameter(ast)) {
-        return ast->param.position;
+        return ast->parameter.position;
     }
     
-    return ast->varDef.position;
+    return ast->variableDefinition.position;
 }
 
 static void loadGlobalVariable(AST* ast)
@@ -320,7 +320,7 @@ static void loadLocalVariable(AST* ast)
 
 static void loadVariable(AST* ast)
 {
-    if (isTopLevel(ast->varDef.scope)) {
+    if (isTopLevel(ast->variableDefinition.scope)) {
         loadGlobalVariable(ast);
     } else {
         loadLocalVariable(ast);
@@ -343,7 +343,7 @@ static void storeLocalVariable(AST* ast)
 
 static void storeVariable(AST* ast)
 {
-    if (isTopLevel(ast->varDef.scope)) {
+    if (isTopLevel(ast->variableDefinition.scope)) {
         storeGlobalVariable(ast);
     } else {
         storeLocalVariable(ast);
@@ -409,7 +409,7 @@ static void preDecrement(AST* ast)
     expression(expr);
     op_dec();
     op_dup();
-    storeVariable(expr->var.symbol);
+    storeVariable(expr->variable.symbol);
 }
 
 static void preIncrement(AST* ast)
@@ -419,29 +419,29 @@ static void preIncrement(AST* ast)
     expression(expr);
     op_inc();
     op_dup();
-    storeVariable(expr->var.symbol);
+    storeVariable(expr->variable.symbol);
 }
 
 static void postDecrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    int position = getLocalPosition(expr->var.symbol);
+    int position = getLocalPosition(expr->variable.symbol);
 
     expression(expr);
     op_dup();
     op_dec();
-    storeVariable(expr->var.symbol);
+    storeVariable(expr->variable.symbol);
 }
 
 static void postIncrement(AST* ast)
 {
     AST* expr = ast->postfix.expr;
-    int position = getLocalPosition(expr->var.symbol);
+    int position = getLocalPosition(expr->variable.symbol);
 
     expression(expr);
     op_dup();
     op_inc();
-    storeVariable(expr->var.symbol);
+    storeVariable(expr->variable.symbol);
 }
 
 static void postfix(AST* ast)
@@ -472,7 +472,7 @@ static void prefix(AST* ast)
 
 static void variable(AST* ast)
 {
-    loadVariable(ast->var.symbol);
+    loadVariable(ast->variable.symbol);
 }
 
 static void additionAssignment(AST* ast)
@@ -569,23 +569,23 @@ static int getFunctionPosition(AST* ast)
 
 static void functionCall(AST* ast)
 {
-    uint16_t position = getFunctionPosition(ast->funcCall.symbol);
-    arguments(&ast->funcCall.args);
+    uint16_t position = getFunctionPosition(ast->functionCall.symbol);
+    arguments(&ast->functionCall.args);
     op_call(position);
 }
 
-static void systemCall(AST* ast)
+static void serviceRequest(AST* ast)
 {
-    arguments(&ast->syscall.args);
-    op_syscall(ast->syscall.opcode);
+    arguments(&ast->serviceRequest.args);
+    op_req(ast->serviceRequest.opcode);
 }
 
 static void functionDefinition(AST* ast)
 {
-    AST* body = ast->funcDef.body;
+    AST* body = ast->functionDefinition.body;
     FunctionObject* previousFunction = compiler.function;
     FunctionObject* function = createFunctionObject();
-    function->paramCount = countVector(&ast->funcDef.params);
+    function->paramCount = countVector(&ast->functionDefinition.params);
     function->localCount = body->compound.scope->localCount;
     function->maxStackCount = function->localCount;
     
@@ -606,23 +606,23 @@ static void functionDefinition(AST* ast)
 
 static void ret(AST* ast)
 {
-    if (isNone(ast->expr)) {
+    if (isNone(ast->expression)) {
         return op_ret();
     }
 
-    expression(ast->expr);
+    expression(ast->expression);
     op_retv();
 }
 
 static void variableDefinition(AST* ast)
 {
-    if (isNone(ast->varDef.expr)) {
+    if (isNone(ast->variableDefinition.expr)) {
         return;
     }
 
-    expression(ast->varDef.expr);
+    expression(ast->variableDefinition.expr);
 
-    if (isTopLevel(ast->varDef.scope)) {
+    if (isTopLevel(ast->variableDefinition.scope)) {
         op_reg();
     }
 }
@@ -630,8 +630,6 @@ static void variableDefinition(AST* ast)
 static void expression(AST* ast)
 {
     switch (ast->type) {
-        case AST_VARIABLE:
-            return variable(ast);
         case AST_BINARY:
             return binary(ast);
         case AST_FUNCTION_CALL:
@@ -642,8 +640,10 @@ static void expression(AST* ast)
             return postfix(ast);
         case AST_PREFIX:
             return prefix(ast);
-        case AST_SYSCALL:
-            return systemCall(ast);
+        case AST_SERVICE_REQUEST:
+            return serviceRequest(ast);
+        case AST_VARIABLE:
+            return variable(ast);
     }
 }
 
@@ -663,8 +663,8 @@ static void statement(AST* ast)
         case AST_RETURN:
             ret(ast);
             break;
-        case AST_SYSCALL:
-            systemCall(ast);
+        case AST_SERVICE_REQUEST:
+            serviceRequest(ast);
             op_pop();
             break;
         case AST_VARIABLE_DEFINITION:

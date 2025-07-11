@@ -168,8 +168,8 @@ bool isPrefixOnlyOperand(AST* ast)
         case AST_BINARY:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
-        case AST_VARIABLE:
         case AST_SYSCALL:
+        case AST_VARIABLE:
             return true;
     }
 

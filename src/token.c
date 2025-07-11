@@ -112,6 +112,18 @@ bool isPrefixToken(TokenType type)
     return false;
 }
 
+bool isPrefixOnlyToken(TokenType type)
+{
+    switch (type) {
+        case T_EXCLAMATION:
+        case T_MINUS:
+        case T_TILDE:
+            return true;
+    }
+
+    return false;
+}
+
 bool isPostfixToken(TokenType type)
 {
     switch (type) {

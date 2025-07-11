@@ -11,6 +11,7 @@
 
 static AST* expression();
 static AST* identifier();
+static AST* prefix();
 static bool blocklevelStatements(Vector* nodes);
 
 typedef struct Parser
@@ -257,54 +258,79 @@ static AST* primary()
 
 static AST* postfix()
 {
-    if (!isPostfixToken(parser.currentToken.type)) {
-        return primary();
-    }
+    AST* expr = primary();
 
-    Token token = parser.currentToken;
-
-    AST* expr = variable();
     if (!expr) {
         return NULL;
     }
 
+    if (!isVariable(expr) || !isPostfixToken(parser.currentToken.type)) {
+        return expr;
+    }
+
     AST* ast = createAST(AST_POSTFIX);
     ast->postfix.expr = expr;
-    ast->postfix.operator = token;
+    ast->postfix.operator = parser.currentToken;
+    consume(parser.currentToken.type);
+
+    return ast;
+}
+
+static AST* prefixOnly()
+{
+    Token token = parser.currentToken;
     consume(token.type);
+    Token nextToken = parser.currentToken;
+    AST* expr;
+    
+    if (isPrefixToken(nextToken.type)) {
+        expr = prefix();
+    } else {
+        expr = primary();
+    }
+    
+    if (!expr) {
+        return NULL;
+    }
+
+    if (!isPrefix(expr) && !isPrefixOnlyOperand(expr)) {
+        error(unexpectedTokenError, nextToken);
+    }
+
+    AST* ast = createAST(AST_PREFIX);
+    ast->prefix.expr = expr;
+    ast->prefix.operator = token;
 
     return ast;
 }
 
 static AST* prefix()
 {
-    if (!isPrefixToken(parser.currentToken.type)) {
+    Token token = parser.currentToken;
+
+    if (!isPrefixToken(token.type)) {
         return postfix();
     }
 
-    Token token = parser.currentToken;
-    consume(token.type);
+    if (isPrefixOnlyToken(token.type)) {
+        return prefixOnly();
+    }
 
-    if (isEof()) {
+    consume(token.type);
+    Token nextToken = parser.currentToken;
+    AST* expr = primary();
+
+    if (!expr) {
         return NULL;
+    }
+
+    if (!isVariable(expr)) {
+        error(unexpectedTokenError, nextToken);
     }
 
     AST* ast = createAST(AST_PREFIX);
+    ast->prefix.expr = expr;
     ast->prefix.operator = token;
-
-    if (parser.currentToken.type == T_IDENTIFIER) {
-        consume(T_IDENTIFIER);
-        ast->prefix.expr = variable();
-    } else if (!isPostfixToken(token.type)) {
-        ast->prefix.expr = prefix();
-    } else {
-        error(unexpectedTokenError, parser.currentToken);
-    }
-
-    if (!ast->prefix.expr) {
-        freeAST(ast);
-        return NULL;
-    }
 
     return ast;
 }
@@ -499,8 +525,8 @@ static AST* returnStatement()
     }
 
     consume(T_RETURN);
-    
     AST* expr = expression();
+
     if (!expr) {
         return NULL;
     }
@@ -660,7 +686,7 @@ static AST* functionCall()
         return systemCall(token);
     }
 
-    if (!symbol || symbol->type != AST_FUNCTION_DEFINITION) {
+    if (!symbol || !isFunctionDefinition(symbol)) {
         error(undefinedError, token);
     }
 
@@ -767,8 +793,8 @@ static AST* assignment()
     }
     
     consume(operator.type);
-    
     AST* expr = expression();
+
     if (!expr) {
         return NULL;
     }
@@ -830,8 +856,8 @@ static AST* variableDefinition()
     }
     
     consume(T_EQUAL);
-
     AST* expr = expression();
+    
     if (!expr) {
         freeAST(ast);
         return NULL;
@@ -856,8 +882,6 @@ static AST* identifier()
     
     if (isAssignmentToken(parser.currentToken.type)) {
         return assignment();
-    } else if (isPostfixToken(parser.currentToken.type)) {
-        return postfix();
     } else if (parser.currentToken.type == T_LPAREN) {
         return functionCall();
     }

@@ -141,14 +141,39 @@ int getTypeId(AST* ast)
     return T_NONE;
 }
 
-bool isParameter(AST* ast)
+bool isFunctionCall(AST* ast)
 {
-    return ast->type == AST_PARAMETER;
+    return ast->type == AST_FUNCTION_CALL;
 }
 
 bool isFunctionDefinition(AST* ast)
 {
     return ast->type == AST_FUNCTION_DEFINITION;
+}
+
+bool isParameter(AST* ast)
+{
+    return ast->type == AST_PARAMETER;
+}
+
+bool isPrefix(AST* ast)
+{
+    return ast->type == AST_PREFIX;
+}
+
+bool isPrefixOnlyOperand(AST* ast)
+{
+    switch (ast->type) {
+        case AST_ASSIGNMENT:
+        case AST_BINARY:
+        case AST_FUNCTION_CALL:
+        case AST_INTEGER:
+        case AST_VARIABLE:
+        case AST_SYSCALL:
+            return true;
+    }
+
+    return false;
 }
 
 bool isVariable(AST* ast)
@@ -163,7 +188,7 @@ bool isVariableDefinition(AST* ast)
 
 bool isVariableType(AST* ast)
 {
-    return isParameter(ast) || isVariableDefinition(ast);
+    return ast->type == AST_PARAMETER || ast->type == AST_VARIABLE_DEFINITION;
 }
 
 bool isNone(AST* ast)

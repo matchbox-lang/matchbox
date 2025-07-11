@@ -161,6 +161,7 @@ bool isShiftToken(TokenType type);
 bool isTermToken(TokenType type);
 bool isFactorToken(TokenType type);
 bool isPrefixToken(TokenType type);
+bool isPrefixOnlyToken(TokenType type);
 bool isPostfixToken(TokenType type);
 
 #endif

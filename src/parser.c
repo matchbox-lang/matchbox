@@ -11,6 +11,7 @@
 
 static AST* expression();
 static AST* identifier();
+static AST* prefix();
 static bool blocklevelStatements(Vector* nodes);
 
 typedef struct Parser
@@ -283,7 +284,7 @@ static AST* prefixOnly()
     AST* expr;
     
     if (isPrefixToken(nextToken.type)) {
-        expr = prefixOnly();
+        expr = prefix();
     } else {
         expr = primary();
     }

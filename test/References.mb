@@ -1,4 +1,6 @@
-func inc(&n int) { n++ }
+func inc(&n int) {
+    n += 1
+}
 
 var a = 0
 var b = &a

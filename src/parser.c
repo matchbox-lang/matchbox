@@ -252,9 +252,6 @@ static AST* parameter()
 static AST* primary()
 {
     switch (parser.currentToken.type) {
-        case T_TRUE:
-        case T_FALSE:
-            return booleanLiteral(parser.currentToken);
         case T_INTEGER_LITERAL:
             return integerLiteral(parser.currentToken);
         case T_BINARY_LITERAL:
@@ -263,12 +260,6 @@ static AST* primary()
             return hexadecimalLiteral(parser.currentToken);
         case T_OCTAL_LITERAL:
             return octalLiteral(parser.currentToken);
-        case T_FLOAT_LITERAL:
-            return floatLiteral(parser.currentToken);
-        case T_CHARACTER_LITERAL:
-            return characterLiteral(parser.currentToken);
-        case T_STRING_LITERAL:
-            return stringLiteral(parser.currentToken);
         case T_LPAREN:
             return groupExpression();
         case T_IDENTIFIER:

@@ -288,6 +288,10 @@ static AST* prefixOperand()
 
     Token token = parser.currentToken;
     AST* expr = primary();
+    
+    if (!expr) {
+        return NULL;
+    }
 
     if (!isPrefix(expr) && !isPrefixOperand(expr)) {
         error(unexpectedTokenError, token);
@@ -304,7 +308,6 @@ static AST* prefix()
 
     Token token = parser.currentToken;
     consume(token.type);
-    Token nextToken = parser.currentToken;
     AST* expr = prefixOperand();
     
     if (!expr) {

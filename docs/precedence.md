@@ -5,8 +5,7 @@
 | []                            | Array             | Left          |
 | * &                           | Address           | N/a           |
 | **                            | Exponent          | Right         |
-| ++ --                         | Postfix           | N/a           |
-| ++ -- ! ~ + -                 | Prefix            | N/a           |
+| ! ~ + -                       | Prefix            | N/a           |
 | =~ !~                         | Regex             | Left          |
 | * / // %                      | Factor            | Left          |
 | + -                           | Term              | Left          |

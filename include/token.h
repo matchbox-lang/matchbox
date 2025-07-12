@@ -75,8 +75,6 @@ typedef enum TokenType
     T_PERCENT,
     T_POWER,
     T_COALESCE,
-    T_INCREMENT,
-    T_DECREMENT,
     T_EQUAL,
     T_PLUS_EQUAL,
     T_MINUS_EQUAL,
@@ -161,7 +159,5 @@ bool isShiftToken(TokenType type);
 bool isTermToken(TokenType type);
 bool isFactorToken(TokenType type);
 bool isPrefixToken(TokenType type);
-bool isPrefixOnlyToken(TokenType type);
-bool isPostfixToken(TokenType type);
 
 #endif

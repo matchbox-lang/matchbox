@@ -402,69 +402,13 @@ static void negate(AST* ast)
     op_neg();
 }
 
-static void preDecrement(AST* ast)
-{
-    AST* expr = ast->postfix.expr;
-
-    expression(expr);
-    op_dec();
-    op_dup();
-    storeVariable(expr->variable.symbol);
-}
-
-static void preIncrement(AST* ast)
-{
-    AST* expr = ast->postfix.expr;
-
-    expression(expr);
-    op_inc();
-    op_dup();
-    storeVariable(expr->variable.symbol);
-}
-
-static void postDecrement(AST* ast)
-{
-    AST* expr = ast->postfix.expr;
-    int position = getLocalPosition(expr->variable.symbol);
-
-    expression(expr);
-    op_dup();
-    op_dec();
-    storeVariable(expr->variable.symbol);
-}
-
-static void postIncrement(AST* ast)
-{
-    AST* expr = ast->postfix.expr;
-    int position = getLocalPosition(expr->variable.symbol);
-
-    expression(expr);
-    op_dup();
-    op_inc();
-    storeVariable(expr->variable.symbol);
-}
-
-static void postfix(AST* ast)
-{
-    switch (ast->postfix.operator.type) {
-        case T_INCREMENT:
-            return postIncrement(ast);
-        case T_DECREMENT:
-            return postDecrement(ast);
-    }
-}
-
 static void prefix(AST* ast)
 {
-    switch (ast->postfix.operator.type) {
-        case T_TILDE:
-            return bitNot(ast);
-        case T_INCREMENT:
-            return preIncrement(ast);
-        case T_DECREMENT:
-            return preDecrement(ast);
+    switch (ast->prefix.operator.type) {
         case T_EXCLAMATION:
             return not(ast);
+        case T_TILDE:
+            return bitNot(ast);
         case T_MINUS:
             return negate(ast);
     }
@@ -636,8 +580,6 @@ static void expression(AST* ast)
             return functionCall(ast);
         case AST_INTEGER:
             return number(ast);
-        case AST_POSTFIX:
-            return postfix(ast);
         case AST_PREFIX:
             return prefix(ast);
         case AST_SERVICE_REQUEST:

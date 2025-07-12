@@ -69,9 +69,6 @@ void freeAST(AST* ast)
         case AST_PARAMETER:
             freeStringObject(ast->parameter.id);
             break;
-        case AST_POSTFIX:
-            freeAST(ast->postfix.expr);
-            break;
         case AST_PREFIX:
             freeAST(ast->prefix.expr);
             break;
@@ -132,8 +129,6 @@ int getTypeId(AST* ast)
             return ast->variableDefinition.typeId;
         case AST_PREFIX:
             return getTypeId(ast->prefix.expr);
-        case AST_POSTFIX:
-            return getTypeId(ast->postfix.expr);
         case AST_INTEGER:
             return T_INT;
     }
@@ -161,7 +156,7 @@ bool isPrefix(AST* ast)
     return ast->type == AST_PREFIX;
 }
 
-bool isPrefixOnlyOperand(AST* ast)
+bool isPrefixOperand(AST* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:

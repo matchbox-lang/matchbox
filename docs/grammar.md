@@ -8,8 +8,7 @@
     Term            → Factor {("+" | "-") Factor}
     Factor          → Exponent {("*" | "/" | "//" | "%") Exponent}
     Exponent        → Prefix {("**") Prefix}
-    Prefix          → {("++" | "--" | "!" | "~" | "+" | "-")} Postfix
-    Postfix         → Primary ("++" | "--")
+    Prefix          → {("!" | "~" | "+" | "-")} Primary
     Primary         → Literal | "(" Expression ")"
     Literal         → Character | Number | String | Boolean
     Character       → Number | Letter

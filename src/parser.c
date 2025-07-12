@@ -166,6 +166,30 @@ static AST* groupExpression()
     return ast;
 }
 
+static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
+{
+    if (!rightExpr) {
+        return NULL;
+    }
+
+    int a = getTypeId(leftExpr);
+    int b = getTypeId(rightExpr);
+
+    if (a != b) {
+        error(invalidOperandsError, token);
+    }
+
+    int typeId = isBoolOperatorToken(token.type) ? T_BOOL : a;
+    
+    AST* ast = createAST(AST_BINARY);
+    ast->binary.leftExpr = leftExpr;
+    ast->binary.operator = token;
+    ast->binary.rightExpr = rightExpr;
+    ast->binary.typeId = typeId;
+
+    return ast;
+}
+
 static AST* variable()
 {
     Token token = parser.prevToken;
@@ -256,105 +280,40 @@ static AST* primary()
     error(unexpectedTokenError, parser.currentToken);
 }
 
-static AST* postfix()
+static AST* prefixOperand()
 {
+    if (isPrefixToken(parser.currentToken.type)) {
+        return prefix();
+    }
+
+    Token token = parser.currentToken;
     AST* expr = primary();
 
-    if (!expr) {
-        return NULL;
-    }
-
-    if (!isVariable(expr) || !isPostfixToken(parser.currentToken.type)) {
-        return expr;
-    }
-
-    AST* ast = createAST(AST_POSTFIX);
-    ast->postfix.expr = expr;
-    ast->postfix.operator = parser.currentToken;
-    consume(parser.currentToken.type);
-
-    return ast;
-}
-
-static AST* prefixOnly()
-{
-    Token token = parser.currentToken;
-    consume(token.type);
-    Token nextToken = parser.currentToken;
-    AST* expr;
-    
-    if (isPrefixToken(nextToken.type)) {
-        expr = prefix();
-    } else {
-        expr = primary();
+    if (!isPrefix(expr) && !isPrefixOperand(expr)) {
+        error(unexpectedTokenError, token);
     }
     
-    if (!expr) {
-        return NULL;
-    }
-
-    if (!isPrefix(expr) && !isPrefixOnlyOperand(expr)) {
-        error(unexpectedTokenError, nextToken);
-    }
-
-    AST* ast = createAST(AST_PREFIX);
-    ast->prefix.expr = expr;
-    ast->prefix.operator = token;
-
-    return ast;
+    return expr;
 }
 
 static AST* prefix()
 {
+    if (!isPrefixToken(parser.currentToken.type)) {
+        return primary();
+    }
+
     Token token = parser.currentToken;
-
-    if (!isPrefixToken(token.type)) {
-        return postfix();
-    }
-
-    if (isPrefixOnlyToken(token.type)) {
-        return prefixOnly();
-    }
-
     consume(token.type);
     Token nextToken = parser.currentToken;
-    AST* expr = primary();
-
+    AST* expr = prefixOperand();
+    
     if (!expr) {
         return NULL;
-    }
-
-    if (!isVariable(expr)) {
-        error(unexpectedTokenError, nextToken);
     }
 
     AST* ast = createAST(AST_PREFIX);
     ast->prefix.expr = expr;
     ast->prefix.operator = token;
-
-    return ast;
-}
-
-static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
-{
-    if (!rightExpr) {
-        return NULL;
-    }
-
-    int a = getTypeId(leftExpr);
-    int b = getTypeId(rightExpr);
-
-    if (a != b) {
-        error(invalidOperandsError, token);
-    }
-
-    int typeId = isBoolOperatorToken(token.type) ? T_BOOL : a;
-    
-    AST* ast = createAST(AST_BINARY);
-    ast->binary.leftExpr = leftExpr;
-    ast->binary.operator = token;
-    ast->binary.rightExpr = rightExpr;
-    ast->binary.typeId = typeId;
 
     return ast;
 }

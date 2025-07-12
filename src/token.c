@@ -101,34 +101,9 @@ bool isFactorToken(TokenType type)
 bool isPrefixToken(TokenType type)
 {
     switch (type) {
-        case T_INCREMENT:
-        case T_DECREMENT:
-        case T_MINUS:
-        case T_EXCLAMATION:
-        case T_TILDE:
-            return true;
-    }
-
-    return false;
-}
-
-bool isPrefixOnlyToken(TokenType type)
-{
-    switch (type) {
         case T_EXCLAMATION:
         case T_MINUS:
         case T_TILDE:
-            return true;
-    }
-
-    return false;
-}
-
-bool isPostfixToken(TokenType type)
-{
-    switch (type) {
-        case T_INCREMENT:
-        case T_DECREMENT:
             return true;
     }
 

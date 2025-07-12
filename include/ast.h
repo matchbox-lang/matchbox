@@ -22,7 +22,6 @@ typedef enum ASTType
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
     AST_PARAMETER,
-    AST_POSTFIX,
     AST_PREFIX,
     AST_RETURN,
     AST_SERVICE_REQUEST,
@@ -80,11 +79,6 @@ typedef struct AST
         struct {
             Token operator;
             AST* expr;
-        } postfix;
-
-        struct {
-            Token operator;
-            AST* expr;
         } prefix;
 
         struct {
@@ -124,7 +118,7 @@ bool isFunctionCall(AST* ast);
 bool isFunctionDefinition(AST* ast);
 bool isParameter(AST* ast);
 bool isPrefix(AST* ast);
-bool isPrefixOnlyOperand(AST* ast);
+bool isPrefixOperand(AST* ast);
 bool isVariable(AST* ast);
 bool isVariableDefinition(AST* ast);
 bool isVariableType(AST* ast);

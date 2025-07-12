@@ -451,14 +451,12 @@ Token scanToken()
                 match('=') ? T_CIRCUMFLEX_EQUAL : T_CIRCUMFLEX);
         case '+':
             return makeToken(
-                match('+') ? T_INCREMENT :
                 match('=') ? T_PLUS_EQUAL : T_PLUS);
         case '-':
             if (isDigit(peek()) || peek() == '.') {
                 return integerLiteral();
             }
             return makeToken(
-                match('-') ? T_DECREMENT :
                 match('=') ? T_MINUS_EQUAL : T_MINUS);
         case '*':
             return makeToken(

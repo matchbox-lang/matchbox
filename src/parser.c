@@ -779,10 +779,6 @@ static AST* variableDefinition()
         error(redefinitionError, token);
     }
 
-    if (parser.currentToken.type != T_IDENTIFIER) {
-        error(unexpectedTokenError, parser.currentToken);
-    }
-
     consume(T_IDENTIFIER);
 
     if (isEof()) {

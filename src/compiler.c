@@ -558,10 +558,19 @@ static void ret(AST* ast)
     op_retv();
 }
 
+static void variableDefinitionUninitialized(AST* ast)
+{
+    op_pushb(0);
+
+    if (isTopLevel(ast->variableDefinition.scope)) {
+        op_reg();
+    }
+}
+
 static void variableDefinition(AST* ast)
 {
     if (isNone(ast->variableDefinition.expr)) {
-        return;
+        return variableDefinitionUninitialized(ast);
     }
 
     expression(ast->variableDefinition.expr);

@@ -798,6 +798,8 @@ static AST* variableDefinition()
     if (isTypeToken(parser.currentToken.type)) {
         ast->variableDefinition.typeId = parser.currentToken.type;
         consumeType();
+    } else if (parser.currentToken.type != T_EQUAL) {
+        error(unexpectedTokenError, parser.currentToken);
     }
     
     if (parser.currentToken.type != T_EQUAL) {

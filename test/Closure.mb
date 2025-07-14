@@ -1,9 +1,0 @@
-var x = 50
-
-func {
-    var y = 100
-
-    print(x)
-}()
-
-print(y) # Error

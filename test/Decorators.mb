@@ -1,10 +1,10 @@
-type operation func(int, int) int
+type operation func(int) int
 
 func log(op operation) operation
 {
-    return func(a int, b int) int
+    return func(x int) int
     {
-        var result = op(a, b)
+        var result = op(x)
         print($"Result {result}")
 
         return result
@@ -12,7 +12,7 @@ func log(op operation) operation
 }
 
 @log
-func add(a int, b int) int
+func square(x int) int
 {
-    return a + b
+    return x * x
 }

@@ -1,5 +1,5 @@
-#ifndef BUILTIN_H
-#define BUILTIN_H
+#ifndef NATIVE_H
+#define NATIVE_H
 
 #include "value.h"
 

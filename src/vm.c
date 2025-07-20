@@ -1,5 +1,5 @@
 #include "vm.h"
-#include "builtin.h"
+#include "native.h"
 #include "opcode.h"
 #include "codeobject.h"
 #include "compiler.h"

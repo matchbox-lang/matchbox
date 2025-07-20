@@ -1,6 +1,6 @@
 #include "vm.h"
 #include "builtin.h"
-#include "bytecode.h"
+#include "opcode.h"
 #include "codeobject.h"
 #include "compiler.h"
 #include "config.h"

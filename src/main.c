@@ -1,5 +1,5 @@
 #include "buffer.h"
-#include "bytecode.h"
+#include "opcode.h"
 #include "config.h"
 #include "compiler.h"
 #include "functionobject.h"

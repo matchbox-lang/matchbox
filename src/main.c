@@ -15,9 +15,10 @@ static void repl()
     size_t size = 0;
     size_t len;
     ModuleObject* module = createModuleObject();
+    VM vm;
     
     initCompiler(module);
-    initVM(module);
+    initVM(&vm, module);
 
     while (1) {
         printf(">>> ");
@@ -30,10 +31,10 @@ static void repl()
         }
 
         compile(source);
-        interpret();
+        interpret(&vm);
     }
 
-    freeVM();
+    freeVM(&vm);
     freeCompiler();
     freeModuleObject(module);
     free(source);
@@ -49,6 +50,7 @@ static void file()
     }
 
     ModuleObject* module = createModuleObject();
+    VM vm;
     
     initCompiler(module);
     compile(source);
@@ -57,9 +59,9 @@ static void file()
         return disassembleModule(module);
     }
 
-    initVM(module);
-    interpret();
-    freeVM();
+    initVM(&vm, module);
+    interpret(&vm);
+    freeVM(&vm);
     freeCompiler();
     freeModuleObject(module);
     free(source);

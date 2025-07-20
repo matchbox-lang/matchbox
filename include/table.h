@@ -22,7 +22,7 @@ typedef struct Table
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next);
 void freeTableItem(TableItem* table);
-void initTable(Table* table, int capacity);
+void initTable(Table* table, size_t capacity);
 void freeTable(Table* table);
 size_t countTable(Table* table);
 void* getTableAt(Table* table, StringObject* key);

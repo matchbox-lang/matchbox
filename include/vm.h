@@ -9,7 +9,7 @@
 #define FRAMES_MAX 64
 
 typedef struct VM VM;
-typedef Value (*service_t)(int argCount, Value* args);
+typedef Value (*service_t)(Value* args);
 
 typedef struct StackFrame
 {

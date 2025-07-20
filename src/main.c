@@ -1,13 +1,13 @@
 #include "buffer.h"
-#include "opcode.h"
-#include "config.h"
 #include "compiler.h"
+#include "opcode.h"
+#include "program.h"
 #include "functionobject.h"
 #include "moduleobject.h"
 #include "vm.h"
 #include <stdlib.h>
 
-CommandArguments cargs;
+ProgramOptions options;
 
 static void repl()
 {
@@ -42,10 +42,10 @@ static void repl()
 
 static void file()
 {
-    char* source = getFileContents(cargs.filename);
+    char* source = getFileContents(options.filename);
 
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", cargs.filename);
+        fprintf(stderr, "Error: Could not read file %s\n", options.filename);
         printUsage();
     }
 
@@ -55,7 +55,7 @@ static void file()
     initCompiler(module);
     compile(source);
 
-    if (cargs.disassemble) {
+    if (options.disassemble) {
         return disassembleModule(module);
     }
 
@@ -69,7 +69,7 @@ static void file()
 
 int main(int argc, char* argv[])
 {
-    initCommandArguments(&cargs, argc, argv);
+    initProgramOptions(&options, argc, argv);
 
     if (argc == 1) {
         repl();

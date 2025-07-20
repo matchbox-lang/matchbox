@@ -3,7 +3,7 @@
 #include "opcode.h"
 #include "codeobject.h"
 #include "compiler.h"
-#include "config.h"
+#include "program.h"
 #include "functionobject.h"
 #include "moduleobject.h"
 #include "value.h"
@@ -67,7 +67,7 @@ static void run(VM* vm)
             case OP_REQ:
                 x = READ_UINT8();
                 Service service = services[x];
-                Value result = vm->service[x](service.paramCount, vm->stackTop - service.paramCount);
+                Value result = vm->service[x](vm->stackTop - service.paramCount);
                 vm->stackTop -= service.paramCount;
                 PUSH(result);
                 break;

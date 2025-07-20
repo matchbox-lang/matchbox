@@ -3,12 +3,12 @@
 
 #include "value.h"
 
-Value __exit(int argCount, Value* args);
-Value __print(int argCount, Value* args);
-Value __clamp(int argCount, Value* args);
-Value __abs(int argCount, Value* args);
-Value __min(int argCount, Value* args);
-Value __max(int argCount, Value* args);
-Value __byteorder(int argCount, Value* args);
+Value __exit(Value* args);
+Value __print(Value* args);
+Value __clamp(Value* args);
+Value __abs(Value* args);
+Value __min(Value* args);
+Value __max(Value* args);
+Value __byteorder(Value* args);
 
 #endif

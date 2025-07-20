@@ -1,18 +1,18 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef PROGRAM_H
+#define PROGRAM_H
 
 #include <stdbool.h>
 
 #define PROGRAM_COMMAND "matchbox"
 #define PROGRAM_VERSION "Matchbox 0.2.0"
 
-typedef struct CommandArguments
+typedef struct ProgramOptions
 {
     bool disassemble;
     const char* filename;
-} CommandArguments;
+} ProgramOptions;
 
 void printUsage();
-void initCommandArguments(CommandArguments* args, int count, char* argv[]);
+void initProgramOptions(ProgramOptions* options, int count, char* argv[]);
 
 #endif

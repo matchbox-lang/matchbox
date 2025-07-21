@@ -8,7 +8,6 @@
 #define STACK_MAX 1024
 #define FRAMES_MAX 64
 
-typedef struct VM VM;
 typedef Value (*service_t)(Value* args);
 
 typedef struct StackFrame

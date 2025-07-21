@@ -1,6 +1,6 @@
 #include "compiler.h"
 #include "ast.h"
-#include "bytecode.h"
+#include "opcode.h"
 #include "functionobject.h"
 #include "parser.h"
 #include "scope.h"

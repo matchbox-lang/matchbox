@@ -1,13 +1,13 @@
 #include "buffer.h"
-#include "bytecode.h"
-#include "config.h"
 #include "compiler.h"
+#include "opcode.h"
+#include "program.h"
 #include "functionobject.h"
 #include "moduleobject.h"
 #include "vm.h"
 #include <stdlib.h>
 
-CommandArguments cargs;
+ProgramOptions options;
 
 static void repl()
 {
@@ -15,9 +15,10 @@ static void repl()
     size_t size = 0;
     size_t len;
     ModuleObject* module = createModuleObject();
+    VM vm;
     
     initCompiler(module);
-    initVM(module);
+    initVM(&vm, module);
 
     while (1) {
         printf(">>> ");
@@ -30,10 +31,10 @@ static void repl()
         }
 
         compile(source);
-        interpret();
+        interpret(&vm);
     }
 
-    freeVM();
+    freeVM(&vm);
     freeCompiler();
     freeModuleObject(module);
     free(source);
@@ -41,25 +42,26 @@ static void repl()
 
 static void file()
 {
-    char* source = getFileContents(cargs.filename);
+    char* source = getFileContents(options.filename);
 
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", cargs.filename);
+        fprintf(stderr, "Error: Could not read file %s\n", options.filename);
         printUsage();
     }
 
     ModuleObject* module = createModuleObject();
+    VM vm;
     
     initCompiler(module);
     compile(source);
 
-    if (cargs.disassemble) {
+    if (options.disassemble) {
         return disassembleModule(module);
     }
 
-    initVM(module);
-    interpret();
-    freeVM();
+    initVM(&vm, module);
+    interpret(&vm);
+    freeVM(&vm);
     freeCompiler();
     freeModuleObject(module);
     free(source);
@@ -67,7 +69,7 @@ static void file()
 
 int main(int argc, char* argv[])
 {
-    initCommandArguments(&cargs, argc, argv);
+    initProgramOptions(&options, argc, argv);
 
     if (argc == 1) {
         repl();

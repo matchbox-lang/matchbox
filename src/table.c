@@ -20,7 +20,7 @@ void freeTableItem(TableItem* item)
     free(item);
 }
 
-void initTable(Table* table, int capacity)
+void initTable(Table* table, size_t capacity)
 {
     table->capacity = capacity;
     table->data = calloc(table->capacity, sizeof(TableItem*));

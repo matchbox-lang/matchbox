@@ -23,6 +23,8 @@ typedef enum ServiceOpcode
     SOP_BYTEORDER
 } ServiceOpcode;
 
+Service services[SERVICES_MAX];
+
 Service* getServiceByName(char* name);
 
 #endif

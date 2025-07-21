@@ -1,6 +1,6 @@
 #include "moduleobject.h"
-#include "functionobject.h"
 #include "bytecode.h"
+#include "functionobject.h"
 #include <stdio.h>
 
 ModuleObject* createModuleObject()

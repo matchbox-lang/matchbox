@@ -1,4 +1,4 @@
-#include "config.h"
+#include "program.h"
 #include "string.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,26 +21,26 @@ static void printVersion()
     exit(0);
 }
 
-static void parseOption(CommandArguments* args, char* arg)
+static void parseOption(ProgramOptions* options, char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
         printVersion();
     }
     
     if (strcmp(arg, "-d") == 0) {
-        args->disassemble = true;
+        options->disassemble = true;
     } else {
         printUnknownOption(arg);
     }
 }
 
-void initCommandArguments(CommandArguments* args, int argc, char* argv[])
+void initProgramOptions(ProgramOptions* options, int argc, char* argv[])
 {
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
-            parseOption(args, argv[i]);
+            parseOption(options, argv[i]);
         } else {
-            args->filename = argv[i];
+            options->filename = argv[i];
         }
     }
 }

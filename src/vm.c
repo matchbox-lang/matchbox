@@ -12,23 +12,23 @@
 #include <string.h>
 #include <math.h>
 
-#define PUSH(value) ((vm->stackTop++)[0] = value)
+#define PUSH(value) ((vm->sp++)[0] = value)
 #define PUSH_BOOL(i) (PUSH(BOOL_VALUE(i)))
-#define PUSH_INT(i) (PUSH(INT_VALUE(i)))
 #define PUSH_FLOAT(i) (PUSH(FLOAT_VALUE(i)))
+#define PUSH_INT(i) (PUSH(INT_VALUE(i)))
 #define PUSH_POINTER(i) (PUSH(POINTER_VALUE(i)))
 
-#define POP() ((--vm->stackTop)[0])
+#define POP() ((--vm->sp)[0])
 #define POP_BOOL() (AS_BOOL(POP()))
-#define POP_INT() (AS_INT(POP()))
 #define POP_FLOAT() (AS_FLOAT(POP()))
+#define POP_INT() (AS_INT(POP()))
 #define POP_POINTER() (AS_POINTER(POP()))
 
-#define READ_UINT16() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
-#define READ_UINT8() ((uint8_t)*(frame->ip++))
+#define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
+#define READ_UINT8() ((uint8_t)*(vm->ip++))
 
-#define TEST_OVERFLOW(n) \
-    if (vm->stackTop - vm->stack + n > STACK_MAX) error("Error: Stack overflow\n")
+#define TEST_OVERFLOW(n) if (vm->sp - vm->stack + n > STACK_MAX) \
+    error("Error: Stack overflow\n")
 
 static void error(const char* message)
 {
@@ -51,13 +51,12 @@ static void run(VM* vm)
 {
     uint8_t opcode;
     FunctionObject* function = AS_POINTER(vm->module->constants.data[0]);
-    StackFrame* frame = &vm->frames[vm->frameCount - 1];
     int32_t a;
     int32_t b;
     int32_t x;
     Value value;
 
-    frame->ip = function->code.data;
+    vm->ip = function->code.data;
     
     TEST_OVERFLOW(function->maxStackCount);
 
@@ -67,8 +66,8 @@ static void run(VM* vm)
             case OP_REQ:
                 x = READ_UINT8();
                 Service service = services[x];
-                Value result = vm->service[x](vm->stackTop - service.paramCount);
-                vm->stackTop -= service.paramCount;
+                Value result = vm->service[x](vm->sp - service.paramCount);
+                vm->sp -= service.paramCount;
                 PUSH(result);
                 break;
 
@@ -94,45 +93,45 @@ static void run(VM* vm)
                 break;
 
             case OP_LDL:
-                x = READ_UINT8();
-                PUSH(frame->slots[x]);
+                x = (int8_t) READ_UINT8();
+                PUSH(vm->fp[x]);
                 break;
 
             case OP_LDL_0:
-                PUSH(frame->slots[0]);
+                PUSH(vm->fp[0]);
                 break;
 
             case OP_LDL_1:
-                PUSH(frame->slots[1]);
+                PUSH(vm->fp[1]);
                 break;
 
             case OP_LDL_2:
-                PUSH(frame->slots[2]);
+                PUSH(vm->fp[2]);
                 break;
 
             case OP_LDL_3:
-                PUSH(frame->slots[3]);
+                PUSH(vm->fp[3]);
                 break;
 
             case OP_STL:
-                x = READ_UINT8();
-                frame->slots[x] = POP();
+                x = (int8_t) READ_UINT8();
+                vm->fp[x] = POP();
                 break;
 
             case OP_STL_0:
-                frame->slots[0] = POP();
+                vm->fp[0] = POP();
                 break;
 
             case OP_STL_1:
-                frame->slots[1] = POP();
+                vm->fp[1] = POP();
                 break;
 
             case OP_STL_2:
-                frame->slots[2] = POP();
+                vm->fp[2] = POP();
                 break;
 
             case OP_STL_3:
-                frame->slots[3] = POP();
+                vm->fp[3] = POP();
                 break;
 
             case OP_PUSHB:
@@ -162,19 +161,19 @@ static void run(VM* vm)
                 break;
 
             case OP_POP:
-                vm->stackTop--;
+                vm->sp--;
                 break;
 
             case OP_DUP:
-                PUSH(vm->stackTop[-1]);
+                PUSH(vm->sp[-1]);
                 break;
 
             case OP_INC:
-                AS_INT(vm->stackTop[-1])++;
+                AS_INT(vm->sp[-1])++;
                 break;
 
             case OP_DEC:
-                AS_INT(vm->stackTop[-1])--;
+                AS_INT(vm->sp[-1])--;
                 break;
             
             case OP_ADD:
@@ -233,8 +232,8 @@ static void run(VM* vm)
                 break;
 
             case OP_BNOT:
-                x = AS_INT(vm->stackTop[-1]);
-                vm->stackTop[-1] = INT_VALUE(~x);
+                x = AS_INT(vm->sp[-1]);
+                vm->sp[-1] = INT_VALUE(~x);
                 break;
 
             case OP_LSL:
@@ -256,60 +255,65 @@ static void run(VM* vm)
                 break;
 
             case OP_NEG:
-                x = AS_INT(vm->stackTop[-1]);
-                vm->stackTop[-1] = INT_VALUE(-x);
+                x = AS_INT(vm->sp[-1]);
+                vm->sp[-1] = INT_VALUE(-x);
                 break;
 
             case OP_NOT:
-                x = AS_INT(vm->stackTop[-1]);
-                vm->stackTop[-1] = INT_VALUE(!x);
+                x = AS_INT(vm->sp[-1]);
+                vm->sp[-1] = INT_VALUE(!x);
                 break;
 
             case OP_BEQ:
-                b = AS_INT(vm->stackTop[-1]);
-                a = AS_INT(vm->stackTop[-2]);
-                if (a == b) frame->ip += READ_UINT16();
+                b = AS_INT(vm->sp[-1]);
+                a = AS_INT(vm->sp[-2]);
+                if (a == b) vm->ip += READ_UINT16();
                 break;
 
             case OP_BLT:
-                b = AS_INT(vm->stackTop[-1]);
-                a = AS_INT(vm->stackTop[-2]);
-                if (a < b) frame->ip += READ_UINT16();
+                b = AS_INT(vm->sp[-1]);
+                a = AS_INT(vm->sp[-2]);
+                if (a < b) vm->ip += READ_UINT16();
                 break;
 
             case OP_BLE:
-                b = AS_INT(vm->stackTop[-1]);
-                a = AS_INT(vm->stackTop[-2]);
-                if (a <= b) frame->ip += READ_UINT16();
+                b = AS_INT(vm->sp[-1]);
+                a = AS_INT(vm->sp[-2]);
+                if (a <= b) vm->ip += READ_UINT16();
                 break;
 
             case OP_JMP:
-                frame->ip += READ_UINT16();
+                vm->ip += READ_UINT16();
                 break;
 
             case OP_CALL:
                 x = READ_UINT16();
                 FunctionObject* function = AS_POINTER(vm->module->constants.data[x]);
-                
-                TEST_OVERFLOW(function->maxStackCount);
 
-                frame = &vm->frames[vm->frameCount++];
-                frame->ip = function->code.data;
-                frame->slots = vm->stackTop - function->paramCount;
+                TEST_OVERFLOW(function->maxStackCount);
+                
+                PUSH_INT(function->paramCount);
+                PUSH_POINTER(vm->ip);
+                PUSH_POINTER(vm->fp);
+
+                vm->ip = function->code.data;
+                vm->fp = vm->sp;
                 break;
 
             case OP_RET:
-                vm->stackTop = frame->slots;
-                vm->frameCount--;
-                frame = &vm->frames[vm->frameCount - 1];
+                vm->sp = vm->fp;
+                vm->fp = POP_POINTER();
+                vm->ip = POP_POINTER();
+                vm->sp -= POP_INT();
                 PUSH_INT(0);
                 break;
 
             case OP_RETV:
                 value = POP();
-                vm->stackTop = frame->slots;
-                vm->frameCount--;
-                frame = &vm->frames[vm->frameCount - 1];
+                vm->sp = vm->fp;
+                vm->fp = POP_POINTER();
+                vm->ip = POP_POINTER();
+                vm->sp -= POP_INT();
                 PUSH(value);
                 break;
 
@@ -325,12 +329,9 @@ void initVM(VM* vm, ModuleObject* module)
     initServices(vm);
     
     vm->module = module;
-    vm->stackTop = vm->stack;
-    vm->frameCount = 0;
-
-    StackFrame* frame = &vm->frames[vm->frameCount++];
-    frame->ip = NULL;
-    frame->slots = vm->stack;
+    vm->ip = NULL;
+    vm->sp = vm->stack;
+    vm->fp = vm->stack;
 }
 
 void freeVM(VM* vm)
@@ -341,7 +342,7 @@ void freeVM(VM* vm)
 void inspectStack(VM* vm)
 {
     for (int i = 0; i < STACK_MAX; i++) {
-        char* arrow = &vm->stack[i] == vm->stackTop ? " <-" : "";
+        char* arrow = &vm->stack[i] == vm->sp ? " <-" : "";
         int n = AS_INT(vm->stack[i]);
 
         printf("%d: %d%s\n", i, n, arrow);

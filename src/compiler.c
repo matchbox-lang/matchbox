@@ -298,7 +298,7 @@ static size_t makeConstant(Value value)
 static int getLocalPosition(AST* ast)
 {
     if (isParameter(ast)) {
-        return ast->parameter.position;
+        return -(ast->parameter.position + 4);
     }
     
     return ast->variableDefinition.position;
@@ -487,15 +487,13 @@ static void assignment(AST* ast)
     }
 }
 
-static size_t arguments(Vector* args)
+static void arguments(Vector* args)
 {
     size_t count = countVector(args);
 
-    for (int i = 0; i < count; i++) {
-        expression(args->data[i]);
+    while (count--) {
+        expression(args->data[count]);
     }
-
-    return count;
 }
 
 static int getFunctionPosition(AST* ast)
@@ -531,7 +529,7 @@ static void functionDefinition(AST* ast)
     FunctionObject* function = createFunctionObject();
     function->paramCount = countVector(&ast->functionDefinition.params);
     function->localCount = body->compound.scope->localCount;
-    function->maxStackCount = function->localCount;
+    function->maxStackCount = function->localCount + 3;
     
     compiler.stackCount = function->maxStackCount;
     compiler.function = function;

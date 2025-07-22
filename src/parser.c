@@ -237,14 +237,13 @@ static AST* parameter()
     ast->parameter.scope = parser.currentScope;
     ast->parameter.id = id;
     ast->parameter.typeId = T_INT;
-    ast->parameter.position = getLocalCount(parser.currentScope);
 
     if (isTypeToken(parser.currentToken.type)) {
         ast->parameter.typeId = parser.currentToken.type;
         consumeType();
     }
 
-    setLocalVariableSymbol(parser.currentScope, id, ast);
+    setLocalSymbol(parser.currentScope, id, ast);
 
     return ast;
 }
@@ -571,6 +570,8 @@ static bool parameters(Vector* params)
         return false;
     }
 
+    int position = 0;
+
     while (parser.currentToken.type != T_RPAREN) {
         AST* expr = parameter();
 
@@ -582,6 +583,7 @@ static bool parameters(Vector* params)
             return false;
         }
 
+        expr->parameter.position = position++;
         pushVectorItem(params, expr);
 
         if (parser.currentToken.type == T_COMMA) {

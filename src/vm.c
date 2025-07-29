@@ -3,7 +3,6 @@
 #include "opcode.h"
 #include "codeobject.h"
 #include "compiler.h"
-#include "program.h"
 #include "functionobject.h"
 #include "moduleobject.h"
 #include "value.h"

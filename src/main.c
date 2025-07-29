@@ -1,13 +1,9 @@
 #include "buffer.h"
 #include "compiler.h"
-#include "opcode.h"
-#include "program.h"
-#include "functionobject.h"
 #include "moduleobject.h"
+#include "options.h"
+#include "program.h"
 #include "vm.h"
-#include <stdlib.h>
-
-ProgramOptions options;
 
 static void repl()
 {
@@ -40,12 +36,12 @@ static void repl()
     free(source);
 }
 
-static void file()
+static void runFile(Options* options)
 {
-    char* source = getFileContents(options.filename);
+    char* source = getFileContents(options->filename);
 
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", options.filename);
+        fprintf(stderr, "Error: Could not read file %s\n", options->filename);
         printUsage();
     }
 
@@ -55,7 +51,7 @@ static void file()
     initCompiler(module);
     compile(source);
 
-    if (options.disassemble) {
+    if (options->disassemble) {
         return disassembleModule(module);
     }
 
@@ -69,12 +65,14 @@ static void file()
 
 int main(int argc, char* argv[])
 {
-    initProgramOptions(&options, argc, argv);
+    Options options;
+
+    initOptions(&options, argc, argv);
 
     if (argc == 1) {
         repl();
     } else {
-        file();
+        runFile(&options);
     }
 
     return 0;

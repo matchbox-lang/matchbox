@@ -54,6 +54,7 @@ static void run(VM* vm)
     int32_t a;
     int32_t b;
     int32_t x;
+    Service service;
     Value value;
 
     vm->ip = function->code.data;
@@ -65,10 +66,10 @@ static void run(VM* vm)
         {
             case OP_REQ:
                 x = READ_UINT8();
-                Service service = services[x];
-                Value result = vm->service[x](vm->sp - service.paramCount);
+                service = services[x];
+                value = vm->service[x](vm->sp - service.paramCount);
                 vm->sp -= service.paramCount;
-                PUSH(result);
+                PUSH(value);
                 break;
 
             case OP_LDC:
@@ -288,10 +289,9 @@ static void run(VM* vm)
 
             case OP_CALL:
                 x = READ_UINT16();
-                FunctionObject* function = AS_POINTER(vm->module->constants.data[x]);
+                function = AS_POINTER(vm->module->constants.data[x]);
 
                 TEST_OVERFLOW(function->maxStackCount);
-                
                 PUSH_INT(function->paramCount);
                 PUSH_POINTER(vm->ip);
                 PUSH_POINTER(vm->fp);

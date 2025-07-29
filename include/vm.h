@@ -6,30 +6,23 @@
 #include <stdint.h>
 
 #define STACK_MAX 1024
-#define FRAMES_MAX 64
 
 typedef Value (*service_t)(Value* args);
 
-typedef struct StackFrame
-{
-    uint8_t* ip;
-    Value* slots;
-} StackFrame;
-
 typedef struct VM
 {
-    StackFrame frames[FRAMES_MAX];
-    service_t service[SERVICES_MAX];
     Value stack[STACK_MAX];
-    Value* stackTop;
-    ValueArray globals;
-    size_t frameCount;
+    service_t service[SERVICES_MAX];
+    uint8_t* ip;
+    Value* sp;
+    Value* fp;
     ModuleObject* module;
+    ValueArray globals;
 } VM;
 
 void initVM(VM* vm, ModuleObject* module);
 void freeVM(VM* vm);
-void inspectVM(VM* vm);
+void inspectStack(VM* vm);
 void interpret(VM* vm);
 
 #endif

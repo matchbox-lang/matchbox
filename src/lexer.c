@@ -280,6 +280,8 @@ static TokenType getIdentifierType()
         case 'y':
             if (checkKeyword(1, 4, "ield")) return T_YIELD;
             break;
+        default:
+            break;
     }
 
     return T_IDENTIFIER;
@@ -417,7 +419,7 @@ Token scanToken()
     }
 
     switch (c) {
-        case '"':   return stringLiteral(c);
+        case '"':
         case '`':   return stringLiteral(c);
         case '\'':  return characterLiteral();
         case '(':   return makeToken(T_LPAREN);
@@ -502,7 +504,7 @@ Token scanToken()
                 match('^') ? T_RANGE_FROM_END : T_RANGE : T_DOT);
         case '@':
             return makeToken(T_AT);
+        default:
+            return makeToken(T_UNKNOWN);      
     }
-
-    return makeToken(T_UNKNOWN);
 }

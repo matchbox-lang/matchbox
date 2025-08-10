@@ -99,10 +99,16 @@ static void op_ldl(int8_t imm)
     incStackCount();
 
     switch (imm) {
-        case 0: return write8(OP_LDL_0);
-        case 1: return write8(OP_LDL_1);
-        case 2: return write8(OP_LDL_2);
-        case 3: return write8(OP_LDL_3);
+        case 0:
+            return write8(OP_LDL_0);
+        case 1:
+            return write8(OP_LDL_1);
+        case 2:
+            return write8(OP_LDL_2);
+        case 3:
+            return write8(OP_LDL_3);
+        default:
+            break;
     }
 
     write8(OP_LDL);
@@ -114,10 +120,16 @@ static void op_stl(int8_t imm)
     decStackCount();
 
     switch (imm) {
-        case 0: return write8(OP_STL_0);
-        case 1: return write8(OP_STL_1);
-        case 2: return write8(OP_STL_2);
-        case 3: return write8(OP_STL_3);
+        case 0:
+            return write8(OP_STL_0);
+        case 1:
+            return write8(OP_STL_1);
+        case 2:
+            return write8(OP_STL_2);
+        case 3:
+            return write8(OP_STL_3);
+        default:
+            break;
     }
 
     write8(OP_STL);
@@ -129,10 +141,16 @@ static void op_pushb(int8_t imm)
     incStackCount();
 
     switch (imm) {
-        case 0: return write8(OP_PUSH_0);
-        case 1: return write8(OP_PUSH_1);
-        case 2: return write8(OP_PUSH_2);
-        case 3: return write8(OP_PUSH_3);
+        case 0:
+            return write8(OP_PUSH_0);
+        case 1:
+            return write8(OP_PUSH_1);
+        case 2:
+            return write8(OP_PUSH_2);
+        case 3:
+            return write8(OP_PUSH_3);
+        default:
+            break;
     }
 
     write8(OP_PUSHB);
@@ -337,7 +355,6 @@ static void binary(AST* ast)
         case T_STAR:
             return op_mul();
         case T_SLASH:
-            return op_div();
         case T_FLOOR:
             return op_div();
         case T_PERCENT:
@@ -459,9 +476,8 @@ static void assignment(AST* ast)
             return subtractionAssignment(ast);
         case T_STAR_EQUAL:
             return muliplicationAssignment(ast);
-        case T_SLASH_EQUAL:
-            return divisionAssignment(ast);
         case T_FLOOR_EQUAL:
+        case T_SLASH_EQUAL:
             return divisionAssignment(ast);
         case T_PERCENT_EQUAL:
             return remainderAssignment(ast);

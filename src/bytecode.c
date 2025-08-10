@@ -60,6 +60,8 @@ static int printInstruction(int8_t c)
         case OP_CALL:       return printf("call\t%d\n", READ_INT16());
         case OP_RET:        return printf("ret\n");
         case OP_RETV:       return printf("retv\n");
+        default:
+            break;
     }
 }
 

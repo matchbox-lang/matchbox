@@ -23,9 +23,9 @@ bool isAssignmentToken(TokenType type)
         case T_PERCENT_EQUAL:
         case T_POWER_EQUAL:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isTypeToken(TokenType type)
@@ -42,9 +42,9 @@ bool isComparisonToken(TokenType type)
         case T_LESS_EQUAL:
         case T_SPACESHIP:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isEqualityToken(TokenType type)
@@ -53,9 +53,9 @@ bool isEqualityToken(TokenType type)
         case T_EQUAL_EQUAL:
         case T_NOT_EQUAL:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isBoolOperatorToken(TokenType type)
@@ -69,9 +69,9 @@ bool isShiftToken(TokenType type)
         case T_LSHIFT:
         case T_RSHIFT:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isTermToken(TokenType type)
@@ -80,9 +80,9 @@ bool isTermToken(TokenType type)
         case T_PLUS:
         case T_MINUS:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isFactorToken(TokenType type)
@@ -93,9 +93,9 @@ bool isFactorToken(TokenType type)
         case T_FLOOR:
         case T_PERCENT:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isPrefixToken(TokenType type)
@@ -105,7 +105,7 @@ bool isPrefixToken(TokenType type)
         case T_MINUS:
         case T_TILDE:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }

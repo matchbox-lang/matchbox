@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-AST* createAST(TokenType type)
+AST* createAST(ASTType type)
 {
     AST* ast = malloc(sizeof(AST));
     ast->type = type;
@@ -24,6 +24,8 @@ AST* createAST(TokenType type)
         case AST_SERVICE_REQUEST:
             initVector(&ast->serviceRequest.args);
             break;
+        default:
+            return ast;
     }
     
     return ast;
@@ -79,6 +81,8 @@ void freeAST(AST* ast)
             freeStringObject(ast->variableDefinition.id);
             freeAST(ast->variableDefinition.expr);
             break;
+        default:
+            return;
     }
 
     free(ast);
@@ -101,6 +105,8 @@ Scope* getScope(AST* ast)
             return ast->variable.scope;
         case AST_VARIABLE_DEFINITION:
             return ast->variableDefinition.scope;
+        default:
+            return NULL;
     }
 
     return NULL;
@@ -131,9 +137,9 @@ int getTypeId(AST* ast)
             return getTypeId(ast->prefix.expr);
         case AST_INTEGER:
             return T_INT;
+        default:
+            return T_NONE;
     }
-
-    return T_NONE;
 }
 
 bool isFunctionCall(AST* ast)
@@ -166,9 +172,9 @@ bool isPrefixOperand(AST* ast)
         case AST_SERVICE_REQUEST:
         case AST_VARIABLE:
             return true;
+        default:
+            return false;
     }
-
-    return false;
 }
 
 bool isVariable(AST* ast)

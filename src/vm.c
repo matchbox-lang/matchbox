@@ -60,7 +60,7 @@ static void run(VM* vm)
     
     TEST_OVERFLOW(function->maxStackCount);
 
-    while (opcode = READ_UINT8()) {
+    while ((opcode = READ_UINT8())) {
         switch (opcode)
         {
             case OP_REQ:

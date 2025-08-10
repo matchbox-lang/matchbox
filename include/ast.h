@@ -110,7 +110,7 @@ typedef struct AST
     };
 } AST;
 
-AST* createAST(TokenType type);
+AST* createAST(ASTType type);
 void freeAST(AST* ast);
 Scope* getScope(AST* ast);
 int getTypeId(AST* ast);

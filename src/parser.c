@@ -69,21 +69,6 @@ static bool isEof()
     return parser.currentToken.type == T_EOF;
 }
 
-
-static Vector* getTopLevelStatements()
-{
-    return &parser.topLevel->compound.statements;
-}
-
-static AST* booleanLiteral(Token token)
-{
-    AST* ast = createAST(AST_BOOLEAN);
-    ast->boolValue = token.type == T_TRUE;
-    consume(token.type);
-
-    return ast;
-}
-
 static AST* integerLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
@@ -115,33 +100,6 @@ static AST* octalLiteral(Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = octalLiteralToValue(token.chars, token.length);
-    consume(token.type);
-
-    return ast;
-}
-
-static AST* floatLiteral(Token token)
-{
-    AST* ast = createAST(AST_FLOAT);
-    ast->floatValue = floatLiteralToValue(token.chars, token.length);
-    consume(token.type);
-
-    return ast;
-}
-
-static AST* characterLiteral(Token token)
-{
-    AST* ast = createAST(AST_CHARACTER);
-    ast->character = token;
-    consume(token.type);
-
-    return ast;
-}
-
-static AST* stringLiteral(Token token)
-{
-    AST* ast = createAST(AST_STRING);
-    ast->string = token;
     consume(token.type);
 
     return ast;
@@ -265,9 +223,9 @@ static AST* primary()
             return identifier();
         case T_EOF:
             return NULL;
+        default:
+            error(unexpectedTokenError, parser.currentToken);
     }
-
-    error(unexpectedTokenError, parser.currentToken);
 }
 
 static AST* prefixOperand()
@@ -851,9 +809,9 @@ static AST* statement()
             return variableDefinition();
         case T_RETURN:
             return returnStatement();
+        default:
+            return expression();
     }
-
-    return expression();
 }
 
 static bool statements(Vector* nodes, TokenType type)

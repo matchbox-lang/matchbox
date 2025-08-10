@@ -6,7 +6,7 @@
 #include "scope.h"
 #include "util.h"
 
-static void expression();
+static void expression(AST* ast);
 static void blocklevelStatements(Vector* nodes);
 static void toplevelStatements(Vector* nodes);
 
@@ -145,22 +145,6 @@ static void op_pop()
     write8(OP_POP);
 }
 
-static void op_dup()
-{
-    incStackCount();
-    write8(OP_DUP);
-}
-
-static void op_inc()
-{
-    write8(OP_INC);
-}
-
-static void op_dec()
-{
-    write8(OP_DEC);
-}
-
 static void op_add()
 {
     decStackCount();
@@ -233,12 +217,6 @@ static void op_lsr()
     write8(OP_LSR);
 }
 
-static void op_asr()
-{
-    decStackCount();
-    write8(OP_ASR);
-}
-
 static void op_neg()
 {
     write8(OP_NEG);
@@ -247,30 +225,6 @@ static void op_neg()
 static void op_not()
 {
     write8(OP_NOT);
-}
-
-static void op_beq(uint16_t imm)
-{
-    write8(OP_BEQ);
-    write16(imm);
-}
-
-static void op_blt(uint16_t imm)
-{
-    write8(OP_BLT);
-    write16(imm);
-}
-
-static void op_ble(uint16_t imm)
-{
-    write8(OP_BLE);
-    write16(imm);
-}
-
-static void op_jmp(uint16_t imm)
-{
-    write8(OP_JMP);
-    write16(imm);
 }
 
 static void op_call(uint16_t imm)
@@ -369,18 +323,32 @@ static void binary(AST* ast)
     expression(ast->binary.rightExpr);
 
     switch (ast->binary.operator.type) {
-        case T_PLUS:        return op_add();
-        case T_MINUS:       return op_sub();
-        case T_STAR:        return op_mul();
-        case T_SLASH:       return op_div();
-        case T_FLOOR:       return op_div();
-        case T_PERCENT:     return op_rem();
-        case T_POWER:       return op_pow();
-        case T_AMPERSAND:   return op_band();
-        case T_PIPE:        return op_bor();
-        case T_CIRCUMFLEX:  return op_bxor();
-        case T_LSHIFT:      return op_lsl();
-        case T_RSHIFT:      return op_lsr();
+        case T_PLUS:
+            return op_add();
+        case T_MINUS:
+            return op_sub();
+        case T_STAR:
+            return op_mul();
+        case T_SLASH:
+            return op_div();
+        case T_FLOOR:
+            return op_div();
+        case T_PERCENT:
+            return op_rem();
+        case T_POWER:
+            return op_pow();
+        case T_AMPERSAND:
+            return op_band();
+        case T_PIPE:
+            return op_bor();
+        case T_CIRCUMFLEX:
+            return op_bxor();
+        case T_LSHIFT:
+            return op_lsl();
+        case T_RSHIFT:
+            return op_lsr();
+        default:
+            return;
     }
 }
 
@@ -411,6 +379,8 @@ static void prefix(AST* ast)
             return bitNot(ast);
         case T_MINUS:
             return negate(ast);
+        default:
+            return;
     }
 }
 
@@ -476,14 +446,24 @@ static void simpleAssignment(AST* ast)
 static void assignment(AST* ast)
 {
     switch (ast->assignment.operator.type) {
-        case T_PLUS_EQUAL:      return additionAssignment(ast);
-        case T_MINUS_EQUAL:     return subtractionAssignment(ast);
-        case T_STAR_EQUAL:      return muliplicationAssignment(ast);
-        case T_SLASH_EQUAL:     return divisionAssignment(ast);
-        case T_FLOOR_EQUAL:     return divisionAssignment(ast);
-        case T_PERCENT_EQUAL:   return remainderAssignment(ast);
-        case T_POWER_EQUAL:     return exponentiationAssignment(ast);
-        case T_EQUAL:           return simpleAssignment(ast);
+        case T_PLUS_EQUAL:
+            return additionAssignment(ast);
+        case T_MINUS_EQUAL:
+            return subtractionAssignment(ast);
+        case T_STAR_EQUAL:
+            return muliplicationAssignment(ast);
+        case T_SLASH_EQUAL:
+            return divisionAssignment(ast);
+        case T_FLOOR_EQUAL:
+            return divisionAssignment(ast);
+        case T_PERCENT_EQUAL:
+            return remainderAssignment(ast);
+        case T_POWER_EQUAL:
+            return exponentiationAssignment(ast);
+        case T_EQUAL:
+            return simpleAssignment(ast);
+        default:
+            return;
     }
 }
 
@@ -593,6 +573,8 @@ static void expression(AST* ast)
             return serviceRequest(ast);
         case AST_VARIABLE:
             return variable(ast);
+        default:
+            return;
     }
 }
 

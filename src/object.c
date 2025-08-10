@@ -1,4 +1,5 @@
 #include "object.h"
+#include <stdlib.h>
 
 Object* allocateObject(size_t size, ObjectType type)
 {

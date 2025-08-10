@@ -1,6 +1,7 @@
 #include "stringobject.h"
 #include "object.h"
 #include "util.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

@@ -1,7 +1,9 @@
 #include "lexer.h"
+#include "token.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef struct Position
 {

@@ -4,7 +4,9 @@
 #include "codeobject.h"
 #include "functionobject.h"
 #include "moduleobject.h"
+#include "service.h"
 #include "value.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

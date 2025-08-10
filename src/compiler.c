@@ -1,10 +1,17 @@
 #include "compiler.h"
 #include "ast.h"
 #include "opcode.h"
+#include "codeobject.h"
 #include "functionobject.h"
+#include "moduleobject.h"
 #include "parser.h"
 #include "scope.h"
+#include "token.h"
 #include "util.h"
+#include "value.h"
+#include "vector.h"
+#include <stddef.h>
+#include <stdint.h>
 
 static void expression(AST* ast);
 static void blocklevelStatements(Vector* nodes);
@@ -358,7 +365,7 @@ static void bitNot(AST* ast)
     op_bnot();
 }
 
-static void not(AST* ast)
+static void logNot(AST* ast)
 {
     expression(ast->prefix.expr);
     op_not();
@@ -374,7 +381,7 @@ static void prefix(AST* ast)
 {
     switch (ast->prefix.operator.type) {
         case T_EXCLAMATION:
-            return not(ast);
+            return logNot(ast);
         case T_TILDE:
             return bitNot(ast);
         case T_MINUS:

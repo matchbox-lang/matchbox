@@ -1,5 +1,7 @@
 #include "functionobject.h"
+#include "codeobject.h"
 #include "object.h"
+#include <stdlib.h>
 
 FunctionObject* createFunctionObject()
 {

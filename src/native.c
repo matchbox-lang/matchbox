@@ -1,4 +1,5 @@
 #include "native.h"
+#include "value.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

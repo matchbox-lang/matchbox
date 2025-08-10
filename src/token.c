@@ -1,4 +1,6 @@
 #include "token.h"
+#include <stdbool.h>
+#include <stdio.h>
 
 void printToken(Token* token)
 {

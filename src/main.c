@@ -4,6 +4,9 @@
 #include "options.h"
 #include "program.h"
 #include "vm.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static void repl()
 {

@@ -1,7 +1,10 @@
 #include "moduleobject.h"
 #include "bytecode.h"
 #include "functionobject.h"
+#include "object.h"
+#include "value.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 ModuleObject* createModuleObject()
 {

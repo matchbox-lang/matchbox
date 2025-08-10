@@ -1,6 +1,7 @@
 #include "options.h"
 #include "program.h"
 #include "string.h"
+#include <stdbool.h>
 #include <stdio.h>
 
 static void printUnknownOption(char* arg)

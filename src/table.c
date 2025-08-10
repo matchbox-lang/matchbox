@@ -1,4 +1,6 @@
 #include "table.h"
+#include "stringobject.h"
+#include <stdbool.h>
 #include <stdlib.h>
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next)

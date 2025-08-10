@@ -1,5 +1,7 @@
 #include "bytecode.h"
+#include "codeobject.h"
 #include "opcode.h"
+#include <stdint.h>
 #include <stdio.h>
 
 #define READ_INT16() (ptr += 2, (int16_t)((ptr[-2] << 8) | ptr[-1]))

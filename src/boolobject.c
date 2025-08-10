@@ -1,5 +1,6 @@
 #include "boolobject.h"
 #include "object.h"
+#include <stdbool.h>
 
 BoolObject* createBoolObject(bool value)
 {

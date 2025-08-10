@@ -38,20 +38,20 @@ bool isTopLevel(Scope* scope)
     return scope->level == 1;
 }
 
-AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast)
+AST* setLocalSymbol(Scope* scope, StringObject* id, AST* symbol)
 {
-    if (setTableAt(&scope->symbols, id, ast)) {
-        return ast;
+    if (setTableAt(&scope->symbols, id, symbol)) {
+        return symbol;
     }
 
     return NULL;
 }
 
-AST* setLocalVariableSymbol(Scope* scope, StringObject* id, AST* ast)
+AST* setLocalVariableSymbol(Scope* scope, StringObject* id, AST* symbol)
 {
     scope->localCount++;
     
-    return setLocalSymbol(scope, id, ast);
+    return setLocalSymbol(scope, id, symbol);
 }
 
 AST* getLocalSymbol(Scope* scope, StringObject* id)

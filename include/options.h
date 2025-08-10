@@ -9,6 +9,6 @@ typedef struct Options
     const char* filename;
 } Options;
 
-void initOptions(Options* options, int count, char* argv[]);
+void initOptions(Options* options, int argc, char* argv[]);
 
 #endif

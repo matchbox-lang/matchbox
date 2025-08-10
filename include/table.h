@@ -21,7 +21,7 @@ typedef struct Table
 } Table;
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next);
-void freeTableItem(TableItem* table);
+void freeTableItem(TableItem* item);
 void initTable(Table* table, size_t capacity);
 void freeTable(Table* table);
 size_t countTable(Table* table);

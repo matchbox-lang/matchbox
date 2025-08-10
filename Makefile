@@ -8,7 +8,7 @@ SRCS := $(wildcard $(SRC)/*.c)
 OBJS := $(patsubst $(SRC)/%.c, $(OBJECT)/%.o, $(SRCS))
 EXE := $(BIN)/matchbox
 CC := gcc
-CFLAGS := -Wunused -I$(INCLUDE)
+CFLAGS := -I$(INCLUDE)
 LDLIBS := -lm
 
 all: $(EXE)

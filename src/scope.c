@@ -1,6 +1,5 @@
 #include "scope.h"
 #include "ast.h"
-#include <stdint.h>
 #include <stdlib.h>
 
 Scope* createScope(Scope* parent)

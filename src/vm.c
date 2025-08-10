@@ -2,7 +2,6 @@
 #include "native.h"
 #include "opcode.h"
 #include "codeobject.h"
-#include "compiler.h"
 #include "functionobject.h"
 #include "moduleobject.h"
 #include "value.h"

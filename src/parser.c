@@ -3,9 +3,7 @@
 #include "conversion.h"
 #include "lexer.h"
 #include "scope.h"
-#include "table.h"
 #include "service.h"
-#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 

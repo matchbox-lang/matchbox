@@ -1,5 +1,4 @@
 #include "ast.h"
-#include "object.h"
 #include "scope.h"
 #include "service.h"
 #include <stdlib.h>

@@ -1,6 +1,6 @@
 # Instructions
     hlt             Halt
-    req             Request service
+    reqs            Request service
     ldc             Load constant
     reg             Register global
     ldg             Load global

@@ -4,7 +4,7 @@
 typedef enum Opcode
 {
     OP_HLT,         // hlt
-    OP_REQ,         // req imm8
+    OP_REQS,        // reqs imm8
     OP_LDC,         // ldc imm8
     OP_REG,         // reg
     OP_LDG,         // ldg imm8

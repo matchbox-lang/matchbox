@@ -64,7 +64,7 @@ static void run(VM* vm)
     while ((opcode = READ_UINT8())) {
         switch (opcode)
         {
-            case OP_REQ:
+            case OP_REQS:
                 x = READ_UINT8();
                 service = services[x];
                 value = vm->service[x](vm->sp - service.paramCount);

@@ -13,7 +13,7 @@ static int printInstruction(int8_t c)
 {
     switch (c) {
         case OP_HLT:        return printf("hlt\n");
-        case OP_REQ:        return printf("req\t%d\n", READ_INT8());
+        case OP_REQS:       return printf("reqs\t%d\n", READ_INT8());
         case OP_LDC:        return printf("ldc\t%d\n", READ_INT8());
         case OP_REG:        return printf("reg\n");
         case OP_LDG:        return printf("ldg\t%d\n", READ_INT8());

@@ -61,9 +61,9 @@ static void op_hlt()
     write8(OP_HLT);
 }
 
-static void op_req(uint8_t imm)
+static void op_reqs(uint8_t imm)
 {
-    write8(OP_REQ);
+    write8(OP_REQS);
     write8(imm);
 }
 
@@ -506,7 +506,7 @@ static void functionCall(AST* ast)
 static void serviceRequest(AST* ast)
 {
     arguments(&ast->serviceRequest.args);
-    op_req(ast->serviceRequest.opcode);
+    op_reqs(ast->serviceRequest.opcode);
 }
 
 static void functionDefinition(AST* ast)

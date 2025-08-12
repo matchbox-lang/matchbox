@@ -28,13 +28,8 @@
 #define READ_UINT8() ((uint8_t)*(vm->ip++))
 
 #define TEST_OVERFLOW(n) if (vm->sp - vm->stack + n > STACK_MAX) \
-    error("Error: Stack overflow\n")
-
-static void error(const char* message)
-{
-    fprintf(stderr, message);
+    fprintf(stderr, "Error: Stack overflow\n"); \
     exit(1);
-}
 
 static void initServices(VM* vm)
 {

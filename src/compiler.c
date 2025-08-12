@@ -100,19 +100,22 @@ static void op_ldl(int8_t imm)
 
     switch (imm) {
         case 0:
-            return write8(OP_LDL_0);
+            write8(OP_LDL_0);
+            break;
         case 1:
-            return write8(OP_LDL_1);
+            write8(OP_LDL_1);
+            break;
         case 2:
-            return write8(OP_LDL_2);
+            write8(OP_LDL_2);
+            break;
         case 3:
-            return write8(OP_LDL_3);
+            write8(OP_LDL_3);
+            break;
         default:
+            write8(OP_LDL);
+            write8(imm);
             break;
     }
-
-    write8(OP_LDL);
-    write8(imm);
 }
 
 static void op_stl(int8_t imm)
@@ -121,19 +124,22 @@ static void op_stl(int8_t imm)
 
     switch (imm) {
         case 0:
-            return write8(OP_STL_0);
+            write8(OP_STL_0);
+            break;
         case 1:
-            return write8(OP_STL_1);
+            write8(OP_STL_1);
+            break;
         case 2:
-            return write8(OP_STL_2);
+            write8(OP_STL_2);
+            break;
         case 3:
-            return write8(OP_STL_3);
+            write8(OP_STL_3);
+            break;
         default:
+            write8(OP_STL);
+            write8(imm);
             break;
     }
-
-    write8(OP_STL);
-    write8(imm);
 }
 
 static void op_pushb(int8_t imm)
@@ -142,19 +148,22 @@ static void op_pushb(int8_t imm)
 
     switch (imm) {
         case 0:
-            return write8(OP_PUSH_0);
+            write8(OP_PUSH_0);
+            break;
         case 1:
-            return write8(OP_PUSH_1);
+            write8(OP_PUSH_1);
+            break;
         case 2:
-            return write8(OP_PUSH_2);
+            write8(OP_PUSH_2);
+            break;
         case 3:
-            return write8(OP_PUSH_3);
+            write8(OP_PUSH_3);
+            break;
         default:
+            write8(OP_PUSHB);
+            write8(imm);
             break;
     }
-
-    write8(OP_PUSHB);
-    write8(imm);
 }
 
 static void op_pushh(int16_t imm)

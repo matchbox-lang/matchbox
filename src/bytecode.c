@@ -9,6 +9,7 @@
 #define READ_INT8() ((int8_t)*(ptr++))
 
 static uint8_t* ptr;
+static const char* opcodeError = "Error: Unknown opcode %d\n";
 
 static int printInstruction(int8_t c)
 {
@@ -62,7 +63,7 @@ static int printInstruction(int8_t c)
         case OP_RET:        return printf("ret\n");
         case OP_RETV:       return printf("retv\n");
         default:
-            fprintf(stderr, "Error: Unknown opcode %d\n", c);
+            fprintf(stderr, opcodeError, c);
             exit(1);
     }
 }

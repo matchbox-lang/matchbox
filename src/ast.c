@@ -28,7 +28,7 @@ AST* createAST(ASTType type)
             initVector(&ast->serviceRequest.args);
             break;
         default:
-            return ast;
+            break;
     }
     
     return ast;
@@ -85,7 +85,7 @@ void freeAST(AST* ast)
             freeAST(ast->variableDefinition.expr);
             break;
         default:
-            return;
+            break;
     }
 
     free(ast);
@@ -111,8 +111,6 @@ Scope* getScope(AST* ast)
         default:
             return NULL;
     }
-
-    return NULL;
 }
 
 int getTypeId(AST* ast)

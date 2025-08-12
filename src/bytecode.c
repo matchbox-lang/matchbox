@@ -2,6 +2,7 @@
 #include "codeobject.h"
 #include "opcode.h"
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #define READ_INT16() (ptr += 2, (int16_t)((ptr[-2] << 8) | ptr[-1]))
@@ -61,7 +62,8 @@ static int printInstruction(int8_t c)
         case OP_RET:        return printf("ret\n");
         case OP_RETV:       return printf("retv\n");
         default:
-            break;
+            fprintf(stderr, "Error: Unknown opcode %d\n", c);
+            exit(1);
     }
 }
 

@@ -17,7 +17,6 @@ typedef enum TokenType
     T_FOR,
     T_WHILE,
     T_MATCH,
-    T_SWITCH,
     T_BREAK,
     T_CONTINUE,
     T_WHERE,

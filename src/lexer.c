@@ -252,7 +252,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 5, "izeof")) return T_SIZEOF;
             if (checkKeyword(1, 5, "tatic")) return T_STATIC;
             if (checkKeyword(1, 5, "truct")) return T_STRUCT;
-            if (checkKeyword(1, 5, "witch")) return T_SWITCH;
             break;
         case 't':
             if (checkKeyword(1, 4, "hrow")) return T_THROW;

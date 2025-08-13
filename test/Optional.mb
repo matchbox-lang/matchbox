@@ -4,7 +4,9 @@ enum Optional<T>
     None
 }
 
-if var x = Some(5) {
+if n = Some(5)
+
+if var Some(x) = n {
     print(x)
 } else {
     print("None")

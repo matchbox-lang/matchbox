@@ -17,7 +17,7 @@
     There are no posts!
 @end
 
-@switch i
+@match i
     @case 10
         i is equal to 10
     @case _

@@ -3,6 +3,6 @@ func add(x, y int) int
     return x + y
 }
 
-var res = add(5, 10)
+var result = add(5, 10)
 
-print(res)
+print(result)

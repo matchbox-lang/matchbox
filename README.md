@@ -7,7 +7,7 @@ Matchbox can run on the following platforms:
 - Windows
 
 ## Installation
-Pre-build binaries can be found at https://www.matchbox-lang.org/downloads.
+Pre-built binaries can be found at https://www.matchbox-lang.org/downloads.
 
 ## Getting Started
 First, create a file named main.mb and add the following code:

@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PUSH(value) ((vm->sp++)[0] = value)
+#define PUSH(value) ((vm->sp++)[0] = (value))
 #define PUSH_BOOL(i) (PUSH(BOOL_VALUE(i)))
 #define PUSH_FLOAT(i) (PUSH(FLOAT_VALUE(i)))
 #define PUSH_INT(i) (PUSH(INT_VALUE(i)))
@@ -27,7 +27,7 @@
 #define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
 #define READ_UINT8() ((uint8_t)*(vm->ip++))
 
-#define TEST_OVERFLOW(n) if (vm->sp - vm->stack + n > STACK_MAX) \
+#define TEST_OVERFLOW(n) if (vm->sp - vm->stack + (n) > STACK_MAX) \
     fprintf(stderr, "Error: Stack overflow\n"), \
     exit(1)
 

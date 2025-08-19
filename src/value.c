@@ -1,6 +1,6 @@
 #include "value.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define GROW_CAPACITY(capacity) (capacity < 8 ? 8 : capacity * 2)
 

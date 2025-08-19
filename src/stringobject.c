@@ -2,9 +2,9 @@
 #include "object.h"
 #include "util.h"
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 StringObject* createStringObject(char* chars, size_t length, size_t hash)
 {

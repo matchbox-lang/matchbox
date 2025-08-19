@@ -1,16 +1,16 @@
 #include "vm.h"
-#include "native.h"
-#include "opcode.h"
 #include "codeobject.h"
 #include "functionobject.h"
 #include "moduleobject.h"
+#include "native.h"
+#include "opcode.h"
 #include "service.h"
 #include "value.h"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #define PUSH(value) ((vm->sp++)[0] = value)
 #define PUSH_BOOL(i) (PUSH(BOOL_VALUE(i)))
@@ -57,8 +57,7 @@ static void run(VM* vm)
     TEST_OVERFLOW(function->maxStackCount);
 
     while ((opcode = READ_UINT8())) {
-        switch (opcode)
-        {
+        switch (opcode) {
             case OP_REQS:
                 x = READ_UINT8();
                 service = services[x];

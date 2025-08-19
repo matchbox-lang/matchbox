@@ -2,8 +2,8 @@
 #include "codeobject.h"
 #include "opcode.h"
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define READ_INT16() (ptr += 2, (int16_t)((ptr[-2] << 8) | ptr[-1]))
 #define READ_INT8() ((int8_t)*(ptr++))

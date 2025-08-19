@@ -1,7 +1,7 @@
 #include "buffer.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 char* getFileContents(const char* filename)
 {

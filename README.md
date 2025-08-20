@@ -1,5 +1,5 @@
 # Matchbox
-Matchbox is an easy-to-learn general-purpose programming language that is fast, portable, and memory safe.
+Matchbox is an easy-to-learn, general-purpose programming language that is fast, portable, and memory safe.
 
 ## Supported Platforms
 Matchbox can run on the following platforms:

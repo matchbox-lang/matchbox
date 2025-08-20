@@ -1,3 +1,0 @@
-var x int[] = vector(int, 8)
-
-resize(x, 16)

@@ -1,0 +1,80 @@
+var i = 0
+var arr = [1, 2, 3]
+
+if i < 5 {
+    print("i is less than 5")
+} else if i > 5 {
+    print("i is greater than 5")
+} else {
+    print("i is 5")
+}
+
+var x = if i < 5 {
+    "i is less than 5"
+} else if i > 5 {
+    "i is greater than 5"
+} else {
+    "i is 5"
+}
+
+match i {
+    case 10:
+        print("i is equal to 10")
+    case _:
+        print("i is not 10")
+}
+
+match {
+    case i < 5:
+        print("i is less than 5")
+    case i > 5:
+        print("i is greater than 5")
+    case _:
+        print("i is 5")
+}
+
+var x = match {
+    case i < 5:
+        "i is less than 5"
+    case i > 5:
+        "i is greater than 5"
+    case _:
+        "i is 5"
+}
+
+var x = match (1, 2) {
+    (0, 0) => "The point is at the origin, (0, 0)",
+    (0, y) => $"The point is at (0, {y})",
+    (x, 0) => $"The point is at ({x}, 0)",
+    (x, y) => $"The point is at ({x}, {y})"
+}
+
+while i < 5 {
+    i += 1
+}
+
+for n in arr {
+    print(n)
+} else {
+    print("arr is empty")
+}
+
+for n in arr where @ > 1 {
+    print(n)
+}
+
+for n in 0..10 {
+    print(n)
+}
+
+for n in range(10, 0, -1) {
+    print(n)
+}
+
+for a, b in zip(points, coords) {
+    print(a, b)
+}
+
+if 2 in arr {
+    print("2 is in arr")
+}

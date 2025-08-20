@@ -1,9 +1,0 @@
-public func hello()
-{
-    print("Hello World!")
-}
-
-func secret()
-{
-    print("Not visible!")
-}

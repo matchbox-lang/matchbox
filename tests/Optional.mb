@@ -1,0 +1,11 @@
+enum Optional<T>
+{
+    Some(T),
+    None
+}
+
+if var x = Some(5) {
+    print(x)
+} else {
+    print("None")
+}

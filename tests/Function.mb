@@ -1,0 +1,8 @@
+func add(x, y int) int
+{
+    return x + y
+}
+
+var result = add(5, 10)
+
+print(result)

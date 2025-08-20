@@ -1,199 +1,57 @@
 #include "parser.h"
 #include "ast.h"
+#include "conversion.h"
 #include "lexer.h"
 #include "scope.h"
-#include "table.h"
+#include "service.h"
+#include "stringobject.h"
+#include "token.h"
+#include "vector.h"
 #include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
-
-typedef struct Parser
-{
-    Token current;
-    Token previous;
-    Scope* scope;
-} Parser;
-
-Parser parser;
+#include <stdlib.h>
 
 static AST* expression();
 static AST* identifier();
-static AST* statements();
-static AST* variable();
+static AST* prefix();
+static bool blocklevelStatements(Vector* nodes);
+
+typedef struct Parser
+{
+    Token currentToken;
+    Token prevToken;
+    Scope* currentScope;
+    AST* topLevel;
+} Parser;
+
+static Parser parser;
+
+static const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
+static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
+static const char* invalidTypeError = "Error: Invalid type for variable %.*s";
+static const char* redefinitionError = "Error: Redefinition of %.*s";
+static const char* undefinedError = "Error: %.*s is undefined";
+static const char* unexpectedEndError = "Error: Unexpected end of input";
+static const char* unexpectedTokenError = "Error: Unexpected %.*s";
+static const char* uninitializedError = "Error: %.*s is uninitialized";
 
 static void error(const char* message, Token token)
 {
-    fprintf(
-        stderr,
-        message,
-        token.length,
-        token.chars,
-        token.line,
-        token.column
-    );
+    fprintf(stderr, message, token.length, token.chars);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
 static void advance()
 {
-    parser.previous = parser.current;
-    parser.current = scanToken();
-}
-
-static Token peek()
-{
-    return parser.current;
-}
-
-static Token prev()
-{
-    return parser.previous;
-}
-
-static bool isBool(TokenType type)
-{
-    switch (type) {
-        case T_TRUE:
-        case T_FALSE:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isAssignment(TokenType type)
-{
-    switch (type) {
-        case T_EQUAL:
-        case T_PLUS_EQUAL:
-        case T_MINUS_EQUAL:
-        case T_STAR_EQUAL:
-        case T_SLASH_EQUAL:
-        case T_FLOOR_EQUAL:
-        case T_PERCENT_EQUAL:
-        case T_POWER_EQUAL:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isType(TokenType type)
-{
-    switch (type) {
-        case T_INT:
-        case T_UINT:
-        case T_INT8:
-        case T_INT16:
-        case T_INT32:
-        case T_INT64:
-        case T_UINT8:
-        case T_UINT16:
-        case T_UINT32:
-        case T_UINT64:
-        case T_FLOAT:
-        case T_DOUBLE:
-        case T_CHAR:
-        case T_BOOL:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isEquality(TokenType type)
-{
-    switch (type) {
-        case T_EQUAL_EQUAL:
-        case T_NOT_EQUAL:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isComparison(TokenType type)
-{
-    switch (type) {
-        case T_GREATER:
-        case T_GREATER_EQUAL:
-        case T_LESS:
-        case T_LESS_EQUAL:
-        case T_SPACESHIP:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isShift(TokenType type)
-{
-    switch (type) {
-        case T_LSHIFT:
-        case T_RSHIFT:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isTerm(TokenType type)
-{
-    switch (type) {
-        case T_PLUS:
-        case T_MINUS:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isFactor(TokenType type)
-{
-    switch (type) {
-        case T_STAR:
-        case T_SLASH:
-        case T_FLOOR:
-        case T_PERCENT:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isPrefix(TokenType type)
-{
-    switch (type) {
-        case T_INCREMENT:
-        case T_DECREMENT:
-        case T_PLUS:
-        case T_MINUS:
-        case T_EXCLAMATION:
-        case T_TILDE:
-            return true;
-    }
-
-    return false;
-}
-
-static bool isPostfix(TokenType type)
-{
-    switch (type) {
-        case T_INCREMENT:
-        case T_DECREMENT:
-            return true;
-    }
-
-    return false;
+    parser.prevToken = parser.currentToken;
+    parser.currentToken = scanToken();
 }
 
 static void consume(TokenType type)
 {
-    Token token = peek();
-
-    if (token.type != type) {
-        error("Error: Unexpected '%.*s' on line %d:%d\n", token);
+    if (parser.currentToken.type != type) {
+        error(unexpectedTokenError, parser.currentToken);
     }
     
     advance();
@@ -201,134 +59,227 @@ static void consume(TokenType type)
 
 static void consumeType()
 {
-    Token token = peek();
-
-    if (!isType(token.type)) {
-        error("Error: Unexpected '%.*s' on line %d:%d\n", token);
+    if (!isTypeToken(parser.currentToken.type)) {
+        error(unexpectedTokenError, parser.currentToken);
     }
 
+    consume(parser.currentToken.type);
+}
+
+static bool isEof()
+{
+    return parser.currentToken.type == T_EOF;
+}
+
+static AST* integerLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intValue = integerLiteralToValue(token.chars, token.length);
     consume(token.type);
+
+    return ast;
+}
+
+static AST* binaryLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intValue = binaryLiteralToValue(token.chars, token.length);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* hexadecimalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intValue = hexadecimalLiteralToValue(token.chars, token.length);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* octalLiteral(Token token)
+{
+    AST* ast = createAST(AST_INTEGER);
+    ast->intValue = octalLiteralToValue(token.chars, token.length);
+    consume(token.type);
+
+    return ast;
+}
+
+static AST* groupExpression()
+{
+    consume(T_LPAREN);
+    AST* ast = expression();
+
+    if (!ast && parser.currentToken.type == T_RPAREN) {
+        error(unexpectedTokenError, parser.currentToken);
+    }
+    
+    if (!ast || isEof()) {
+        freeAST(ast);
+        return NULL;
+    }
+
+    consume(T_RPAREN);
+
+    return ast;
+}
+
+static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
+{
+    if (!rightExpr) {
+        return NULL;
+    }
+
+    int a = getTypeId(leftExpr);
+    int b = getTypeId(rightExpr);
+
+    if (a != b) {
+        error(invalidOperandsError, token);
+    }
+
+    int typeId = isBoolOperatorToken(token.type) ? T_BOOL : a;
+    
+    AST* ast = createAST(AST_BINARY);
+    ast->binary.leftExpr = leftExpr;
+    ast->binary.operator = token;
+    ast->binary.rightExpr = rightExpr;
+    ast->binary.typeId = typeId;
+
+    return ast;
+}
+
+static AST* variable()
+{
+    Token token = parser.prevToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
+
+    if (!symbol) {
+        symbol = getLocalSymbol(parser.topLevel->compound.scope, id);
+    }
+
+    freeStringObject(id);
+
+    if (!symbol || !isVariableType(symbol)) {
+        error(undefinedError, token);
+    }
+    
+    if (!isInitialized(symbol)) {
+        error(uninitializedError, token);
+    }
+
+    AST* ast = createAST(AST_VARIABLE);
+    ast->variable.scope = parser.currentScope;
+    ast->variable.symbol = symbol;
+
+    return ast;
+}
+
+static AST* parameter()
+{
+    if (isEof()) {
+        return NULL;
+    }
+    
+    Token token = parser.currentToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
+
+    if (symbol) {
+        error(redefinitionError, token);
+    }
+    
+    consume(T_IDENTIFIER);
+
+    AST* ast = createAST(AST_PARAMETER);
+    ast->parameter.scope = parser.currentScope;
+    ast->parameter.id = id;
+    ast->parameter.typeId = T_INT;
+
+    if (isTypeToken(parser.currentToken.type)) {
+        ast->parameter.typeId = parser.currentToken.type;
+        consumeType();
+    }
+
+    setLocalSymbol(parser.currentScope, id, ast);
+
+    return ast;
 }
 
 static AST* primary()
 {
-    Token token = peek();
-
-    if (isBool(token.type)) {
-        AST* ast = createAST(AST_BOOLEAN);
-        ast->boolVal = token.type == T_TRUE;
-        consume(token.type);
-
-        return ast;
+    switch (parser.currentToken.type) {
+        case T_INTEGER_LITERAL:
+            return integerLiteral(parser.currentToken);
+        case T_BINARY_LITERAL:
+            return binaryLiteral(parser.currentToken);
+        case T_HEXADECIMAL_LITERAL:
+            return hexadecimalLiteral(parser.currentToken);
+        case T_OCTAL_LITERAL:
+            return octalLiteral(parser.currentToken);
+        case T_LPAREN:
+            return groupExpression();
+        case T_IDENTIFIER:
+            return identifier();
+        case T_EOF:
+            return NULL;
+        default:
+            error(unexpectedTokenError, parser.currentToken);
     }
-
-    if (token.type == T_DECIMAL_LITERAL) {
-        AST* ast = createAST(AST_INTEGER);
-        ast->intVal = strtol(token.chars, NULL, 10);
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_FLOAT_LITERAL) {
-        AST* ast = createAST(AST_FLOAT);
-        ast->floatVal = strtod(token.chars, NULL);
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_CHARACTER_LITERAL) {
-        AST* ast = createAST(AST_CHARACTER);
-        ast->character = token;
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_STRING_LITERAL) {
-        AST* ast = createAST(AST_STRING);
-        ast->string = token;
-        consume(token.type);
-
-        return ast;
-    }
-
-    if (token.type == T_LPAREN) {
-        consume(T_LPAREN);
-        AST* ast = expression();
-        consume(T_RPAREN);
-
-        return ast;
-    }
-
-    if (token.type == T_IDENTIFIER) {
-        return identifier();
-    }
-    
-    error("Error: Unexpected '%.*s' on line %d:%d\n", token);
 }
 
-static AST* postfix()
+static AST* prefixOperand()
 {
-    if (peek().type != T_IDENTIFIER) {
-        return primary();
+    if (isPrefixToken(parser.currentToken.type)) {
+        return prefix();
     }
 
-    AST* expr = identifier();
-    Token token = peek();
-
-    if (!isPostfix(token.type)) {
-        return expr;
+    Token token = parser.currentToken;
+    AST* expr = primary();
+    
+    if (!expr) {
+        return NULL;
     }
 
-    AST* ast = createAST(AST_POSTFIX);
-    ast->postfix.operator = token;
-    consume(token.type);
-    ast->postfix.expr = expr;
-
-    return ast;
+    if (!isPrefix(expr) && !isPrefixOperand(expr)) {
+        error(unexpectedTokenError, token);
+    }
+    
+    return expr;
 }
 
 static AST* prefix()
 {
-    if (!isPrefix(peek().type)) {
-        return postfix();
+    if (!isPrefixToken(parser.currentToken.type)) {
+        return primary();
     }
 
-    Token token = peek();
-    AST* ast = createAST(AST_PREFIX);
-    ast->prefix.operator = token;
+    Token token = parser.currentToken;
     consume(token.type);
-
-    if (peek().type == T_IDENTIFIER) {
-        consume(T_IDENTIFIER);
-        ast->prefix.expr = variable();
-    } else {
-        ast->prefix.expr = prefix();
+    AST* expr = prefixOperand();
+    
+    if (!expr) {
+        return NULL;
     }
+
+    AST* ast = createAST(AST_PREFIX);
+    ast->prefix.expr = expr;
+    ast->prefix.operator = token;
 
     return ast;
-
 }
 
 static AST* exponent()
 {
     AST* expr = prefix();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_POWER) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_POWER) {
         consume(token.type);
-        ast->binary.rightExpr = prefix();
-        expr = ast;
+        expr = binary(expr, prefix(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -337,20 +288,12 @@ static AST* exponent()
 static AST* factor()
 {
     AST* expr = exponent();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (!isFactor(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isFactorToken(token.type)) {
         consume(token.type);
-        ast->binary.rightExpr = exponent();
-        expr = ast;
+        expr = binary(expr, exponent(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -359,20 +302,12 @@ static AST* factor()
 static AST* term()
 {
     AST* expr = factor();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (!isTerm(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isTermToken(token.type)) {
         consume(token.type);
-        ast->binary.rightExpr = factor();
-        expr = ast;
+        expr = binary(expr, factor(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -381,20 +316,12 @@ static AST* term()
 static AST* shift()
 {
     AST* expr = term();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (!isShift(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isShiftToken(token.type)) {
         consume(token.type);
-        ast->binary.rightExpr = term();
-        expr = ast;
+        expr = binary(expr, term(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -403,20 +330,12 @@ static AST* shift()
 static AST* comparison()
 {
     AST* expr = shift();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (!isComparison(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isComparisonToken(token.type)) {
         consume(token.type);
-        ast->binary.rightExpr = shift();
-        expr = ast;
+        expr = binary(expr, shift(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -425,20 +344,12 @@ static AST* comparison()
 static AST* equality()
 {
     AST* expr = comparison();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (!isEquality(token.type)) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (isEqualityToken(token.type)) {
         consume(token.type);
-        ast->binary.rightExpr = comparison();
-        expr = ast;
+        expr = binary(expr, comparison(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -447,20 +358,12 @@ static AST* equality()
 static AST* bitwiseAND()
 {
     AST* expr = equality();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_AMPERSAND) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_AMPERSAND) {
         consume(token.type);
-        ast->binary.rightExpr = equality();
-        expr = ast;
+        expr = binary(expr, equality(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -469,20 +372,12 @@ static AST* bitwiseAND()
 static AST* bitwiseXOR()
 {
     AST* expr = bitwiseAND();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_CIRCUMFLEX) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_CIRCUMFLEX) {
         consume(token.type);
-        ast->binary.rightExpr = bitwiseAND();
-        expr = ast;
+        expr = binary(expr, bitwiseAND(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -491,20 +386,12 @@ static AST* bitwiseXOR()
 static AST* bitwiseOR()
 {
     AST* expr = bitwiseXOR();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_PIPE) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_PIPE) {
         consume(token.type);
-        ast->binary.rightExpr = bitwiseXOR();
-        expr = ast;
+        expr = binary(expr, bitwiseXOR(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -513,20 +400,12 @@ static AST* bitwiseOR()
 static AST* booleanAND()
 {
     AST* expr = bitwiseOR();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_BOOLEAN_AND) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_BOOLEAN_AND) {
         consume(token.type);
-        ast->binary.rightExpr = bitwiseOR();
-        expr = ast;
+        expr = binary(expr, bitwiseOR(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -535,20 +414,12 @@ static AST* booleanAND()
 static AST* booleanOR()
 {
     AST* expr = booleanAND();
+    Token token = parser.currentToken;
 
-    while (1) {
-        Token token = peek();
-
-        if (token.type != T_BOOLEAN_OR) {
-            break;
-        }
-
-        AST* ast = createAST(AST_BINARY);
-        ast->binary.leftExpr = expr;
-        ast->binary.operator = token;
+    while (token.type == T_BOOLEAN_OR) {
         consume(token.type);
-        ast->binary.rightExpr = booleanAND();
-        expr = ast;
+        expr = binary(expr, booleanAND(), token);
+        token = parser.currentToken;
     }
 
     return expr;
@@ -559,150 +430,191 @@ static AST* expression()
     return booleanOR();
 }
 
-static AST* returnStmt()
+static AST* returnStatement()
 {
+    if (parser.currentScope->level < 2) {
+        error(unexpectedTokenError, parser.currentToken);
+    }
+
     consume(T_RETURN);
-    
+    AST* expr = expression();
+
+    if (!expr) {
+        return NULL;
+    }
+
     AST* ast = createAST(AST_RETURN);
-    ast->expr = expression();
+    ast->expression = expr;
 
     return ast;
 }
 
-static AST* parameter()
+static void compareFunctionSignature(AST* caller, AST* callee, Token token)
 {
-    Token token = peek();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
+    size_t argCount = countVector(&caller->functionCall.args);
+    size_t paramCount = countVector(&callee->functionDefinition.params);
 
-    if (symbol) {
-        error("Error: Redefinition of '%.*s' on line %d:%d\n", token);
+    if (argCount != paramCount) {
+        error(invalidArgsError, token);
+    }
+
+    for (int i = 0; i < argCount; i++) {
+        AST* a = getVectorAt(&caller->functionCall.args, i);
+        AST* b = getVectorAt(&callee->functionDefinition.params, i);
+        int typeId = getTypeId(a);
+
+        if (typeId != b->parameter.typeId) {
+            error(invalidArgsError, token);
+        }
+    }
+}
+
+static void compareServiceSignature(AST* caller, Service* service, Token token)
+{
+    size_t argCount = countVector(&caller->serviceRequest.args);
+
+    if (argCount != service->paramCount) {
+        error(invalidArgsError, token);
+    }
+
+    for (int i = 0; i < argCount; i++) {
+        AST* expr = getVectorAt(&caller->serviceRequest.args, i);
+        int typeId = getTypeId(expr);
+
+        if (typeId != service->params[i]) {
+            error(invalidArgsError, token);
+        }
+    }
+}
+
+static bool arguments(Vector* args)
+{
+    consume(T_LPAREN);
+
+    if (isEof()) {
+        return false;
+    }
+
+    while (parser.currentToken.type != T_RPAREN) {
+        AST* expr = expression();
+
+        if (!expr && (parser.currentToken.type == T_COMMA || parser.currentToken.type == T_RPAREN)) {
+            error(unexpectedTokenError, parser.currentToken);
+        }
+
+        if (!expr) {
+            return false;
+        }
+
+        pushVectorItem(args, expr);
+
+        if (parser.currentToken.type == T_COMMA) {
+            consume(T_COMMA);
+        }
+    }
+
+    if (isEof()) {
+        return false;
+    }
+
+    consume(T_RPAREN);
+
+    return true;
+}
+
+static bool parameters(Vector* params)
+{
+    consume(T_LPAREN);
+
+    if (isEof()) {
+        return false;
+    }
+
+    int position = 0;
+
+    while (parser.currentToken.type != T_RPAREN) {
+        AST* expr = parameter();
+
+        if (!expr && (parser.currentToken.type == T_COMMA || parser.currentToken.type == T_RPAREN)) {
+            error(unexpectedTokenError, parser.currentToken);
+        }
+
+        if (!expr) {
+            return false;
+        }
+
+        expr->parameter.position = position++;
+        pushVectorItem(params, expr);
+
+        if (parser.currentToken.type == T_COMMA) {
+            consume(T_COMMA);
+        }
+    }
+
+    if (isEof()) {
+        return false;
     }
     
-    consume(T_IDENTIFIER);
+    consume(T_RPAREN);
 
-    AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->varDef.scope = parser.scope;
-    ast->varDef.id = id;
-    ast->varDef.typeId = T_UNKNOWN;
-    ast->varDef.expr = createAST(AST_NONE);
-
-    if (isType(peek().type)) {
-        ast->varDef.typeId = peek().type;
-        consumeType();
-    }
-
-    setLocalVariable(parser.scope, id, ast);
-
-    return ast;
+    return true;
 }
 
-static AST* assignment()
+static AST* serviceRequest(Token token)
 {
-    Token operator = peek();
-    Token token = prev();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
+    StringObject* id = copyStringObject(token.chars, token.length);
+    Service* service = getServiceByName(id->chars);
 
-    if (!symbol) {
-        error("Error: '%.*s' is undefined on line %d:%d\n", token);
+    if (!service) {
+        error(undefinedError, token);
     }
 
-    consume(operator.type);
+    freeStringObject(id);
 
-    AST* ast = createAST(AST_ASSIGNMENT);
-    ast->assignment.scope = parser.scope;
-    ast->assignment.id = id;
-    ast->assignment.operator = operator;
-    ast->assignment.expr = expression();
+    AST* ast = createAST(AST_SERVICE_REQUEST);
+    ast->serviceRequest.opcode = service->opcode;
+    ast->serviceRequest.service = service;
 
-    return ast;
-}
-
-static AST* variable()
-{
-    Token token = prev();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
-
-    if (!symbol) {
-        error("Error: '%.*s' is undefined on line %d:%d\n", token);
+    if (!arguments(&ast->serviceRequest.args)) {
+        freeAST(ast);
+        return NULL;
     }
 
-    if (!symbol->varDef.expr) {
-        error("Error: '%.*s' is uninitialized on line %d:%d\n", token);
-    }
-
-    AST* ast = createAST(AST_VARIABLE);
-    ast->var.scope = parser.scope;
-    ast->var.id = id;
-
-    return ast;
-}
-
-static AST* variableDefinition()
-{
-    consume(T_VAR);
-
-    Token token = peek();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
-
-    if (symbol) {
-        error("Error: Redefinition of '%.*s' on line %d:%d\n", token);
-    }
-
-    consume(T_IDENTIFIER);
-
-    AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->varDef.scope = parser.scope;
-    ast->varDef.id = id;
-    ast->varDef.typeId = T_UNKNOWN;
-    ast->varDef.expr = NULL;
-
-    if (isType(peek().type)) {
-        ast->varDef.typeId = peek().type;
-        consumeType();
-    }
-    
-    if (peek().type == T_EQUAL) {
-        consume(T_EQUAL);
-        ast->varDef.expr = expression();
-    }
-
-    setLocalVariable(parser.scope, id, ast);
+    compareServiceSignature(ast, service, token);
 
     return ast;
 }
 
 static AST* functionCall()
 {
-    Token token = prev();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getSymbol(parser.scope, id);
+    Token token = parser.prevToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (!symbol) {
-        error("Error: '%.*s' is undefined on line %d:%d\n", token);
+        symbol = getLocalSymbol(parser.topLevel->compound.scope, id);
+    }
+    
+    freeStringObject(id);
+    
+    if (!symbol) {
+        return serviceRequest(token);
+    }
+
+    if (!symbol || !isFunctionDefinition(symbol)) {
+        error(undefinedError, token);
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->funcCall.scope = parser.scope;
-    ast->funcCall.id = id;
+    ast->functionCall.scope = parser.currentScope;
+    ast->functionCall.symbol = symbol;
 
-    consume(T_LPAREN);
-
-    if (peek().type != T_RPAREN) {
-        AST* expr = expression();
-        pushVector(&ast->funcCall.args, expr);
-
-        while (peek().type == T_COMMA) {
-            consume(T_COMMA);
-            AST* expr = expression();
-            pushVector(&ast->funcCall.args, expr);
-        }
+    if (!arguments(&ast->functionCall.args)) {
+        freeAST(ast);
+        return NULL;
     }
-    
-    consume(T_RPAREN);
+
+    compareFunctionSignature(ast, symbol, token);
 
     return ast;
 }
@@ -711,47 +623,168 @@ static AST* functionDefinition()
 {
     consume(T_FUNC);
 
-    Token token = peek();
-    StringObject* id = copyString(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser.scope, id);
+    if (isEof()) {
+        return NULL;
+    }
+
+    Token token = parser.currentToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
 
     if (symbol) {
-        error("Error: Redefinition of '%.*s' on line %d:%d\n", token);
+        error(redefinitionError, token);
+    }
+
+    if (parser.currentToken.type != T_IDENTIFIER) {
+        error(unexpectedTokenError, parser.currentToken);
+    }
+
+    consume(T_IDENTIFIER);
+
+    if (isEof()) {
+        return NULL;
     }
 
     AST* ast = createAST(AST_FUNCTION_DEFINITION);
-    ast->funcDef.scope = parser.scope;
-    ast->funcDef.id = id;
-    ast->funcDef.typeId = T_UNKNOWN;
+    ast->functionDefinition.scope = createScope(parser.currentScope);
+    ast->functionDefinition.id = id;
+    ast->functionDefinition.typeId = T_INT;
+    ast->functionDefinition.body = NULL;
 
-    consume(T_IDENTIFIER);
-    consume(T_LPAREN);
-
-    parser.scope = createScope(parser.scope);
-
-    if (peek().type != T_RPAREN) {
-        AST* expr = parameter();
-        pushVector(&ast->funcDef.params, expr);
-
-        while (peek().type == T_COMMA) {
-            consume(T_COMMA);
-            AST* expr = parameter();
-            pushVector(&ast->funcDef.params, expr);
-        }
-    }
+    parser.currentScope = ast->functionDefinition.scope;
     
-    consume(T_RPAREN);
+    if (!parameters(&ast->functionDefinition.params)) {
+        freeAST(ast);
+        return NULL;
+    }
 
-    if (isType(peek().type)) {
-        ast->funcDef.typeId = peek().type;
+    if (isTypeToken(parser.currentToken.type)) {
+        ast->functionDefinition.typeId = parser.currentToken.type;
         consumeType();
     }
 
+    if (isEof()) {
+        freeAST(ast);
+        return NULL;
+    }
+
     consume(T_LBRACE);
-    ast->funcDef.body = statements(T_RBRACE);
+
+    AST* body = createAST(AST_COMPOUND);
+    body->compound.scope = parser.currentScope;
+
+    if (!blocklevelStatements(&body->compound.statements)) {
+        freeAST(ast);
+        return NULL;
+    }
+
+    ast->functionDefinition.body = body;
     consume(T_RBRACE);
-    parser.scope = parser.scope->parent;
-    setLocalSymbol(parser.scope, id, ast);
+    parser.currentScope = parser.currentScope->parent;
+    setLocalSymbol(parser.currentScope, id, ast);
+
+    return ast;
+}
+
+static AST* assignment()
+{
+    Token operator = parser.currentToken;
+    Token token = parser.prevToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
+
+    if (!symbol) {
+        symbol = getLocalSymbol(parser.topLevel->compound.scope, id);
+    }
+
+    freeStringObject(id);
+
+    if (!symbol) {
+        error(undefinedError, token);
+    }
+
+    if (parser.currentScope != getScope(symbol) && !isInitialized(symbol)) {
+        error(uninitializedError, token);
+    }
+    
+    consume(operator.type);
+    AST* expr = expression();
+
+    if (!expr) {
+        return NULL;
+    }
+
+    AST* ast = createAST(AST_ASSIGNMENT);
+    ast->assignment.scope = parser.currentScope;
+    ast->assignment.operator = operator;
+    ast->assignment.symbol = symbol;
+    ast->assignment.expr = expr;
+
+    initialize(symbol);
+
+    return ast;
+}
+
+static AST* variableDefinition()
+{
+    consume(T_VAR);
+
+    if (isEof()) {
+        return NULL;
+    }
+
+    Token token = parser.currentToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    AST* symbol = getLocalSymbol(parser.currentScope, id);
+
+    if (symbol) {
+        error(redefinitionError, token);
+    }
+
+    consume(T_IDENTIFIER);
+
+    if (isEof()) {
+        return NULL;
+    }
+
+    AST* ast = createAST(AST_VARIABLE_DEFINITION);
+    ast->variableDefinition.scope = parser.currentScope;
+    ast->variableDefinition.id = id;
+    ast->variableDefinition.position = getLocalCount(parser.currentScope);
+    ast->variableDefinition.expr = NULL;
+
+    if (isTypeToken(parser.currentToken.type)) {
+        ast->variableDefinition.typeId = parser.currentToken.type;
+        consumeType();
+    } else if (parser.currentToken.type != T_EQUAL) {
+        error(unexpectedTokenError, parser.currentToken);
+    }
+    
+    if (parser.currentToken.type != T_EQUAL) {
+        ast->variableDefinition.expr = createAST(AST_NONE);
+        ast->variableDefinition.typeId = T_INT;
+        setLocalVariableSymbol(parser.currentScope, id, ast);
+
+        return ast;
+    }
+    
+    consume(T_EQUAL);
+    AST* expr = expression();
+    
+    if (!expr) {
+        freeAST(ast);
+        return NULL;
+    }
+
+    ast->variableDefinition.typeId = getTypeId(expr);
+    ast->variableDefinition.expr = expr;
+
+    if (ast->variableDefinition.typeId == T_NONE) {
+        error(invalidTypeError, token);
+    }
+
+    setLocalVariableSymbol(parser.currentScope, id, ast);
+    initialize(ast);
 
     return ast;
 }
@@ -759,12 +792,10 @@ static AST* functionDefinition()
 static AST* identifier()
 {
     consume(T_IDENTIFIER);
-
-    if (isAssignment(peek().type)) {
+    
+    if (isAssignmentToken(parser.currentToken.type)) {
         return assignment();
-    }
-
-    if (peek().type == T_LPAREN) {
+    } else if (parser.currentToken.type == T_LPAREN) {
         return functionCall();
     }
 
@@ -773,48 +804,64 @@ static AST* identifier()
 
 static AST* statement()
 {
-    Token token = peek();
-
-    switch (token.type) {
-        case T_UNKNOWN:
-            error("Error: Unexpected '%.*s' on line %d:%d\n", token);
-        case T_VAR:
-            return variableDefinition();
+    switch (parser.currentToken.type) {
         case T_FUNC:
             return functionDefinition();
+        case T_VAR:
+            return variableDefinition();
         case T_RETURN:
-            return returnStmt();
+            return returnStatement();
+        default:
+            return expression();
     }
-
-    return expression();
 }
 
-static AST* statements(TokenType type)
+static bool statements(Vector* nodes, TokenType type)
 {
-    Token token = peek();
-    AST* ast = createAST(AST_STATEMENTS);
+    Token token = parser.currentToken;
 
     while (token.type != type) {
         AST* stmt = statement();
+        if (!stmt) {
+            return false;
+        }
         
-        if (peek().line == token.line &&
-            peek().type != type &&
-            prev().type != T_RBRACE) {
+        if (!isEof() && 
+            parser.currentToken.line == token.line &&
+            parser.currentToken.type != type &&
+            parser.prevToken.type != T_RBRACE) {
             consume(T_SEMICOLON);
         }
 
-        pushVector(&ast->statements, stmt);
-        token = peek();
+        pushVectorItem(nodes, stmt);
+        token = parser.currentToken;
     }
 
-    return ast;
+    return true;
 }
 
-AST* parse(char* source)
+static bool blocklevelStatements(Vector* nodes)
+{
+    return statements(nodes, T_RBRACE);
+}
+
+static bool toplevelStatements()
+{
+    return statements(&parser.topLevel->compound.statements, T_EOF);
+}
+
+void initParser(AST* ast)
+{
+    parser.currentScope = ast->compound.scope;
+    parser.topLevel = ast;
+}
+
+void parse(char* source)
 {
     initLexer(source);
-    parser.scope = createScope(NULL);
     advance();
-    
-    return statements(T_EOF);
+
+    if (!toplevelStatements()) {
+        error(unexpectedEndError, parser.currentToken);
+    }
 }

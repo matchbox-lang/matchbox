@@ -1,0 +1,19 @@
+extension int
+{
+    func echo()
+    {
+        print(self)
+        print(self)
+    }
+}
+
+extension float
+{
+    squared float
+    {
+        return self * self
+    }
+}
+
+5.echo()
+8.squared

@@ -1,465 +1,355 @@
 #include "vm.h"
-#include "chunk.h"
-#include "compiler.h"
+#include "codeobject.h"
+#include "functionobject.h"
+#include "moduleobject.h"
+#include "native.h"
 #include "opcode.h"
-#include "syscall.h"
+#include "service.h"
 #include "value.h"
 #include <math.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define READ_UINT16() (vm.pc += 2, (uint16_t)((vm.pc[-2] << 8) | vm.pc[-1]))
-#define READ_UINT8() (*(vm.pc++))
+#define PUSH(value) ((vm->sp++)[0] = (value))
+#define PUSH_BOOL(i) (PUSH(BOOL_VALUE(i)))
+#define PUSH_FLOAT(i) (PUSH(FLOAT_VALUE(i)))
+#define PUSH_INT(i) (PUSH(INT_VALUE(i)))
+#define PUSH_POINTER(i) (PUSH(POINTER_VALUE(i)))
 
-#define SLOT_BOOL(i) (AS_BOOL(vm.stack[i]))
-#define SLOT_FLOAT(i) (AS_FLOAT(vm.stack[i]))
-#define SLOT_INT(i) (AS_INT(vm.stack[i]))
-#define SLOT_POINTER(i) (AS_POINTER(vm.stack[i]))
+#define POP() ((--vm->sp)[0])
+#define POP_BOOL() (AS_BOOL(POP()))
+#define POP_FLOAT() (AS_FLOAT(POP()))
+#define POP_INT() (AS_INT(POP()))
+#define POP_POINTER() (AS_POINTER(POP()))
 
-typedef void (*syscall_t)();
-typedef void (*instruction_t)();
+#define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
+#define READ_UINT8() ((uint8_t)*(vm->ip++))
 
-typedef struct VM
+#define TEST_OVERFLOW(n) if (vm->sp - vm->stack + (n) > STACK_MAX) \
+    fprintf(stderr, "Error: Stack overflow\n"), \
+    exit(1)
+
+static void initServices(VM* vm)
 {
-    bool running;
-    syscall_t syscode[SYSCALL_SIZE];
-    instruction_t opcode[INSTRUCTION_SIZE];
-    Value stack[STACK_SIZE];
-    Value* sp;
-    Value* fp;
-    uint8_t* pc;
-    uint8_t* ra;
-    ValueArray* constants;
-} VM;
-
-VM vm;
-
-static void error(const char* message)
-{
-    fprintf(stderr, message);
-    exit(1);
+    vm->service[SOP_EXIT] = __exit;
+    vm->service[SOP_PRINT] = __print;
+    vm->service[SOP_CLAMP] = __clamp;
+    vm->service[SOP_ABS] = __abs;
+    vm->service[SOP_MIN] = __min;
+    vm->service[SOP_MAX] = __max;
+    vm->service[SOP_BYTEORDER] = __byteorder;
 }
 
-static void errors(const char* message, const char* s)
+static void run(VM* vm)
 {
-    fprintf(stderr, message, s);
-    exit(1);
-}
+    uint8_t opcode;
+    FunctionObject* function = AS_POINTER(vm->module->constants.data[0]);
+    int32_t a;
+    int32_t b;
+    int32_t x;
+    Service service;
+    Value value;
 
-static void push(Value value)
-{
-    *vm.sp = value;
-    vm.sp++;
-}
-
-static Value pop()
-{
-    vm.sp--;
-    return *vm.sp;
-}
-
-static Value peek(size_t index)
-{
-    return vm.sp[-(index + 1)];
-}
-
-static void sys_exit()
-{
-    uint32_t status = AS_INT(peek(1));
+    vm->ip = function->code.data;
     
-    exit(status);
-}
+    TEST_OVERFLOW(function->maxStackCount);
 
-static void op_hlt()
-{
-    vm.running = false;
-}
+    while ((opcode = READ_UINT8())) {
+        switch (opcode) {
+            case OP_REQS:
+                x = READ_UINT8();
+                service = services[x];
+                value = vm->service[x](vm->sp - service.paramCount);
+                vm->sp -= service.paramCount;
+                PUSH(value);
+                break;
 
-static void op_syscall()
-{
-    uint32_t n = AS_INT(peek(0));
+            case OP_LDC:
+                x = READ_UINT8();
+                value = vm->module->constants.data[x];
+                PUSH(value);
+                break;
 
-    vm.syscode[n]();
-}
+            case OP_REG:
+                pushValue(&vm->globals, POP());
+                break;
 
-static void op_ldc()
-{
-    int8_t imm = READ_UINT8();
-    Value constant = vm.constants->values[imm];
+            case OP_LDG:
+                x = READ_UINT8();
+                value = vm->globals.data[x];
+                PUSH(value);
+                break;
 
-    push(constant);
-}
+            case OP_STG:
+                x = READ_UINT8();
+                vm->globals.data[x] = POP();
+                break;
 
-static void op_ldl()
-{
-    uint8_t imm = READ_UINT8();
-    Value local = vm.fp[imm];
+            case OP_LDL:
+                x = (int8_t) READ_UINT8();
+                PUSH(vm->fp[x]);
+                break;
 
-    push(local);
-}
+            case OP_LDL_0:
+                PUSH(vm->fp[0]);
+                break;
 
-static void op_ldl_0()
-{
-    push(vm.fp[0]);
-}
+            case OP_LDL_1:
+                PUSH(vm->fp[1]);
+                break;
 
-static void op_ldl_1()
-{
-    push(vm.fp[1]);
-}
+            case OP_LDL_2:
+                PUSH(vm->fp[2]);
+                break;
 
-static void op_ldl_2()
-{
-    push(vm.fp[2]);
-}
+            case OP_LDL_3:
+                PUSH(vm->fp[3]);
+                break;
 
-static void op_stl()
-{
-    uint8_t imm = READ_UINT8();
+            case OP_STL:
+                x = (int8_t) READ_UINT8();
+                vm->fp[x] = POP();
+                break;
 
-    vm.fp[imm] = peek(0);
-}
+            case OP_STL_0:
+                vm->fp[0] = POP();
+                break;
 
-static void op_stl_0()
-{
-    vm.fp[0] = peek(0);
-}
+            case OP_STL_1:
+                vm->fp[1] = POP();
+                break;
 
-static void op_stl_1()
-{
-    vm.fp[1] = peek(0);
-}
+            case OP_STL_2:
+                vm->fp[2] = POP();
+                break;
 
-static void op_stl_2()
-{
-    vm.fp[2] = peek(0);
-}
+            case OP_STL_3:
+                vm->fp[3] = POP();
+                break;
 
-static void op_push()
-{
-    int8_t imm = READ_UINT8();
+            case OP_PUSHB:
+                x = (int8_t) READ_UINT8();
+                PUSH_INT(x);
+                break;
 
-    push(INT_VALUE(imm));
-}
+            case OP_PUSHH:
+                x = (int16_t) READ_UINT16();
+                PUSH_INT(x);
+                break;
 
-static void op_push_0()
-{
-    push(INT_VALUE(0));
-}
+            case OP_PUSH_0:
+                PUSH_INT(0);
+                break;
 
-static void op_push_1()
-{
-    push(INT_VALUE(1));
-}
+            case OP_PUSH_1:
+                PUSH_INT(1);
+                break;
 
-static void op_pop()
-{
-    pop();
-}
+            case OP_PUSH_2:
+                PUSH_INT(2);
+                break;
 
-static void op_add()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_PUSH_3:
+                PUSH_INT(3);
+                break;
 
-    push(INT_VALUE(a + b));
-}
+            case OP_POP:
+                vm->sp--;
+                break;
 
-static void op_sub()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_DUP:
+                PUSH(vm->sp[-1]);
+                break;
 
-    push(INT_VALUE(a - b));
-}
+            case OP_INC:
+                AS_INT(vm->sp[-1])++;
+                break;
 
-static void op_mul()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_DEC:
+                AS_INT(vm->sp[-1])--;
+                break;
+            
+            case OP_ADD:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a + b);
+                break;
 
-    push(INT_VALUE(a * b));
-}
+            case OP_SUB:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a - b);
+                break;
 
-static void op_div()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_MUL:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a * b);
+                break;
 
-    push(INT_VALUE(a / b));
-}
+            case OP_DIV:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a / b);
+                break;
 
-static void op_fdivi()
-{
-    float b = AS_FLOAT(pop());
-    float a = AS_FLOAT(pop());
+            case OP_REM:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a % b);
+                break;
 
-    push(FLOAT_VALUE(floor(a / b)));
-}
+            case OP_POW:
+                b = POP_INT();
+                a = POP_INT();
+                x = pow(a, b);
+                PUSH_INT(x);
+                break;
 
-static void op_rem()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_BAND:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a & b);
+                break;
 
-    push(INT_VALUE(a % b));
-}
+            case OP_BOR:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a | b);
+                break;
 
-static void op_pow()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_BXOR:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a ^ b);
+                break;
 
-    push(INT_VALUE(pow(a, b)));
-}
+            case OP_BNOT:
+                x = AS_INT(vm->sp[-1]);
+                vm->sp[-1] = INT_VALUE(~x);
+                break;
 
-static void op_band()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_LSL:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a << b);
+                break;
 
-    push(INT_VALUE(a & b));
-}
+            case OP_LSR:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(a >> b);
+                break;
 
-static void op_bor()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_ASR:
+                b = POP_INT();
+                a = POP_INT();
+                PUSH_INT(~(~a >> b));
+                break;
 
-    push(INT_VALUE(a | b));
-}
+            case OP_NEG:
+                x = AS_INT(vm->sp[-1]);
+                vm->sp[-1] = INT_VALUE(-x);
+                break;
 
-static void op_bxor()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_NOT:
+                x = AS_INT(vm->sp[-1]);
+                vm->sp[-1] = INT_VALUE(!x);
+                break;
 
-    push(INT_VALUE(a ^ b));
-}
+            case OP_BEQ:
+                b = AS_INT(vm->sp[-1]);
+                a = AS_INT(vm->sp[-2]);
+                if (a == b) vm->ip += READ_UINT16();
+                break;
 
-static void op_bnot()
-{
-    uint32_t n = AS_INT(vm.sp[-1]);
+            case OP_BLT:
+                b = AS_INT(vm->sp[-1]);
+                a = AS_INT(vm->sp[-2]);
+                if (a < b) vm->ip += READ_UINT16();
+                break;
 
-    vm.sp[-1] = INT_VALUE(~n);
-}
+            case OP_BLE:
+                b = AS_INT(vm->sp[-1]);
+                a = AS_INT(vm->sp[-2]);
+                if (a <= b) vm->ip += READ_UINT16();
+                break;
 
-static void op_lsl()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_JMP:
+                vm->ip += READ_UINT16();
+                break;
 
-    push(INT_VALUE(a << b));
-}
+            case OP_CALL:
+                x = READ_UINT16();
+                function = AS_POINTER(vm->module->constants.data[x]);
 
-static void op_lsr()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+                TEST_OVERFLOW(function->maxStackCount);
+                PUSH_INT(function->paramCount);
+                PUSH_POINTER(vm->ip);
+                PUSH_POINTER(vm->fp);
 
-    push(INT_VALUE(a >> b));
-}
+                vm->ip = function->code.data;
+                vm->fp = vm->sp;
+                break;
 
-static void op_asr()
-{
-    uint32_t b = AS_INT(pop());
-    uint32_t a = AS_INT(pop());
+            case OP_RET:
+                vm->sp = vm->fp;
+                vm->fp = POP_POINTER();
+                vm->ip = POP_POINTER();
+                vm->sp -= POP_INT();
+                PUSH_INT(0);
+                break;
 
-    push(INT_VALUE(~(~a >> b)));
-}
+            case OP_RETV:
+                value = POP();
+                vm->sp = vm->fp;
+                vm->fp = POP_POINTER();
+                vm->ip = POP_POINTER();
+                vm->sp -= POP_INT();
+                PUSH(value);
+                break;
 
-static void op_abs()
-{
-    uint32_t n = AS_INT(pop());
-
-    push(INT_VALUE(((n >> 31) | 1) * n));
-}
-
-static void op_not()
-{
-    uint32_t n = AS_INT(vm.sp[-1]);
-
-    vm.sp[-1] = INT_VALUE(!n);
-}
-
-static void op_neg()
-{
-    uint32_t n = AS_INT(vm.sp[-1]);
-
-    vm.sp[-1] = INT_VALUE(-n);
-}
-
-static void op_inc()
-{
-    uint8_t imm = READ_UINT8();
-
-    AS_INT(vm.fp[imm])++;
-}
-
-static void op_dec()
-{
-    uint8_t imm = READ_UINT8();
-
-    AS_INT(vm.fp[imm])--;
-}
-
-static void op_beq()
-{
-    int16_t imm = READ_UINT16();
-    Value b = peek(0);
-    Value a = peek(1);
-
-    if (AS_INT(a) == AS_INT(b)) {
-        vm.pc += imm;
+            default:
+                return;
+        }
     }
 }
 
-static void op_blt()
+void initVM(VM* vm, ModuleObject* module)
 {
-    int16_t imm = READ_UINT16();
-    Value b = peek(0);
-    Value a = peek(1);
-
-    if (AS_INT(a) < AS_INT(b)) {
-        vm.pc += imm;
-    }
-}
-
-static void op_ble()
-{
-    int16_t imm = READ_UINT16();
-    Value b = peek(0);
-    Value a = peek(1);
-
-    if (AS_INT(a) <= AS_INT(b)) {
-        vm.pc += imm;
-    }
-}
-
-static void op_jmp()
-{
-    vm.pc += READ_UINT16();
-}
-
-static void op_jsr()
-{
-    Value ra = POINTER_VALUE(vm.pc + 1);
-    Value fp = POINTER_VALUE(vm.fp);
-
-    push(ra);
-    push(fp);
+    initValueArray(&vm->globals);
+    initServices(vm);
     
-    vm.pc += READ_UINT16();
-    vm.fp = vm.sp;
+    vm->module = module;
+    vm->ip = NULL;
+    vm->sp = vm->stack;
+    vm->fp = vm->stack;
 }
 
-static void op_ret()
+void freeVM(VM* vm)
 {
-    vm.pc = AS_POINTER(vm.fp[-2]);
-    vm.fp = AS_POINTER(vm.fp[-1]);
+    freeValueArray(&vm->globals);
 }
 
-static void initOpcodes()
+void inspectStack(VM* vm)
 {
-    vm.opcode[OP_HLT] = op_hlt;
-    vm.opcode[OP_SYSCALL] = op_syscall;
-    vm.opcode[OP_LDC] = op_ldc;
-    vm.opcode[OP_LDL] = op_ldl;
-    vm.opcode[OP_LDL_0] = op_ldl_0;
-    vm.opcode[OP_LDL_1] = op_ldl_1;
-    vm.opcode[OP_LDL_2] = op_ldl_2;
-    vm.opcode[OP_STL] = op_stl;
-    vm.opcode[OP_STL_0] = op_stl_0;
-    vm.opcode[OP_STL_1] = op_stl_1;
-    vm.opcode[OP_STL_2] = op_stl_2;
-    vm.opcode[OP_PUSH] = op_push;
-    vm.opcode[OP_PUSH_0] = op_push_0;
-    vm.opcode[OP_PUSH_1] = op_push_1;
-    vm.opcode[OP_POP] = op_pop;
-    vm.opcode[OP_ADD] = op_add;
-    vm.opcode[OP_SUB] = op_sub;
-    vm.opcode[OP_MUL] = op_mul;
-    vm.opcode[OP_DIV] = op_div;
-    vm.opcode[OP_FDIVI] = op_fdivi;
-    vm.opcode[OP_REM] = op_rem;
-    vm.opcode[OP_POW] = op_pow;
-    vm.opcode[OP_BAND] = op_band;
-    vm.opcode[OP_BOR] = op_bor;
-    vm.opcode[OP_BXOR] = op_bxor;
-    vm.opcode[OP_BNOT] = op_bnot;
-    vm.opcode[OP_LSL] = op_lsl;
-    vm.opcode[OP_LSR] = op_lsr;
-    vm.opcode[OP_ASR] = op_asr;
-    vm.opcode[OP_ABS] = op_abs;
-    vm.opcode[OP_NOT] = op_not;
-    vm.opcode[OP_NEG] = op_neg;
-    vm.opcode[OP_INC] = op_inc;
-    vm.opcode[OP_DEC] = op_dec;
-    vm.opcode[OP_BEQ] = op_beq;
-    vm.opcode[OP_BLT] = op_blt;
-    vm.opcode[OP_BLE] = op_ble;
-    vm.opcode[OP_JMP] = op_jmp;
-    vm.opcode[OP_JSR] = op_jsr;
-    vm.opcode[OP_RET] = op_ret;
-}
+    for (int i = 0; i < STACK_MAX; i++) {
+        char* arrow = &vm->stack[i] == vm->sp ? " <-" : "";
+        int n = AS_INT(vm->stack[i]);
 
-static void initSyscalls()
-{
-    vm.syscode[SYS_EXIT] = sys_exit;
-}
-
-static void resetStack()
-{
-    vm.sp = vm.stack;
-    vm.fp = vm.stack;
-}
-
-void initVM()
-{
-    initOpcodes();
-    initSyscalls();
-    resetStack();
-}
-
-static void run()
-{
-    vm.running = true;
-
-    while (vm.running) {
-        uint8_t c = READ_UINT8();
-
-        vm.opcode[c]();
+        printf("%d: %d%s\n", i, n, arrow);
     }
 }
 
-static void interpretChunk(Chunk* chunk)
+void interpret(VM* vm)
 {
-    vm.pc = chunk->code;
-    run();
-}
-
-void interpret(char* source)
-{
-    Chunk chunk;
-    initChunk(&chunk);
-    initCompiler(&chunk);
-    compile(source);
-    initVM();
-    interpretChunk(&chunk);
-    inspectVM();
-    freeChunk(&chunk);
-}
-
-void inspectVM()
-{
-    printf("\n");
-
-    for (int i = 0; i < STACK_SIZE; i++) {
-        printf("%d: %d\n", i, SLOT_INT(i));
+    if (!vm->module) {
+        return;
     }
+
+    run(vm);
 }
 
 #undef READ_UINT8

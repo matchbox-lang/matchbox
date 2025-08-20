@@ -1,0 +1,11 @@
+func inc(&n int) {
+    n += 1
+}
+
+var a = 0
+var b = &a
+
+inc(a)
+inc(b)
+
+print(a) # 2

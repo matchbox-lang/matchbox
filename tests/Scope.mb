@@ -1,0 +1,27 @@
+var x = 50
+
+print(x)
+
+func foo(y int)
+{
+    var x = 100
+    
+    print(x)
+    print(y)
+}
+
+func bar(y int)
+{ 
+    func inner(x) {
+        print(x)
+    }
+
+    x = 25
+    
+    inner(250)
+    print(x)
+    print(y)
+}
+
+foo(x)
+bar(125)

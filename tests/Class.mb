@@ -1,0 +1,24 @@
+class Foo
+{
+    id int
+
+    func construct(id int)
+    {
+        self.id = id
+    }
+
+    func getId() int
+    {
+        return self.id
+    }
+
+    func setId(id int)
+    {
+        self.id = id
+    }
+}
+
+var x = Foo(5)
+var id = x.getId()
+
+print(id) # 5

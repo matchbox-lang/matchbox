@@ -1,16 +1,19 @@
 # Instructions
     hlt             Halt
-    syscall         System call
+    reqs            Request service
     ldc             Load constant
+    reg             Register global
+    ldg             Load global
+    stg             Store global
     ldl             Load local
     stl             Store local
     push            Push stack
     pop             Pop stack
+    dup             Duplicate
     add             Add
     sub             Subtract
     mul             Multiply
     div             Divide
-    fdivi           Integer division
     rem             Remainder
     pow             Power
     band            Bitwise AND
@@ -29,5 +32,6 @@
     blt             Branch less than
     ble             Branch less than or equal
     jmp             Jump
-    jsr             Jump subroutine
+    call            Call subroutine
     ret             Return
+    retv            Return value

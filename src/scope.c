@@ -1,14 +1,16 @@
 #include "scope.h"
 #include "ast.h"
-#include <stdint.h>
+#include "table.h"
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 Scope* createScope(Scope* parent)
 {
     Scope* scope = malloc(sizeof(Scope));
     scope->parent = parent;
-    scope->localOffset = 0;
+    scope->localCount = 0;
+    scope->level = getLevel(parent) + 1;
 
     initTable(&scope->symbols, 32);
     
@@ -21,30 +23,45 @@ void freeScope(Scope* scope)
     free(scope);
 }
 
-AST* setLocalSymbol(Scope* scope, StringObject* id, AST* ast)
+size_t getLocalCount(Scope* scope)
 {
-    if (tableSet(&scope->symbols, id, ast)) {
-        return ast;
+    return scope->localCount;
+}
+
+size_t getLevel(Scope* scope)
+{
+    return scope ? scope->level : 0;
+}
+
+bool isTopLevel(Scope* scope)
+{
+    return scope->level == 1;
+}
+
+AST* setLocalSymbol(Scope* scope, StringObject* id, AST* symbol)
+{
+    if (setTableAt(&scope->symbols, id, symbol)) {
+        return symbol;
     }
 
     return NULL;
 }
 
-AST* setLocalVariable(Scope* scope, StringObject* id, AST* ast)
+AST* setLocalVariableSymbol(Scope* scope, StringObject* id, AST* symbol)
 {
-    ast->varDef.position = scope->localOffset++;
-
-    return setLocalSymbol(scope, id, ast);
+    scope->localCount++;
+    
+    return setLocalSymbol(scope, id, symbol);
 }
 
 AST* getLocalSymbol(Scope* scope, StringObject* id)
 {
-    return tableGet(&scope->symbols, id);
+    return getTableAt(&scope->symbols, id);
 }
 
 AST* getSymbol(Scope* scope, StringObject* id)
 {
-    AST* symbol = tableGet(&scope->symbols, id);
+    AST* symbol = getTableAt(&scope->symbols, id);
 
     if (symbol) {
         return symbol;

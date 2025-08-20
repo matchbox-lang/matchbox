@@ -1,12 +1,28 @@
 #ifndef VM_H
 #define VM_H
 
-#define INSTRUCTION_SIZE 40
-#define STACK_SIZE 16
-#define SYSCALL_SIZE 8
+#include "moduleobject.h"
+#include "service.h"
+#include <stdint.h>
 
-void initVM();
-void interpret(char* source);
-void inspectVM();
+#define STACK_MAX 1024
+
+typedef Value (*service_t)(Value* args);
+
+typedef struct VM
+{
+    Value stack[STACK_MAX];
+    service_t service[SERVICES_MAX];
+    uint8_t* ip;
+    Value* sp;
+    Value* fp;
+    ModuleObject* module;
+    ValueArray globals;
+} VM;
+
+void initVM(VM* vm, ModuleObject* module);
+void freeVM(VM* vm);
+void inspectStack(VM* vm);
+void interpret(VM* vm);
 
 #endif

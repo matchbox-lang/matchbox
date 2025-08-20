@@ -1,0 +1,5 @@
+var x = max(4, 8)
+var y = min(4, 8)
+
+print(x)
+print(y)

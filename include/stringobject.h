@@ -1,10 +1,9 @@
-#ifndef STRINGOBJECT_H
-#define STRINGOBJECT_H
+#ifndef STRING_OBJECT_H
+#define STRING_OBJECT_H
 
 #include "object.h"
-#include "value.h"
 
-#define AS_STRINGOBJECT(value) ((StringObject*)AS_POINTER(value))
+#define AS_STRING_OBJECT(value) ((StringObject*)AS_OBJECT(value))
 
 typedef struct StringObject
 {
@@ -14,11 +13,11 @@ typedef struct StringObject
     size_t hash;
 } StringObject;
 
-StringObject* createString(char* chars, int length, size_t hash);
-StringObject* copyString(const char* chars, int length);
-void freeString(StringObject* string);
-bool compareString(StringObject* a, StringObject* b);
-size_t hashString(const char* chars, int length);
-void printString(StringObject* string);
+StringObject* createStringObject(char* chars, size_t len, size_t hash);
+StringObject* copyStringObject(const char* chars, size_t len);
+void freeStringObject(StringObject* string);
+bool compareStringObject(StringObject* a, StringObject* b);
+size_t hashStringObject(const char* chars, size_t len);
+void printStringObject(StringObject* string);
 
 #endif

@@ -1,18 +1,19 @@
 #include "value.h"
+#include <stdio.h>
 #include <stdlib.h>
 
-ValueArray* initValueArray(ValueArray* array)
-{
-    array->capacity = ARRAY_INIT_CAPACITY;
-    array->values = malloc(array->capacity * sizeof(Value));
-    array->count = 0;
+#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 
-    return array;
+void initValueArray(ValueArray* array)
+{
+    array->data = NULL;
+    array->capacity = 0;
+    array->count = 0;
 }
 
 void freeValueArray(ValueArray* array)
 {
-    free(array->values);
+    free(array->data);
 }
 
 size_t countValueArray(ValueArray* array)
@@ -20,17 +21,42 @@ size_t countValueArray(ValueArray* array)
     return array->count;
 }
 
-void resizeValueArray(ValueArray* array, size_t capacity)
+void reserveValueArray(ValueArray* array, size_t capacity)
 {
-    array->values = realloc(array->values, sizeof(Value) * capacity);
-    array->capacity = capacity;
+    if (capacity > array->capacity) {
+        array->data = realloc(array->data, sizeof(Value) * capacity);
+        array->capacity = capacity;
+    }
 }
 
-void writeValueArray(ValueArray* array, Value value)
+void resizeValueArray(ValueArray* array, size_t size)
 {
-    if (array->capacity == array->count) {
-        resizeValueArray(array, array->capacity * 2);
+    reserveValueArray(array, size);
+    array->count = size;
+}
+
+size_t pushValue(ValueArray* array, Value value)
+{
+    if (array->count == array->capacity) {
+        reserveValueArray(array, GROW_CAPACITY(array->capacity));
     }
-    
-    array->values[array->count++] = value;
+
+    array->data[array->count++] = value;
+    return array->count;
+}
+
+void* getValueAsPointer(ValueArray* array, size_t index)
+{
+    if (index < 0 || index >= array->count) {
+        return NULL;
+    }
+
+    return AS_POINTER(array->data[index]);
+}
+
+void setValueAt(ValueArray* array, size_t index, Value item)
+{
+    if (index >= 0 && index < array->count) {
+        array->data[index] = item;
+    }
 }

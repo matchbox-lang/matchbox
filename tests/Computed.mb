@@ -1,0 +1,25 @@
+class Timer
+{
+    seconds float
+
+    func construct(n float)
+    {
+        self.seconds = n
+    }
+
+    hours float
+    {
+        return seconds / 3600
+    }
+
+    minutes float
+    {
+        get {
+            return seconds / 60
+        }
+
+        set(n float) {
+            seconds = n * 60
+        }
+    }
+}

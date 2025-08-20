@@ -1,51 +1,81 @@
-#include "file.h"
+#include "buffer.h"
+#include "compiler.h"
+#include "moduleobject.h"
+#include "options.h"
+#include "program.h"
 #include "vm.h"
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdio.h>
-
-static void usage(char* prog)
-{
-    printf("Usage: %s <file>\n", prog);
-    exit(1);
-}
+#include <stdlib.h>
 
 static void repl()
 {
-    char line[1024];
+    char* source = NULL;
+    size_t size = 0;
+    size_t len;
+    ModuleObject* module = createModuleObject();
+    VM vm;
+    
+    initCompiler(module);
+    initVM(&vm, module);
 
     while (1) {
-        printf("> ");
+        printf(">>> ");
 
-        if (!fgets(line, 1024, stdin)) {
+        len = getStreamContents(&source, &size, stdin);
+
+        if (len == -1) {
             printf("\n");
             break;
         }
 
-        interpret(line);
+        compile(source);
+        interpret(&vm);
     }
+
+    freeVM(&vm);
+    freeCompiler();
+    freeModuleObject(module);
+    free(source);
 }
 
-static void runFile(const char* filename)
+static void runFile(Options* options)
 {
-    char* source = getFileContents(filename);
+    char* source = getFileContents(options->filename);
 
     if (!source) {
-        printf("Error: Could not read file %s\n", filename);
-        exit(1);
+        fprintf(stderr, "Error: Could not read file %s\n", options->filename);
+        printUsage();
     }
 
-    interpret(source);
-    freeFileContents(source);
+    ModuleObject* module = createModuleObject();
+    VM vm;
+    
+    initCompiler(module);
+    compile(source);
+
+    if (options->disassemble) {
+        return disassembleModule(module);
+    }
+
+    initVM(&vm, module);
+    interpret(&vm);
+    freeVM(&vm);
+    freeCompiler();
+    freeModuleObject(module);
+    free(source);
 }
 
 int main(int argc, char* argv[])
 {
+    Options options;
+
+    initOptions(&options, argc, argv);
+
     if (argc == 1) {
         repl();
-    } else if (argc == 2) {
-        runFile(argv[1]);
     } else {
-        usage(argv[0]);
+        runFile(&options);
     }
 
     return 0;

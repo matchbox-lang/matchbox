@@ -1,0 +1,18 @@
+type operation func(int) int
+
+func log(op operation) operation
+{
+    return func(x int) int
+    {
+        var result = op(x)
+        print($"Result {result}")
+
+        return result
+    }
+}
+
+@log
+func square(x int) int
+{
+    return x * x
+}

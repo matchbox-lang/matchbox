@@ -1,15 +1,16 @@
-#ifndef FLOATOBJECT_H
-#define FLOATOBJECT_H
+#ifndef FLOAT_OBJECT_H
+#define FLOAT_OBJECT_H
 
 #include "object.h"
-#include "value.h"
 
-#define AS_FLOATOBJECT(value) ((FloatObject*)AS_POINTER(value))
+#define AS_FLOAT_OBJECT(value) ((FloatObject*)AS_OBJECT(value))
 
 typedef struct FloatObject
 {
     Object obj;
-    float floatVal;
+    float value;
 } FloatObject;
+
+FloatObject* createFloatObject(float value);
 
 #endif

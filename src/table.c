@@ -1,7 +1,7 @@
 #include "table.h"
+#include "stringobject.h"
+#include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next)
 {
@@ -15,10 +15,14 @@ TableItem* createTableItem(StringObject* key, void* value, TableItem* next)
 
 void freeTableItem(TableItem* item)
 {
+    if (item->next) {
+        freeTableItem(item->next);
+    }
+
     free(item);
 }
 
-void initTable(Table* table, int capacity)
+void initTable(Table* table, size_t capacity)
 {
     table->capacity = capacity;
     table->data = calloc(table->capacity, sizeof(TableItem*));
@@ -27,6 +31,14 @@ void initTable(Table* table, int capacity)
 
 void freeTable(Table* table)
 {
+    for (int i = 0; i < table->capacity; i++) {
+        TableItem* item = table->data[i];
+
+        if (item) {
+            freeTableItem(item);
+        }
+    }
+
     free(table->data);
 }
 
@@ -35,7 +47,7 @@ size_t countTable(Table* table)
     return table->count;
 }
 
-void* tableGet(Table* table, StringObject* key)
+void* getTableAt(Table* table, StringObject* key)
 {
     if (table->count == 0) {
         return NULL;
@@ -44,7 +56,7 @@ void* tableGet(Table* table, StringObject* key)
     size_t index = key->hash % table->capacity;
     TableItem* current = table->data[index];
 
-    while (current != NULL && !compareString(current->key, key)) {
+    while (current && !compareStringObject(current->key, key)) {
         current = current->next;
     }
 
@@ -55,13 +67,13 @@ void* tableGet(Table* table, StringObject* key)
     return NULL;
 }
 
-bool tableSet(Table* table, StringObject* key, void* value)
+bool setTableAt(Table* table, StringObject* key, void* value)
 {
     size_t index = key->hash % table->capacity;
     TableItem* current = table->data[index];
 
-    while (current != NULL) {
-        if (compareString(current->key, key)) {
+    while (current) {
+        if (compareStringObject(current->key, key)) {
             return false;
         }
 
@@ -75,22 +87,22 @@ bool tableSet(Table* table, StringObject* key, void* value)
     return true;
 }
 
-bool tableDelete(Table* table, StringObject* key)
+bool deleteTableAt(Table* table, StringObject* key)
 {
     size_t index = key->hash % table->capacity;
     TableItem* prev = NULL;
     TableItem* current = table->data[index];
 
-    while (current != NULL && !compareString(current->key, key)) {
+    while (current && !compareStringObject(current->key, key)) {
         prev = current;
         current = current->next;
     }
 
-    if (current == NULL) {
+    if (!current) {
         return false;
     }
 
-    if (prev == NULL) {
+    if (!prev) {
         table->data[index] = current->next;
     } else {
         prev->next = current->next;

@@ -1,10 +1,12 @@
 #include "vector.h"
 #include <stdlib.h>
 
+#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
+
 void initVector(Vector* vector)
 {
-    vector->capacity = VECTOR_INIT_CAPACITY;
-    vector->data = malloc(vector->capacity * sizeof(void*));
+    vector->data = NULL;
+    vector->capacity = 0;
     vector->count = 0;
 }
 
@@ -18,22 +20,29 @@ size_t countVector(Vector* vector)
     return vector->count;
 }
 
-void resizeVector(Vector* vector, size_t capacity)
+void reserveVector(Vector* vector, size_t capacity)
 {
     vector->data = realloc(vector->data, sizeof(void*) * capacity);
     vector->capacity = capacity;
 }
 
-void pushVector(Vector* vector, void* item)
+void resizeVector(Vector* vector, size_t size)
+{
+    reserveVector(vector, size);
+    vector->count = size;
+}
+
+size_t pushVectorItem(Vector* vector, void* item)
 {
     if (vector->capacity == vector->count) {
-        resizeVector(vector, vector->capacity * 2);
+        reserveVector(vector, GROW_CAPACITY(vector->capacity));
     }
     
     vector->data[vector->count++] = item;
+    return vector->count;
 }
 
-void* popVector(Vector* vector)
+void* popVectorItem(Vector* vector)
 {
     if (vector->count > 0) {
         return vector->data[vector->count--];
@@ -42,18 +51,28 @@ void* popVector(Vector* vector)
     return NULL;
 }
 
-void* vectorGet(Vector* vector, size_t index)
+void* getVectorAt(Vector* vector, size_t index)
 {
-    if (index >= 0 && index < vector->count) {
-        return vector->data[index];
+    if (index < 0 || index >= vector->count) {
+        return NULL;
     }
 
-    return NULL;
+    return vector->data[index];
 }
 
-void vectorSet(Vector* vector, size_t index, void* item)
+void setVectorAt(Vector* vector, size_t index, void* item)
 {
     if (index >= 0 && index < vector->count) {
         vector->data[index] = item;
     }
+}
+
+void* vectorBegin(Vector* vector)
+{
+    return vector->data;
+}
+
+void* vectorEnd(Vector* vector)
+{
+    return vector->data + vector->count;
 }

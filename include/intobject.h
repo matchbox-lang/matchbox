@@ -1,15 +1,16 @@
-#ifndef INTOBJECT_H
-#define INTOBJECT_H
+#ifndef INT_OBJECT_H
+#define INT_OBJECT_H
 
 #include "object.h"
-#include "value.h"
 
-#define AS_INTOBJECT(value) ((IntObject*)AS_POINTER(value))
+#define AS_INT_OBJECT(value) ((IntObject*)AS_OBJECT(value))
 
 typedef struct IntObject
 {
     Object obj;
-    int intVal;
+    int value;
 } IntObject;
+
+IntObject* createIntObject(int value);
 
 #endif

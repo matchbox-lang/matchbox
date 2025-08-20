@@ -21,12 +21,12 @@ typedef struct Table
 } Table;
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next);
-void freeTableItem(TableItem* table);
-void initTable(Table* table, int capacity);
+void freeTableItem(TableItem* item);
+void initTable(Table* table, size_t capacity);
 void freeTable(Table* table);
 size_t countTable(Table* table);
-void* tableGet(Table* table, StringObject* key);
-bool tableSet(Table* table, StringObject* key, void* value);
-bool tableDelete(Table* table, StringObject* key);
+void* getTableAt(Table* table, StringObject* key);
+bool setTableAt(Table* table, StringObject* key, void* value);
+bool deleteTableAt(Table* table, StringObject* key);
 
 #endif

@@ -1,6 +1,7 @@
 .vscode/
-bin/
+build/
 object/
+*.exe
 *.mbx
 *.o
 *.obj

@@ -24,27 +24,27 @@ unless i == 0 {
 }
 
 match i {
-    case 10:
+    case 10
         print("i is equal to 10")
-    case _:
+    case _
         print("i is not 10")
 }
 
 match {
-    case i < 5:
+    case i < 5
         print("i is less than 5")
-    case i > 5:
+    case i > 5
         print("i is greater than 5")
-    case _:
+    case _
         print("i is 5")
 }
 
 var x = match {
-    case i < 5:
+    case i < 5
         "i is less than 5"
-    case i > 5:
+    case i > 5
         "i is greater than 5"
-    case _:
+    case _
         "i is 5"
 }
 

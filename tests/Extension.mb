@@ -1,5 +1,10 @@
 extension int
 {
+    get squared() int
+    {
+        return self * self
+    }
+
     func echo()
     {
         print(self)
@@ -7,13 +12,5 @@ extension int
     }
 }
 
-extension float
-{
-    squared float
-    {
-        return self * self
-    }
-}
-
 5.echo()
-8.squared
+print(8.squared)

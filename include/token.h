@@ -7,6 +7,7 @@
 typedef enum TokenType
 {
     T_IF,
+    T_UNLESS,
     T_ELSE,
     T_IN,
     T_INSTANCEOF,
@@ -26,11 +27,14 @@ typedef enum TokenType
     T_CONST,
     T_VAR,
     T_USE,
+    T_END,
     T_CLASS,
     T_STRUCT,
     T_TRAIT,
     T_PROTOCOL,
     T_ENUM,
+    T_GET,
+    T_SET,
     T_FUNC,
     T_TYPE,
     T_EXTENDS,

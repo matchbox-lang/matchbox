@@ -210,6 +210,7 @@ static TokenType getIdentifierType()
             break;
         case 'e':
             if (checkKeyword(1, 3, "lse")) return T_ELSE;
+            if (checkKeyword(1, 2, "nd")) return T_END;
             if (checkKeyword(1, 3, "num")) return T_ENUM;
             if (checkKeyword(1, 3, "xtends")) return T_EXTENDS;
             if (checkKeyword(1, 8, "xtension")) return T_EXTENSION;
@@ -222,6 +223,9 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 5, "ouble")) return T_DOUBLE;
             if (checkKeyword(1, 2, "or")) return T_FOR;
             if (checkKeyword(1, 3, "unc")) return T_FUNC;
+            break;
+        case 'g':
+            if (checkKeyword(1, 2, "et")) return T_GET;
             break;
         case 'h':
             if (checkKeyword(1, 2, "as")) return T_HAS;
@@ -249,6 +253,7 @@ static TokenType getIdentifierType()
             break;
         case 's':
             if (checkKeyword(1, 3, "elf")) return T_SELF;
+            if (checkKeyword(1, 2, "et")) return T_SET;
             if (checkKeyword(1, 5, "izeof")) return T_SIZEOF;
             if (checkKeyword(1, 5, "tatic")) return T_STATIC;
             if (checkKeyword(1, 5, "truct")) return T_STRUCT;
@@ -267,6 +272,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 5, "int16")) return T_UINT16;
             if (checkKeyword(1, 5, "int32")) return T_UINT32;
             if (checkKeyword(1, 5, "int64")) return T_UINT64;
+            if (checkKeyword(1, 5, "nless")) return T_UNLESS;
             if (checkKeyword(1, 2, "se")) return T_USE;
             break;
         case 'v':

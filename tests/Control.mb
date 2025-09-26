@@ -17,6 +17,12 @@ var x = if i < 5 {
     "i is 5"
 }
 
+unless i == 0 {
+    print("i is not 0")
+} else {
+    print("i is 0")
+}
+
 match i {
     case 10:
         print("i is equal to 10")

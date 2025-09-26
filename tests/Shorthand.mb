@@ -13,6 +13,8 @@ if (x == y) print("true")
 
 var x, y, z int
 
+func neg(n) = -n
+
 func add(a, b int) int
 {
     return a + b

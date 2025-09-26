@@ -19,7 +19,11 @@ func invoke(point Point)
     invoke(...point, (a, b) => a / b)
 }
 
+invoke(3, 2, func(a, b) {
+    return a + b
+})
+
 invoke(3, 2, (a, b) => a + b)
-invoke(3, 2, func(a, b) { return a + b })
+invoke(3, 2, func(a, b) = a + b)
 invoke(3, 2, mul)
 invoke({x: 3, y: 2})

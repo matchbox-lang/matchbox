@@ -2,9 +2,9 @@ type operation func(int) int
 
 func log(op operation) operation
 {
-    return func(x int) int
+    return func(n int) int
     {
-        var result = op(x)
+        var result = op(n)
         print($"Result {result}")
 
         return result
@@ -12,7 +12,7 @@ func log(op operation) operation
 }
 
 @log
-func square(x int) int
+func square(n int) int
 {
     return x * x
 }

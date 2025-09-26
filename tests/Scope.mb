@@ -11,13 +11,12 @@ func foo(y int)
 }
 
 func bar(y int)
-{ 
+{
     func inner(x) {
         print(x)
     }
 
     x = 25
-    
     inner(250)
     print(x)
     print(y)

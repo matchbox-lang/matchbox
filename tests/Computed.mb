@@ -7,19 +7,13 @@ class Timer
         self.seconds = n
     }
 
-    hours float
+    get minutes() float
     {
-        return seconds / 3600
+        return seconds / 60
     }
 
-    minutes float
+    set minutes(n float)
     {
-        get {
-            return seconds / 60
-        }
-
-        set(n float) {
-            seconds = n * 60
-        }
+        seconds = n * 60
     }
 }

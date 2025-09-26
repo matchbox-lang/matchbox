@@ -1,6 +1,6 @@
 use System.Out
 
-var pt = Out.Point {10, 25}
+var pt = Out.Point(10, 25)
 
 Out.hello()
 

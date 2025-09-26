@@ -49,10 +49,14 @@ var x = match {
 }
 
 var x = match (1, 2) {
-    (0, 0) => "The point is at the origin, (0, 0)",
-    (0, y) => $"The point is at (0, {y})",
-    (x, 0) => $"The point is at ({x}, 0)",
-    (x, y) => $"The point is at ({x}, {y})"
+    case (0, 0)
+        "The point is at the origin, (0, 0)",
+    case (0, y)
+        $"The point is at (0, {y})",
+    case (x, 0)
+        $"The point is at ({x}, 0)",
+    case (x, y)
+        $"The point is at ({x}, {y})"
 }
 
 while i < 5 {

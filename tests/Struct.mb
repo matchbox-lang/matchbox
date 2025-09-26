@@ -5,7 +5,7 @@ struct Point
 
     func new(x, y int) Point
     {
-        return {x, y}
+        return self(x, y)
     }
 
     func clone() Point

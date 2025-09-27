@@ -1,6 +1,6 @@
 enum Optional<T>
 {
-    Some(T),
+    Some(T)
     None
 }
 

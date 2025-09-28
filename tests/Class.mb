@@ -11,14 +11,17 @@ class Foo
     {
         return self.id
     }
+}
 
-    func setId(id int)
+class Bar extends Foo
+{
+    func construct(id int)
     {
-        self.id = id
+        super(id)
     }
 }
 
-var x = Foo(5)
+var x = Bar(5)
 var id = x.getId()
 
 print(id) # 5

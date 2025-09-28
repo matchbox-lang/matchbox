@@ -5,7 +5,7 @@ func log(op operation) operation
     return func(n int) int
     {
         var result = op(n)
-        print($"Result {result}")
+        print("Result {result}")
 
         return result
     }

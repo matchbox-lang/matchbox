@@ -21,8 +21,8 @@ class Point
 
     func +=(v Point) Point
     {
-        self.x += v.x
-        self.y += v.y
+        x += v.x
+        y += v.y
 
         return self
     }

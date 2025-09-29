@@ -9,7 +9,7 @@ class Apple<T>
 
     func getId() T
     {
-        return self.id
+        return id
     }
 }
 

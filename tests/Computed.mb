@@ -4,7 +4,7 @@ class Timer
 
     func construct(n float)
     {
-        self.seconds = n
+        seconds = n
     }
 
     get minutes() float

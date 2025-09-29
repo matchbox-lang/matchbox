@@ -3,7 +3,7 @@ trait Animal
     name String
 
     func speak() {
-        print("I'm {self.name}!")
+        print("I'm {name}!")
     }
 }
 
@@ -18,7 +18,7 @@ class Sheep
     
     func shout()
     {
-        print(self.speak())
+        print(speak())
     }
 }
 

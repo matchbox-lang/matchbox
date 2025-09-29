@@ -1,5 +1,4 @@
-async func hello(seconds int)
-{
+async func hello(seconds int) {
     print("Hello")
     await timer(seconds)
     print(" World!")

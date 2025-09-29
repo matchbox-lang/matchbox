@@ -1,22 +1,17 @@
-class Foo
-{
+class Foo {
     id int
 
-    func construct(id int)
-    {
+    func construct(id int) {
         self.id = id
     }
 
-    func getId() int
-    {
+    func getId() int {
         return id
     }
 }
 
-class Bar extends Foo
-{
-    func construct(id int)
-    {
+class Bar extends Foo {
+    func construct(id int) {
         super(id)
     }
 }

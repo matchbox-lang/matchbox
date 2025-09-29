@@ -1,7 +1,5 @@
-class Exception
-{
-    func what() String
-    {
+class Exception {
+    func what() String {
         return "An exception occured."
     }
 }

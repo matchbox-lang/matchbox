@@ -1,10 +1,8 @@
-struct Point
-{
+struct Point {
     x int
     y int
 
-    func clone() Point
-    {
+    func clone() Point {
         return self
     }
 }

@@ -1,5 +1,4 @@
-trait Animal
-{
+trait Animal {
     name String
 
     func speak() {
@@ -7,17 +6,14 @@ trait Animal
     }
 }
 
-class Sheep
-{
+class Sheep {
     use Animal
     
-    func construct(name String)
-    {
+    func construct(name String) {
         self.name = name
     }
     
-    func shout()
-    {
+    func shout() {
         print(speak())
     }
 }

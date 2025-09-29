@@ -1,12 +1,9 @@
-extension int
-{
-    get squared() int
-    {
+extension int {
+    get squared() int {
         return self * self
     }
 
-    func echo()
-    {
+    func echo() {
         print(self)
         print(self)
     }

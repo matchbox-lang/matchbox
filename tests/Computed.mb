@@ -1,19 +1,15 @@
-class Timer
-{
+class Timer {
     seconds float
 
-    func construct(n float)
-    {
+    func construct(n float) {
         seconds = n
     }
 
-    get minutes() float
-    {
+    get minutes() float {
         return seconds / 60
     }
 
-    set minutes(n float)
-    {
+    set minutes(n float) {
         seconds = n * 60
     }
 }

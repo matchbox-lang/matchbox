@@ -1,17 +1,13 @@
-protocol Animal
-{
+protocol Animal {
     func noise() String
 }
 
-func shout(animal Animal)
-{
+func shout(animal Animal) {
     animal.noise()
 }
 
-class Sheep
-{
-    func noise() String
-    {
+class Sheep {
+    func noise() String {
         print("I'm a Sheep!")
     }
 }

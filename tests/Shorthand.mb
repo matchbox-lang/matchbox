@@ -15,12 +15,10 @@ var x, y, z int
 
 func neg(n) = -n
 
-func add(a, b int) int
-{
+func add(a, b int) int {
     return a + b
 }
 
-func foo(n int = 10)
-{
+func foo(n int = 10) {
     print(n)
 }

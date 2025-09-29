@@ -1,5 +1,4 @@
-enum Events
-{
+enum Events {
     PageLoad
     KeyPress(char)
     Paste(String)

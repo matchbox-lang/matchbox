@@ -2,16 +2,14 @@ var x = 50
 
 print(x)
 
-func foo(y int)
-{
+func foo(y int) {
     var x = 100
     
     print(x)
     print(y)
 }
 
-func bar(y int)
-{
+func bar(y int) {
     func inner(x) {
         print(x)
     }

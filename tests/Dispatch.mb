@@ -1,23 +1,18 @@
-protocol Foo
-{
+protocol Foo {
     func shout()
 }
 
-extension int
-{
-    func shout()
-    {
+extension int {
+    func shout() {
         print("Hello!")
     }
 }
 
-func shout(&n Foo)
-{
+func shout(&n Foo) {
     n.shout()
 }
 
-func shout<T Foo>(n T)
-{
+func shout<T Foo>(n T) {
     n.shout()
 }
 

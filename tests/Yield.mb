@@ -1,5 +1,4 @@
-func range(start, stop, step int) int
-{
+func range(start, stop, step int) int {
     var i = start
     
     while i <= stop {

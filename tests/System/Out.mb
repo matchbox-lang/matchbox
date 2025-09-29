@@ -1,15 +1,12 @@
-public struct Point
-{
+public struct Point {
     public x int
     public y int
 }
 
-public func hello()
-{
+public func hello() {
     print("Hello World!")
 }
 
-func secret()
-{
+func secret() {
     print("Not visible!")
 }

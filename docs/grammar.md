@@ -2,7 +2,7 @@
     Program         → Statements
     Statements      → Statement | Expression
     Expression      → Equality
-    Equality        → Comparison {("!=" | "==") Comparison}
+    Equality        → Comparison {("==" | "!=" | "===", "!==") Comparison}
     Comparison      → Shift {("<<" | ">>") Shift}
     Shift           → Term {(">" | ">=" | "<" | "<=" | "<=>") Term}
     Term            → Factor {("+" | "-") Factor}

@@ -11,7 +11,7 @@
 | + -                           | Term              | Left          |
 | << >>                         | Shift             | Left          |
 | < <= > >= <=>                 | Comparison        | Left          |
-| == !=                         | Equality          | Left          |
+| == != === !==                 | Equality          | Left          |
 | &                             | Bitwise AND       | Left          |
 | ^                             | Bitwise XOR       | Left          |
 | \|                            | Bitwise OR        | Left          |

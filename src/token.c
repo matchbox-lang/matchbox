@@ -53,7 +53,9 @@ bool isEqualityToken(TokenType type)
 {
     switch (type) {
         case T_EQUAL_EQUAL:
+        case T_EQUAL_EQUAL_EQUAL:
         case T_NOT_EQUAL:
+        case T_NOT_EQUAL_EQUAL:
             return true;
         default:
             return false;

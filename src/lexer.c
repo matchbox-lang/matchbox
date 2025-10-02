@@ -233,7 +233,6 @@ static TokenType getIdentifierType()
         case 'i':
             if (checkKeyword(1, 1, "f")) return T_IF;
             if (checkKeyword(1, 1, "n")) return T_IN;
-            if (checkKeyword(1, 9, "nstanceof")) return T_INSTANCEOF;
             if (checkKeyword(1, 2, "nt")) return T_INT;
             if (checkKeyword(1, 3, "nt8")) return T_INT8;
             if (checkKeyword(1, 4, "nt16")) return T_INT16;
@@ -433,18 +432,25 @@ Token scanToken()
         case ']':   return makeToken(T_RBRACE);
         case '{':   return makeToken(T_LBRACE);
         case '}':   return makeToken(T_RBRACE);
+        case ':':   return makeToken(T_COLON);
         case ';':   return makeToken(T_SEMICOLON);
         case ',':   return makeToken(T_COMMA);
         case '$':   return makeToken(T_DOLLAR);
         case '~':   return makeToken(T_TILDE);
-        case ':':   return makeToken(T_COLON);
         case '%':
             return makeToken(
                 match('=') ? T_PERCENT_EQUAL : T_PERCENT);
+        case '=':
+            return makeToken(
+                match('~') ? T_EQUAL_TILDE :
+                match('>') ? T_LAMBDA :
+                match('=') ?
+                match('=') ? T_EQUAL_EQUAL_EQUAL : T_EQUAL_EQUAL : T_EQUAL);
         case '!':
             return makeToken(
                 match('~') ? T_NOT_TILDE :
-                match('=') ? T_NOT_EQUAL : T_EXCLAMATION);
+                match('=') ?
+                match('=') ? T_NOT_EQUAL_EQUAL : T_NOT_EQUAL : T_EXCLAMATION);
         case '&':
             return makeToken(
                 match('&') ? T_BOOLEAN_AND :
@@ -488,11 +494,6 @@ Token scanToken()
                 match('>') ?
                 match('=') ? T_RSHIFT_EQUAL : T_RSHIFT :
                 match('=') ? T_GREATER_EQUAL : T_GREATER);
-        case '=':
-            return makeToken(
-                match('=') ? T_EQUAL_EQUAL :
-                match('~') ? T_EQUAL_TILDE :
-                match('>') ? T_LAMBDA : T_EQUAL);
         case '?':
             return makeToken(
                 match('?') ?

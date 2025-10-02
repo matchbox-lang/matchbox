@@ -22,6 +22,8 @@ a **= b
 
 a == b
 a != b
+a === b
+a !== b
 a =~ b
 a !~ b
 
@@ -38,7 +40,6 @@ a || b
 <|
 
 a in b
-a instanceof b
 a is b
 a has b
 

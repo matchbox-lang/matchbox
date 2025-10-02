@@ -39,9 +39,9 @@ a || b
 |>
 <|
 
-a in b
-a is b
-a has b
+a in 0..10
+a is T
+a has T
 
 sizeof a
 typeof a

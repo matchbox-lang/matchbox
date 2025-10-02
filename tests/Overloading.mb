@@ -15,7 +15,7 @@ class Point {
         self.y = y
     }
 
-    operator +=(v Point) Point {
+    func +=(v Point) Point {
         x += v.x
         y += v.y
 

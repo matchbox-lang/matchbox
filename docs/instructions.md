@@ -19,7 +19,7 @@
     band            Bitwise AND
     bor             Bitwise OR
     bxor            Bitwise XOR
-    bnot            Bitwise XOR
+    bnot            Bitwise NOT
     lsl             Logical shift left
     lsr             Logical shift right
     asr             Arithmatic shift right

@@ -1,6 +1,6 @@
-type operation func(int) int
+type Operation func(int) int
 
-func log(op operation) operation {
+func log(op Operation) Operation {
     return func(n int) int {
         var result = op(n)
         print("Result {result}")

@@ -1,10 +1,6 @@
 struct Point {
     x int
     y int
-
-    func clone() Point {
-        return self
-    }
 }
 
 var a = Point(1, 2)

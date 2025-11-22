@@ -242,6 +242,9 @@ static TokenType getIdentifierType()
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
             break;
+        case 'o':
+            if (checkKeyword(1, 7, "perator")) return T_OPERATOR;
+            break;
         case 'p':
             if (checkKeyword(1, 8, "rotolcol")) return T_PROTOCOL;
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;

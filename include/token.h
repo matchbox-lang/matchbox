@@ -35,6 +35,7 @@ typedef enum TokenType
     T_ENUM,
     T_GET,
     T_SET,
+    T_OPERATOR,
     T_FUNC,
     T_TYPE,
     T_PUBLIC,

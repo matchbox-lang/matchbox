@@ -39,8 +39,6 @@ typedef enum TokenType
     T_FUNC,
     T_TYPE,
     T_PUBLIC,
-    T_PROTECTED,
-    T_PRIVATE,
     T_CONSTRUCT,
     T_DESTRUCT,
     T_EXTENSION,

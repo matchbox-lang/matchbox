@@ -11,13 +11,7 @@ var e = [[y for y in x] for x in matrix]
 
 if x == y print(true)
 
-var x, y, z int
-
 func neg(n) = -n
-
-func add(a, b int) int {
-    return a + b
-}
 
 func foo(n int = 10) {
     print(n)

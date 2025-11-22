@@ -37,7 +37,6 @@ typedef enum TokenType
     T_SET,
     T_FUNC,
     T_TYPE,
-    T_EXTENDS,
     T_PUBLIC,
     T_PROTECTED,
     T_PRIVATE,

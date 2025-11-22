@@ -1,22 +1,26 @@
-trait Animal {
-    name String
-
-    func speak() {
-        print("I'm {name}!")
+trait Hello {
+    func printHello() {
+        print("Hello")
     }
 }
 
-class Sheep {
-    use Animal
-    
-    func construct(name String) {
-        self.name = name
-    }
-    
-    func shout() {
-        print(speak())
+trait World {
+    func printWorld() {
+        print("World")
     }
 }
 
-var x = Sheep("Roxy")
-x.shout()
+class HelloWorld {
+    use Hello
+    use World
+    
+    func print() {
+        printHello()
+        print(" ")
+        printWorld()
+        print("!")
+    }
+}
+
+var x = HelloWorld()
+x.print()

@@ -1,4 +1,4 @@
-class Foo {
+trait Bar {
     id int
 
     func construct(id int) {
@@ -10,13 +10,15 @@ class Foo {
     }
 }
 
-class Bar extends Foo {
+class Foo {
+    use Bar
+
     func construct(id int) {
-        super(id)
+        Bar(id)
     }
 }
 
-var x = Bar(5)
+var x = Foo(5)
 var id = x.getId()
 
 print(id) # 5

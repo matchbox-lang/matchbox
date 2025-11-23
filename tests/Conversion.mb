@@ -13,6 +13,6 @@ var i int64 = int(y) # Explicit OK > Implicit OK
 
 var s char[] = 'c' # Implicit OK
 
-Derived d = Derived()
+var d: Derived = Derived()
 
-Base b = d # Implicit OK
+var b: Base = d # Implicit OK

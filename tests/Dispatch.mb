@@ -1,11 +1,9 @@
-protocol Foo {
-    func shout()
+func int.shout() {
+    print("Hello!")
 }
 
-extension int {
-    func shout() {
-        print("Hello!")
-    }
+protocol Foo {
+    func shout()
 }
 
 func shout(&n Foo) {

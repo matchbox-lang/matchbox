@@ -1,0 +1,11 @@
+struct Point {
+    x int
+    y int
+}
+
+func Point.clone() {
+    return Point(x, y)
+}
+
+var a = Point()
+var b = a.clone()

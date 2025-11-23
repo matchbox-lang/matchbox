@@ -1,26 +1,16 @@
-trait Hello {
-    func printHello() {
-        print("Hello")
+trait Bar {
+    id int
+
+    func getId() int {
+        return id
     }
 }
 
-trait World {
-    func printWorld() {
-        print("World")
-    }
+class Foo(id int) {
+    use Bar
 }
 
-class HelloWorld {
-    use Hello
-    use World
-    
-    func print() {
-        printHello()
-        print(" ")
-        printWorld()
-        print("!")
-    }
-}
+var x = Foo(5)
+var id = x.getId()
 
-var x = HelloWorld()
-x.print()
+print(id) # 5

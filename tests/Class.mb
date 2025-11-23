@@ -1,20 +1,8 @@
-trait Bar {
+class Foo(id int) {
     id int
-
-    func construct(id int) {
-        self.id = id
-    }
 
     func getId() int {
         return id
-    }
-}
-
-class Foo {
-    use Bar
-
-    func construct(id int) {
-        Bar(id)
     }
 }
 

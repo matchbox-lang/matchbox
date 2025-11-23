@@ -1,6 +1,6 @@
 extension int {
     get squared() int {
-        return self * self
+        return self ** 2
     }
 
     func echo() {

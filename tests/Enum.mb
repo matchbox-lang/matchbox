@@ -1,8 +1,8 @@
 enum Events {
-    PageLoad,
-    KeyPress(char),
-    Paste(String),
-    Resize(int, int),
+    PageLoad
+    KeyPress(char)
+    Paste(String)
+    Resize(int, int)
     Status(int)
 }
 

@@ -1,10 +1,6 @@
 class Apple<T> {
     id T
 
-    construct(id T) {
-        self.id = id
-    }
-
     func getId() T {
         return id
     }

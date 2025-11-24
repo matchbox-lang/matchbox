@@ -1,15 +1,11 @@
 class Timer {
     seconds float
 
-    construct(n float) {
-        seconds = n
-    }
-
-    get minutes() float {
+    get minutes() {
         return seconds / 60
     }
 
-    set minutes(n float) {
+    set minutes(n) {
         seconds = n * 60
     }
 }

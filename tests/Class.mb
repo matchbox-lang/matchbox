@@ -1,4 +1,4 @@
-class Foo(id int) {
+class Foo {
     id int
 
     func getId() int {

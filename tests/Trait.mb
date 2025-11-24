@@ -6,7 +6,7 @@ trait Bar {
     }
 }
 
-class Foo(id int) {
+class Foo {
     use Bar
 }
 

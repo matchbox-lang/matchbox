@@ -7,5 +7,9 @@ func Point.clone() {
     return Point(x, y)
 }
 
+construct Point() {
+    return Point(0, 0)
+}
+
 var a = Point()
 var b = a.clone()

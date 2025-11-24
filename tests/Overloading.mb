@@ -2,17 +2,13 @@ class Point {
     x int
     y int
 
-    func construct() {
-        set(0, 0)
-    }
-
-    func construct(x int, y int) {
-        set(x, y)
-    }
-
-    func set(x int, y int) {
+    construct(x int, y int) {
         self.x = x
         self.y = y
+    }
+
+    construct(x int) {
+        set(x, x)
     }
 
     operator +=(v Point) Point {

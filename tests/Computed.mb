@@ -1,7 +1,7 @@
 class Timer {
     seconds float
 
-    func construct(n float) {
+    construct(n float) {
         seconds = n
     }
 

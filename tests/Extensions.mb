@@ -8,7 +8,7 @@ func Point.clone() {
 }
 
 construct Point() {
-    return Point(0, 0)
+    self(0, 0)
 }
 
 var a = Point()

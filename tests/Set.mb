@@ -1,4 +1,4 @@
-var a Set<int> = {1, 2, 3}
+var a: Set<int> = {1, 2, 3}
 
 var numbers = {
     "One",

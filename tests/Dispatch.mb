@@ -6,7 +6,7 @@ protocol Foo {
     func shout()
 }
 
-func shout(&n Foo) {
+func shout(&n: Foo) {
     n.shout()
 }
 

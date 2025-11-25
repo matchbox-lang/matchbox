@@ -198,7 +198,8 @@ static AST* parameter()
     ast->parameter.id = id;
     ast->parameter.typeId = T_INT;
 
-    if (isTypeToken(parser.currentToken.type)) {
+    if (parser.currentToken.type == T_COLON) {
+        consume(T_COLON);
         ast->parameter.typeId = parser.currentToken.type;
         consumeType();
     }
@@ -658,7 +659,8 @@ static AST* functionDefinition()
         return NULL;
     }
 
-    if (isTypeToken(parser.currentToken.type)) {
+    if (parser.currentToken.type == T_COLON) {
+        consume(T_COLON);
         ast->functionDefinition.typeId = parser.currentToken.type;
         consumeType();
     }
@@ -753,7 +755,8 @@ static AST* variableDefinition()
     ast->variableDefinition.position = getLocalCount(parser.currentScope);
     ast->variableDefinition.expr = NULL;
 
-    if (isTypeToken(parser.currentToken.type)) {
+    if (parser.currentToken.type == T_COLON) {
+        consume(T_COLON);
         ast->variableDefinition.typeId = parser.currentToken.type;
         consumeType();
     } else if (parser.currentToken.type != T_EQUAL) {

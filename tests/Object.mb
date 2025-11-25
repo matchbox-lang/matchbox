@@ -1,8 +1,8 @@
-func echo(x Object) {
+func echo(x: Object) {
     print(x)
 }
 
-func get(x Object) Object {
+func get(x: Object): Object {
     return x
 }
 

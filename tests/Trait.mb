@@ -1,13 +1,17 @@
 trait Bar {
-    id int
+    id: int
 
-    func getId() int {
+    func getId(): int {
         return id
     }
 }
 
 class Foo {
     use Bar
+    
+    func setId(id: int) {
+        self.id = id
+    }
 }
 
 var x = Foo(5)

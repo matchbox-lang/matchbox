@@ -1,17 +1,17 @@
 class Point {
-    x int
-    y int
+    x: int
+    y: int
 
-    construct(x int, y int) {
+    construct(x: int, y: int) {
         self.x = x
         self.y = y
     }
 
-    construct(x int) {
+    construct(x: int) {
         set(x, x)
     }
 
-    operator +=(v Point) Point {
+    operator +=(v: Point): Point {
         x += v.x
         y += v.y
 

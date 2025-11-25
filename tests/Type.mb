@@ -1,6 +1,6 @@
 type int_t int
 
-type Operation func<T>(T, T) T
+type Operation func<T>(T, T): T
 
 type Point (int, int)
 

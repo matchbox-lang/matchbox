@@ -1,6 +1,6 @@
-var a (String, int) = ("Apple", 20)
+var a = ("Apple", 20, 7.2548)
 
-var b (String, int, float, bool) = a + (7.2548, true)
+var b: (String, int, float, bool) = a + (true)
 
 print(b[0]) # Apple
 print(b[1]) # 20

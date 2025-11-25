@@ -1,12 +1,12 @@
 class Exception {
-    func what() String {
+    func what(): String {
         return "An exception occured."
     }
 }
 
 try {
     throw "An exception occured."
-} catch (e String) {
+} catch (e: String) {
     print(e)
 } finally {
     print("Execute finally.")
@@ -14,7 +14,7 @@ try {
 
 try {
     throw Exception()
-} catch (e Exception) {
+} catch (e: Exception) {
     print(e.what())
 } catch {
     print("An exception occured.")

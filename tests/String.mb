@@ -1,4 +1,4 @@
-var str String = "Hello World!\n"
+var str: String = "Hello World!\n"
 
 var apples = 4
 var bananas = 3

@@ -1,5 +1,5 @@
 class Timer {
-    seconds float
+    seconds: float
 
     get minutes() {
         return seconds / 60

@@ -1,0 +1,21 @@
+struct Point {
+    x: int
+    y: int
+}
+
+extension Point {
+    use Printable
+
+    construct Point() {
+        self(0, 0)
+    }
+}
+
+func Point.inc() {
+    x += 1
+    y += 1
+}
+
+var point = Point()
+point.inc()
+point.print()

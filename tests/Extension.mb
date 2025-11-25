@@ -6,7 +6,7 @@ struct Point {
 extension Point {
     use Printable
 
-    construct Point() {
+    construct() {
         self(0, 0)
     }
 }

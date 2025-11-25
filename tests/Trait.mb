@@ -8,10 +8,6 @@ trait Bar {
 
 class Foo {
     use Bar
-    
-    func setId(id: int) {
-        self.id = id
-    }
 }
 
 var x = Foo(5)

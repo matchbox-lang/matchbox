@@ -1,7 +1,7 @@
 trait Bar {
     id: int
 
-    func getId(): int {
+    func getId() {
         return id
     }
 }
@@ -13,4 +13,4 @@ class Foo {
 var x = Foo(5)
 var id = x.getId()
 
-print(id) # 5
+print(id)

@@ -1,4 +1,4 @@
-class Foo {
+class Bar {
     id: int
 
     func getId(): int {
@@ -6,7 +6,13 @@ class Foo {
     }
 }
 
+class Foo: Bar {
+    construct(id: int) {
+        super(id)
+    }
+}
+
 var x = Foo(5)
 var id = x.getId()
 
-print(id) # 5
+print(id)

@@ -8,7 +8,7 @@ class Point {
     }
 
     construct(x: int) {
-        set(x, x)
+        self(x, x)
     }
 
     operator +=(v: Point): Point {

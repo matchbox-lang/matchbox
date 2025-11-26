@@ -1,5 +1,5 @@
 protocol Animal {
-    func noise(): String
+    func noise()
 }
 
 func shout(animal: Animal) {
@@ -7,8 +7,8 @@ func shout(animal: Animal) {
 }
 
 class Sheep {
-    func noise(): String {
-        print("I'm a Sheep!")
+    func noise() {
+        print("Baaaah!")
     }
 }
 

@@ -1,0 +1,15 @@
+struct Point {
+    x: int
+    y: int
+}
+
+construct Point(x: int) {
+    self(x, x)
+}
+
+func Point.print() {
+    print(self)
+}
+
+var point = Point(0)
+point.print()

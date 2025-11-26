@@ -212,7 +212,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 3, "lse")) return T_ELSE;
             if (checkKeyword(1, 2, "nd")) return T_END;
             if (checkKeyword(1, 3, "num")) return T_ENUM;
-            if (checkKeyword(1, 8, "xtension")) return T_EXTENSION;
             if (checkKeyword(1, 5, "xtern")) return T_EXTERN;
             break;
         case 'f':

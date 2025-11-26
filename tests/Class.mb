@@ -1,14 +1,8 @@
-class Bar {
+class Foo {
     id: int
 
     func getId(): int {
         return id
-    }
-}
-
-class Foo: Bar {
-    construct(id: int) {
-        super(id)
     }
 }
 

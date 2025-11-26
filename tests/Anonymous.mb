@@ -1,6 +1,6 @@
 type Operation func(int, int): int
 
-var mul Operation = (a, b) => a * b
+var mul: Operation = (a, b) => a * b
 
 struct Point {
     x: int

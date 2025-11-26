@@ -11,7 +11,7 @@ class Point {
         self(x, x)
     }
 
-    operator +=(v: Point): Point {
+    operator +=(v): Point {
         x += v.x
         y += v.y
 

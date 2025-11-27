@@ -1,4 +1,4 @@
-type int_t int
+type int_t Type<int>
 
 type Operation func<T>(T, T): T
 

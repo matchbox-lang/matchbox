@@ -1,11 +1,3 @@
-var x: List<int>
-var x: Map<char, int>
-var x: Set<int>
-
-var x: List<int> = List<int>()
-var x: Map<char, int> = Map<char, int>()
-var x: Set<int> = Set<int>()
-
 var x = List<int>()
 var x = Map<char, int>()
 var x = Set<int>()

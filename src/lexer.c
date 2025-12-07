@@ -240,6 +240,7 @@ static TokenType getIdentifierType()
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
+            if (checkKeyword(1, 4, "ixin")) return T_MIXIN;
             break;
         case 'o':
             if (checkKeyword(1, 7, "perator")) return T_OPERATOR;
@@ -260,7 +261,6 @@ static TokenType getIdentifierType()
             break;
         case 't':
             if (checkKeyword(1, 4, "hrow")) return T_THROW;
-            if (checkKeyword(1, 4, "rait")) return T_TRAIT;
             if (checkKeyword(1, 3, "rue")) return T_TRUE;
             if (checkKeyword(1, 2, "ry")) return T_TRY;
             if (checkKeyword(1, 3, "ype")) return T_TYPE;

@@ -30,7 +30,7 @@ typedef enum TokenType
     T_END,
     T_CLASS,
     T_STRUCT,
-    T_TRAIT,
+    T_MIXIN,
     T_PROTOCOL,
     T_ENUM,
     T_GET,

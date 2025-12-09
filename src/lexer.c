@@ -240,7 +240,6 @@ static TokenType getIdentifierType()
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
-            if (checkKeyword(1, 4, "ixin")) return T_MIXIN;
             break;
         case 'o':
             if (checkKeyword(1, 7, "perator")) return T_OPERATOR;

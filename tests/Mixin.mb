@@ -7,7 +7,7 @@ class Bar {
 }
 
 class Foo {
-    mixin Bar
+    use Bar
 }
 
 var x = Foo(5)

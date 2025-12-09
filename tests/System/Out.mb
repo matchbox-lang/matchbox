@@ -1,12 +1,12 @@
-public struct Point {
+struct Point {
     x: int
     y: int
 }
 
-public func hello() {
+func hello() {
     print("Hello World!")
 }
 
-func secret() {
+private func secret() {
     print("Not visible!")
 }

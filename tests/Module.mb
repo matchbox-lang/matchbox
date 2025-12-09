@@ -1,7 +1,7 @@
 use System.Out
 
-var point = Out.Point(1, 2)
+var point = Point(1, 2)
 
-Out.hello()
+hello()
 
-Out.secret() # Error
+secret() # Error

@@ -1,7 +1,5 @@
 use System.Out
 
-var point = Point(1, 2)
-
 hello()
 
 secret() # Error

@@ -1,12 +1,7 @@
-struct Point {
-    x: int
-    y: int
-}
-
 func hello() {
     print("Hello World!")
 }
 
 private func secret() {
-    print("Not visible!")
+    print("Protected!")
 }

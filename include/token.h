@@ -42,7 +42,6 @@ typedef enum TokenType
     T_CONSTRUCT,
     T_DESTRUCT,
     T_SELF,
-    T_SUPER,
     T_ASYNC,
     T_AWAIT,
     T_DEFER,

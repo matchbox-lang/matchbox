@@ -236,6 +236,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "nt16")) return T_INT16;
             if (checkKeyword(1, 4, "nt32")) return T_INT32;
             if (checkKeyword(1, 4, "nt64")) return T_INT64;
+            if (checkKeyword(1, 7, "nternal")) return T_INTERNAL;
             if (checkKeyword(1, 1, "s")) return T_IS;
             break;
         case 'm':
@@ -245,7 +246,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 7, "perator")) return T_OPERATOR;
             break;
         case 'p':
-            if (checkKeyword(1, 8, "rotolcol")) return T_PROTOCOL;
+            if (checkKeyword(1, 7, "rotocol")) return T_PROTOCOL;
             if (checkKeyword(1, 6, "rivate")) return T_PRIVATE;
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;
             break;

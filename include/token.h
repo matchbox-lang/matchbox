@@ -37,6 +37,7 @@ typedef enum TokenType
     T_OPERATOR,
     T_FUNC,
     T_TYPE,
+    T_INTERNAL,
     T_PRIVATE,
     T_PUBLIC,
     T_CONSTRUCT,

@@ -1,13 +1,10 @@
 var x: int = 0
 var x = 0
 
-static x: int = 0
-static x = 0
-
 const x: int = 0
 const x = 0
 
-var a, b, c = 1, 2, 3
+var a: int, b: int, c: int = 1, 2, 3
 
 var a, b, c = 1, '2', "3"
 

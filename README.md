@@ -26,4 +26,4 @@ Next, compile and run the program:
 matchbox main.mb
 ```
 
-Copyright © 2023-2025. All rights reserved.
+Copyright © 2023-2026. All rights reserved.

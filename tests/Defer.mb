@@ -1,4 +1,4 @@
-func mul(a, b): int {
+func mul(a, b) -> int {
     return a * b
 }
 

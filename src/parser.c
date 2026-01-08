@@ -659,8 +659,8 @@ static AST* functionDefinition()
         return NULL;
     }
 
-    if (parser.currentToken.type == T_COLON) {
-        consume(T_COLON);
+    if (parser.currentToken.type == T_ARROW) {
+        consume(T_ARROW);
         ast->functionDefinition.typeId = parser.currentToken.type;
         consumeType();
     }

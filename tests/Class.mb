@@ -1,7 +1,7 @@
 class Foo {
     id: int
 
-    func getId(): int {
+    func getId() -> int {
         return id
     }
 }

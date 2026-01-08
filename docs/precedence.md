@@ -21,5 +21,5 @@
 | = += -= *= **= /= //= %=      | Assignment        | Right         |
 | &= ^= \|= ??=                 | Assignment        | Right         |
 | ?:                            | Ternary           | Right         |
-| =>                            | Arrow             | N/a           |
+| ->                            | Arrow             | N/a           |
 | ,                             | Sequence          | Left          |

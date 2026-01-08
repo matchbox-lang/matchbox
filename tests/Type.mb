@@ -1,9 +1,11 @@
 type int_t Type<int>
 
-type Operation func<T>(T, T): T
+type Operation func(int, int) -> int
 
 type Point (int, int)
 
 type Number int|float
 
 type Numbers Set<Number>
+
+type Void ()

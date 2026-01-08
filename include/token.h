@@ -114,7 +114,7 @@ typedef enum TokenType
     T_CIRCUMFLEX_EQUAL,
     T_LSHIFT_EQUAL,
     T_RSHIFT_EQUAL,
-    T_LAMBDA,
+    T_ARROW,
     T_SAFE_ACCESS,
     T_PIPE_FORWARD,
     T_PIPE_BACKWARD,

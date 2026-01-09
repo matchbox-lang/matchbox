@@ -1,4 +1,4 @@
-func sum(numbers: ...int) -> int {
+func sum(numbers: ...int) {
     var total = 0
 
     for n in numbers {

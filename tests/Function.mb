@@ -1,7 +1,7 @@
-func add(x, y) -> int {
-    return x + y
+func add(a, b) {
+    return a + b
 }
 
-var result = add(5, 10)
+var x = add(5, 10)
 
-print(result)
+print(x)

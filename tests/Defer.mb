@@ -1,6 +1,6 @@
-func mul(a, b) -> int {
-    return a * b
+func add(a, b) {
+    return a + b
 }
 
-defer mul(10, 20) # This runs last
-mul(30, 40)
+defer add(1, 2) # This runs last
+add(3, 4)

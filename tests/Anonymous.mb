@@ -7,8 +7,8 @@ struct Point {
     y: int
 }
 
-func invoke(x: int, y: int, op: Operation) {
-    var result = op(x, y)
+func invoke(a, b, op: Operation) {
+    var result = op(a, b)
     print(result)
 }
 

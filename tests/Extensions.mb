@@ -19,7 +19,7 @@ operator Rect +=(n) {
 }
 
 get Rect.area {
-    return x * y
+    return w * h
 }
 
 var r = Rect(0)

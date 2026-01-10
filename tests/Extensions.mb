@@ -1,15 +1,27 @@
-struct Point {
-    x: int
-    y: int
+struct Rect {
+    w: int
+    h: int
 }
 
-construct Point(x: int) {
-    self(x, x)
-}
-
-func Point.print() {
+func Rect.print() {
     print(self)
 }
 
-var point = Point(0)
-point.print()
+init Rect(n) {
+    self(n, n)
+}
+
+operator Rect +=(n) {
+    w += n
+    y += n
+
+    return self
+}
+
+get Rect.area {
+    return x * y
+}
+
+var r = Rect(0)
+r += 5
+r.print()

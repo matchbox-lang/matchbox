@@ -200,13 +200,11 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 3, "har")) return T_CHAR;
             if (checkKeyword(1, 4, "lass")) return T_CLASS;
             if (checkKeyword(1, 4, "onst")) return T_CONST;
-            if (checkKeyword(1, 8, "onstruct")) return T_CONSTRUCT;
             if (checkKeyword(1, 7, "ontinue")) return T_CONTINUE;
             break;
         case 'd':
             if (checkKeyword(1, 4, "efer")) return T_DEFER;
             if (checkKeyword(1, 5, "elete")) return T_DELETE;
-            if (checkKeyword(1, 7, "estruct")) return T_DESTRUCT;
             break;
         case 'e':
             if (checkKeyword(1, 3, "lse")) return T_ELSE;
@@ -231,6 +229,7 @@ static TokenType getIdentifierType()
         case 'i':
             if (checkKeyword(1, 1, "f")) return T_IF;
             if (checkKeyword(1, 1, "n")) return T_IN;
+            if (checkKeyword(1, 3, "nit")) return T_INIT;
             if (checkKeyword(1, 2, "nt")) return T_INT;
             if (checkKeyword(1, 3, "nt8")) return T_INT8;
             if (checkKeyword(1, 4, "nt16")) return T_INT16;

@@ -444,6 +444,7 @@ Token scanToken()
         case '=':
             return makeToken(
                 match('~') ? T_EQUAL_TILDE :
+                match('>') ? T_ARROW :
                 match('=') ?
                 match('=') ? T_EQUAL_EQUAL_EQUAL : T_EQUAL_EQUAL : T_EQUAL);
         case '!':
@@ -471,7 +472,6 @@ Token scanToken()
                 return integerLiteral();
             }
             return makeToken(
-                match('>') ? T_ARROW :
                 match('=') ? T_MINUS_EQUAL : T_MINUS);
         case '*':
             return makeToken(

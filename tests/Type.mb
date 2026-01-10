@@ -1,8 +1,8 @@
 type int_t Type<int>
 
-type Operation func(int) -> int
+type Operation (int) => int
 
-type Operation func<T, R>(T) -> R
+type Operation<T, R> (T) => R
 
 type Point (int, int)
 

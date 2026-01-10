@@ -2,7 +2,7 @@ func echo(x: Object) {
     print(x)
 }
 
-func get(x: Object) -> Object {
+func get(x: Object) {
     return x
 }
 

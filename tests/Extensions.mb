@@ -11,13 +11,6 @@ init Rect(n) {
     self(n, n)
 }
 
-operator Rect +=(n) {
-    w += n
-    y += n
-
-    return self
-}
-
 get Rect.area {
     return w * h
 }

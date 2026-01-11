@@ -16,5 +16,4 @@ get Rect.area {
 }
 
 var r = Rect(0)
-r += 5
 r.print()

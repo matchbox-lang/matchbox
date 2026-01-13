@@ -1,24 +1,24 @@
-type Operation (int, int) => int
-
-var mul = (a, b) => a * b
+type Operation = (int, int) => int
 
 struct Point {
     x: int
     y: int
 }
 
+var mul = (a, b) => a * b
+
 func invoke(a, b, op: Operation) {
     var result = op(a, b)
     print(result)
 }
 
-invoke(1, 2, func(a, b) {
-    return a + b
-})
-
 func invoke(point: Point) {
     invoke(...point, (a, b) => a / b)
 }
+
+invoke(1, 2, func(a, b) {
+    return a + b
+})
 
 invoke(1, 2, (a, b) => a + b)
 invoke(1, 2, mul)

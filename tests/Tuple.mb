@@ -1,8 +1,5 @@
-var a = ("Apple", 20, 7.2548)
+var product = ("T-1000", 1099.99)
+var model, price = product
 
-var b: (String, int, float, bool) = a + (true)
-
-print(b[0]) # Apple
-print(b[1]) # 20
-print(b[2]) # 7.2548
-print(b[3]) # true
+print(model)
+print(price)

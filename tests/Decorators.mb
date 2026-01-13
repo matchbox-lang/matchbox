@@ -1,4 +1,4 @@
-type Operation (int) => int
+type Operation = (int) => int
 
 func log(op: Operation): Operation {
     return func(n: int) {

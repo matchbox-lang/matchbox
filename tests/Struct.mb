@@ -4,5 +4,5 @@ struct Point {
 }
 
 var a = Point(1, 2)
-var b Point = {x: 1, y: 2}
-var c Point = (1, 2)
+var b: Point = {x: 1, y: 2}
+var c: Point = (1, 2)

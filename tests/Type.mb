@@ -1,13 +1,15 @@
-type int_t Type<int>
+type int_t = Type<int>
 
-type Operation (int) => int
+type Operation = (int) => int
 
-type Operation<T, R> (T) => R
+type Operation<T, R> = (T) => R
 
-type Point (int, int)
+type Pair = (int, int)
 
-type Number int|float
+type Point = {x: int, y: int}
 
-type Numbers Set<Number>
+type Number = int|float
 
-type Void ()
+type Numbers = Set<Number>
+
+type Void = ()

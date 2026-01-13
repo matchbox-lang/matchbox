@@ -1,4 +1,4 @@
-var product = ("T-1000", 1099.99)
+var product = ("LT-1000", 1099.99)
 var model, price = product
 
 print(model)

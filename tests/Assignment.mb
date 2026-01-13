@@ -4,9 +4,9 @@ var x = 0
 const x: int = 0
 const x = 0
 
-var a: int, b: int, c: int = 1, 2, 3
+var a: int, b: float = 1, 2.0
 
-var a, b, c = 1, '2', "3"
+var a, b = 1, 2.0
 
 var a, b, c = [1, 2, 3]
 
@@ -24,10 +24,8 @@ var point = Point(1, 2)
 
 var point: Point = {x: 1, y: 2}
 
-var point: Point = (1, 2)
-
 var a, b = [1, 2], [3, 4, 5]
 
-a, b = b, a
-
 var a, b, c = "xyz"
+
+a, b = b, a

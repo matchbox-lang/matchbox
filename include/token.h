@@ -51,6 +51,8 @@ typedef enum TokenType
     T_CATCH,
     T_FINALLY,
     T_THROW,
+    T_MOVE,
+    T_REMOVE,
     T_NONE,
     T_INT,
     T_UINT,

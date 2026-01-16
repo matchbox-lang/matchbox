@@ -244,6 +244,7 @@ static TokenType getIdentifierType()
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
+            if (checkKeyword(1, 3, "ove")) return T_MOVE;
             break;
         case 'p':
             if (checkKeyword(1, 7, "rotocol")) return T_PROTOCOL;
@@ -251,6 +252,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;
             break;
         case 'r':
+            if (checkKeyword(1, 5, "emove")) return T_REMOVE;
             if (checkKeyword(1, 5, "eturn")) return T_RETURN;
             break;
         case 's':

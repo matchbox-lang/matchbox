@@ -3,17 +3,22 @@ struct Rect {
     h: int
 }
 
-func Rect.print() {
-    print(self)
+Rect.init(n) {
+    self(n, n)
 }
 
-init Rect(n) {
-    self(n, n)
+func Rect.printArea() {
+    print(x * y)
 }
 
 get Rect.area {
     return w * h
 }
 
-var r = Rect(0)
-r.print()
+func Point += (n) {
+    w += n
+    h += n
+}
+
+var r = Rect(4)
+r.printArea()

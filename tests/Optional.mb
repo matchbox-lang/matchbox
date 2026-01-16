@@ -5,7 +5,7 @@ enum Optional<T> {
 
 var num = Some(5)
 
-if const n = num {
+if let n = num {
     print(n)
 } else {
     print("None")

@@ -227,6 +227,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 2, "as")) return T_HAS;
             break;
         case 'i':
+            if (checkKeyword(1, 2, "et")) return T_LET;
             if (checkKeyword(1, 1, "f")) return T_IF;
             if (checkKeyword(1, 1, "n")) return T_IN;
             if (checkKeyword(1, 3, "nit")) return T_INIT;
@@ -237,6 +238,9 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "nt64")) return T_INT64;
             if (checkKeyword(1, 7, "nternal")) return T_INTERNAL;
             if (checkKeyword(1, 1, "s")) return T_IS;
+            break;
+        case 'l':
+            if (checkKeyword(1, 2, "et")) return T_LET;
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;

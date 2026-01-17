@@ -8,7 +8,7 @@ func Rect.init(n) {
 }
 
 func Rect.printArea() {
-    print(x * y)
+    print(w * h)
 }
 
 get Rect.area {

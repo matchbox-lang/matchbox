@@ -150,10 +150,13 @@
     tan             Return the tangent
     tanh            Return the hyperbolic tangent
 
-## sequence
-    range           Generate a sequence of numbers
+## memory
+    drop            Destroy a value
     resize          Resize an existing vector
     vector          Create a dynamic sequence of memory
+
+## sequence
+    range           Generate a sequence of numbers
     zip             Zip sequences into a single iterator
 
 ## system

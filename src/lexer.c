@@ -204,7 +204,6 @@ static TokenType getIdentifierType()
             break;
         case 'd':
             if (checkKeyword(1, 4, "efer")) return T_DEFER;
-            if (checkKeyword(1, 5, "elete")) return T_DELETE;
             break;
         case 'e':
             if (checkKeyword(1, 3, "lse")) return T_ELSE;
@@ -230,7 +229,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 2, "et")) return T_LET;
             if (checkKeyword(1, 1, "f")) return T_IF;
             if (checkKeyword(1, 1, "n")) return T_IN;
-            if (checkKeyword(1, 3, "nit")) return T_INIT;
             if (checkKeyword(1, 2, "nt")) return T_INT;
             if (checkKeyword(1, 3, "nt8")) return T_INT8;
             if (checkKeyword(1, 4, "nt16")) return T_INT16;
@@ -244,7 +242,6 @@ static TokenType getIdentifierType()
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
-            if (checkKeyword(1, 3, "ove")) return T_MOVE;
             break;
         case 'p':
             if (checkKeyword(1, 7, "rotocol")) return T_PROTOCOL;
@@ -252,7 +249,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 5, "ublic")) return T_PUBLIC;
             break;
         case 'r':
-            if (checkKeyword(1, 5, "emove")) return T_REMOVE;
             if (checkKeyword(1, 5, "eturn")) return T_RETURN;
             break;
         case 's':

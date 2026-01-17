@@ -4,7 +4,7 @@ var x = 0
 let x: int = 0
 let x = 0
 
-const PI: int = 3.1415926535
+const PI: float = 3.1415926535
 
 var a: int, b: float = 1, 2.0
 

@@ -6,6 +6,10 @@ class Point {
         self(x, x)
     }
 
+    func clone(): Point {
+        return Point(x, y)
+    }
+
     func drop() {
         print(x, y)
     }
@@ -13,7 +17,5 @@ class Point {
     func += (p: Point) {
         x += p.x
         y += p.y
-
-        return self
     }
 }

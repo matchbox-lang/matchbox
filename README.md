@@ -26,4 +26,9 @@ Next, compile and run the program:
 matchbox main.mb
 ```
 
-Copyright © 2023-2026. All rights reserved.
+## License
+
+This project is licensed under the Apache License, Version 2.0.
+See the [LICENSE](LICENSE) file for details.
+
+Copyright © 2023-2026 Matchbox

@@ -1,6 +1,8 @@
 # Matchbox
 Matchbox is a fast and portable programming language that is memory-safe and has expressive, easy-to-learn syntax.
 
+> ⚠️ Matchbox is under active development. APIs may change.
+
 ## Supported Platforms
 Matchbox can run on the following platforms:
 
@@ -22,7 +24,7 @@ print(result)
 
 Next, compile and run the program:
 
-```
+```sh
 matchbox main.mb
 ```
 

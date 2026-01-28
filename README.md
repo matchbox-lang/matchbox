@@ -31,4 +31,6 @@ matchbox main.mb
 This project is licensed under the Apache License, Version 2.0.
 See the [LICENSE](LICENSE) file for details.
 
+The name "Matchbox" and associated logos are trademarks of Matchbox.
+
 Copyright © 2023-2026 Matchbox

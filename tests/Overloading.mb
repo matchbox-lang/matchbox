@@ -6,7 +6,7 @@ class Point {
         self(x, x)
     }
 
-    func clone(): Point {
+    func clone() -> Point {
         return Point(x, y)
     }
 

@@ -1,6 +1,6 @@
 # Data
 | Unit   | Bits | Bytes | Hex   | Common Uses / Notes                 |
-| ------ | ---- | ----- | ----- | ----------------------------------- |
+| :----- | :--- | :---- | :---- | :---------------------------------- |
 | bit    | 1    | 0.125 | 0x1   | Boolean values, flags               |
 | nibble | 4    | 0.5   | 0x4   | Half byte, hex digit                |
 | byte   | 8    | 1     | 0x8   | Characters, small integers          |

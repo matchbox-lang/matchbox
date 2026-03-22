@@ -16,7 +16,7 @@
 | ^                             | Bitwise XOR       | Left          |
 | \|                            | Bitwise OR        | Left          |
 | &&                            | Logical AND       | Left          |
-| \|\|                          | Logocal OR        | Left          |
+| \|\|                          | Logical OR        | Left          |
 | ??                            | Coalescing        | Left          |
 | = += -= *= **= /= //= %=      | Assignment        | Right         |
 | &= ^= \|= ??=                 | Assignment        | Right         |

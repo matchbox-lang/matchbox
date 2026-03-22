@@ -1,6 +1,6 @@
 # Operator Precedence
 | Operator                      | Description       | Associativity |
-| :---------------------------- | :---------------- | :------------ |
+| ----------------------------- | ----------------- | ------------- |
 | ()                            | Group             | N/a           |
 | []                            | Array             | Left          |
 | * &                           | Address           | N/a           |

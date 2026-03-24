@@ -2,7 +2,7 @@
     Program         → {Statement}
     Statement       → Expression
     Expression      → Assignment
-    Assignment      → Equality { ("=" | "+=" | "-=" | "*=" | "**=" | "/=" | "//=" | "%=") Assignment }
+    Assignment      → Equality {("=" | "+=" | "-=" | "*=" | "**=" | "/=" | "//=" | "%=") Assignment}
     Equality        → Comparison {("==" | "!=" | "===" | "!==") Comparison}
     Comparison      → Shift {(">" | ">=" | "<" | "<=" | "<=>") Shift}
     Shift           → Term {("<<" | ">>") Term}

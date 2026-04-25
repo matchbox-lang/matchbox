@@ -1,10 +1,8 @@
-var x: int = 0
-var x = 0
-
 let x: int = 0
 let x = 0
 
-const PI: double = 3.1415926535
+var x: int = 0
+var x = 0
 
 var a: int, b: float = 1, 2.0
 

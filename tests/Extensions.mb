@@ -15,7 +15,7 @@ get Rect.area {
     return w * h
 }
 
-func Point += (n) {
+func Rect += (n) {
     w += n
     h += n
 }

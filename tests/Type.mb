@@ -1,8 +1,8 @@
-type int_t = Type<int>
+type int_t = int
 
 type Operation = func(int) -> int
 
-type Operation<T, R> = func(T) -> R
+type Operation = func(type T) -> type R
 
 type Pair = (int, int)
 

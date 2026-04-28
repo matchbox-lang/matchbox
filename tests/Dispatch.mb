@@ -10,9 +10,9 @@ func shout(n: &Foo) {
     n.shout()
 }
 
-func shout<T: Foo>(n T) {
+func shout(type T: Foo, n: T) {
     n.shout()
 }
 
 shout(25)
-shout<int>(25)
+shout(int, 25)

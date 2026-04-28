@@ -1,4 +1,4 @@
-enum Optional<T> {
+enum Optional(type T) {
     Some(T)
     None
 }

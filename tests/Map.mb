@@ -1,4 +1,4 @@
-var a: Map<char, int> = {'x': 1, 'y': 2, 'z': 3}
+var a = {'x': 1, 'y': 2, 'z': 3}
 
 var numbers = {
     "One": 1,

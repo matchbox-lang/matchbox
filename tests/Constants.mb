@@ -1,3 +1,11 @@
 const PI = 3.1415926535
 
 print(PI)
+
+func square(x) {
+    return x * x
+}
+
+let x = const square(10);
+
+print(x) # 100

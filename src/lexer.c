@@ -199,7 +199,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "atch")) return T_CATCH;
             if (checkKeyword(1, 3, "har")) return T_CHAR;
             if (checkKeyword(1, 4, "lass")) return T_CLASS;
-            if (checkKeyword(1, 7, "omptime")) return T_COMPTIME;
             if (checkKeyword(1, 4, "onst")) return T_CONST;
             if (checkKeyword(1, 7, "ontinue")) return T_CONTINUE;
             break;

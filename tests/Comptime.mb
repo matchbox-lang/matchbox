@@ -1,7 +1,0 @@
-func square(x) {
-    return x * x
-}
-
-let x = comptime square(10);
-
-print(x) # 100

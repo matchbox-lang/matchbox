@@ -26,7 +26,6 @@ typedef enum TokenType
     T_VAR,
     T_LET,
     T_STATIC,
-    T_COMPTIME,
     T_CONST,
     T_USE,
     T_END,

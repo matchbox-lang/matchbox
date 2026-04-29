@@ -15,4 +15,4 @@ func shout[T: Foo](n: T) {
 }
 
 shout(25)
-shout(int, 25)
+shout[int](25)

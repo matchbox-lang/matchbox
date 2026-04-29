@@ -1,4 +1,4 @@
-class Entity(type T) {
+class Entity[T] {
     id: T
 
     func getId() -> T {
@@ -6,7 +6,7 @@ class Entity(type T) {
     }
 }
 
-func add(type T, a: T, b: T) {
+func add[T](a: T, b: T) {
     return a + b
 }
 
@@ -14,6 +14,6 @@ func mul(a, b) {
     return a * b
 }
 
-var a = Entity(5)
-var b = add(int, 5, 8)
+var a = Entity[int](5)
+var b = add(5, 8)
 var c = mul(5, 8)

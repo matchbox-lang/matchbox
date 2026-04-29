@@ -1,10 +1,10 @@
-var x = List()
-var x = Map()
-var x = Set()
+var x = List[int]()
+var x = Map[char, int]()
+var x = Set[int]()
 
-var x: List(int) = [1, 2, 3]
-var x: Map(char, int) = {'x': 1, 'y': 2, 'z': 3}
-var x: Set(int) = {1, 2, 3}
+var x: List[int] = [1, 2, 3]
+var x: Map[char, int] = {'x': 1, 'y': 2, 'z': 3}
+var x: Set[int] = {1, 2, 3}
 
 var x = [1, 2, 3]
 var x = {'x': 1, 'y': 2, 'z': 3}

@@ -2,7 +2,7 @@ type int_t = int
 
 type Operation = func(int) -> int
 
-type Operation = func(type T) -> type R
+type Operation[T, R] = func(T) -> R
 
 type Pair = (int, int)
 
@@ -10,6 +10,6 @@ type Point = {x: int, y: int}
 
 type Number = int|float
 
-type Numbers = Set<Number>
+type Numbers = Set[Number]
 
 type Void = ()

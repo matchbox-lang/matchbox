@@ -12,7 +12,7 @@
     key             Return the current index of a list
     keys            Return the keys of a list
     last            Return the last element of a list
-    length          Return the length of a list
+    len             Return the length of a list
     map             Apply a function to all elements in a list
     merge           Merge the elements of one or more lists
     next            Advance internal pointer of a list
@@ -146,14 +146,15 @@
 
 ## string
     capitalize      Convert the first character to uppercase
-    length          Return the length of a string
+    contains        Return whether a string contains the given value
+    len             Return the length of a string
     lower           Convert a string to lowercase
     ltrim           Trim whitespace from the left side of a string
     rtrim           Trim whitespace from the right side of a string
-    strpos          Return the position of the first occurrence of a string
-    strstr          Return the first occurrence of a string
-    strtok          Tokenize a string using the delimiter
-    substr          Return part of a string
+    find            Return the position of the first occurrence of a string
+    join            Join elements of an array into a string
+    slice           Return part of a string
+    split           Tokenize a string using the delimiter
     swapcase        Swap the case of each character in a string
     trim            Trim whitespace from a string
     title           Convert the first character of each word to uppercase

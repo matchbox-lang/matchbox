@@ -42,21 +42,6 @@
     rsort           Sort a set in descending order
     sort            Sort a set in ascending order
 
-## class String
-    capitalize      Convert the first character to uppercase
-    length          Return the length of a string
-    lower           Convert a string to lowercase
-    ltrim           Trim whitespace from the left side of a string
-    rtrim           Trim whitespace from the right side of a string
-    strpos          Return the position of the first occurrence of a string
-    strstr          Return the first occurrence of a string
-    strtok          Tokenize a string using the delimiter
-    substr          Return part of a string
-    swapcase        Swap the case of each character in a string
-    trim            Trim whitespace from a string
-    title           Convert the first character of each word to uppercase
-    upper           Convert a string to uppercase
-
 ## struct Complex[T]
     imaginary       Imaginary number
     real            Real number
@@ -158,6 +143,21 @@
 ## sequence
     range           Generate a sequence of numbers
     zip             Zip sequences into a single iterator
+
+## string
+    capitalize      Convert the first character to uppercase
+    length          Return the length of a string
+    lower           Convert a string to lowercase
+    ltrim           Trim whitespace from the left side of a string
+    rtrim           Trim whitespace from the right side of a string
+    strpos          Return the position of the first occurrence of a string
+    strstr          Return the first occurrence of a string
+    strtok          Tokenize a string using the delimiter
+    substr          Return part of a string
+    swapcase        Swap the case of each character in a string
+    trim            Trim whitespace from a string
+    title           Convert the first character of each word to uppercase
+    upper           Convert a string to uppercase
 
 ## system
     byteorder       Return the endianess of the system

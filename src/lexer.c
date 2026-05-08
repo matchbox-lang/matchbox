@@ -242,6 +242,7 @@ static TokenType getIdentifierType()
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
+            if (checkKeyword(1, 5, "emory")) return T_MEMORY;
             break;
         case 'p':
             if (checkKeyword(1, 7, "rotocol")) return T_PROTOCOL;
@@ -256,6 +257,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 2, "et")) return T_SET;
             if (checkKeyword(1, 5, "izeof")) return T_SIZEOF;
             if (checkKeyword(1, 5, "tatic")) return T_STATIC;
+            if (checkKeyword(1, 5, "tring")) return T_STRING;
             if (checkKeyword(1, 5, "truct")) return T_STRUCT;
             break;
         case 't':

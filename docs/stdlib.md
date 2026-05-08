@@ -1,6 +1,6 @@
 # Standard Library
 
-## class List\<T\>
+## class List[T]
     compact         Return a list of variables and their values
     current         Return the current element of a list
     empty           Determine if a list is empty
@@ -32,13 +32,13 @@
     unshift         Prepend an element to the beginning of a list
     values          Return the values of a list
 
-## class Map\<K, V\>
+## class Map[K, V]
     ksort           Sort a map by key in ascending order
     krsort          Sort a map by key in descending order
     rsort           Sort a map in descending order
     sort            Sort a map in ascending order
 
-## class Set\<T\>
+## class Set[T]
     rsort           Sort a set in descending order
     sort            Sort a set in ascending order
 
@@ -57,11 +57,11 @@
     title           Convert the first character of each word to uppercase
     upper           Convert a string to uppercase
 
-## struct Complex\<T\>
-    real            Real number
+## struct Complex[T]
     imaginary       Imaginary number
+    real            Real number
 
-## enum Optional\<T\>
+## enum Optional[T]
     unwrap          Unwrap and return the associated value
 
 ## conversion
@@ -151,9 +151,9 @@
     tanh            Return the hyperbolic tangent
 
 ## memory
+    alloc           Allocate a new typed block of memory
     drop            Destroy a value
-    resize          Resize an existing vector
-    vector          Create a dynamic sequence of memory
+    resize          Resize an existing typed block of memory
 
 ## sequence
     range           Generate a sequence of numbers

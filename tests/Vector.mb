@@ -1,3 +1,0 @@
-var x = vector(8)
-
-resize(x, 16)

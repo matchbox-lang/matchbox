@@ -128,8 +128,8 @@
     rand            Generate a random number
     round           Return the value of a number rounded to n precision
     sign            Return the sign of a number
-    sin             Return the cosine
-    sinh            Return the hyperbolic cosine
+    sin             Return the sine
+    sinh            Return the hyperbolic sine
     sum             Return the sum of one or more numbers
     sqrt            Return the square root
     tan             Return the tangent

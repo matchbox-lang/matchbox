@@ -1,15 +1,17 @@
 type Operation = func(int) -> int
 
-func log(op: Operation): Operation {
-    return func(n: int) {
-        var result = op(n)
-        print("Result {result}")
+func fn(op: Operation, n) {
+    var result = op(n)
+    print("Result {result}")
 
-        return result
-    }
+    return result
+}
+
+func log(op: Operation): Operation {
+    return bind(fn, op)
 }
 
 @log
-func square(n: int) {
+func square(n) {
     return n * n
 }

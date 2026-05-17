@@ -89,6 +89,9 @@
     tell            Return the current file position
     write           Write to a file
 
+## function
+    bind            Return a function with one or more fixed arguments
+
 ## io
     input           Read input from stdin
     inputf          Read formatted input from stdin

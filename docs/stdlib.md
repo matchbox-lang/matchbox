@@ -17,9 +17,9 @@
     merge           Merge the elements of one or more lists
     next            Advance internal pointer of a list
     pop             Remove the last element of a list
-    prev            Rewind internal pointer of a list
+    prev            Rewind the internal pointer of a list
     push            Add new elements onto the end of a list
-    rand            Return a randon element from a list
+    rand            Return a random element from a list
     reset           Reset internal pointer to the beginning of a list
     rsort           Sort a list in descending order
     shift           Remove an element from the beginning of a list
@@ -28,7 +28,7 @@
     sort            Sort a list in ascending order
     splice          Replace one or more elements in a list
     split           Split a string into a list of substrings
-    unique          Removes duplicate values from a list
+    unique          Remove duplicate values from a list
     unshift         Prepend an element to the beginning of a list
     values          Return the values of a list
 
@@ -50,15 +50,15 @@
     unwrap          Unwrap and return the associated value
 
 ## conversion
-    bool            Return the value as an boolean
+    bool            Return the value as a boolean
     char            Return the value as a Unicode character
-    double          Return the value as an 64-bit floating-point
-    float           Return the value as an 32-bit floating-point
+    double          Return the value as a 64-bit floating-point
+    float           Return the value as a 32-bit floating-point
     int             Return the value as an integer
     int8            Return the value as an 8-bit integer
-    int16           Return the value as an 16-bit integer
-    int32           Return the value as an 32-bit integer
-    int64           Return the value as an 64-bit integer
+    int16           Return the value as a 16-bit integer
+    int32           Return the value as a 32-bit integer
+    int64           Return the value as a 64-bit integer
     string          Return the value as a string
     uint            Return the value as an unsigned integer
     uint8           Return the value as an unsigned 8-bit integer
@@ -119,7 +119,7 @@
     frexp           Return the mantissa and exponent of a number
     hypot           Return the length of the hypotenuse
     ilerp           Return where a value lies between two points
-    ldexp           Return a number multiplied by 2 raised to the power of exponent
+    ldexp           Return a number multiplied by 2 raised to the power of the exponent
     lerp            Interpolate between two numbers
     log             Return the natural logarithm
     log10           Return the base-10 logarithm
@@ -139,9 +139,9 @@
     tanh            Return the hyperbolic tangent
 
 ## memory
-    alloc           Allocate a new typed block of memory
-    drop            Destroy a value
-    resize          Resize an existing typed block of memory
+    alloc           Allocate the runtime-capacity of typed storage
+    drop            Destroy a value and release its resources
+    realloc         Change the capacity of typed storage
 
 ## sequence
     range           Generate a sequence of numbers
@@ -164,7 +164,7 @@
     upper           Convert a string to uppercase
 
 ## system
-    byteorder       Return the endianess of the system
+    byteorder       Return the endianness of the system
     exit            Terminate the current process
 
 ## time

@@ -1,3 +1,4 @@
 var x = alloc(8)
 
-resize(x, 16)
+x[0] = 10
+realloc(x, 16)

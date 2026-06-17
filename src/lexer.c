@@ -242,7 +242,6 @@ static TokenType getIdentifierType()
             break;
         case 'm':
             if (checkKeyword(1, 4, "atch")) return T_MATCH;
-            if (checkKeyword(1, 5, "emory")) return T_MEMORY;
             break;
         case 'p':
             if (checkKeyword(1, 7, "rotocol")) return T_PROTOCOL;

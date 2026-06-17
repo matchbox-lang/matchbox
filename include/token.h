@@ -64,7 +64,6 @@ typedef enum TokenType
     T_DOUBLE,
     T_CHAR,
     T_STRING,
-    T_MEMORY,
     T_BOOL,
     T_TRUE,
     T_FALSE,

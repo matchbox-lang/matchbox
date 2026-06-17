@@ -139,9 +139,9 @@
     tanh            Return the hyperbolic tangent
 
 ## memory
-    alloc           Allocate the runtime-capacity of typed storage
+    alloc           Reserve capacity for a new block of typed memory
     drop            Destroy a value and release its resources
-    realloc         Change the capacity of typed storage
+    realloc         Change the capacity of an existing block of typed memory
 
 ## sequence
     range           Generate a sequence of numbers

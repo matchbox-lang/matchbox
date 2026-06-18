@@ -1,7 +1,7 @@
 func range(start, stop, step) {
     var i = start
     
-    while i <= stop {
+    while i < stop {
         yield i
         i += step
     }

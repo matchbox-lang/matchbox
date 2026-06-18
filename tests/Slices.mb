@@ -1,0 +1,4 @@
+var numbers = [1, 2, 3, 4, 5]
+var middle: &int[] = numbers[1..4]
+
+print(middle) # [2, 3, 4]

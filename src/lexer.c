@@ -203,6 +203,7 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 7, "ontinue")) return T_CONTINUE;
             break;
         case 'd':
+            if (checkKeyword(1, 5, "ouble")) return T_DOUBLE;
             if (checkKeyword(1, 4, "efer")) return T_DEFER;
             break;
         case 'e':
@@ -215,7 +216,6 @@ static TokenType getIdentifierType()
             if (checkKeyword(1, 4, "alse")) return T_FALSE;
             if (checkKeyword(1, 6, "inally")) return T_FINALLY;
             if (checkKeyword(1, 4, "loat")) return T_FLOAT;
-            if (checkKeyword(1, 5, "ouble")) return T_DOUBLE;
             if (checkKeyword(1, 2, "or")) return T_FOR;
             if (checkKeyword(1, 3, "unc")) return T_FUNC;
             break;

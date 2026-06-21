@@ -503,8 +503,8 @@ static void arguments(Vector* args)
 {
     size_t count = countVector(args);
 
-    while (count--) {
-        expression(args->data[count]);
+    for (size_t i = 0; i < count; i++) {
+        expression(args->data[i]);
     }
 }
 

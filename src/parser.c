@@ -30,6 +30,7 @@ static const char* invalidArgsError = "Error: Invalid arguments to function %.*s
 static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
 static const char* invalidTypeError = "Error: Invalid type for variable %.*s";
 static const char* redefinitionError = "Error: Redefinition of %.*s";
+static const char* unsupportedOperatorError = "Error: Unsupported operator %.*s";
 static const char* undefinedError = "Error: %.*s is undefined";
 static const char* unexpectedEndError = "Error: Unexpected end of input";
 static const char* unexpectedTokenError = "Error: Unexpected %.*s";
@@ -130,6 +131,13 @@ static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
 {
     if (!rightExpr) {
         return NULL;
+    }
+
+    if (isComparisonToken(token.type) ||
+        isEqualityToken(token.type) ||
+        token.type == T_BOOLEAN_AND ||
+        token.type == T_BOOLEAN_OR) {
+        error(unsupportedOperatorError, token);
     }
 
     int a = getTypeId(leftExpr);
@@ -530,8 +538,6 @@ static bool parameters(Vector* params)
         return false;
     }
 
-    int position = 0;
-
     while (parser.currentToken.type != T_RPAREN) {
         AST* expr = parameter();
 
@@ -543,7 +549,6 @@ static bool parameters(Vector* params)
             return false;
         }
 
-        expr->parameter.position = position++;
         pushVectorItem(params, expr);
 
         if (parser.currentToken.type == T_COMMA) {
@@ -556,6 +561,13 @@ static bool parameters(Vector* params)
     }
     
     consume(T_RPAREN);
+
+    size_t count = countVector(params);
+
+    for (size_t i = 0; i < count; i++) {
+        AST* param = getVectorAt(params, i);
+        param->parameter.position = count - i - 1;
+    }
 
     return true;
 }
@@ -795,6 +807,12 @@ static AST* identifier()
     
     if (isAssignmentToken(parser.currentToken.type)) {
         return assignment();
+    } else if (parser.currentToken.type == T_AND_EQUAL ||
+               parser.currentToken.type == T_OR_EQUAL ||
+               parser.currentToken.type == T_CIRCUMFLEX_EQUAL ||
+               parser.currentToken.type == T_LSHIFT_EQUAL ||
+               parser.currentToken.type == T_RSHIFT_EQUAL) {
+        error(unsupportedOperatorError, parser.currentToken);
     } else if (parser.currentToken.type == T_LPAREN) {
         return functionCall();
     }

@@ -2,7 +2,7 @@
 #define PROGRAM_H
 
 #define PROGRAM_COMMAND "matchbox"
-#define PROGRAM_VERSION "Matchbox 0.2.1"
+#define PROGRAM_VERSION "Matchbox 0.3.0"
 
 void printUsage();
 void printVersion();

@@ -63,7 +63,6 @@ Value __byteorder(Value* args)
 {
     int32_t i = 1;
     char* c = (char*)&i;
-    int32_t x = (int32_t)*c;
     
-    return INT_VALUE(x);
+    return INT_VALUE(*c == 0);
 }

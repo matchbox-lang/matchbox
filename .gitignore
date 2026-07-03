@@ -1,7 +1,7 @@
-.vscode/
-build/
-object/
+/.vscode/
+/build/
+/object/
 *.exe
-*.mbx
+*.mbc
 *.o
 *.obj

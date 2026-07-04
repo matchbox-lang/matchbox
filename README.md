@@ -38,17 +38,9 @@ To remove generated build artifacts:
 make clean
 ```
 
-## Usage
-
-Run a Matchbox source file:
-
-```sh
-matchbox main.mb
-```
-
 ## Getting Started
 
-Create a file named `main.mb`:
+Create a file named `main.mb` and add the following code:
 
 ```mb
 func add(x, y int) int {
@@ -60,7 +52,7 @@ var result = add(10, 20)
 print(result)
 ```
 
-Then run it:
+Compile and run the program:
 
 ```sh
 matchbox main.mb

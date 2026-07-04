@@ -43,12 +43,11 @@ make clean
 Create a file named `main.mb` and add the following code:
 
 ```mb
-func add(x, y int) int {
-    return x + y
+func add(a, b) {
+    return a + b
 }
 
 var result = add(10, 20)
-
 print(result)
 ```
 

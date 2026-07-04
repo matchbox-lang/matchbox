@@ -8,7 +8,7 @@ Matchbox is a memory-safe programming language designed for speed, portability, 
 
 Current version: `Matchbox 0.2.1`
 
-Matchbox currently provides an interpreter, compiler pipeline, bytecode VM, and a small standard/native runtime. The repository is still evolving, so the `tests/` directory contains a mix of working examples, regression inputs, and planned language behavior.
+Matchbox currently provides a compiler pipeline, bytecode VM, and a small standard/native runtime. The language is still evolving, so the `tests/` directory contains a mix of working examples, regression inputs, and planned language behavior.
 
 ## Supported Platforms
 

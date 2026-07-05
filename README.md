@@ -1,6 +1,6 @@
 # Matchbox
 
-Matchbox is a memory-safe programming language designed for speed, portability, expressive syntax, and a unified toolchain. It compiles `.mb` source files into bytecode and runs them in a virtual machine.
+Matchbox is a general-purpose programming language designed for speed, portability, expressive syntax, and a unified toolchain. It compiles `.mb` source files into bytecode, which runs on the Matchbox virtual machine.
 
 > Warning: Matchbox is under active development. APIs and language behavior may change between releases.
 

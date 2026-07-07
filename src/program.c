@@ -10,6 +10,7 @@ void printUsage(FILE* stream, int status)
     fprintf(stream, "  -d, --disassemble     Print bytecode without running the program\n");
     fprintf(stream, "  -h, --help            Show help options\n");
     fprintf(stream, "      --version         Show version information\n");
+
     exit(status);
 }
 

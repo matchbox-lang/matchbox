@@ -20,6 +20,7 @@ static bool parseOption(Options* options, char* arg)
     }
 
     fprintf(stderr, "Unknown option: %s\n", arg);
+
     return false;
 }
 
@@ -40,6 +41,7 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
     }
 
     options->filename = arg;
+
     return true;
 }
 

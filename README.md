@@ -6,7 +6,7 @@ Matchbox is a general-purpose programming language designed for speed, portabili
 
 ## Status
 
-Current version: `Matchbox 0.2.1`
+Current version: `Matchbox 0.3.0`
 
 Matchbox currently provides a compiler pipeline, bytecode VM, and a small standard/native runtime. The language is still evolving, so the `tests/` directory contains a mix of working examples and planned language behavior.
 

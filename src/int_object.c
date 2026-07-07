@@ -1,4 +1,4 @@
-#include "intobject.h"
+#include "int_object.h"
 #include "object.h"
 
 IntObject* createIntObject(int value)

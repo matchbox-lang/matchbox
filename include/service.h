@@ -1,5 +1,5 @@
-#ifndef SVC_H
-#define SVC_H
+#ifndef SERVICE_H
+#define SERVICE_H
 
 #define SERVICES_MAX 7
 

@@ -1,7 +1,7 @@
 #ifndef TABLE_H
 #define TABLE_H
 
-#include "stringobject.h"
+#include "string_object.h"
 #include <stddef.h>
 
 typedef struct TableItem TableItem;

@@ -1,6 +1,6 @@
-#include "moduleobject.h"
+#include "module_object.h"
 #include "bytecode.h"
-#include "functionobject.h"
+#include "function_object.h"
 #include "object.h"
 #include "value.h"
 #include <stdio.h>

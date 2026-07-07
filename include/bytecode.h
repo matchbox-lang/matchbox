@@ -1,7 +1,7 @@
 #ifndef BYTECODE_H
 #define BYTECODE_H
 
-#include "codeobject.h"
+#include "code_object.h"
 
 void disassemble(CodeObject* code);
 

@@ -1,7 +1,7 @@
 #ifndef VM_H
 #define VM_H
 
-#include "moduleobject.h"
+#include "module_object.h"
 #include "service.h"
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#include "functionobject.h"
-#include "codeobject.h"
+#include "function_object.h"
+#include "code_object.h"
 #include "object.h"
 #include <stdlib.h>
 

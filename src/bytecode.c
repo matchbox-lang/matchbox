@@ -1,5 +1,5 @@
 #include "bytecode.h"
-#include "codeobject.h"
+#include "code_object.h"
 #include "opcode.h"
 #include <stdint.h>
 #include <stdio.h>

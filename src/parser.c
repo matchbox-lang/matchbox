@@ -4,7 +4,7 @@
 #include "lexer.h"
 #include "scope.h"
 #include "service.h"
-#include "stringobject.h"
+#include "string_object.h"
 #include "token.h"
 #include "vector.h"
 #include <stdbool.h>

@@ -2,8 +2,8 @@
 #define COMPILER_H
 
 #include "ast.h"
-#include "functionobject.h"
-#include "moduleobject.h"
+#include "function_object.h"
+#include "module_object.h"
 #include "parser.h"
 #include "vector.h"
 #include <stddef.h>

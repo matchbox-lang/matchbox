@@ -1,6 +1,6 @@
 #include "buffer.h"
 #include "compiler.h"
-#include "moduleobject.h"
+#include "module_object.h"
 #include "options.h"
 #include "program.h"
 #include "vm.h"

@@ -1,5 +1,5 @@
 #include "table.h"
-#include "stringobject.h"
+#include "string_object.h"
 #include <stdbool.h>
 #include <stdlib.h>
 

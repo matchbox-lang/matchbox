@@ -13,274 +13,263 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static void expression(AST* ast);
-static void blocklevelStatements(Vector* nodes);
-static void toplevelStatements(Vector* nodes);
+static void expression(Compiler* compiler, AST* ast);
+static void blocklevelStatements(Compiler* compiler, Vector* nodes);
+static void toplevelStatements(Compiler* compiler, Vector* nodes);
 
-typedef struct Compiler
+static CodeObject* currentCodeObject(Compiler* compiler)
 {
-    Vector functionReferences;
-    ModuleObject* module;
-    FunctionObject* function;
-    AST* ast;
-    int stackCount;
-} Compiler;
-
-static Compiler compiler;
-
-static CodeObject* currentCodeObject()
-{
-    return &compiler.function->code;
+    return &compiler->function->code;
 }
 
-static void incStackCount()
+static void incStackCount(Compiler* compiler)
 {
-    if (++compiler.stackCount > compiler.function->maxStackCount) {
-        compiler.function->maxStackCount = compiler.stackCount;
+    if (++compiler->stackCount > compiler->function->maxStackCount) {
+        compiler->function->maxStackCount = compiler->stackCount;
     }
 }
 
-static void decStackCount()
+static void decStackCount(Compiler* compiler)
 {
-    compiler.stackCount--;
+    compiler->stackCount--;
 }
 
-static void write8(uint8_t n)
+static void write8(Compiler* compiler, uint8_t n)
 {
-    pushByte(currentCodeObject(), n);
+    pushByte(currentCodeObject(compiler), n);
 }
 
-static void write16(int16_t n)
+static void write16(Compiler* compiler, int16_t n)
 {
-    pushByte(currentCodeObject(), (n >> 8) & 0xFF);
-    pushByte(currentCodeObject(), n & 0xFF);
+    pushByte(currentCodeObject(compiler), (n >> 8) & 0xFF);
+    pushByte(currentCodeObject(compiler), n & 0xFF);
 }
 
-static void op_hlt()
+static void op_hlt(Compiler* compiler)
 {
-    write8(OP_HLT);
+    write8(compiler, OP_HLT);
 }
 
-static void op_reqs(uint8_t imm)
+static void op_reqs(Compiler* compiler, uint8_t imm)
 {
-    write8(OP_REQS);
-    write8(imm);
+    write8(compiler, OP_REQS);
+    write8(compiler, imm);
 }
 
-static void op_ldc(uint8_t imm)
+static void op_ldc(Compiler* compiler, uint8_t imm)
 {
-    incStackCount();
-    write8(OP_LDC);
-    write8(imm);
+    incStackCount(compiler);
+    write8(compiler, OP_LDC);
+    write8(compiler, imm);
 }
 
-static void op_reg()
+static void op_reg(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_REG);
+    decStackCount(compiler);
+    write8(compiler, OP_REG);
 }
 
-static void op_ldg(uint8_t imm)
+static void op_ldg(Compiler* compiler, uint8_t imm)
 {
-    incStackCount();
-    write8(OP_LDG);
-    write8(imm);
+    incStackCount(compiler);
+    write8(compiler, OP_LDG);
+    write8(compiler, imm);
 }
 
-static void op_stg(uint8_t imm)
+static void op_stg(Compiler* compiler, uint8_t imm)
 {
-    decStackCount();
-    write8(OP_STG);
-    write8(imm);
+    decStackCount(compiler);
+    write8(compiler, OP_STG);
+    write8(compiler, imm);
 }
 
-static void op_ldl(int8_t imm)
+static void op_ldl(Compiler* compiler, int8_t imm)
 {
-    incStackCount();
+    incStackCount(compiler);
 
     switch (imm) {
         case 0:
-            write8(OP_LDL_0);
+            write8(compiler, OP_LDL_0);
             break;
         case 1:
-            write8(OP_LDL_1);
+            write8(compiler, OP_LDL_1);
             break;
         case 2:
-            write8(OP_LDL_2);
+            write8(compiler, OP_LDL_2);
             break;
         case 3:
-            write8(OP_LDL_3);
+            write8(compiler, OP_LDL_3);
             break;
         default:
-            write8(OP_LDL);
-            write8(imm);
+            write8(compiler, OP_LDL);
+            write8(compiler, imm);
             break;
     }
 }
 
-static void op_stl(int8_t imm)
+static void op_stl(Compiler* compiler, int8_t imm)
 {
-    decStackCount();
+    decStackCount(compiler);
 
     switch (imm) {
         case 0:
-            write8(OP_STL_0);
+            write8(compiler, OP_STL_0);
             break;
         case 1:
-            write8(OP_STL_1);
+            write8(compiler, OP_STL_1);
             break;
         case 2:
-            write8(OP_STL_2);
+            write8(compiler, OP_STL_2);
             break;
         case 3:
-            write8(OP_STL_3);
+            write8(compiler, OP_STL_3);
             break;
         default:
-            write8(OP_STL);
-            write8(imm);
+            write8(compiler, OP_STL);
+            write8(compiler, imm);
             break;
     }
 }
 
-static void op_pushb(int8_t imm)
+static void op_pushb(Compiler* compiler, int8_t imm)
 {
-    incStackCount();
+    incStackCount(compiler);
 
     switch (imm) {
         case 0:
-            write8(OP_PUSH_0);
+            write8(compiler, OP_PUSH_0);
             break;
         case 1:
-            write8(OP_PUSH_1);
+            write8(compiler, OP_PUSH_1);
             break;
         case 2:
-            write8(OP_PUSH_2);
+            write8(compiler, OP_PUSH_2);
             break;
         case 3:
-            write8(OP_PUSH_3);
+            write8(compiler, OP_PUSH_3);
             break;
         default:
-            write8(OP_PUSHB);
-            write8(imm);
+            write8(compiler, OP_PUSHB);
+            write8(compiler, imm);
             break;
     }
 }
 
-static void op_pushh(int16_t imm)
+static void op_pushh(Compiler* compiler, int16_t imm)
 {
-    incStackCount();
-    write8(OP_PUSHH);
-    write16(imm);
+    incStackCount(compiler);
+    write8(compiler, OP_PUSHH);
+    write16(compiler, imm);
 }
 
-static void op_pop()
+static void op_pop(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_POP);
+    decStackCount(compiler);
+    write8(compiler, OP_POP);
 }
 
-static void op_add()
+static void op_add(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_ADD);
+    decStackCount(compiler);
+    write8(compiler, OP_ADD);
 }
 
-static void op_sub()
+static void op_sub(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_SUB);
+    decStackCount(compiler);
+    write8(compiler, OP_SUB);
 }
 
-static void op_mul()
+static void op_mul(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_MUL);
+    decStackCount(compiler);
+    write8(compiler, OP_MUL);
 }
 
-static void op_div()
+static void op_div(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_DIV);
+    decStackCount(compiler);
+    write8(compiler, OP_DIV);
 }
 
-static void op_rem()
+static void op_rem(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_REM);
+    decStackCount(compiler);
+    write8(compiler, OP_REM);
 }
 
-static void op_pow()
+static void op_pow(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_POW);
+    decStackCount(compiler);
+    write8(compiler, OP_POW);
 }
 
-static void op_band()
+static void op_band(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_BAND);
+    decStackCount(compiler);
+    write8(compiler, OP_BAND);
 }
 
-static void op_bor()
+static void op_bor(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_BOR);
+    decStackCount(compiler);
+    write8(compiler, OP_BOR);
 }
 
-static void op_bxor()
+static void op_bxor(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_BXOR);
+    decStackCount(compiler);
+    write8(compiler, OP_BXOR);
 }
 
-static void op_bnot()
+static void op_bnot(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_BNOT);
+    decStackCount(compiler);
+    write8(compiler, OP_BNOT);
 }
 
-static void op_lsl()
+static void op_lsl(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_LSL);
+    decStackCount(compiler);
+    write8(compiler, OP_LSL);
 }
 
-static void op_lsr()
+static void op_lsr(Compiler* compiler)
 {
-    decStackCount();
-    write8(OP_LSR);
+    decStackCount(compiler);
+    write8(compiler, OP_LSR);
 }
 
-static void op_neg()
+static void op_neg(Compiler* compiler)
 {
-    write8(OP_NEG);
+    write8(compiler, OP_NEG);
 }
 
-static void op_not()
+static void op_not(Compiler* compiler)
 {
-    write8(OP_NOT);
+    write8(compiler, OP_NOT);
 }
 
-static void op_call(uint16_t imm)
+static void op_call(Compiler* compiler, uint16_t imm)
 {
-    write8(OP_CALL);
-    write16(imm);
+    write8(compiler, OP_CALL);
+    write16(compiler, imm);
 }
 
-static void op_ret()
+static void op_ret(Compiler* compiler)
 {
-    incStackCount();
-    write8(OP_RET);
+    incStackCount(compiler);
+    write8(compiler, OP_RET);
 }
 
-static void op_retv()
+static void op_retv(Compiler* compiler)
 {
-    write8(OP_RETV);
+    write8(compiler, OP_RETV);
 }
 
-static size_t makeConstant(Value value)
+static size_t makeConstant(Compiler* compiler, Value value)
 {
-    return pushValue(&compiler.module->constants, value) - 1;
+    return pushValue(&compiler->module->constants, value) - 1;
 }
 
 static int getLocalPosition(AST* ast)
@@ -292,228 +281,228 @@ static int getLocalPosition(AST* ast)
     return ast->variableDefinition.position;
 }
 
-static void loadGlobalVariable(AST* ast)
+static void loadGlobalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_ldg(position);
+    op_ldg(compiler, position);
 }
 
-static void loadLocalVariable(AST* ast)
+static void loadLocalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_ldl(position);
+    op_ldl(compiler, position);
 }
 
-static void loadVariable(AST* ast)
+static void loadVariable(Compiler* compiler, AST* ast)
 {
     if (isTopLevel(ast->variableDefinition.scope)) {
-        loadGlobalVariable(ast);
+        loadGlobalVariable(compiler, ast);
     } else {
-        loadLocalVariable(ast);
+        loadLocalVariable(compiler, ast);
     }
 }
 
-static void storeGlobalVariable(AST* ast)
+static void storeGlobalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_stg(position);
+    op_stg(compiler, position);
 }
 
-static void storeLocalVariable(AST* ast)
+static void storeLocalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_stl(position);
+    op_stl(compiler, position);
 }
 
-static void storeVariable(AST* ast)
+static void storeVariable(Compiler* compiler, AST* ast)
 {
     if (isTopLevel(ast->variableDefinition.scope)) {
-        storeGlobalVariable(ast);
+        storeGlobalVariable(compiler, ast);
     } else {
-        storeLocalVariable(ast);
+        storeLocalVariable(compiler, ast);
     }
 }
 
-static void number(AST* ast)
+static void number(Compiler* compiler, AST* ast)
 {
     if (isLargerThan16BitSigned(ast->intValue)) {
-        size_t position = makeConstant(INT_VALUE(ast->intValue));
-        op_ldc(position);
-        pushVectorItem(&compiler.functionReferences, ast);
+        size_t position = makeConstant(compiler, INT_VALUE(ast->intValue));
+        op_ldc(compiler, position);
+        pushVectorItem(&compiler->functionReferences, ast);
     } else if (isLargerThan8BitSigned(ast->intValue)) {
-        op_pushh(ast->intValue);
+        op_pushh(compiler, ast->intValue);
     } else {
-        op_pushb(ast->intValue);
+        op_pushb(compiler, ast->intValue);
     }
 }
 
-static void binary(AST* ast)
+static void binary(Compiler* compiler, AST* ast)
 {
-    expression(ast->binary.leftExpr);
-    expression(ast->binary.rightExpr);
+    expression(compiler, ast->binary.leftExpr);
+    expression(compiler, ast->binary.rightExpr);
 
     switch (ast->binary.operator.type) {
         case T_PLUS:
-            return op_add();
+            return op_add(compiler);
         case T_MINUS:
-            return op_sub();
+            return op_sub(compiler);
         case T_STAR:
-            return op_mul();
+            return op_mul(compiler);
         case T_SLASH:
         case T_FLOOR:
-            return op_div();
+            return op_div(compiler);
         case T_PERCENT:
-            return op_rem();
+            return op_rem(compiler);
         case T_POWER:
-            return op_pow();
+            return op_pow(compiler);
         case T_AMPERSAND:
-            return op_band();
+            return op_band(compiler);
         case T_PIPE:
-            return op_bor();
+            return op_bor(compiler);
         case T_CIRCUMFLEX:
-            return op_bxor();
+            return op_bxor(compiler);
         case T_LSHIFT:
-            return op_lsl();
+            return op_lsl(compiler);
         case T_RSHIFT:
-            return op_lsr();
+            return op_lsr(compiler);
         default:
             return;
     }
 }
 
-static void bitNot(AST* ast)
+static void bitNot(Compiler* compiler, AST* ast)
 {
-    expression(ast->prefix.expr);
-    op_bnot();
+    expression(compiler, ast->prefix.expr);
+    op_bnot(compiler);
 }
 
-static void logNot(AST* ast)
+static void logNot(Compiler* compiler, AST* ast)
 {
-    expression(ast->prefix.expr);
-    op_not();
+    expression(compiler, ast->prefix.expr);
+    op_not(compiler);
 }
 
-static void negate(AST* ast)
+static void negate(Compiler* compiler, AST* ast)
 {
-    expression(ast->prefix.expr);
-    op_neg();
+    expression(compiler, ast->prefix.expr);
+    op_neg(compiler);
 }
 
-static void prefix(AST* ast)
+static void prefix(Compiler* compiler, AST* ast)
 {
     switch (ast->prefix.operator.type) {
         case T_EXCLAMATION:
-            return logNot(ast);
+            return logNot(compiler, ast);
         case T_TILDE:
-            return bitNot(ast);
+            return bitNot(compiler, ast);
         case T_MINUS:
-            return negate(ast);
+            return negate(compiler, ast);
         default:
             return;
     }
 }
 
-static void variable(AST* ast)
+static void variable(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->variable.symbol);
+    loadVariable(compiler, ast->variable.symbol);
 }
 
-static void additionAssignment(AST* ast)
+static void additionAssignment(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->assignment.symbol);
-    expression(ast->assignment.expr);
-    op_add();
-    storeVariable(ast->assignment.symbol);
+    loadVariable(compiler, ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    op_add(compiler);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void subtractionAssignment(AST* ast)
+static void subtractionAssignment(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->assignment.symbol);
-    expression(ast->assignment.expr);
-    op_sub();
-    storeVariable(ast->assignment.symbol);
+    loadVariable(compiler, ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    op_sub(compiler);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void muliplicationAssignment(AST* ast)
+static void muliplicationAssignment(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->assignment.symbol);
-    expression(ast->assignment.expr);
-    op_mul();
-    storeVariable(ast->assignment.symbol);
+    loadVariable(compiler, ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    op_mul(compiler);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void divisionAssignment(AST* ast)
+static void divisionAssignment(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->assignment.symbol);
-    expression(ast->assignment.expr);
-    op_div();
-    storeVariable(ast->assignment.symbol);
+    loadVariable(compiler, ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    op_div(compiler);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void remainderAssignment(AST* ast)
+static void remainderAssignment(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->assignment.symbol);
-    expression(ast->assignment.expr);
-    op_rem();
-    storeVariable(ast->assignment.symbol);
+    loadVariable(compiler, ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    op_rem(compiler);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void exponentiationAssignment(AST* ast)
+static void exponentiationAssignment(Compiler* compiler, AST* ast)
 {
-    loadVariable(ast->assignment.symbol);
-    expression(ast->assignment.expr);
-    op_pow();
-    storeVariable(ast->assignment.symbol);
+    loadVariable(compiler, ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    op_pow(compiler);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void simpleAssignment(AST* ast)
+static void simpleAssignment(Compiler* compiler, AST* ast)
 {
-    expression(ast->assignment.expr);
-    storeVariable(ast->assignment.symbol);
+    expression(compiler, ast->assignment.expr);
+    storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void assignment(AST* ast)
+static void assignment(Compiler* compiler, AST* ast)
 {
     switch (ast->assignment.operator.type) {
         case T_PLUS_EQUAL:
-            return additionAssignment(ast);
+            return additionAssignment(compiler, ast);
         case T_MINUS_EQUAL:
-            return subtractionAssignment(ast);
+            return subtractionAssignment(compiler, ast);
         case T_STAR_EQUAL:
-            return muliplicationAssignment(ast);
+            return muliplicationAssignment(compiler, ast);
         case T_FLOOR_EQUAL:
         case T_SLASH_EQUAL:
-            return divisionAssignment(ast);
+            return divisionAssignment(compiler, ast);
         case T_PERCENT_EQUAL:
-            return remainderAssignment(ast);
+            return remainderAssignment(compiler, ast);
         case T_POWER_EQUAL:
-            return exponentiationAssignment(ast);
+            return exponentiationAssignment(compiler, ast);
         case T_EQUAL:
-            return simpleAssignment(ast);
+            return simpleAssignment(compiler, ast);
         default:
             return;
     }
 }
 
-static void arguments(Vector* args)
+static void arguments(Compiler* compiler, Vector* args)
 {
     size_t count = countVector(args);
 
     for (size_t i = 0; i < count; i++) {
-        expression(args->data[i]);
+        expression(compiler, args->data[i]);
     }
 }
 
-static int getFunctionPosition(AST* ast)
+static int getFunctionPosition(Compiler* compiler, AST* ast)
 {
-    size_t functionCount = countVector(&compiler.functionReferences);
+    size_t functionCount = countVector(&compiler->functionReferences);
     
     for (int i = 0; i < functionCount; i++) {
-        if (ast == compiler.functionReferences.data[i]) {
+        if (ast == compiler->functionReferences.data[i]) {
             return i;
         }
     }
@@ -521,173 +510,173 @@ static int getFunctionPosition(AST* ast)
     return -1;
 }
 
-static void functionCall(AST* ast)
+static void functionCall(Compiler* compiler, AST* ast)
 {
-    uint16_t position = getFunctionPosition(ast->functionCall.symbol);
-    arguments(&ast->functionCall.args);
-    op_call(position);
+    uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
+    arguments(compiler, &ast->functionCall.args);
+    op_call(compiler, position);
 }
 
-static void serviceRequest(AST* ast)
+static void serviceRequest(Compiler* compiler, AST* ast)
 {
-    arguments(&ast->serviceRequest.args);
-    op_reqs(ast->serviceRequest.opcode);
+    arguments(compiler, &ast->serviceRequest.args);
+    op_reqs(compiler, ast->serviceRequest.opcode);
 }
 
-static void functionDefinition(AST* ast)
+static void functionDefinition(Compiler* compiler, AST* ast)
 {
     AST* body = ast->functionDefinition.body;
-    FunctionObject* previousFunction = compiler.function;
+    FunctionObject* previousFunction = compiler->function;
     FunctionObject* function = createFunctionObject();
     function->paramCount = countVector(&ast->functionDefinition.params);
     function->localCount = body->compound.scope->localCount;
     function->maxStackCount = function->localCount + 3;
     
-    compiler.stackCount = function->maxStackCount;
-    compiler.function = function;
-    makeConstant(POINTER_VALUE(function));
-    pushVectorItem(&compiler.functionReferences, ast);
-    blocklevelStatements(&body->compound.statements);
+    compiler->stackCount = function->maxStackCount;
+    compiler->function = function;
+    makeConstant(compiler, POINTER_VALUE(function));
+    pushVectorItem(&compiler->functionReferences, ast);
+    blocklevelStatements(compiler, &body->compound.statements);
 
     AST* last = vectorEnd(&body->compound.statements);
 
     if (!last || last->type != AST_RETURN) {
-        op_ret();
+        op_ret(compiler);
     }
     
-    compiler.function = previousFunction;
+    compiler->function = previousFunction;
 }
 
-static void ret(AST* ast)
+static void ret(Compiler* compiler, AST* ast)
 {
     if (isNone(ast->expression)) {
-        return op_ret();
+        return op_ret(compiler);
     }
 
-    expression(ast->expression);
-    op_retv();
+    expression(compiler, ast->expression);
+    op_retv(compiler);
 }
 
-static void variableDefinitionUninitialized(AST* ast)
+static void variableDefinitionUninitialized(Compiler* compiler, AST* ast)
 {
-    op_pushb(0);
+    op_pushb(compiler, 0);
 
     if (isTopLevel(ast->variableDefinition.scope)) {
-        op_reg();
+        op_reg(compiler);
     }
 }
 
-static void variableDefinition(AST* ast)
+static void variableDefinition(Compiler* compiler, AST* ast)
 {
     if (isNone(ast->variableDefinition.expr)) {
-        return variableDefinitionUninitialized(ast);
+        return variableDefinitionUninitialized(compiler, ast);
     }
 
-    expression(ast->variableDefinition.expr);
+    expression(compiler, ast->variableDefinition.expr);
 
     if (isTopLevel(ast->variableDefinition.scope)) {
-        op_reg();
+        op_reg(compiler);
     }
 }
 
-static void expression(AST* ast)
+static void expression(Compiler* compiler, AST* ast)
 {
     switch (ast->type) {
         case AST_BINARY:
-            return binary(ast);
+            return binary(compiler, ast);
         case AST_FUNCTION_CALL:
-            return functionCall(ast);
+            return functionCall(compiler, ast);
         case AST_INTEGER:
-            return number(ast);
+            return number(compiler, ast);
         case AST_PREFIX:
-            return prefix(ast);
+            return prefix(compiler, ast);
         case AST_SERVICE_REQUEST:
-            return serviceRequest(ast);
+            return serviceRequest(compiler, ast);
         case AST_VARIABLE:
-            return variable(ast);
+            return variable(compiler, ast);
         default:
             return;
     }
 }
 
-static void statement(AST* ast)
+static void statement(Compiler* compiler, AST* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            assignment(ast);
+            assignment(compiler, ast);
             break;
         case AST_FUNCTION_CALL:
-            functionCall(ast);
-            op_pop();
+            functionCall(compiler, ast);
+            op_pop(compiler);
             break;
         case AST_FUNCTION_DEFINITION:
-            functionDefinition(ast);
+            functionDefinition(compiler, ast);
             break;
         case AST_RETURN:
-            ret(ast);
+            ret(compiler, ast);
             break;
         case AST_SERVICE_REQUEST:
-            serviceRequest(ast);
-            op_pop();
+            serviceRequest(compiler, ast);
+            op_pop(compiler);
             break;
         case AST_VARIABLE_DEFINITION:
-            variableDefinition(ast);
+            variableDefinition(compiler, ast);
             break;
         default:
-            expression(ast);
-            op_pop();
+            expression(compiler, ast);
+            op_pop(compiler);
     }
 }
 
-static void blocklevelStatements(Vector* nodes)
+static void blocklevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        statement(nodes->data[i]);
+        statement(compiler, nodes->data[i]);
     }
 }
 
-static void toplevelStatements(Vector* nodes)
+static void toplevelStatements(Compiler* compiler, Vector* nodes)
 {
-    static size_t i = 0;
     size_t count = countVector(nodes);
 
-    for (; i < count; i++) {
-        statement(nodes->data[i]);
+    for (; compiler->statementIndex < count; compiler->statementIndex++) {
+        statement(compiler, nodes->data[compiler->statementIndex]);
     }
 }
 
-void initCompiler(ModuleObject* module)
+void initCompiler(Compiler* compiler, ModuleObject* module)
 {
-    initVector(&compiler.functionReferences);
-    pushVectorItem(&compiler.functionReferences, NULL);
+    initVector(&compiler->functionReferences);
+    pushVectorItem(&compiler->functionReferences, NULL);
 
     AST* ast = createAST(AST_COMPOUND);
     ast->compound.scope = createScope(NULL);
 
-    initParser(ast);
+    initParser(&compiler->parser, ast);
 
-    compiler.module = module;
-    compiler.function = AS_POINTER(module->constants.data[0]);
-    compiler.ast = ast;
-    compiler.stackCount = 0;
+    compiler->module = module;
+    compiler->function = AS_POINTER(module->constants.data[0]);
+    compiler->ast = ast;
+    compiler->statementIndex = 0;
+    compiler->stackCount = 0;
 }
 
-void freeCompiler()
+void freeCompiler(Compiler* compiler)
 {
-    freeVector(&compiler.functionReferences);
-    freeAST(compiler.ast);
+    freeVector(&compiler->functionReferences);
+    freeAST(compiler->ast);
 }
 
-void compile(char* source)
+void compile(Compiler* compiler, char* source)
 {
-    if (!compiler.module) {
+    if (!compiler->module) {
         return;
     }
     
-    parse(source);
-    clearCodeObject(currentCodeObject());
-    toplevelStatements(&compiler.ast->compound.statements);
-    op_hlt();
+    parse(&compiler->parser, source);
+    clearCodeObject(currentCodeObject(compiler));
+    toplevelStatements(compiler, &compiler->ast->compound.statements);
+    op_hlt(compiler);
 }

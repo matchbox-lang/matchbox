@@ -1,28 +1,35 @@
-MKDIR := mkdir -p
-RMDIR := rm -rf
 BUILD := build
 INCLUDE := include
 OBJECT := object
 SRC := src
-SRCS := $(wildcard $(SRC)/*.c)
+MKDIR = if not exist "$1" mkdir "$1"
+RMDIR = if exist "$1" rmdir /S /Q "$1"
+
+SRCS := $(sort $(wildcard $(SRC)/*.c))
 OBJS := $(patsubst $(SRC)/%.c, $(OBJECT)/%.o, $(SRCS))
-EXE := $(BUILD)/matchbox
+DEPS := $(OBJS:.o=.d)
+EXE := $(BUILD)/matchbox.exe
 CC := gcc
-CFLAGS := -I$(INCLUDE)
-LDLIBS := -lm
+CPPFLAGS += -I$(INCLUDE)
+CFLAGS ?=
+LDFLAGS ?=
+LDLIBS += -lm
 
 all: $(EXE)
 
 $(EXE): $(OBJS) | $(BUILD)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 $(OBJECT)/%.o: $(SRC)/%.c | $(OBJECT)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD) $(OBJECT):
-	$(MKDIR) $@
+	$(call MKDIR,$@)
 
 clean:
-	$(RMDIR) $(BUILD) $(OBJECT)
+	$(call RMDIR,$(BUILD))
+	$(call RMDIR,$(OBJECT))
 
 .PHONY: all clean
+
+-include $(DEPS)

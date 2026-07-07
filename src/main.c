@@ -4,6 +4,7 @@
 #include "options.h"
 #include "program.h"
 #include "vm.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,23 +47,29 @@ static void runFile(Options* options)
 
     if (!source) {
         fprintf(stderr, "Error: Could not read file %s\n", options->filename);
-        printUsage();
+        exit(1);
     }
 
     ModuleObject* module = createModuleObject();
     Compiler compiler;
     VM vm;
+    bool vmInitialized = false;
     
     initCompiler(&compiler, module);
     compile(&compiler, source);
 
     if (options->disassemble) {
-        return disassembleModule(module);
+        disassembleModule(module);
+    } else {
+        initVM(&vm, module);
+        vmInitialized = true;
+        interpret(&vm);
     }
 
-    initVM(&vm, module);
-    interpret(&vm);
-    freeVM(&vm);
+    if (vmInitialized) {
+        freeVM(&vm);
+    }
+
     freeCompiler(&compiler);
     freeModuleObject(module);
     free(source);
@@ -72,9 +79,13 @@ int main(int argc, char* argv[])
 {
     Options options;
 
-    initOptions(&options, argc, argv);
+    initOptions(&options);
 
-    if (argc == 1) {
+    if (!parseOptions(&options, argc, argv)) {
+        printUsage(stderr, 1);
+    }
+
+    if (!options.filename) {
         repl();
     } else {
         runFile(&options);

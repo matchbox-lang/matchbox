@@ -2,10 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void printUsage()
+void printUsage(FILE* stream, int status)
 {
-    printf("Usage: %s <options> <file>\n", PROGRAM_COMMAND);
-    exit(1);
+    fprintf(stream, "Usage: %s [options] [--] [file]\n", PROGRAM_COMMAND);
+    fprintf(stream, "\n");
+    fprintf(stream, "Options:\n");
+    fprintf(stream, "  -d, --disassemble     Print bytecode without running the program\n");
+    fprintf(stream, "  -h, --help            Show help options\n");
+    fprintf(stream, "      --version         Show version information\n");
+    exit(status);
 }
 
 void printVersion()

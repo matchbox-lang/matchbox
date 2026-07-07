@@ -14,9 +14,10 @@ static void repl()
     size_t size = 0;
     size_t len;
     ModuleObject* module = createModuleObject();
+    Compiler compiler;
     VM vm;
     
-    initCompiler(module);
+    initCompiler(&compiler, module);
     initVM(&vm, module);
 
     while (1) {
@@ -29,12 +30,12 @@ static void repl()
             break;
         }
 
-        compile(source);
+        compile(&compiler, source);
         interpret(&vm);
     }
 
     freeVM(&vm);
-    freeCompiler();
+    freeCompiler(&compiler);
     freeModuleObject(module);
     free(source);
 }
@@ -49,10 +50,11 @@ static void runFile(Options* options)
     }
 
     ModuleObject* module = createModuleObject();
+    Compiler compiler;
     VM vm;
     
-    initCompiler(module);
-    compile(source);
+    initCompiler(&compiler, module);
+    compile(&compiler, source);
 
     if (options->disassemble) {
         return disassembleModule(module);
@@ -61,7 +63,7 @@ static void runFile(Options* options)
     initVM(&vm, module);
     interpret(&vm);
     freeVM(&vm);
-    freeCompiler();
+    freeCompiler(&compiler);
     freeModuleObject(module);
     free(source);
 }

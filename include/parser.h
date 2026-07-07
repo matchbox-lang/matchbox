@@ -2,8 +2,20 @@
 #define PARSER_H
 
 #include "ast.h"
+#include "lexer.h"
+#include "scope.h"
+#include "token.h"
 
-void initParser(AST* ast);
-void parse(char* source);
+typedef struct Parser
+{
+    Lexer lexer;
+    Token currentToken;
+    Token prevToken;
+    Scope* currentScope;
+    AST* topLevel;
+} Parser;
+
+void initParser(Parser* parser, AST* ast);
+void parse(Parser* parser, char* source);
 
 #endif

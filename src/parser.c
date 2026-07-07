@@ -285,10 +285,9 @@ static AST* exponent()
     AST* expr = prefix();
     Token token = parser.currentToken;
 
-    while (token.type == T_POWER) {
+    if (token.type == T_POWER) {
         consume(token.type);
-        expr = binary(expr, prefix(), token);
-        token = parser.currentToken;
+        expr = binary(expr, exponent(), token);
     }
 
     return expr;

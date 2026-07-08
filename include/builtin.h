@@ -5,15 +5,6 @@
 
 #define BUILTINS_MAX 7
 
-typedef struct Builtin
-{
-    char* name;
-    int opcode;
-    int paramCount;
-    int params[4];
-    int typeId;
-} Builtin;
-
 typedef enum BuiltinId
 {
     BUILTIN_EXIT,
@@ -25,9 +16,18 @@ typedef enum BuiltinId
     BUILTIN_BYTEORDER
 } BuiltinId;
 
+typedef struct Builtin
+{
+    const char* name;
+    BuiltinId id;
+    int paramCount;
+    int params[4];
+    int typeId;
+} Builtin;
+
 extern Builtin builtins[BUILTINS_MAX];
 
-Builtin* getBuiltinByName(char* name);
+Builtin* getBuiltinByName(const char* name);
 Value builtinExit(Value* args);
 Value builtinPrint(Value* args);
 Value builtinClamp(Value* args);

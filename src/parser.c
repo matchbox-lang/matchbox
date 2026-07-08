@@ -566,7 +566,7 @@ static AST* builtinCall(Parser* parser, Token token)
     freeStringObject(id);
 
     AST* ast = createAST(AST_BUILTIN_CALL);
-    ast->builtinCall.opcode = builtin->opcode;
+    ast->builtinCall.id = builtin->id;
     ast->builtinCall.builtin = builtin;
 
     if (!arguments(parser, &ast->builtinCall.args)) {

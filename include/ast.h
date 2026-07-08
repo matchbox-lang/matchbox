@@ -1,6 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
+#include "builtin.h"
 #include "token.h"
 #include "vector.h"
 #include <stdbool.h>
@@ -56,7 +57,7 @@ typedef struct AST
         } compound;
 
         struct {
-            int opcode;
+            BuiltinId id;
             Vector args;
             Builtin* builtin;
         } builtinCall;

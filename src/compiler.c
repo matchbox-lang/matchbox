@@ -513,7 +513,7 @@ static int getFunctionPosition(Compiler* compiler, AST* ast)
 static void builtinCall(Compiler* compiler, AST* ast)
 {
     arguments(compiler, &ast->builtinCall.args);
-    emitCallbi(compiler, ast->builtinCall.opcode);
+    emitCallbi(compiler, ast->builtinCall.id);
 }
 
 static void functionCall(Compiler* compiler, AST* ast)

@@ -6,7 +6,7 @@
 #define PROGRAM_COMMAND "matchbox"
 #define PROGRAM_VERSION "Matchbox 0.3.0"
 
-void printUsage(FILE* stream, int status);
+void printUsage(FILE* stream);
 void printVersion();
 
 #endif

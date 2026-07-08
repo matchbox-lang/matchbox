@@ -1,22 +1,26 @@
 #include "command_line.h"
 #include "options.h"
 #include "program.h"
-#include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static bool parseOption(Options* options, char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
         printVersion();
+        exit(0);
     }
 
     if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
-        printUsage(stdout, 0);
+        printUsage(stdout);
+        exit(0);
     }
 
     if (strcmp(arg, "-d") == 0 || strcmp(arg, "--disassemble") == 0) {
         options->disassemble = true;
+
         return true;
     }
 
@@ -29,6 +33,7 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
 {
     if (*parsingOptions && strcmp(arg, "--") == 0) {
         *parsingOptions = false;
+
         return true;
     }
 
@@ -38,6 +43,7 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
 
     if (options->filename) {
         fprintf(stderr, "Unexpected argument: %s\n", arg);
+
         return false;
     }
 
@@ -58,6 +64,7 @@ bool parseCommandLine(Options* options, int argc, char* argv[])
 
     if (options->disassemble && !options->filename) {
         fprintf(stderr, "Error: -d requires a file\n");
+
         return false;
     }
 

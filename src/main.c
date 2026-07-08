@@ -83,7 +83,9 @@ int main(int argc, char* argv[])
     initOptions(&options);
 
     if (!parseCommandLine(&options, argc, argv)) {
-        printUsage(stderr, 1);
+        printUsage(stderr);
+
+        return 1;
     }
 
     if (!options.filename) {

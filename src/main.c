@@ -1,4 +1,5 @@
 #include "buffer.h"
+#include "command_line.h"
 #include "compiler.h"
 #include "module_object.h"
 #include "options.h"
@@ -81,7 +82,7 @@ int main(int argc, char* argv[])
 
     initOptions(&options);
 
-    if (!parseOptions(&options, argc, argv)) {
+    if (!parseCommandLine(&options, argc, argv)) {
         printUsage(stderr, 1);
     }
 

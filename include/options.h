@@ -10,6 +10,5 @@ typedef struct Options
 } Options;
 
 void initOptions(Options* options);
-bool parseOptions(Options* options, int argc, char* argv[]);
 
 #endif

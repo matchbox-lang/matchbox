@@ -1,6 +1,7 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 
+#include "options.h"
 #include <stdio.h>
 
 #define PROGRAM_COMMAND "matchbox"
@@ -8,5 +9,6 @@
 
 void printUsage(FILE* stream);
 void printVersion();
+void runProgram(Options* options);
 
 #endif

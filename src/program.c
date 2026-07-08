@@ -1,5 +1,4 @@
 #include "program.h"
-#include <stdio.h>
 
 void printUsage(FILE* stream)
 {

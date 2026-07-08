@@ -119,7 +119,7 @@ Scope* getScope(AST* ast)
 int getTypeId(AST* ast)
 {
     if (!ast) {
-        return T_NONE;
+        return TOKEN_NONE;
     }
 
     switch (ast->type) {
@@ -140,9 +140,9 @@ int getTypeId(AST* ast)
         case AST_PREFIX:
             return getTypeId(ast->prefix.expr);
         case AST_INTEGER:
-            return T_INT;
+            return TOKEN_INT;
         default:
-            return T_NONE;
+            return TOKEN_NONE;
     }
 }
 

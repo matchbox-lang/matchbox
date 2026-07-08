@@ -172,109 +172,109 @@ static TokenType getIdentifierType(Lexer* lexer)
 
     switch (c) {
         case 'a':
-            if (checkKeyword(lexer, 1, 1, "s")) return T_AS;
-            if (checkKeyword(lexer, 1, 4, "sync")) return T_ASYNC;
-            if (checkKeyword(lexer, 1, 4, "wait")) return T_AWAIT;
+            if (checkKeyword(lexer, 1, 1, "s")) return TOKEN_AS;
+            if (checkKeyword(lexer, 1, 4, "sync")) return TOKEN_ASYNC;
+            if (checkKeyword(lexer, 1, 4, "wait")) return TOKEN_AWAIT;
             break;
         case 'b':
-            if (checkKeyword(lexer, 1, 3, "ool")) return T_BOOL;
-            if (checkKeyword(lexer, 1, 4, "reak")) return T_BREAK;
+            if (checkKeyword(lexer, 1, 3, "ool")) return TOKEN_BOOL;
+            if (checkKeyword(lexer, 1, 4, "reak")) return TOKEN_BREAK;
             break;
         case 'c':
-            if (checkKeyword(lexer, 1, 4, "atch")) return T_CATCH;
-            if (checkKeyword(lexer, 1, 3, "har")) return T_CHAR;
-            if (checkKeyword(lexer, 1, 4, "lass")) return T_CLASS;
-            if (checkKeyword(lexer, 1, 4, "onst")) return T_CONST;
-            if (checkKeyword(lexer, 1, 7, "ontinue")) return T_CONTINUE;
+            if (checkKeyword(lexer, 1, 4, "atch")) return TOKEN_CATCH;
+            if (checkKeyword(lexer, 1, 3, "har")) return TOKEN_CHAR;
+            if (checkKeyword(lexer, 1, 4, "lass")) return TOKEN_CLASS;
+            if (checkKeyword(lexer, 1, 4, "onst")) return TOKEN_CONST;
+            if (checkKeyword(lexer, 1, 7, "ontinue")) return TOKEN_CONTINUE;
             break;
         case 'd':
-            if (checkKeyword(lexer, 1, 5, "ouble")) return T_DOUBLE;
-            if (checkKeyword(lexer, 1, 4, "efer")) return T_DEFER;
+            if (checkKeyword(lexer, 1, 5, "ouble")) return TOKEN_DOUBLE;
+            if (checkKeyword(lexer, 1, 4, "efer")) return TOKEN_DEFER;
             break;
         case 'e':
-            if (checkKeyword(lexer, 1, 3, "lse")) return T_ELSE;
-            if (checkKeyword(lexer, 1, 2, "nd")) return T_END;
-            if (checkKeyword(lexer, 1, 3, "num")) return T_ENUM;
-            if (checkKeyword(lexer, 1, 5, "xtern")) return T_EXTERN;
+            if (checkKeyword(lexer, 1, 3, "lse")) return TOKEN_ELSE;
+            if (checkKeyword(lexer, 1, 2, "nd")) return TOKEN_END;
+            if (checkKeyword(lexer, 1, 3, "num")) return TOKEN_ENUM;
+            if (checkKeyword(lexer, 1, 5, "xtern")) return TOKEN_EXTERN;
             break;
         case 'f':
-            if (checkKeyword(lexer, 1, 4, "alse")) return T_FALSE;
-            if (checkKeyword(lexer, 1, 6, "inally")) return T_FINALLY;
-            if (checkKeyword(lexer, 1, 4, "loat")) return T_FLOAT;
-            if (checkKeyword(lexer, 1, 2, "or")) return T_FOR;
-            if (checkKeyword(lexer, 1, 3, "unc")) return T_FUNC;
+            if (checkKeyword(lexer, 1, 4, "alse")) return TOKEN_FALSE;
+            if (checkKeyword(lexer, 1, 6, "inally")) return TOKEN_FINALLY;
+            if (checkKeyword(lexer, 1, 4, "loat")) return TOKEN_FLOAT;
+            if (checkKeyword(lexer, 1, 2, "or")) return TOKEN_FOR;
+            if (checkKeyword(lexer, 1, 3, "unc")) return TOKEN_FUNC;
             break;
         case 'g':
-            if (checkKeyword(lexer, 1, 2, "et")) return T_GET;
+            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_GET;
             break;
         case 'h':
-            if (checkKeyword(lexer, 1, 2, "as")) return T_HAS;
+            if (checkKeyword(lexer, 1, 2, "as")) return TOKEN_HAS;
             break;
         case 'i':
-            if (checkKeyword(lexer, 1, 2, "et")) return T_LET;
-            if (checkKeyword(lexer, 1, 1, "f")) return T_IF;
-            if (checkKeyword(lexer, 1, 1, "n")) return T_IN;
-            if (checkKeyword(lexer, 1, 2, "nt")) return T_INT;
-            if (checkKeyword(lexer, 1, 3, "nt8")) return T_INT8;
-            if (checkKeyword(lexer, 1, 4, "nt16")) return T_INT16;
-            if (checkKeyword(lexer, 1, 4, "nt32")) return T_INT32;
-            if (checkKeyword(lexer, 1, 4, "nt64")) return T_INT64;
-            if (checkKeyword(lexer, 1, 7, "nternal")) return T_INTERNAL;
-            if (checkKeyword(lexer, 1, 1, "s")) return T_IS;
+            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_LET;
+            if (checkKeyword(lexer, 1, 1, "f")) return TOKEN_IF;
+            if (checkKeyword(lexer, 1, 1, "n")) return TOKEN_IN;
+            if (checkKeyword(lexer, 1, 2, "nt")) return TOKEN_INT;
+            if (checkKeyword(lexer, 1, 3, "nt8")) return TOKEN_INT8;
+            if (checkKeyword(lexer, 1, 4, "nt16")) return TOKEN_INT16;
+            if (checkKeyword(lexer, 1, 4, "nt32")) return TOKEN_INT32;
+            if (checkKeyword(lexer, 1, 4, "nt64")) return TOKEN_INT64;
+            if (checkKeyword(lexer, 1, 7, "nternal")) return TOKEN_INTERNAL;
+            if (checkKeyword(lexer, 1, 1, "s")) return TOKEN_IS;
             break;
         case 'l':
-            if (checkKeyword(lexer, 1, 2, "et")) return T_LET;
+            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_LET;
             break;
         case 'm':
-            if (checkKeyword(lexer, 1, 4, "atch")) return T_MATCH;
+            if (checkKeyword(lexer, 1, 4, "atch")) return TOKEN_MATCH;
             break;
         case 'p':
-            if (checkKeyword(lexer, 1, 7, "rotocol")) return T_PROTOCOL;
-            if (checkKeyword(lexer, 1, 6, "rivate")) return T_PRIVATE;
-            if (checkKeyword(lexer, 1, 5, "ublic")) return T_PUBLIC;
+            if (checkKeyword(lexer, 1, 7, "rotocol")) return TOKEN_PROTOCOL;
+            if (checkKeyword(lexer, 1, 6, "rivate")) return TOKEN_PRIVATE;
+            if (checkKeyword(lexer, 1, 5, "ublic")) return TOKEN_PUBLIC;
             break;
         case 'r':
-            if (checkKeyword(lexer, 1, 5, "eturn")) return T_RETURN;
+            if (checkKeyword(lexer, 1, 5, "eturn")) return TOKEN_RETURN;
             break;
         case 's':
-            if (checkKeyword(lexer, 1, 3, "elf")) return T_SELF;
-            if (checkKeyword(lexer, 1, 2, "et")) return T_SET;
-            if (checkKeyword(lexer, 1, 5, "izeof")) return T_SIZEOF;
-            if (checkKeyword(lexer, 1, 5, "tatic")) return T_STATIC;
-            if (checkKeyword(lexer, 1, 5, "tring")) return T_STRING;
-            if (checkKeyword(lexer, 1, 5, "truct")) return T_STRUCT;
+            if (checkKeyword(lexer, 1, 3, "elf")) return TOKEN_SELF;
+            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_SET;
+            if (checkKeyword(lexer, 1, 5, "izeof")) return TOKEN_SIZEOF;
+            if (checkKeyword(lexer, 1, 5, "tatic")) return TOKEN_STATIC;
+            if (checkKeyword(lexer, 1, 5, "tring")) return TOKEN_STRING;
+            if (checkKeyword(lexer, 1, 5, "truct")) return TOKEN_STRUCT;
             break;
         case 't':
-            if (checkKeyword(lexer, 1, 4, "hrow")) return T_THROW;
-            if (checkKeyword(lexer, 1, 3, "rue")) return T_TRUE;
-            if (checkKeyword(lexer, 1, 2, "ry")) return T_TRY;
-            if (checkKeyword(lexer, 1, 3, "ype")) return T_TYPE;
-            if (checkKeyword(lexer, 1, 5, "ypeof")) return T_TYPEOF;
+            if (checkKeyword(lexer, 1, 4, "hrow")) return TOKEN_THROW;
+            if (checkKeyword(lexer, 1, 3, "rue")) return TOKEN_TRUE;
+            if (checkKeyword(lexer, 1, 2, "ry")) return TOKEN_TRY;
+            if (checkKeyword(lexer, 1, 3, "ype")) return TOKEN_TYPE;
+            if (checkKeyword(lexer, 1, 5, "ypeof")) return TOKEN_TYPEOF;
             break;
         case 'u':
-            if (checkKeyword(lexer, 1, 3, "int")) return T_UINT;
-            if (checkKeyword(lexer, 1, 4, "int8")) return T_UINT8;
-            if (checkKeyword(lexer, 1, 5, "int16")) return T_UINT16;
-            if (checkKeyword(lexer, 1, 5, "int32")) return T_UINT32;
-            if (checkKeyword(lexer, 1, 5, "int64")) return T_UINT64;
-            if (checkKeyword(lexer, 1, 5, "nless")) return T_UNLESS;
-            if (checkKeyword(lexer, 1, 2, "se")) return T_USE;
+            if (checkKeyword(lexer, 1, 3, "int")) return TOKEN_UINT;
+            if (checkKeyword(lexer, 1, 4, "int8")) return TOKEN_UINT8;
+            if (checkKeyword(lexer, 1, 5, "int16")) return TOKEN_UINT16;
+            if (checkKeyword(lexer, 1, 5, "int32")) return TOKEN_UINT32;
+            if (checkKeyword(lexer, 1, 5, "int64")) return TOKEN_UINT64;
+            if (checkKeyword(lexer, 1, 5, "nless")) return TOKEN_UNLESS;
+            if (checkKeyword(lexer, 1, 2, "se")) return TOKEN_USE;
             break;
         case 'v':
-            if (checkKeyword(lexer, 1, 2, "ar")) return T_VAR;
+            if (checkKeyword(lexer, 1, 2, "ar")) return TOKEN_VAR;
             break;
         case 'w':
-            if (checkKeyword(lexer, 1, 4, "here")) return T_WHERE;
-            if (checkKeyword(lexer, 1, 4, "hile")) return T_WHILE;
+            if (checkKeyword(lexer, 1, 4, "here")) return TOKEN_WHERE;
+            if (checkKeyword(lexer, 1, 4, "hile")) return TOKEN_WHILE;
             break;
         case 'y':
-            if (checkKeyword(lexer, 1, 4, "ield")) return T_YIELD;
+            if (checkKeyword(lexer, 1, 4, "ield")) return TOKEN_YIELD;
             break;
         default:
             break;
     }
 
-    return T_IDENTIFIER;
+    return TOKEN_IDENTIFIER;
 }
 
 static Token floatLiteral(Lexer* lexer)
@@ -291,7 +291,7 @@ static Token floatLiteral(Lexer* lexer)
         }
     }
 
-    return makeToken(lexer, T_FLOAT_LITERAL);
+    return makeToken(lexer, TOKEN_FLOAT_LITERAL);
 }
 
 static Token integerLiteral(Lexer* lexer)
@@ -304,7 +304,7 @@ static Token integerLiteral(Lexer* lexer)
         return floatLiteral(lexer);
     }
 
-    return makeToken(lexer, T_INTEGER_LITERAL);
+    return makeToken(lexer, TOKEN_INTEGER_LITERAL);
 }
 
 static Token hexadecimalLiteral(Lexer* lexer)
@@ -313,7 +313,7 @@ static Token hexadecimalLiteral(Lexer* lexer)
         advance(lexer);
     }
 
-    return makeToken(lexer, T_HEXADECIMAL_LITERAL);
+    return makeToken(lexer, TOKEN_HEXADECIMAL_LITERAL);
 }
 
 static Token octalLiteral(Lexer* lexer)
@@ -322,7 +322,7 @@ static Token octalLiteral(Lexer* lexer)
         advance(lexer);
     }
 
-    return makeToken(lexer, T_OCTAL_LITERAL);
+    return makeToken(lexer, TOKEN_OCTAL_LITERAL);
 }
 
 static Token binaryLiteral(Lexer* lexer)
@@ -331,7 +331,7 @@ static Token binaryLiteral(Lexer* lexer)
         advance(lexer);
     }
 
-    return makeToken(lexer, T_BINARY_LITERAL);
+    return makeToken(lexer, TOKEN_BINARY_LITERAL);
 }
 
 static Token characterLiteral(Lexer* lexer)
@@ -339,7 +339,7 @@ static Token characterLiteral(Lexer* lexer)
     while (!isEof(lexer)) {
         if (peek(lexer) == '\'' && prev(lexer) != '\\') {
             advance(lexer);
-            return makeToken(lexer, T_CHARACTER_LITERAL);
+            return makeToken(lexer, TOKEN_CHARACTER_LITERAL);
         }
 
         advance(lexer);
@@ -353,7 +353,7 @@ static Token stringLiteral(Lexer* lexer, char c)
     while (!isEof(lexer)) {
         if (peek(lexer) == c && prev(lexer) != '\\') {
             advance(lexer);
-            return makeToken(lexer, T_STRING_LITERAL);
+            return makeToken(lexer, TOKEN_STRING_LITERAL);
         }
 
         advance(lexer);
@@ -387,7 +387,7 @@ Token scanToken(Lexer* lexer)
     lexer->start.column = lexer->current.column;
 
     if (isEof(lexer)) {
-        return makeToken(lexer, T_EOF);
+        return makeToken(lexer, TOKEN_EOF);
     }
 
     char c = advance(lexer);
@@ -412,91 +412,91 @@ Token scanToken(Lexer* lexer)
         case '"':
         case '`':   return stringLiteral(lexer, c);
         case '\'':  return characterLiteral(lexer);
-        case '(':   return makeToken(lexer, T_LPAREN);
-        case ')':   return makeToken(lexer, T_RPAREN);
-        case '[':   return makeToken(lexer, T_LBRACE);
-        case ']':   return makeToken(lexer, T_RBRACE);
-        case '{':   return makeToken(lexer, T_LBRACE);
-        case '}':   return makeToken(lexer, T_RBRACE);
-        case ':':   return makeToken(lexer, T_COLON);
-        case ';':   return makeToken(lexer, T_SEMICOLON);
-        case ',':   return makeToken(lexer, T_COMMA);
-        case '$':   return makeToken(lexer, T_DOLLAR);
-        case '~':   return makeToken(lexer, T_TILDE);
+        case '(':   return makeToken(lexer, TOKEN_LPAREN);
+        case ')':   return makeToken(lexer, TOKEN_RPAREN);
+        case '[':   return makeToken(lexer, TOKEN_LBRACE);
+        case ']':   return makeToken(lexer, TOKEN_RBRACE);
+        case '{':   return makeToken(lexer, TOKEN_LBRACE);
+        case '}':   return makeToken(lexer, TOKEN_RBRACE);
+        case ':':   return makeToken(lexer, TOKEN_COLON);
+        case ';':   return makeToken(lexer, TOKEN_SEMICOLON);
+        case ',':   return makeToken(lexer, TOKEN_COMMA);
+        case '$':   return makeToken(lexer, TOKEN_DOLLAR);
+        case '~':   return makeToken(lexer, TOKEN_TILDE);
         case '%':
             return makeToken(lexer, 
-                match(lexer, '=') ? T_PERCENT_EQUAL : T_PERCENT);
+                match(lexer, '=') ? TOKEN_PERCENT_EQUAL : TOKEN_PERCENT);
         case '=':
             return makeToken(lexer, 
-                match(lexer, '~') ? T_EQUAL_TILDE :
+                match(lexer, '~') ? TOKEN_EQUAL_TILDE :
                 match(lexer, '=') ?
-                match(lexer, '=') ? T_EQUAL_EQUAL_EQUAL : T_EQUAL_EQUAL : T_EQUAL);
+                match(lexer, '=') ? TOKEN_EQUAL_EQUAL_EQUAL : TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
         case '!':
             return makeToken(lexer, 
-                match(lexer, '~') ? T_NOT_TILDE :
+                match(lexer, '~') ? TOKEN_NOT_TILDE :
                 match(lexer, '=') ?
-                match(lexer, '=') ? T_NOT_EQUAL_EQUAL : T_NOT_EQUAL : T_EXCLAMATION);
+                match(lexer, '=') ? TOKEN_NOT_EQUAL_EQUAL : TOKEN_NOT_EQUAL : TOKEN_EXCLAMATION);
         case '&':
             return makeToken(lexer, 
-                match(lexer, '&') ? T_BOOLEAN_AND :
-                match(lexer, '=') ? T_AND_EQUAL : T_AMPERSAND);
+                match(lexer, '&') ? TOKEN_BOOLEAN_AND :
+                match(lexer, '=') ? TOKEN_AND_EQUAL : TOKEN_AMPERSAND);
         case '|':
             return makeToken(lexer, 
-                match(lexer, '|') ? T_BOOLEAN_OR :
-                match(lexer, '>') ? T_PIPE_FORWARD :
-                match(lexer, '=') ? T_OR_EQUAL : T_PIPE);
+                match(lexer, '|') ? TOKEN_BOOLEAN_OR :
+                match(lexer, '>') ? TOKEN_PIPE_FORWARD :
+                match(lexer, '=') ? TOKEN_OR_EQUAL : TOKEN_PIPE);
         case '^':
             return makeToken(lexer, 
-                match(lexer, '=') ? T_CIRCUMFLEX_EQUAL : T_CIRCUMFLEX);
+                match(lexer, '=') ? TOKEN_CIRCUMFLEX_EQUAL : TOKEN_CIRCUMFLEX);
         case '+':
             return makeToken(lexer, 
-                match(lexer, '=') ? T_PLUS_EQUAL : T_PLUS);
+                match(lexer, '=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
         case '-':
             if (isDigit(peek(lexer)) || peek(lexer) == '.') {
                 return integerLiteral(lexer);
             }
             return makeToken(lexer, 
-                match(lexer, '>') ? T_ARROW :
-                match(lexer, '=') ? T_MINUS_EQUAL : T_MINUS);
+                match(lexer, '>') ? TOKEN_ARROW :
+                match(lexer, '=') ? TOKEN_MINUS_EQUAL : TOKEN_MINUS);
         case '*':
             return makeToken(lexer, 
                 match(lexer, '*') ?
-                match(lexer, '=') ? T_POWER_EQUAL : T_POWER :
-                match(lexer, '=') ? T_STAR_EQUAL : T_STAR);
+                match(lexer, '=') ? TOKEN_POWER_EQUAL : TOKEN_POWER :
+                match(lexer, '=') ? TOKEN_STAR_EQUAL : TOKEN_STAR);
         case '/':
             return makeToken(lexer, 
                 match(lexer, '/') ?
-                match(lexer, '=') ? T_FLOOR_EQUAL : T_FLOOR :
-                match(lexer, '=') ? T_SLASH_EQUAL : T_SLASH);
+                match(lexer, '=') ? TOKEN_FLOOR_EQUAL : TOKEN_FLOOR :
+                match(lexer, '=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
         case '<':
             return makeToken(lexer, 
                 match(lexer, '<') ?
-                match(lexer, '=') ? T_LSHIFT_EQUAL : T_LSHIFT :
-                match(lexer, '|') ? T_PIPE_BACKWARD :
+                match(lexer, '=') ? TOKEN_LSHIFT_EQUAL : TOKEN_LSHIFT :
+                match(lexer, '|') ? TOKEN_PIPE_BACKWARD :
                 match(lexer, '=') ?
-                match(lexer, '>') ? T_SPACESHIP : T_LESS_EQUAL : T_LESS);
+                match(lexer, '>') ? TOKEN_SPACESHIP : TOKEN_LESS_EQUAL : TOKEN_LESS);
         case '>':
             return makeToken(lexer, 
                 match(lexer, '>') ?
-                match(lexer, '=') ? T_RSHIFT_EQUAL : T_RSHIFT :
-                match(lexer, '=') ? T_GREATER_EQUAL : T_GREATER);
+                match(lexer, '=') ? TOKEN_RSHIFT_EQUAL : TOKEN_RSHIFT :
+                match(lexer, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
         case '?':
             return makeToken(lexer, 
                 match(lexer, '?') ?
-                match(lexer, '=') ? T_COALESCE_EQUAL : T_COALESCE :
-                match(lexer, ':') ? T_TERNARY :
-                match(lexer, '.') ? T_SAFE_ACCESS : T_QUESTION);
+                match(lexer, '=') ? TOKEN_COALESCE_EQUAL : TOKEN_COALESCE :
+                match(lexer, ':') ? TOKEN_TERNARY :
+                match(lexer, '.') ? TOKEN_SAFE_ACCESS : TOKEN_QUESTION);
         case '.':
             if (isDigit(peek(lexer))) {
                 return floatLiteral(lexer);
             }
             return makeToken(lexer, 
                 match(lexer, '.') ?
-                match(lexer, '.') ? T_SPREAD :
-                match(lexer, '^') ? T_RANGE_FROM_END : T_RANGE : T_DOT);
+                match(lexer, '.') ? TOKEN_SPREAD :
+                match(lexer, '^') ? TOKEN_RANGE_FROM_END : TOKEN_RANGE : TOKEN_DOT);
         case '@':
-            return makeToken(lexer, T_AT);
+            return makeToken(lexer, TOKEN_AT);
         default:
-            return makeToken(lexer, T_UNKNOWN);      
+            return makeToken(lexer, TOKEN_UNKNOWN);      
     }
 }

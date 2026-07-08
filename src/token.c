@@ -16,14 +16,14 @@ void printToken(Token* token)
 bool isAssignmentToken(TokenType type)
 {
     switch (type) {
-        case T_EQUAL:
-        case T_PLUS_EQUAL:
-        case T_MINUS_EQUAL:
-        case T_STAR_EQUAL:
-        case T_SLASH_EQUAL:
-        case T_FLOOR_EQUAL:
-        case T_PERCENT_EQUAL:
-        case T_POWER_EQUAL:
+        case TOKEN_EQUAL:
+        case TOKEN_PLUS_EQUAL:
+        case TOKEN_MINUS_EQUAL:
+        case TOKEN_STAR_EQUAL:
+        case TOKEN_SLASH_EQUAL:
+        case TOKEN_FLOOR_EQUAL:
+        case TOKEN_PERCENT_EQUAL:
+        case TOKEN_POWER_EQUAL:
             return true;
         default:
             return false;
@@ -32,17 +32,17 @@ bool isAssignmentToken(TokenType type)
 
 bool isTypeToken(TokenType type)
 {
-    return type == T_INT;
+    return type == TOKEN_INT;
 }
 
 bool isComparisonToken(TokenType type)
 {
     switch (type) {
-        case T_GREATER:
-        case T_GREATER_EQUAL:
-        case T_LESS:
-        case T_LESS_EQUAL:
-        case T_SPACESHIP:
+        case TOKEN_GREATER:
+        case TOKEN_GREATER_EQUAL:
+        case TOKEN_LESS:
+        case TOKEN_LESS_EQUAL:
+        case TOKEN_SPACESHIP:
             return true;
         default:
             return false;
@@ -52,10 +52,10 @@ bool isComparisonToken(TokenType type)
 bool isEqualityToken(TokenType type)
 {
     switch (type) {
-        case T_EQUAL_EQUAL:
-        case T_EQUAL_EQUAL_EQUAL:
-        case T_NOT_EQUAL:
-        case T_NOT_EQUAL_EQUAL:
+        case TOKEN_EQUAL_EQUAL:
+        case TOKEN_EQUAL_EQUAL_EQUAL:
+        case TOKEN_NOT_EQUAL:
+        case TOKEN_NOT_EQUAL_EQUAL:
             return true;
         default:
             return false;
@@ -70,8 +70,8 @@ bool isBoolOperatorToken(TokenType type)
 bool isShiftToken(TokenType type)
 {
     switch (type) {
-        case T_LSHIFT:
-        case T_RSHIFT:
+        case TOKEN_LSHIFT:
+        case TOKEN_RSHIFT:
             return true;
         default:
             return false;
@@ -81,8 +81,8 @@ bool isShiftToken(TokenType type)
 bool isTermToken(TokenType type)
 {
     switch (type) {
-        case T_PLUS:
-        case T_MINUS:
+        case TOKEN_PLUS:
+        case TOKEN_MINUS:
             return true;
         default:
             return false;
@@ -92,10 +92,10 @@ bool isTermToken(TokenType type)
 bool isFactorToken(TokenType type)
 {
     switch (type) {
-        case T_STAR:
-        case T_SLASH:
-        case T_FLOOR:
-        case T_PERCENT:
+        case TOKEN_STAR:
+        case TOKEN_SLASH:
+        case TOKEN_FLOOR:
+        case TOKEN_PERCENT:
             return true;
         default:
             return false;
@@ -105,9 +105,9 @@ bool isFactorToken(TokenType type)
 bool isPrefixToken(TokenType type)
 {
     switch (type) {
-        case T_EXCLAMATION:
-        case T_MINUS:
-        case T_TILDE:
+        case TOKEN_EXCLAMATION:
+        case TOKEN_MINUS:
+        case TOKEN_TILDE:
             return true;
         default:
             return false;

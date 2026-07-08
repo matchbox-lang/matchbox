@@ -14,7 +14,7 @@ typedef struct Builtin
     int typeId;
 } Builtin;
 
-typedef enum BuiltinOpcode
+typedef enum BuiltinId
 {
     BUILTIN_EXIT,
     BUILTIN_PRINT,
@@ -23,7 +23,7 @@ typedef enum BuiltinOpcode
     BUILTIN_MIN,
     BUILTIN_MAX,
     BUILTIN_BYTEORDER
-} BuiltinOpcode;
+} BuiltinId;
 
 extern Builtin builtins[BUILTINS_MAX];
 

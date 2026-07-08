@@ -346,28 +346,28 @@ static void binary(Compiler* compiler, AST* ast)
     expression(compiler, ast->binary.rightExpr);
 
     switch (ast->binary.operator.type) {
-        case T_PLUS:
+        case TOKEN_PLUS:
             return emitAdd(compiler);
-        case T_MINUS:
+        case TOKEN_MINUS:
             return emitSub(compiler);
-        case T_STAR:
+        case TOKEN_STAR:
             return emitMul(compiler);
-        case T_SLASH:
-        case T_FLOOR:
+        case TOKEN_SLASH:
+        case TOKEN_FLOOR:
             return emitDiv(compiler);
-        case T_PERCENT:
+        case TOKEN_PERCENT:
             return emitRem(compiler);
-        case T_POWER:
+        case TOKEN_POWER:
             return emitPow(compiler);
-        case T_AMPERSAND:
+        case TOKEN_AMPERSAND:
             return emitBand(compiler);
-        case T_PIPE:
+        case TOKEN_PIPE:
             return emitBor(compiler);
-        case T_CIRCUMFLEX:
+        case TOKEN_CIRCUMFLEX:
             return emitBxor(compiler);
-        case T_LSHIFT:
+        case TOKEN_LSHIFT:
             return emitLsl(compiler);
-        case T_RSHIFT:
+        case TOKEN_RSHIFT:
             return emitLsr(compiler);
         default:
             return;
@@ -395,11 +395,11 @@ static void negate(Compiler* compiler, AST* ast)
 static void prefix(Compiler* compiler, AST* ast)
 {
     switch (ast->prefix.operator.type) {
-        case T_EXCLAMATION:
+        case TOKEN_EXCLAMATION:
             return logNot(compiler, ast);
-        case T_TILDE:
+        case TOKEN_TILDE:
             return bitNot(compiler, ast);
-        case T_MINUS:
+        case TOKEN_MINUS:
             return negate(compiler, ast);
         default:
             return;
@@ -468,20 +468,20 @@ static void simpleAssignment(Compiler* compiler, AST* ast)
 static void assignment(Compiler* compiler, AST* ast)
 {
     switch (ast->assignment.operator.type) {
-        case T_PLUS_EQUAL:
+        case TOKEN_PLUS_EQUAL:
             return additionAssignment(compiler, ast);
-        case T_MINUS_EQUAL:
+        case TOKEN_MINUS_EQUAL:
             return subtractionAssignment(compiler, ast);
-        case T_STAR_EQUAL:
+        case TOKEN_STAR_EQUAL:
             return muliplicationAssignment(compiler, ast);
-        case T_FLOOR_EQUAL:
-        case T_SLASH_EQUAL:
+        case TOKEN_FLOOR_EQUAL:
+        case TOKEN_SLASH_EQUAL:
             return divisionAssignment(compiler, ast);
-        case T_PERCENT_EQUAL:
+        case TOKEN_PERCENT_EQUAL:
             return remainderAssignment(compiler, ast);
-        case T_POWER_EQUAL:
+        case TOKEN_POWER_EQUAL:
             return exponentiationAssignment(compiler, ast);
-        case T_EQUAL:
+        case TOKEN_EQUAL:
             return simpleAssignment(compiler, ast);
         default:
             return;

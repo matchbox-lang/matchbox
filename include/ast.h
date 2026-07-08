@@ -8,7 +8,7 @@
 typedef struct AST AST;
 typedef struct StringObject StringObject;
 typedef struct Scope Scope;
-typedef struct Service Service;
+typedef struct Builtin Builtin;
 
 typedef enum ASTType
 {
@@ -18,13 +18,13 @@ typedef enum ASTType
     AST_CHARACTER,
     AST_COMPOUND,
     AST_FLOAT,
+    AST_BUILTIN_CALL,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
     AST_PARAMETER,
     AST_PREFIX,
     AST_RETURN,
-    AST_SERVICE_REQUEST,
     AST_STRING,
     AST_VARIABLE,
     AST_VARIABLE_DEFINITION,
@@ -56,6 +56,12 @@ typedef struct AST
         } compound;
 
         struct {
+            int opcode;
+            Vector args;
+            Builtin* builtin;
+        } builtinCall;
+
+        struct {
             Scope* scope;
             Vector args;
             AST* symbol;
@@ -80,12 +86,6 @@ typedef struct AST
             Token operator;
             AST* expr;
         } prefix;
-
-        struct {
-            int opcode;
-            Vector args;
-            Service* service;
-        } serviceRequest;
 
         struct {
             Scope* scope;

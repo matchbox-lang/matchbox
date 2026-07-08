@@ -1,10 +1,9 @@
 #include "vm.h"
+#include "builtin.h"
 #include "code_object.h"
 #include "function_object.h"
 #include "module_object.h"
-#include "native.h"
 #include "opcode.h"
-#include "service.h"
 #include "value.h"
 #include <math.h>
 #include <stdint.h>
@@ -24,22 +23,22 @@
 #define POP_INT() (AS_INT(POP()))
 #define POP_POINTER() (AS_POINTER(POP()))
 
-#define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
 #define READ_UINT8() ((uint8_t)*(vm->ip++))
+#define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
 
 #define TEST_OVERFLOW(n) if (vm->sp - vm->stack + (n) > STACK_MAX) \
     fprintf(stderr, "Error: Stack overflow\n"), \
     exit(1)
 
-static void initServices(VM* vm)
+static void initBuiltins(VM* vm)
 {
-    vm->service[SOP_EXIT] = __exit;
-    vm->service[SOP_PRINT] = __print;
-    vm->service[SOP_CLAMP] = __clamp;
-    vm->service[SOP_ABS] = __abs;
-    vm->service[SOP_MIN] = __min;
-    vm->service[SOP_MAX] = __max;
-    vm->service[SOP_BYTEORDER] = __byteorder;
+    vm->builtins[BUILTIN_EXIT] = builtinExit;
+    vm->builtins[BUILTIN_PRINT] = builtinPrint;
+    vm->builtins[BUILTIN_CLAMP] = builtinClamp;
+    vm->builtins[BUILTIN_ABS] = builtinAbs;
+    vm->builtins[BUILTIN_MIN] = builtinMin;
+    vm->builtins[BUILTIN_MAX] = builtinMax;
+    vm->builtins[BUILTIN_BYTEORDER] = builtinByteorder;
 }
 
 static void run(VM* vm)
@@ -49,7 +48,7 @@ static void run(VM* vm)
     int32_t a;
     int32_t b;
     int32_t x;
-    Service service;
+    Builtin builtin;
     Value value;
 
     vm->ip = function->code.data;
@@ -58,14 +57,6 @@ static void run(VM* vm)
 
     while ((opcode = READ_UINT8())) {
         switch (opcode) {
-            case OP_REQS:
-                x = READ_UINT8();
-                service = services[x];
-                value = vm->service[x](vm->sp - service.paramCount);
-                vm->sp -= service.paramCount;
-                PUSH(value);
-                break;
-
             case OP_LDC:
                 x = READ_UINT8();
                 value = vm->module->constants.data[x];
@@ -281,6 +272,14 @@ static void run(VM* vm)
                 vm->ip += READ_UINT16();
                 break;
 
+            case OP_CALLBI:
+                x = READ_UINT8();
+                builtin = builtins[x];
+                value = vm->builtins[x](vm->sp - builtin.paramCount);
+                vm->sp -= builtin.paramCount;
+                PUSH(value);
+                break;
+
             case OP_CALL:
                 x = READ_UINT16();
                 function = AS_POINTER(vm->module->constants.data[x]);
@@ -320,7 +319,7 @@ static void run(VM* vm)
 void initVM(VM* vm, ModuleObject* module)
 {
     initValueArray(&vm->globals);
-    initServices(vm);
+    initBuiltins(vm);
     
     vm->module = module;
     vm->ip = NULL;

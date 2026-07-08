@@ -1,6 +1,6 @@
 #include "ast.h"
+#include "builtin.h"
 #include "scope.h"
-#include "service.h"
 #include "string_object.h"
 #include "token.h"
 #include "vector.h"
@@ -18,14 +18,14 @@ AST* createAST(ASTType type)
         case AST_COMPOUND:
             initVector(&ast->compound.statements);
             break;
+        case AST_BUILTIN_CALL:
+            initVector(&ast->builtinCall.args);
+            break;
         case AST_FUNCTION_CALL:
             initVector(&ast->functionCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
             initVector(&ast->functionDefinition.params);
-            break;
-        case AST_SERVICE_REQUEST:
-            initVector(&ast->serviceRequest.args);
             break;
         default:
             break;
@@ -62,6 +62,9 @@ void freeAST(AST* ast)
         case AST_COMPOUND:
             freeScope(ast->compound.scope);
             freeASTVector(&ast->compound.statements);
+            break;
+        case AST_BUILTIN_CALL:
+            freeASTVector(&ast->builtinCall.args);
             break;
         case AST_FUNCTION_CALL:
             freeASTVector(&ast->functionCall.args);
@@ -122,14 +125,14 @@ int getTypeId(AST* ast)
     switch (ast->type) {
         case AST_BINARY:
             return ast->binary.typeId;
+        case AST_BUILTIN_CALL:
+            return ast->builtinCall.builtin->typeId;
         case AST_FUNCTION_CALL:
             return getTypeId(ast->functionCall.symbol);
         case AST_FUNCTION_DEFINITION:
             return ast->functionDefinition.typeId;
         case AST_PARAMETER:
             return ast->parameter.typeId;
-        case AST_SERVICE_REQUEST:
-            return ast->serviceRequest.service->typeId;
         case AST_VARIABLE:
             return getTypeId(ast->variable.symbol);
         case AST_VARIABLE_DEFINITION:
@@ -168,9 +171,9 @@ bool isPrefixOperand(AST* ast)
     switch (ast->type) {
         case AST_ASSIGNMENT:
         case AST_BINARY:
+        case AST_BUILTIN_CALL:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
-        case AST_SERVICE_REQUEST:
         case AST_VARIABLE:
             return true;
         default:

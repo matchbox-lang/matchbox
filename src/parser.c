@@ -3,7 +3,7 @@
 #include "conversion.h"
 #include "lexer.h"
 #include "scope.h"
-#include "service.h"
+#include "builtin.h"
 #include "string_object.h"
 #include "token.h"
 #include "vector.h"
@@ -439,6 +439,24 @@ static AST* returnStatement(Parser* parser)
     return ast;
 }
 
+static void compareBuiltinSignature(AST* caller, Builtin* builtin, Token token)
+{
+    size_t argCount = countVector(&caller->builtinCall.args);
+
+    if (argCount != builtin->paramCount) {
+        error(invalidArgsError, token);
+    }
+
+    for (int i = 0; i < argCount; i++) {
+        AST* expr = getVectorAt(&caller->builtinCall.args, i);
+        int typeId = getTypeId(expr);
+
+        if (typeId != builtin->params[i]) {
+            error(invalidArgsError, token);
+        }
+    }
+}
+
 static void compareFunctionSignature(AST* caller, AST* callee, Token token)
 {
     size_t argCount = countVector(&caller->functionCall.args);
@@ -454,24 +472,6 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
         int typeId = getTypeId(a);
 
         if (typeId != b->parameter.typeId) {
-            error(invalidArgsError, token);
-        }
-    }
-}
-
-static void compareServiceSignature(AST* caller, Service* service, Token token)
-{
-    size_t argCount = countVector(&caller->serviceRequest.args);
-
-    if (argCount != service->paramCount) {
-        error(invalidArgsError, token);
-    }
-
-    for (int i = 0; i < argCount; i++) {
-        AST* expr = getVectorAt(&caller->serviceRequest.args, i);
-        int typeId = getTypeId(expr);
-
-        if (typeId != service->params[i]) {
             error(invalidArgsError, token);
         }
     }
@@ -554,27 +554,27 @@ static bool parameters(Parser* parser, Vector* params)
     return true;
 }
 
-static AST* serviceRequest(Parser* parser, Token token)
+static AST* builtinCall(Parser* parser, Token token)
 {
     StringObject* id = copyStringObject(token.chars, token.length);
-    Service* service = getServiceByName(id->chars);
+    Builtin* builtin = getBuiltinByName(id->chars);
 
-    if (!service) {
+    if (!builtin) {
         error(undefinedError, token);
     }
 
     freeStringObject(id);
 
-    AST* ast = createAST(AST_SERVICE_REQUEST);
-    ast->serviceRequest.opcode = service->opcode;
-    ast->serviceRequest.service = service;
+    AST* ast = createAST(AST_BUILTIN_CALL);
+    ast->builtinCall.opcode = builtin->opcode;
+    ast->builtinCall.builtin = builtin;
 
-    if (!arguments(parser, &ast->serviceRequest.args)) {
+    if (!arguments(parser, &ast->builtinCall.args)) {
         freeAST(ast);
         return NULL;
     }
 
-    compareServiceSignature(ast, service, token);
+    compareBuiltinSignature(ast, builtin, token);
 
     return ast;
 }
@@ -592,7 +592,7 @@ static AST* functionCall(Parser* parser)
     freeStringObject(id);
     
     if (!symbol) {
-        return serviceRequest(parser, token);
+        return builtinCall(parser, token);
     }
 
     if (!symbol || !isFunctionDefinition(symbol)) {

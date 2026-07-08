@@ -45,45 +45,39 @@ static void write16(Compiler* compiler, int16_t n)
     pushByte(currentCodeObject(compiler), n & 0xFF);
 }
 
-static void op_hlt(Compiler* compiler)
+static void emitHlt(Compiler* compiler)
 {
     write8(compiler, OP_HLT);
 }
 
-static void op_reqs(Compiler* compiler, uint8_t imm)
-{
-    write8(compiler, OP_REQS);
-    write8(compiler, imm);
-}
-
-static void op_ldc(Compiler* compiler, uint8_t imm)
+static void emitLdc(Compiler* compiler, uint8_t imm)
 {
     incStackCount(compiler);
     write8(compiler, OP_LDC);
     write8(compiler, imm);
 }
 
-static void op_reg(Compiler* compiler)
+static void emitReg(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_REG);
 }
 
-static void op_ldg(Compiler* compiler, uint8_t imm)
+static void emitLdg(Compiler* compiler, uint8_t imm)
 {
     incStackCount(compiler);
     write8(compiler, OP_LDG);
     write8(compiler, imm);
 }
 
-static void op_stg(Compiler* compiler, uint8_t imm)
+static void emitStg(Compiler* compiler, uint8_t imm)
 {
     decStackCount(compiler);
     write8(compiler, OP_STG);
     write8(compiler, imm);
 }
 
-static void op_ldl(Compiler* compiler, int8_t imm)
+static void emitLdl(Compiler* compiler, int8_t imm)
 {
     incStackCount(compiler);
 
@@ -107,7 +101,7 @@ static void op_ldl(Compiler* compiler, int8_t imm)
     }
 }
 
-static void op_stl(Compiler* compiler, int8_t imm)
+static void emitStl(Compiler* compiler, int8_t imm)
 {
     decStackCount(compiler);
 
@@ -131,7 +125,7 @@ static void op_stl(Compiler* compiler, int8_t imm)
     }
 }
 
-static void op_pushb(Compiler* compiler, int8_t imm)
+static void emitPushb(Compiler* compiler, int8_t imm)
 {
     incStackCount(compiler);
 
@@ -155,114 +149,120 @@ static void op_pushb(Compiler* compiler, int8_t imm)
     }
 }
 
-static void op_pushh(Compiler* compiler, int16_t imm)
+static void emitPushh(Compiler* compiler, int16_t imm)
 {
     incStackCount(compiler);
     write8(compiler, OP_PUSHH);
     write16(compiler, imm);
 }
 
-static void op_pop(Compiler* compiler)
+static void emitPop(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_POP);
 }
 
-static void op_add(Compiler* compiler)
+static void emitAdd(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_ADD);
 }
 
-static void op_sub(Compiler* compiler)
+static void emitSub(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_SUB);
 }
 
-static void op_mul(Compiler* compiler)
+static void emitMul(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_MUL);
 }
 
-static void op_div(Compiler* compiler)
+static void emitDiv(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_DIV);
 }
 
-static void op_rem(Compiler* compiler)
+static void emitRem(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_REM);
 }
 
-static void op_pow(Compiler* compiler)
+static void emitPow(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_POW);
 }
 
-static void op_band(Compiler* compiler)
+static void emitBand(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_BAND);
 }
 
-static void op_bor(Compiler* compiler)
+static void emitBor(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_BOR);
 }
 
-static void op_bxor(Compiler* compiler)
+static void emitBxor(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_BXOR);
 }
 
-static void op_bnot(Compiler* compiler)
+static void emitBnot(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_BNOT);
 }
 
-static void op_lsl(Compiler* compiler)
+static void emitLsl(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_LSL);
 }
 
-static void op_lsr(Compiler* compiler)
+static void emitLsr(Compiler* compiler)
 {
     decStackCount(compiler);
     write8(compiler, OP_LSR);
 }
 
-static void op_neg(Compiler* compiler)
+static void emitNeg(Compiler* compiler)
 {
     write8(compiler, OP_NEG);
 }
 
-static void op_not(Compiler* compiler)
+static void emitNot(Compiler* compiler)
 {
     write8(compiler, OP_NOT);
 }
 
-static void op_call(Compiler* compiler, uint16_t imm)
+static void emitCallbi(Compiler* compiler, uint8_t imm)
+{
+    write8(compiler, OP_CALLBI);
+    write8(compiler, imm);
+}
+
+static void emitCall(Compiler* compiler, uint16_t imm)
 {
     write8(compiler, OP_CALL);
     write16(compiler, imm);
 }
 
-static void op_ret(Compiler* compiler)
+static void emitRet(Compiler* compiler)
 {
     incStackCount(compiler);
     write8(compiler, OP_RET);
 }
 
-static void op_retv(Compiler* compiler)
+static void emitRetv(Compiler* compiler)
 {
     write8(compiler, OP_RETV);
 }
@@ -285,14 +285,14 @@ static void loadGlobalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_ldg(compiler, position);
+    emitLdg(compiler, position);
 }
 
 static void loadLocalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_ldl(compiler, position);
+    emitLdl(compiler, position);
 }
 
 static void loadVariable(Compiler* compiler, AST* ast)
@@ -308,14 +308,14 @@ static void storeGlobalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_stg(compiler, position);
+    emitStg(compiler, position);
 }
 
 static void storeLocalVariable(Compiler* compiler, AST* ast)
 {
     int position = getLocalPosition(ast);
 
-    op_stl(compiler, position);
+    emitStl(compiler, position);
 }
 
 static void storeVariable(Compiler* compiler, AST* ast)
@@ -331,12 +331,12 @@ static void number(Compiler* compiler, AST* ast)
 {
     if (isLargerThan16BitSigned(ast->intValue)) {
         size_t position = makeConstant(compiler, INT_VALUE(ast->intValue));
-        op_ldc(compiler, position);
+        emitLdc(compiler, position);
         pushVectorItem(&compiler->functionReferences, ast);
     } else if (isLargerThan8BitSigned(ast->intValue)) {
-        op_pushh(compiler, ast->intValue);
+        emitPushh(compiler, ast->intValue);
     } else {
-        op_pushb(compiler, ast->intValue);
+        emitPushb(compiler, ast->intValue);
     }
 }
 
@@ -347,28 +347,28 @@ static void binary(Compiler* compiler, AST* ast)
 
     switch (ast->binary.operator.type) {
         case T_PLUS:
-            return op_add(compiler);
+            return emitAdd(compiler);
         case T_MINUS:
-            return op_sub(compiler);
+            return emitSub(compiler);
         case T_STAR:
-            return op_mul(compiler);
+            return emitMul(compiler);
         case T_SLASH:
         case T_FLOOR:
-            return op_div(compiler);
+            return emitDiv(compiler);
         case T_PERCENT:
-            return op_rem(compiler);
+            return emitRem(compiler);
         case T_POWER:
-            return op_pow(compiler);
+            return emitPow(compiler);
         case T_AMPERSAND:
-            return op_band(compiler);
+            return emitBand(compiler);
         case T_PIPE:
-            return op_bor(compiler);
+            return emitBor(compiler);
         case T_CIRCUMFLEX:
-            return op_bxor(compiler);
+            return emitBxor(compiler);
         case T_LSHIFT:
-            return op_lsl(compiler);
+            return emitLsl(compiler);
         case T_RSHIFT:
-            return op_lsr(compiler);
+            return emitLsr(compiler);
         default:
             return;
     }
@@ -377,19 +377,19 @@ static void binary(Compiler* compiler, AST* ast)
 static void bitNot(Compiler* compiler, AST* ast)
 {
     expression(compiler, ast->prefix.expr);
-    op_bnot(compiler);
+    emitBnot(compiler);
 }
 
 static void logNot(Compiler* compiler, AST* ast)
 {
     expression(compiler, ast->prefix.expr);
-    op_not(compiler);
+    emitNot(compiler);
 }
 
 static void negate(Compiler* compiler, AST* ast)
 {
     expression(compiler, ast->prefix.expr);
-    op_neg(compiler);
+    emitNeg(compiler);
 }
 
 static void prefix(Compiler* compiler, AST* ast)
@@ -415,7 +415,7 @@ static void additionAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
     expression(compiler, ast->assignment.expr);
-    op_add(compiler);
+    emitAdd(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
@@ -423,7 +423,7 @@ static void subtractionAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
     expression(compiler, ast->assignment.expr);
-    op_sub(compiler);
+    emitSub(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
@@ -431,7 +431,7 @@ static void muliplicationAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
     expression(compiler, ast->assignment.expr);
-    op_mul(compiler);
+    emitMul(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
@@ -439,7 +439,7 @@ static void divisionAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
     expression(compiler, ast->assignment.expr);
-    op_div(compiler);
+    emitDiv(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
@@ -447,7 +447,7 @@ static void remainderAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
     expression(compiler, ast->assignment.expr);
-    op_rem(compiler);
+    emitRem(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
@@ -455,7 +455,7 @@ static void exponentiationAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
     expression(compiler, ast->assignment.expr);
-    op_pow(compiler);
+    emitPow(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
@@ -510,17 +510,17 @@ static int getFunctionPosition(Compiler* compiler, AST* ast)
     return -1;
 }
 
+static void builtinCall(Compiler* compiler, AST* ast)
+{
+    arguments(compiler, &ast->builtinCall.args);
+    emitCallbi(compiler, ast->builtinCall.opcode);
+}
+
 static void functionCall(Compiler* compiler, AST* ast)
 {
     uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
     arguments(compiler, &ast->functionCall.args);
-    op_call(compiler, position);
-}
-
-static void serviceRequest(Compiler* compiler, AST* ast)
-{
-    arguments(compiler, &ast->serviceRequest.args);
-    op_reqs(compiler, ast->serviceRequest.opcode);
+    emitCall(compiler, position);
 }
 
 static void functionDefinition(Compiler* compiler, AST* ast)
@@ -541,7 +541,7 @@ static void functionDefinition(Compiler* compiler, AST* ast)
     AST* last = vectorEnd(&body->compound.statements);
 
     if (!last || last->type != AST_RETURN) {
-        op_ret(compiler);
+        emitRet(compiler);
     }
     
     compiler->function = previousFunction;
@@ -550,19 +550,19 @@ static void functionDefinition(Compiler* compiler, AST* ast)
 static void ret(Compiler* compiler, AST* ast)
 {
     if (isNone(ast->expression)) {
-        return op_ret(compiler);
+        return emitRet(compiler);
     }
 
     expression(compiler, ast->expression);
-    op_retv(compiler);
+    emitRetv(compiler);
 }
 
 static void variableDefinitionUninitialized(Compiler* compiler, AST* ast)
 {
-    op_pushb(compiler, 0);
+    emitPushb(compiler, 0);
 
     if (isTopLevel(ast->variableDefinition.scope)) {
-        op_reg(compiler);
+        emitReg(compiler);
     }
 }
 
@@ -575,7 +575,7 @@ static void variableDefinition(Compiler* compiler, AST* ast)
     expression(compiler, ast->variableDefinition.expr);
 
     if (isTopLevel(ast->variableDefinition.scope)) {
-        op_reg(compiler);
+        emitReg(compiler);
     }
 }
 
@@ -584,14 +584,14 @@ static void expression(Compiler* compiler, AST* ast)
     switch (ast->type) {
         case AST_BINARY:
             return binary(compiler, ast);
+        case AST_BUILTIN_CALL:
+            return builtinCall(compiler, ast);
         case AST_FUNCTION_CALL:
             return functionCall(compiler, ast);
         case AST_INTEGER:
             return number(compiler, ast);
         case AST_PREFIX:
             return prefix(compiler, ast);
-        case AST_SERVICE_REQUEST:
-            return serviceRequest(compiler, ast);
         case AST_VARIABLE:
             return variable(compiler, ast);
         default:
@@ -605,9 +605,13 @@ static void statement(Compiler* compiler, AST* ast)
         case AST_ASSIGNMENT:
             assignment(compiler, ast);
             break;
+        case AST_BUILTIN_CALL:
+            builtinCall(compiler, ast);
+            emitPop(compiler);
+            break;
         case AST_FUNCTION_CALL:
             functionCall(compiler, ast);
-            op_pop(compiler);
+            emitPop(compiler);
             break;
         case AST_FUNCTION_DEFINITION:
             functionDefinition(compiler, ast);
@@ -615,16 +619,12 @@ static void statement(Compiler* compiler, AST* ast)
         case AST_RETURN:
             ret(compiler, ast);
             break;
-        case AST_SERVICE_REQUEST:
-            serviceRequest(compiler, ast);
-            op_pop(compiler);
-            break;
         case AST_VARIABLE_DEFINITION:
             variableDefinition(compiler, ast);
             break;
         default:
             expression(compiler, ast);
-            op_pop(compiler);
+            emitPop(compiler);
     }
 }
 
@@ -678,5 +678,5 @@ void compile(Compiler* compiler, char* source)
     parse(&compiler->parser, source);
     clearCodeObject(currentCodeObject(compiler));
     toplevelStatements(compiler, &compiler->ast->compound.statements);
-    op_hlt(compiler);
+    emitHlt(compiler);
 }

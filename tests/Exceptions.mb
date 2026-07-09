@@ -1,11 +1,11 @@
 class Exception {
     func what() {
-        return "An exception occured."
+        return "An exception occurred."
     }
 }
 
 try {
-    throw "An exception occured."
+    throw "An exception occurred."
 } catch (e: string) {
     print(e)
 } finally {
@@ -17,5 +17,5 @@ try {
 } catch (e: Exception) {
     print(e.what())
 } catch {
-    print("An exception occured.")
+    print("An exception occurred.")
 }

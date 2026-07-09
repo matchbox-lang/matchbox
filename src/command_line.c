@@ -6,6 +6,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void unknownOptionError(char* arg)
+{
+    fprintf(stderr, "Error: Unknown option: %s\n", arg);
+}
+
+static void unexpectedArgumentError(char* arg)
+{
+    fprintf(stderr, "Error: Unexpected argument: %s\n", arg);
+}
+
+static void disassembleRequiresFileError()
+{
+    fprintf(stderr, "Error: -d requires a file\n");
+}
+
 static bool parseOption(Options* options, char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
@@ -24,7 +39,7 @@ static bool parseOption(Options* options, char* arg)
         return true;
     }
 
-    fprintf(stderr, "Error: Unknown option: %s\n", arg);
+    unknownOptionError(arg);
 
     return false;
 }
@@ -42,7 +57,7 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
     }
 
     if (options->filename) {
-        fprintf(stderr, "Error: Unexpected argument: %s\n", arg);
+        unexpectedArgumentError(arg);
 
         return false;
     }
@@ -63,7 +78,7 @@ bool parseCommandLine(Options* options, int argc, char* argv[])
     }
 
     if (options->disassemble && !options->filename) {
-        fprintf(stderr, "Error: -d requires a file\n");
+        disassembleRequiresFileError();
 
         return false;
     }

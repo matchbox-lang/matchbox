@@ -16,19 +16,97 @@ static AST* identifier(Parser* parser);
 static AST* prefix(Parser* parser);
 static bool blocklevelStatements(Parser* parser, Vector* nodes);
 
-static const char* invalidArgsError = "Error: Invalid arguments to function %.*s";
-static const char* invalidOperandsError = "Error: Invalid operands to binary %.*s";
-static const char* invalidTypeError = "Error: Invalid type for variable %.*s";
-static const char* redefinitionError = "Error: Redefinition of %.*s";
-static const char* undefinedError = "Error: %.*s is undefined";
-static const char* unexpectedEndError = "Error: Unexpected end of input";
-static const char* unexpectedTokenError = "Error: Unexpected %.*s";
-static const char* uninitializedError = "Error: %.*s is uninitialized";
-
-static void error(const char* message, Token token)
+static void expectedExpressionError(Token token)
 {
-    fprintf(stderr, message, token.length, token.chars);
+    fprintf(stderr, "Error: Expected expression but found ");
+    printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void expectedOperandError(Token token)
+{
+    fprintf(stderr, "Error: Expected operand but found ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void expectedReturnScopeError(Token token)
+{
+    fprintf(stderr, "Error: Expected return inside a function but found ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void expectedTypeError(Token token)
+{
+    fprintf(stderr, "Error: Expected type but found ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void invalidArgumentsError(Token token)
+{
+    fprintf(stderr, "Error: Invalid arguments to function ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void invalidOperandsError(Token token)
+{
+    fprintf(stderr, "Error: Invalid operands to binary ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void invalidTypeError(Token token)
+{
+    fprintf(stderr, "Error: Invalid type for variable ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void redefinitionError(Token token)
+{
+    fprintf(stderr, "Error: Redefinition of ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void undefinedError(Token token)
+{
+    fprintf(stderr, "Error: ");
+    printTokenValue(token);
+    fprintf(stderr, " is undefined on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void unexpectedEndError(Token token)
+{
+    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void expectedTokenError(TokenType type, Token token)
+{
+    fprintf(stderr, "Error: Expected %s but found ", tokenTypeName(type));
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void uninitializedError(Token token)
+{
+    fprintf(stderr, "Error: ");
+    printTokenValue(token);
+    fprintf(stderr, " is uninitialized on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
@@ -41,7 +119,7 @@ static void advance(Parser* parser)
 static void consume(Parser* parser, TokenType type)
 {
     if (parser->currentToken.type != type) {
-        error(unexpectedTokenError, parser->currentToken);
+        expectedTokenError(type, parser->currentToken);
     }
     
     advance(parser);
@@ -50,7 +128,7 @@ static void consume(Parser* parser, TokenType type)
 static void consumeType(Parser* parser)
 {
     if (!isTypeToken(parser->currentToken.type)) {
-        error(unexpectedTokenError, parser->currentToken);
+        expectedTypeError(parser->currentToken);
     }
 
     consume(parser, parser->currentToken.type);
@@ -103,7 +181,7 @@ static AST* groupExpression(Parser* parser)
     AST* ast = expression(parser);
 
     if (!ast && parser->currentToken.type == TOKEN_RPAREN) {
-        error(unexpectedTokenError, parser->currentToken);
+        expectedExpressionError(parser->currentToken);
     }
     
     if (!ast || isEof(parser)) {
@@ -126,7 +204,7 @@ static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
     int b = getTypeId(rightExpr);
 
     if (a != b) {
-        error(invalidOperandsError, token);
+        invalidOperandsError(token);
     }
 
     int typeId = isBoolOperatorToken(token.type) ? TOKEN_BOOL : a;
@@ -153,11 +231,11 @@ static AST* variable(Parser* parser)
     freeStringObject(id);
 
     if (!symbol || !isVariableType(symbol)) {
-        error(undefinedError, token);
+        undefinedError(token);
     }
     
     if (!isInitialized(symbol)) {
-        error(uninitializedError, token);
+        uninitializedError(token);
     }
 
     AST* ast = createAST(AST_VARIABLE);
@@ -178,7 +256,7 @@ static AST* parameter(Parser* parser)
     AST* symbol = getLocalSymbol(parser->currentScope, id);
 
     if (symbol) {
-        error(redefinitionError, token);
+        redefinitionError(token);
     }
     
     consume(parser, TOKEN_IDENTIFIER);
@@ -217,7 +295,7 @@ static AST* primary(Parser* parser)
         case TOKEN_EOF:
             return NULL;
         default:
-            error(unexpectedTokenError, parser->currentToken);
+            expectedExpressionError(parser->currentToken);
     }
 }
 
@@ -235,7 +313,7 @@ static AST* prefixOperand(Parser* parser)
     }
 
     if (!isPrefix(expr) && !isPrefixOperand(expr)) {
-        error(unexpectedTokenError, token);
+        expectedOperandError(token);
     }
     
     return expr;
@@ -423,7 +501,7 @@ static AST* expression(Parser* parser)
 static AST* returnStatement(Parser* parser)
 {
     if (parser->currentScope->level < 2) {
-        error(unexpectedTokenError, parser->currentToken);
+        expectedReturnScopeError(parser->currentToken);
     }
 
     consume(parser, TOKEN_RETURN);
@@ -444,7 +522,7 @@ static void compareBuiltinSignature(AST* caller, Builtin* builtin, Token token)
     size_t argCount = countVector(&caller->builtinCall.args);
 
     if (argCount != builtin->paramCount) {
-        error(invalidArgsError, token);
+        invalidArgumentsError(token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -452,7 +530,7 @@ static void compareBuiltinSignature(AST* caller, Builtin* builtin, Token token)
         int typeId = getTypeId(expr);
 
         if (typeId != builtin->params[i]) {
-            error(invalidArgsError, token);
+            invalidArgumentsError(token);
         }
     }
 }
@@ -463,7 +541,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
     size_t paramCount = countVector(&callee->functionDefinition.params);
 
     if (argCount != paramCount) {
-        error(invalidArgsError, token);
+        invalidArgumentsError(token);
     }
 
     for (int i = 0; i < argCount; i++) {
@@ -472,7 +550,7 @@ static void compareFunctionSignature(AST* caller, AST* callee, Token token)
         int typeId = getTypeId(a);
 
         if (typeId != b->parameter.typeId) {
-            error(invalidArgsError, token);
+            invalidArgumentsError(token);
         }
     }
 }
@@ -489,7 +567,7 @@ static bool arguments(Parser* parser, Vector* args)
         AST* expr = expression(parser);
 
         if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
-            error(unexpectedTokenError, parser->currentToken);
+            expectedExpressionError(parser->currentToken);
         }
 
         if (!expr) {
@@ -524,7 +602,7 @@ static bool parameters(Parser* parser, Vector* params)
         AST* expr = parameter(parser);
 
         if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
-            error(unexpectedTokenError, parser->currentToken);
+            expectedExpressionError(parser->currentToken);
         }
 
         if (!expr) {
@@ -560,7 +638,7 @@ static AST* builtinCall(Parser* parser, Token token)
     Builtin* builtin = getBuiltinByName(id->chars);
 
     if (!builtin) {
-        error(undefinedError, token);
+        undefinedError(token);
     }
 
     freeStringObject(id);
@@ -596,7 +674,7 @@ static AST* functionCall(Parser* parser)
     }
 
     if (!symbol || !isFunctionDefinition(symbol)) {
-        error(undefinedError, token);
+        undefinedError(token);
     }
 
     AST* ast = createAST(AST_FUNCTION_CALL);
@@ -626,11 +704,11 @@ static AST* functionDefinition(Parser* parser)
     AST* symbol = getLocalSymbol(parser->currentScope, id);
 
     if (symbol) {
-        error(redefinitionError, token);
+        redefinitionError(token);
     }
 
     if (parser->currentToken.type != TOKEN_IDENTIFIER) {
-        error(unexpectedTokenError, parser->currentToken);
+        expectedTokenError(TOKEN_IDENTIFIER, parser->currentToken);
     }
 
     consume(parser, TOKEN_IDENTIFIER);
@@ -695,11 +773,11 @@ static AST* assignment(Parser* parser)
     freeStringObject(id);
 
     if (!symbol) {
-        error(undefinedError, token);
+        undefinedError(token);
     }
 
     if (parser->currentScope != getScope(symbol) && !isInitialized(symbol)) {
-        error(uninitializedError, token);
+        uninitializedError(token);
     }
     
     consume(parser, operator.type);
@@ -733,7 +811,7 @@ static AST* variableDefinition(Parser* parser)
     AST* symbol = getLocalSymbol(parser->currentScope, id);
 
     if (symbol) {
-        error(redefinitionError, token);
+        redefinitionError(token);
     }
 
     consume(parser, TOKEN_IDENTIFIER);
@@ -753,7 +831,7 @@ static AST* variableDefinition(Parser* parser)
         ast->variableDefinition.typeId = parser->currentToken.type;
         consumeType(parser);
     } else if (parser->currentToken.type != TOKEN_EQUAL) {
-        error(unexpectedTokenError, parser->currentToken);
+        expectedTokenError(TOKEN_EQUAL, parser->currentToken);
     }
     
     if (parser->currentToken.type != TOKEN_EQUAL) {
@@ -776,7 +854,7 @@ static AST* variableDefinition(Parser* parser)
     ast->variableDefinition.expr = expr;
 
     if (ast->variableDefinition.typeId == TOKEN_NONE) {
-        error(invalidTypeError, token);
+        invalidTypeError(token);
     }
 
     setLocalVariableSymbol(parser->currentScope, id, ast);
@@ -858,6 +936,6 @@ void parse(Parser* parser, char* source)
     advance(parser);
 
     if (!toplevelStatements(parser)) {
-        error(unexpectedEndError, parser->currentToken);
+        unexpectedEndError(parser->currentToken);
     }
 }

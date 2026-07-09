@@ -27,8 +27,13 @@
 #define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
 
 #define TEST_OVERFLOW(n) if (vm->sp - vm->stack + (n) > STACK_MAX) \
-    fprintf(stderr, "Error: Stack overflow\n"), \
-    exit(1)
+    stackOverflowError()
+
+static void stackOverflowError()
+{
+    fprintf(stderr, "Error: Stack overflow\n");
+    exit(1);
+}
 
 static void initBuiltins(VM* vm)
 {

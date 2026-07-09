@@ -5,12 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char* characterError = "Error: Missing terminating %c character";
-static const char* commentError = "Error: Unterminated comment";
-
-static void error(Lexer* lexer, const char* message, const char c)
+static void unterminatedCharacterError(Lexer* lexer, char c)
 {
-    fprintf(stderr, message, c);
+    fprintf(stderr, "Error: Missing terminating %c character", c);
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
+static void unterminatedCommentError(Lexer* lexer)
+{
+    fprintf(stderr, "Error: Unterminated comment");
     fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
     exit(1);
 }
@@ -120,7 +124,7 @@ static void skipCommentMulti(Lexer* lexer)
         advance(lexer);
     }
 
-    error(lexer, commentError, 0);
+    unterminatedCommentError(lexer);
 }
 
 static void skipComment(Lexer* lexer)
@@ -345,7 +349,7 @@ static Token characterLiteral(Lexer* lexer)
         advance(lexer);
     }
 
-    error(lexer, characterError, '\'');
+    unterminatedCharacterError(lexer, '\'');
 }
 
 static Token stringLiteral(Lexer* lexer, char c)
@@ -359,7 +363,7 @@ static Token stringLiteral(Lexer* lexer, char c)
         advance(lexer);
     }
 
-    error(lexer, characterError, c);
+    unterminatedCharacterError(lexer, c);
 }
 
 static Token identifier(Lexer* lexer)

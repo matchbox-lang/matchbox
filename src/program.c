@@ -4,8 +4,16 @@
 #include "module_object.h"
 #include "repl.h"
 #include "vm.h"
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+
+static void readFileError(const char* filename)
+{
+    fprintf(stderr, "Error: Could not read file %s: %s\n", filename, strerror(errno));
+    exit(1);
+}
 
 static void runModule(ModuleObject* module, bool disassemble)
 {
@@ -39,8 +47,7 @@ static void runFile(Options* options)
     char* source = getFileContents(options->filename);
     
     if (!source) {
-        fprintf(stderr, "Error: Could not read file %s\n", options->filename);
-        exit(1);
+        readFileError(options->filename);
     }
 
     runSource(source, options->disassemble);

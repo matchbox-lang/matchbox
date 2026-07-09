@@ -2,7 +2,9 @@
 #include "buffer.h"
 #include "compiler.h"
 #include "module_object.h"
+#include "options.h"
 #include "repl.h"
+#include "test_runner.h"
 #include "vm.h"
 #include <errno.h>
 #include <stdbool.h>
@@ -42,7 +44,7 @@ static void runSource(char* source, bool disassemble)
     freeModuleObject(module);
 }
 
-static void runFile(Options* options)
+static bool runFile(Options* options)
 {
     char* source = getFileContents(options->filename);
     
@@ -52,11 +54,14 @@ static void runFile(Options* options)
 
     runSource(source, options->disassemble);
     free(source);
+
+    return true;
 }
 
 void printUsage(FILE* stream)
 {
     fprintf(stream, "Usage: %s [options] [--] [file]\n", PROGRAM_COMMAND);
+    fprintf(stream, "       %s test [path]\n", PROGRAM_COMMAND);
     fprintf(stream, "\n");
     fprintf(stream, "Options:\n");
     fprintf(stream, "  -d, --disassemble     Print bytecode without running the program\n");
@@ -69,13 +74,19 @@ void printVersion()
     printf("%s\n", PROGRAM_VERSION);
 }
 
-void runProgram(Options* options)
+bool runProgram(Options* options)
 {
+    if (options->mode == PROGRAM_TEST) {
+        runTests(options);
+
+        return true;
+    }
+
     if (!options->filename) {
         runRepl();
 
-        return;
+        return true;
     }
 
-    runFile(options);
+    return runFile(options);
 }

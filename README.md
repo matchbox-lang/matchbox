@@ -71,7 +71,13 @@ Run a known-working example from the test suite:
 matchbox tests/Function.mb
 ```
 
-There is not currently a dedicated automated test runner in this repository. Some files in `tests/` are working examples, while others document intended language behavior that may not be implemented yet.
+Run tests from the executable:
+
+```sh
+matchbox test
+```
+
+The test command runs `.mb` files under `tests/` by default. Pass a file or directory to run a smaller set, such as `matchbox test tests/Function.mb`. Some files in `tests/` document intended language behavior that may not be implemented yet.
 
 ## License
 

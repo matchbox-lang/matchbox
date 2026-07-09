@@ -15,6 +15,12 @@ bool isLargerThan16BitSigned(int n)
     return n < SHRT_MIN || n > SHRT_MAX;
 }
 
+void outOfMemoryError()
+{
+    fprintf(stderr, "Error: Out of memory\n");
+    exit(1);
+}
+
 void stripUnderscores(char* str, size_t* len)
 {
 	char* src = str;

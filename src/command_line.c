@@ -6,6 +6,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void disassembleDoesNotSupportTestError()
+{
+    fprintf(stderr, "Error: -d cannot be used with test\n");
+}
+
+static void disassembleRequiresFileError()
+{
+    fprintf(stderr, "Error: -d requires a file\n");
+}
+
 static void unknownOptionError(char* arg)
 {
     fprintf(stderr, "Error: Unknown option: %s\n", arg);
@@ -14,11 +24,6 @@ static void unknownOptionError(char* arg)
 static void unexpectedArgumentError(char* arg)
 {
     fprintf(stderr, "Error: Unexpected argument: %s\n", arg);
-}
-
-static void disassembleRequiresFileError()
-{
-    fprintf(stderr, "Error: -d requires a file\n");
 }
 
 static bool parseOption(Options* options, char* arg)
@@ -44,18 +49,48 @@ static bool parseOption(Options* options, char* arg)
     return false;
 }
 
-static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
+static bool isOption(char* arg)
 {
-    if (*parsingOptions && strcmp(arg, "--") == 0) {
-        *parsingOptions = false;
+    return arg[0] == '-';
+}
 
-        return true;
+static bool isOptionDelimiter(char* arg)
+{
+    return strcmp(arg, "--") == 0;
+}
+
+static bool isTestCommand(Options* options, char* arg, bool parsingOptions)
+{
+    if (!parsingOptions) {
+        return false;
     }
 
-    if (*parsingOptions && arg[0] == '-') {
-        return parseOption(options, arg);
+    if (options->mode != PROGRAM_RUN) {
+        return false;
     }
 
+    if (options->filename) {
+        return false;
+    }
+
+    return strcmp(arg, "test") == 0;
+}
+
+static bool parseTestArgument(Options* options, char* arg)
+{
+    if (options->testPath) {
+        unexpectedArgumentError(arg);
+
+        return false;
+    }
+
+    options->testPath = arg;
+
+    return true;
+}
+
+static bool parseRunArgument(Options* options, char* arg)
+{
     if (options->filename) {
         unexpectedArgumentError(arg);
 
@@ -67,14 +102,47 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
     return true;
 }
 
+static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
+{
+    if (*parsingOptions && isOptionDelimiter(arg)) {
+        *parsingOptions = false;
+
+        return true;
+    }
+
+    if (*parsingOptions && isOption(arg)) {
+        return parseOption(options, arg);
+    }
+
+    if (isTestCommand(options, arg, *parsingOptions)) {
+        options->mode = PROGRAM_TEST;
+
+        return true;
+    }
+
+    if (options->mode == PROGRAM_TEST) {
+        return parseTestArgument(options, arg);
+    }
+
+    return parseRunArgument(options, arg);
+}
+
 bool parseCommandLine(Options* options, int argc, char* argv[])
 {
     bool parsingOptions = true;
+
+    options->executablePath = argv[0];
 
     for (int i = 1; i < argc; i++) {
         if (!parseArgument(options, argv[i], &parsingOptions)) {
             return false;
         }
+    }
+
+    if (options->disassemble && options->mode == PROGRAM_TEST) {
+        disassembleDoesNotSupportTestError();
+
+        return false;
     }
 
     if (options->disassemble && !options->filename) {

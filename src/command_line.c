@@ -24,7 +24,7 @@ static bool parseOption(Options* options, char* arg)
         return true;
     }
 
-    fprintf(stderr, "Unknown option: %s\n", arg);
+    fprintf(stderr, "Error: Unknown option: %s\n", arg);
 
     return false;
 }
@@ -42,7 +42,7 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
     }
 
     if (options->filename) {
-        fprintf(stderr, "Unexpected argument: %s\n", arg);
+        fprintf(stderr, "Error: Unexpected argument: %s\n", arg);
 
         return false;
     }

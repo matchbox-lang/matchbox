@@ -1,0 +1,5 @@
+var a = 12.34       # 12.34
+var b = 12.34e2     # 1234
+
+print(a)
+print(b)

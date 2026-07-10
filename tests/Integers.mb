@@ -1,0 +1,11 @@
+var a = 1234        # 1234
+var b = 1_234_567   # 1234567
+var c = 0o123       # 83
+var d = 0x1A        # 26
+var e = 0b11111111  # 255
+
+print(a)
+print(b)
+print(c)
+print(d)
+print(e)

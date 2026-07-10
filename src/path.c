@@ -6,35 +6,15 @@
 #include <string.h>
 #include <sys/stat.h>
 
-bool pathHasExtension(const char* path, const char* extension)
+static char* allocatePath(size_t length)
 {
-    size_t pathLength = strlen(path);
-    size_t extensionLength = strlen(extension);
+    char* path = malloc(length + 1);
 
-    if (pathLength < extensionLength) {
-        return false;
+    if (!path) {
+        outOfMemoryError();
     }
 
-    return strcmp(path + pathLength - extensionLength, extension) == 0;
-}
-
-bool pathIsCurrentOrParentDirectory(const char* path)
-{
-    return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
-}
-
-bool pathIsDirectory(const char* path)
-{
-    struct stat info;
-
-    return stat(path, &info) == 0 && (info.st_mode & S_IFDIR);
-}
-
-bool pathExists(const char* path)
-{
-    struct stat info;
-
-    return stat(path, &info) == 0;
+    return path;
 }
 
 static bool pathEndsWithSeparator(const char* path)
@@ -61,35 +41,46 @@ static bool pathNeedsSeparator(const char* path)
     return !pathEndsWithSeparator(path);
 }
 
-static char* allocatePath(size_t length)
+char* joinPath(const char* directory, const char* name)
 {
-    char* path = malloc(length + 1);
+    const char* separator = pathNeedsSeparator(directory) ? "\\" : "";
+    size_t length = strlen(directory) + strlen(separator) + strlen(name);
+    char* path = allocatePath(length);
 
-    if (!path) {
-        outOfMemoryError();
-    }
+    snprintf(path, length + 1, "%s%s%s", directory, separator, name);
 
     return path;
 }
 
-char* joinPath(const char* directory, const char* name)
+bool pathExists(const char* path)
 {
-    size_t length = strlen(directory) + strlen(name);
-    bool needsSeparator = pathNeedsSeparator(directory);
-    char* path;
+    struct stat info;
 
-    if (needsSeparator) {
-        length++;
+    return stat(path, &info) == 0;
+}
+
+bool pathHasExtension(const char* path, const char* extension)
+{
+    size_t pathLength = strlen(path);
+    size_t extensionLength = strlen(extension);
+
+    if (pathLength < extensionLength) {
+        return false;
     }
 
-    path = allocatePath(length);
-    strcpy(path, directory);
+    const char* pathExtension = path + pathLength - extensionLength;
 
-    if (needsSeparator) {
-        strcat(path, "\\");
-    }
+    return strcmp(pathExtension, extension) == 0;
+}
 
-    strcat(path, name);
+bool pathIsCurrentOrParentDirectory(const char* path)
+{
+    return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
+}
 
-    return path;
+bool pathIsDirectory(const char* path)
+{
+    struct stat info;
+
+    return stat(path, &info) == 0 && (info.st_mode & S_IFDIR);
 }

@@ -44,6 +44,11 @@ void reserveCodeObject(CodeObject* code, size_t capacity)
 void resizeCodeObject(CodeObject* code, size_t size)
 {
     reserveCodeObject(code, size);
+
+    for (size_t i = code->count; i < size; i++) {
+        code->data[i] = 0;
+    }
+
     code->count = size;
 }
 
@@ -59,7 +64,7 @@ size_t pushByte(CodeObject* code, uint8_t byte)
 
 void setByteAt(CodeObject* code, size_t index, uint8_t byte)
 {
-    if (index >= 0 && index < code->count) {
+    if (index < code->count) {
         code->data[index] = byte;
     }
 }
@@ -71,5 +76,9 @@ uint8_t* codeObjectBegin(CodeObject* code)
 
 uint8_t* codeObjectEnd(CodeObject* code)
 {
+    if (!code->data) {
+        return NULL;
+    }
+
     return code->data + code->count;
 }

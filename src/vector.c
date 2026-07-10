@@ -37,6 +37,11 @@ void reserveVector(Vector* vector, size_t capacity)
 void resizeVector(Vector* vector, size_t size)
 {
     reserveVector(vector, size);
+
+    for (size_t i = vector->count; i < size; i++) {
+        vector->data[i] = NULL;
+    }
+
     vector->count = size;
 }
 
@@ -61,7 +66,7 @@ void* popVectorItem(Vector* vector)
 
 void* getVectorAt(Vector* vector, size_t index)
 {
-    if (index < 0 || index >= vector->count) {
+    if (index >= vector->count) {
         return NULL;
     }
 
@@ -70,7 +75,7 @@ void* getVectorAt(Vector* vector, size_t index)
 
 void setVectorAt(Vector* vector, size_t index, void* item)
 {
-    if (index >= 0 && index < vector->count) {
+    if (index < vector->count) {
         vector->data[index] = item;
     }
 }
@@ -82,5 +87,9 @@ void* vectorBegin(Vector* vector)
 
 void* vectorEnd(Vector* vector)
 {
+    if (!vector->data) {
+        return NULL;
+    }
+
     return vector->data + vector->count;
 }

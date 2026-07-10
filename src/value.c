@@ -38,6 +38,11 @@ void reserveValueArray(ValueArray* array, size_t capacity)
 void resizeValueArray(ValueArray* array, size_t size)
 {
     reserveValueArray(array, size);
+
+    for (size_t i = array->count; i < size; i++) {
+        array->data[i] = INT_VALUE(0);
+    }
+
     array->count = size;
 }
 
@@ -53,7 +58,7 @@ size_t pushValue(ValueArray* array, Value value)
 
 void* getValueAsPointer(ValueArray* array, size_t index)
 {
-    if (index < 0 || index >= array->count) {
+    if (index >= array->count) {
         return NULL;
     }
 
@@ -62,7 +67,7 @@ void* getValueAsPointer(ValueArray* array, size_t index)
 
 void setValueAt(ValueArray* array, size_t index, Value item)
 {
-    if (index >= 0 && index < array->count) {
+    if (index < array->count) {
         array->data[index] = item;
     }
 }

@@ -13,6 +13,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
+
 static void expression(Compiler* compiler, AST* ast);
 static void blocklevelStatements(Compiler* compiler, Vector* nodes);
 static void toplevelStatements(Compiler* compiler, Vector* nodes);
@@ -640,8 +642,29 @@ static void toplevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
-    for (; compiler->statementIndex < count; compiler->statementIndex++) {
+    while (compiler->statementIndex < count) {
         statement(compiler, nodes->data[compiler->statementIndex]);
+        compiler->statementIndex++;
+    }
+}
+
+static void replStatements(Compiler* compiler, Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    while (compiler->statementIndex < count) {
+        AST* ast = nodes->data[compiler->statementIndex];
+        bool isLast = compiler->statementIndex + 1 == count;
+
+        if (isLast && getTypeId(ast) != TOKEN_NONE) {
+            expression(compiler, ast);
+            emitCallBuiltin(compiler, BUILTIN_PRINT);
+            emitPop(compiler);
+        } else {
+            statement(compiler, ast);
+        }
+
+        compiler->statementIndex++;
     }
 }
 
@@ -668,14 +691,24 @@ void freeCompiler(Compiler* compiler)
     freeAST(compiler->ast);
 }
 
-void compile(Compiler* compiler, char* source)
+static void compileSource(Compiler* compiler, char* source, CompileStatements compileStatements)
 {
     if (!compiler->module) {
         return;
     }
-    
+
     parse(&compiler->parser, source);
     clearCodeObject(currentCodeObject(compiler));
-    toplevelStatements(compiler, &compiler->ast->compound.statements);
+    compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);
+}
+
+void compile(Compiler* compiler, char* source)
+{
+    compileSource(compiler, source, toplevelStatements);
+}
+
+void compileRepl(Compiler* compiler, char* source)
+{
+    compileSource(compiler, source, replStatements);
 }

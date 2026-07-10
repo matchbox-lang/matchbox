@@ -22,5 +22,6 @@ typedef struct Compiler
 void initCompiler(Compiler* compiler, ModuleObject* module);
 void freeCompiler(Compiler* compiler);
 void compile(Compiler* compiler, char* source);
+void compileRepl(Compiler* compiler, char* source);
 
 #endif

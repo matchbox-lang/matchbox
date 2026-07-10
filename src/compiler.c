@@ -244,9 +244,9 @@ static void emitNot(Compiler* compiler)
     write8(compiler, OP_NOT);
 }
 
-static void emitCallbi(Compiler* compiler, uint8_t imm)
+static void emitCallBuiltin(Compiler* compiler, uint8_t imm)
 {
-    write8(compiler, OP_CALLBI);
+    write8(compiler, OP_CALL_BUILTIN);
     write8(compiler, imm);
 }
 
@@ -513,7 +513,7 @@ static int getFunctionPosition(Compiler* compiler, AST* ast)
 static void builtinCall(Compiler* compiler, AST* ast)
 {
     arguments(compiler, &ast->builtinCall.args);
-    emitCallbi(compiler, ast->builtinCall.id);
+    emitCallBuiltin(compiler, ast->builtinCall.id);
 }
 
 static void functionCall(Compiler* compiler, AST* ast)

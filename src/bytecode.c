@@ -23,12 +23,12 @@ static int printOpcode(const char* name)
 
 static int printOpcodeInt8(const char* name)
 {
-    return printf("%-11s %d\n", name, READ_INT8());
+    return printf("%-15s %d\n", name, READ_INT8());
 }
 
 static int printOpcodeInt16(const char* name)
 {
-    return printf("%-11s %d\n", name, READ_INT16());
+    return printf("%-15s %d\n", name, READ_INT16());
 }
 
 static int printInstruction(int8_t c)
@@ -78,7 +78,7 @@ static int printInstruction(int8_t c)
         case OP_BLT:            return printOpcodeInt16("blt");
         case OP_BLE:            return printOpcodeInt16("ble");
         case OP_JMP:            return printOpcodeInt16("jmp");
-        case OP_CALLBI:         return printOpcodeInt8("callbi");
+        case OP_CALL_BUILTIN:   return printOpcodeInt8("call_builtin");
         case OP_CALL:           return printOpcodeInt16("call");
         case OP_RET:            return printOpcode("ret");
         case OP_RETV:           return printOpcode("retv");

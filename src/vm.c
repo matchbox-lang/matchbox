@@ -277,7 +277,7 @@ static void run(VM* vm)
                 vm->ip += READ_UINT16();
                 break;
 
-            case OP_CALLBI:
+            case OP_CALL_BUILTIN:
                 x = READ_UINT8();
                 builtin = builtins[x];
                 value = vm->builtins[x](vm->sp - builtin.paramCount);

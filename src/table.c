@@ -108,7 +108,7 @@ bool deleteTableAt(Table* table, StringObject* key)
         prev->next = current->next;
     }
 
-    freeTableItem(current);
+    free(current);
 
     return true;
 }

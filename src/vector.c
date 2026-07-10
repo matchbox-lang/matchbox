@@ -45,7 +45,7 @@ size_t pushVectorItem(Vector* vector, void* item)
 void* popVectorItem(Vector* vector)
 {
     if (vector->count > 0) {
-        return vector->data[vector->count--];
+        return vector->data[--vector->count];
     }
 
     return NULL;

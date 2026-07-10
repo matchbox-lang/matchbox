@@ -161,13 +161,13 @@ static void skipWhitespace(Lexer* lexer)
     }
 }
 
-static int checkKeyword(Lexer* lexer, int chars, size_t len, const char* rest)
+static int checkKeyword(Lexer* lexer, int chars, size_t length, const char* rest)
 {
-    if (lexer->current.chars - lexer->start.chars != chars + len) {
+    if (lexer->current.chars - lexer->start.chars != chars + length) {
         return 0;
     }
 
-    return memcmp(lexer->start.chars + chars, rest, len) == 0;
+    return memcmp(lexer->start.chars + chars, rest, length) == 0;
 }
 
 static TokenType getIdentifierType(Lexer* lexer)

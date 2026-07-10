@@ -12,17 +12,17 @@ char* getFileContents(const char* filename)
     }
     
     fseek(fp, 0, SEEK_END);
-    size_t len = ftell(fp);
+    size_t length = ftell(fp);
     fseek(fp, 0, SEEK_SET);
     
-    char* data = malloc(len + 1);
+    char* data = malloc(length + 1);
     
     if (!data) {
         return NULL;
     }
     
-    fread(data, 1, len, fp);
-    data[len] = '\0';
+    fread(data, 1, length, fp);
+    data[length] = '\0';
     fclose(fp);
 
     return data;
@@ -48,7 +48,7 @@ int getStreamContents(char **lineptr, size_t *n, FILE *stream)
         return -1;
     }
 
-    size_t len = 0;
+    size_t length = 0;
     int c;
 
     if (*lineptr == NULL) {
@@ -61,7 +61,7 @@ int getStreamContents(char **lineptr, size_t *n, FILE *stream)
     }
 
     while ((c = fgetc(stream)) != EOF) {
-        if (len + 1 >= *n) {
+        if (length + 1 >= *n) {
             *n *= 2;
             
             char *tmp = realloc(*lineptr, *n);
@@ -73,18 +73,18 @@ int getStreamContents(char **lineptr, size_t *n, FILE *stream)
             *lineptr = tmp;
         }
 
-        (*lineptr)[len++] = c;
+        (*lineptr)[length++] = c;
 
         if (c == '\n') {
             break;
         }
     }
 
-    if (len == 0 && c == EOF) {
+    if (length == 0 && c == EOF) {
         return -1;
     }
 
-    (*lineptr)[len] = '\0';
+    (*lineptr)[length] = '\0';
 
-    return len;
+    return length;
 }

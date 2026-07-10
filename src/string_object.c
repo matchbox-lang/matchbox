@@ -16,12 +16,12 @@ StringObject* createStringObject(char* chars, size_t length, size_t hash)
     return string;
 }
 
-StringObject* copyStringObject(const char* chars, size_t len)
+StringObject* copyStringObject(const char* chars, size_t length)
 {
-    size_t hash = hashStringObject(chars, len);
-    char* dst = strndup(chars, len);
+    size_t hash = hashStringObject(chars, length);
+    char* dst = strndup(chars, length);
 
-    return createStringObject(dst, len, hash);
+    return createStringObject(dst, length, hash);
 }
 
 void freeStringObject(StringObject* string)
@@ -39,11 +39,11 @@ bool compareStringObject(StringObject* a, StringObject* b)
     return false;
 }
 
-size_t hashStringObject(const char* chars, size_t len)
+size_t hashStringObject(const char* chars, size_t length)
 {
     size_t hash = 0;
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < length; i++) {
         hash = chars[i] + 31 * hash;
     }
 

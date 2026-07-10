@@ -21,7 +21,7 @@ void outOfMemoryError()
     exit(1);
 }
 
-void stripUnderscores(char* str, size_t* len)
+void stripUnderscores(char* str, size_t* length)
 {
 	char* src = str;
     char* dst = str;
@@ -31,7 +31,7 @@ void stripUnderscores(char* str, size_t* len)
 			*dst =* src;
 			dst++;
 		} else {
-			--(*len);
+			--(*length);
 		}
 
 		src++;
@@ -40,11 +40,11 @@ void stripUnderscores(char* str, size_t* len)
 	*dst = '\0';
 }
 
-char* strndup(const char* src, size_t len)
+char* strndup(const char* src, size_t length)
 {
-    char* dst = malloc(len + 1);
-    memcpy(dst, src, len);
-    dst[len] = '\0';
+    char* dst = malloc(length + 1);
+    memcpy(dst, src, length);
+    dst[length] = '\0';
 
     return dst;
 }

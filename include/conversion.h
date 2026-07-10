@@ -3,10 +3,10 @@
 
 #include <stddef.h>
 
-float integerLiteralToValue(char* str, size_t len);
-int binaryLiteralToValue(char* str, size_t len);
-int hexadecimalLiteralToValue(char* str, size_t len);
-int octalLiteralToValue(char* str, size_t len);
-int floatLiteralToValue(char* str, size_t len);
+float integerLiteralToValue(char* str, size_t length);
+int binaryLiteralToValue(char* str, size_t length);
+int hexadecimalLiteralToValue(char* str, size_t length);
+int octalLiteralToValue(char* str, size_t length);
+int floatLiteralToValue(char* str, size_t length);
 
 #endif

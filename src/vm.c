@@ -49,7 +49,7 @@ static void initBuiltins(VM* vm)
 static void run(VM* vm)
 {
     uint8_t opcode;
-    FunctionObject* function = AS_POINTER(vm->module->constants.data[0]);
+    FunctionObject* function = vm->module->functions.data[0];
     int32_t a;
     int32_t b;
     int32_t x;
@@ -287,7 +287,7 @@ static void run(VM* vm)
 
             case OP_CALL:
                 x = READ_UINT16();
-                function = AS_POINTER(vm->module->constants.data[x]);
+                function = vm->module->functions.data[x];
 
                 TEST_OVERFLOW(function->maxStackCount);
                 PUSH_INT(function->paramCount);

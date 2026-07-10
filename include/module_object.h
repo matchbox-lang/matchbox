@@ -2,6 +2,7 @@
 #define MODULE_OBJECT_H
 
 #include "object.h"
+#include "vector.h"
 
 #define AS_MODULE_OBJECT(value) ((ModuleObject*)AS_OBJECT(value))
 
@@ -9,6 +10,7 @@ typedef struct ModuleObject
 {
     Object obj;
     ValueArray constants;
+    Vector functions;
 } ModuleObject;
 
 ModuleObject* createModuleObject();

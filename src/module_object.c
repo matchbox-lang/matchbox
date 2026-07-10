@@ -12,24 +12,26 @@ ModuleObject* createModuleObject()
     FunctionObject* function = createFunctionObject();
 
     initValueArray(&module->constants);
-    pushValue(&module->constants, POINTER_VALUE(function));
+    initVector(&module->functions);
+    pushVectorItem(&module->functions, function);
 
     return module;
 }
 
 void freeModuleObject(ModuleObject* module)
 {
+    freeVector(&module->functions);
     freeValueArray(&module->constants);
     free(module);
 }
 
 void disassembleModule(ModuleObject* module)
 {
-    size_t functionCount = countValueArray(&module->constants);
+    size_t functionCount = countVector(&module->functions);
     FunctionObject* function;
 
     for (int i = 0; i < functionCount; i++) {
-        function = AS_POINTER(module->constants.data[i]);
+        function = getVectorAt(&module->functions, i);
         disassemble(&function->code);
 
         if (i < functionCount - 1) {

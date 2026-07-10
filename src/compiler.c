@@ -332,7 +332,6 @@ static void number(Compiler* compiler, AST* ast)
     if (isLargerThan16BitSigned(ast->intValue)) {
         size_t position = makeConstant(compiler, INT_VALUE(ast->intValue));
         emitLdc(compiler, position);
-        pushVectorItem(&compiler->functionReferences, ast);
     } else if (isLargerThan8BitSigned(ast->intValue)) {
         emitPushh(compiler, ast->intValue);
     } else {
@@ -534,7 +533,7 @@ static void functionDefinition(Compiler* compiler, AST* ast)
     
     compiler->stackCount = function->maxStackCount;
     compiler->function = function;
-    makeConstant(compiler, POINTER_VALUE(function));
+    pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, ast);
     blocklevelStatements(compiler, &body->compound.statements);
 
@@ -657,7 +656,7 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
     initParser(&compiler->parser, ast);
 
     compiler->module = module;
-    compiler->function = AS_POINTER(module->constants.data[0]);
+    compiler->function = getVectorAt(&module->functions, 0);
     compiler->ast = ast;
     compiler->statementIndex = 0;
     compiler->stackCount = 0;

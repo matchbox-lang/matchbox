@@ -687,6 +687,21 @@ static AST* functionCall(Parser* parser)
     return ast;
 }
 
+static bool hasValueReturn(Vector* statements)
+{
+    size_t count = countVector(statements);
+
+    for (size_t i = 0; i < count; i++) {
+        AST* statement = getVectorAt(statements, i);
+
+        if (statement->type == AST_RETURN) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static AST* functionDefinition(Parser* parser)
 {
     consume(parser, TOKEN_FUNC);
@@ -719,6 +734,8 @@ static AST* functionDefinition(Parser* parser)
     ast->functionDefinition.typeId = TOKEN_INT;
     ast->functionDefinition.body = NULL;
 
+    bool hasExplicitReturnType = false;
+
     parser->currentScope = ast->functionDefinition.scope;
     
     if (!parameters(parser, &ast->functionDefinition.params)) {
@@ -731,6 +748,7 @@ static AST* functionDefinition(Parser* parser)
         consume(parser, TOKEN_ARROW);
         ast->functionDefinition.typeId = parser->currentToken.type;
         consumeType(parser);
+        hasExplicitReturnType = true;
     }
 
     if (isEof(parser)) {
@@ -749,6 +767,10 @@ static AST* functionDefinition(Parser* parser)
         parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
+    }
+
+    if (!hasExplicitReturnType && !hasValueReturn(&body->compound.statements)) {
+        ast->functionDefinition.typeId = TOKEN_NONE;
     }
 
     consume(parser, TOKEN_RBRACE);

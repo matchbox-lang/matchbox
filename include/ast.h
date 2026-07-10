@@ -115,6 +115,7 @@ AST* createAST(ASTType type);
 void freeAST(AST* ast);
 Scope* getScope(AST* ast);
 int getTypeId(AST* ast);
+bool isExpressionStatement(AST* ast);
 bool isFunctionCall(AST* ast);
 bool isFunctionDefinition(AST* ast);
 bool isParameter(AST* ast);

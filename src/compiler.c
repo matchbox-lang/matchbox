@@ -616,30 +616,30 @@ static void expression(Compiler* compiler, AST* ast, bool discard)
     }
 }
 
-static bool statement(Compiler* compiler, AST* ast, bool discard)
+static void statement(Compiler* compiler, AST* ast, bool discard)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
             assignment(compiler, ast);
-            return false;
+            return;
         case AST_BUILTIN_CALL:
             builtinCall(compiler, ast, discard);
-            return true;
+            return;
         case AST_FUNCTION_CALL:
             functionCall(compiler, ast, discard);
-            return true;
+            return;
         case AST_FUNCTION_DEFINITION:
             functionDefinition(compiler, ast);
-            return false;
+            return;
         case AST_RETURN:
             ret(compiler, ast);
-            return false;
+            return;
         case AST_VARIABLE_DEFINITION:
             variableDefinition(compiler, ast);
-            return false;
+            return;
         default:
             expression(compiler, ast, discard);
-            return true;
+            return;
     }
 }
 
@@ -664,10 +664,10 @@ static void toplevelStatements(Compiler* compiler, Vector* nodes)
 
 static void replStatement(Compiler* compiler, AST* ast, bool isLast)
 {
-    bool display = isLast && getTypeId(ast) != TOKEN_NONE;
-    bool producesResult = statement(compiler, ast, !display);
+    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_NONE;
+    statement(compiler, ast, !display);
 
-    if (!display || !producesResult) {
+    if (!display) {
         return;
     }
 

@@ -16,72 +16,72 @@ static void unknownOpcodeError(int opcode)
     exit(1);
 }
 
-static int printOpcode(const char* name)
+static void printOpcode(const char* name)
 {
-    return printf("%s\n", name);
+    printf("%s\n", name);
 }
 
-static int printOpcodeInt8(const char* name)
+static void printOpcodeInt8(const char* name)
 {
-    return printf("%-15s %d\n", name, READ_INT8());
+    printf("%-15s %d\n", name, READ_INT8());
 }
 
-static int printOpcodeInt16(const char* name)
+static void printOpcodeInt16(const char* name)
 {
-    return printf("%-15s %d\n", name, READ_INT16());
+    printf("%-15s %d\n", name, READ_INT16());
 }
 
-static int printInstruction(int8_t c)
+static void printInstruction(int8_t c)
 {
     switch (c) {
-        case OP_HLT:            return printOpcode("hlt");
-        case OP_LDC:            return printOpcodeInt8("ldc");
-        case OP_REG:            return printOpcode("reg");
-        case OP_LDG:            return printOpcodeInt8("ldg");
-        case OP_STG:            return printOpcodeInt8("stg");
-        case OP_LDL:            return printOpcodeInt8("ldl");
-        case OP_LDL_0:          return printOpcode("ldl_0");
-        case OP_LDL_1:          return printOpcode("ldl_1");
-        case OP_LDL_2:          return printOpcode("ldl_2");
-        case OP_LDL_3:          return printOpcode("ldl_3");
-        case OP_STL:            return printOpcodeInt8("stl");
-        case OP_STL_0:          return printOpcode("stl_0");
-        case OP_STL_1:          return printOpcode("stl_1");
-        case OP_STL_2:          return printOpcode("stl_2");
-        case OP_STL_3:          return printOpcode("stl_3");
-        case OP_PUSHB:          return printOpcodeInt8("pushb");
-        case OP_PUSHH:          return printOpcodeInt16("pushh");
-        case OP_PUSH_0:         return printOpcode("push_0");
-        case OP_PUSH_1:         return printOpcode("push_1");
-        case OP_PUSH_2:         return printOpcode("push_2");
-        case OP_PUSH_3:         return printOpcode("push_3");
-        case OP_POP:            return printOpcode("pop");
-        case OP_DUP:            return printOpcode("dup");
-        case OP_INC:            return printOpcode("inc");
-        case OP_DEC:            return printOpcode("dec");
-        case OP_ADD:            return printOpcode("add");
-        case OP_SUB:            return printOpcode("sub");
-        case OP_MUL:            return printOpcode("mul");
-        case OP_DIV:            return printOpcode("div");
-        case OP_REM:            return printOpcode("rem");
-        case OP_POW:            return printOpcode("pow");
-        case OP_BAND:           return printOpcode("band");
-        case OP_BOR:            return printOpcode("bor");
-        case OP_BXOR:           return printOpcode("bxor");
-        case OP_BNOT:           return printOpcode("bnot");
-        case OP_LSL:            return printOpcode("lsl");
-        case OP_LSR:            return printOpcode("lsr");
-        case OP_ASR:            return printOpcode("asr");
-        case OP_NOT:            return printOpcode("not");
-        case OP_NEG:            return printOpcode("neg");
-        case OP_BEQ:            return printOpcodeInt16("beq");
-        case OP_BLT:            return printOpcodeInt16("blt");
-        case OP_BLE:            return printOpcodeInt16("ble");
-        case OP_JMP:            return printOpcodeInt16("jmp");
-        case OP_CALL_BUILTIN:   return printOpcodeInt8("call_builtin");
-        case OP_CALL:           return printOpcodeInt16("call");
-        case OP_RET:            return printOpcode("ret");
-        case OP_RETV:           return printOpcode("retv");
+        case OP_HLT:            printOpcode("hlt"); break;
+        case OP_LDC:            printOpcodeInt8("ldc"); break;
+        case OP_REG:            printOpcode("reg"); break;
+        case OP_LDG:            printOpcodeInt8("ldg"); break;
+        case OP_STG:            printOpcodeInt8("stg"); break;
+        case OP_LDL:            printOpcodeInt8("ldl"); break;
+        case OP_LDL_0:          printOpcode("ldl_0"); break;
+        case OP_LDL_1:          printOpcode("ldl_1"); break;
+        case OP_LDL_2:          printOpcode("ldl_2"); break;
+        case OP_LDL_3:          printOpcode("ldl_3"); break;
+        case OP_STL:            printOpcodeInt8("stl"); break;
+        case OP_STL_0:          printOpcode("stl_0"); break;
+        case OP_STL_1:          printOpcode("stl_1"); break;
+        case OP_STL_2:          printOpcode("stl_2"); break;
+        case OP_STL_3:          printOpcode("stl_3"); break;
+        case OP_PUSHB:          printOpcodeInt8("pushb"); break;
+        case OP_PUSHH:          printOpcodeInt16("pushh"); break;
+        case OP_PUSH_0:         printOpcode("push_0"); break;
+        case OP_PUSH_1:         printOpcode("push_1"); break;
+        case OP_PUSH_2:         printOpcode("push_2"); break;
+        case OP_PUSH_3:         printOpcode("push_3"); break;
+        case OP_POP:            printOpcode("pop"); break;
+        case OP_DUP:            printOpcode("dup"); break;
+        case OP_INC:            printOpcode("inc"); break;
+        case OP_DEC:            printOpcode("dec"); break;
+        case OP_ADD:            printOpcode("add"); break;
+        case OP_SUB:            printOpcode("sub"); break;
+        case OP_MUL:            printOpcode("mul"); break;
+        case OP_DIV:            printOpcode("div"); break;
+        case OP_REM:            printOpcode("rem"); break;
+        case OP_POW:            printOpcode("pow"); break;
+        case OP_BAND:           printOpcode("band"); break;
+        case OP_BOR:            printOpcode("bor"); break;
+        case OP_BXOR:           printOpcode("bxor"); break;
+        case OP_BNOT:           printOpcode("bnot"); break;
+        case OP_LSL:            printOpcode("lsl"); break;
+        case OP_LSR:            printOpcode("lsr"); break;
+        case OP_ASR:            printOpcode("asr"); break;
+        case OP_NOT:            printOpcode("not"); break;
+        case OP_NEG:            printOpcode("neg"); break;
+        case OP_BEQ:            printOpcodeInt16("beq"); break;
+        case OP_BLT:            printOpcodeInt16("blt"); break;
+        case OP_BLE:            printOpcodeInt16("ble"); break;
+        case OP_JMP:            printOpcodeInt16("jmp"); break;
+        case OP_CALL_BUILTIN:   printOpcodeInt8("call_builtin"); break;
+        case OP_CALL:           printOpcodeInt16("call"); break;
+        case OP_RET:            printOpcode("ret"); break;
+        case OP_RETV:           printOpcode("retv"); break;
         default:
             unknownOpcodeError(c);
     }

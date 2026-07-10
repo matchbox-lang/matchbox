@@ -44,7 +44,7 @@ void initTable(Table* table, size_t capacity)
 
 void freeTable(Table* table)
 {
-    for (int i = 0; i < table->capacity; i++) {
+    for (size_t i = 0; i < table->capacity; i++) {
         TableItem* item = table->data[i];
 
         if (item) {
@@ -122,6 +122,7 @@ bool deleteTableAt(Table* table, StringObject* key)
     }
 
     free(current);
+    table->count--;
 
     return true;
 }

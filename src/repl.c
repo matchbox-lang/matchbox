@@ -7,24 +7,68 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-static bool readReplSource(char** source, size_t* size)
+static bool resizeSource(char** source, size_t* size, size_t required)
 {
-    printf(">>> ");
-
-    if (getStreamContents(source, size, stdin) == -1) {
-        printf("\n");
-        
+    char* resized = realloc(*source, required);
+    if (!resized) {
         return false;
     }
+
+    *source = resized;
+    *size = required;
 
     return true;
 }
 
-static void runReplSource(Compiler* compiler, VM* vm, char* source)
+static bool appendLine(char** source, size_t* size, size_t* length)
 {
-    compileRepl(compiler, source);
-    interpret(vm);
+    char* line = NULL;
+    size_t lineSize = 0;
+    int lineLength = getStreamContents(&line, &lineSize, stdin);
+
+    if (lineLength == -1) {
+        free(line);
+
+        return false;
+    }
+
+    size_t required = *length + (size_t)lineLength + 1;
+    bool resizeFailed = required > *size && !resizeSource(source, size, required);
+
+    if (resizeFailed) {
+        free(line);
+
+        return false;
+    }
+
+    memcpy(*source + *length, line, (size_t)lineLength + 1);
+    *length += (size_t)lineLength;
+    free(line);
+
+    return true;
+}
+
+static bool readSource(Compiler* compiler, char** source, size_t* size)
+{
+    size_t length = 0;
+
+    printf(">>> ");
+    bool read = appendLine(source, size, &length);
+    bool complete = read && compileRepl(compiler, *source);
+
+    while (read && !complete) {
+        printf("... ");
+        read = appendLine(source, size, &length);
+        complete = read && compileRepl(compiler, *source);
+    }
+
+    if (!read) {
+        printf("\n");
+    }
+
+    return read;
 }
 
 void runRepl()
@@ -38,8 +82,8 @@ void runRepl()
     initCompiler(&compiler, module);
     initVM(&vm, module);
 
-    while (readReplSource(&source, &size)) {
-        runReplSource(&compiler, &vm, source);
+    while (readSource(&compiler, &source, &size)) {
+        interpret(&vm);
     }
 
     freeVM(&vm);

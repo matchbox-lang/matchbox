@@ -88,12 +88,6 @@ static void undefinedError(Token token)
     exit(1);
 }
 
-static void unexpectedEndError(Token token)
-{
-    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
 static void expectedTokenError(TokenType type, Token token)
 {
     fprintf(stderr, "Error: Expected %s but found ", tokenTypeName(type));
@@ -728,6 +722,7 @@ static AST* functionDefinition(Parser* parser)
     parser->currentScope = ast->functionDefinition.scope;
     
     if (!parameters(parser, &ast->functionDefinition.params)) {
+        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
     }
@@ -739,6 +734,7 @@ static AST* functionDefinition(Parser* parser)
     }
 
     if (isEof(parser)) {
+        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
     }
@@ -747,13 +743,14 @@ static AST* functionDefinition(Parser* parser)
 
     AST* body = createAST(AST_COMPOUND);
     body->compound.scope = parser->currentScope;
+    ast->functionDefinition.body = body;
 
     if (!blocklevelStatements(parser, &body->compound.statements)) {
+        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
     }
 
-    ast->functionDefinition.body = body;
     consume(parser, TOKEN_RBRACE);
     parser->currentScope = parser->currentScope->parent;
     setLocalSymbol(parser->currentScope, id, ast);
@@ -932,12 +929,10 @@ void initParser(Parser* parser, AST* ast)
     parser->topLevel = ast;
 }
 
-void parse(Parser* parser, char* source)
+bool parse(Parser* parser, char* source)
 {
     initLexer(&parser->lexer, source);
     advance(parser);
 
-    if (!toplevelStatements(parser)) {
-        unexpectedEndError(parser->currentToken);
-    }
+    return toplevelStatements(parser);
 }

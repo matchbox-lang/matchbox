@@ -477,6 +477,8 @@ static Token endCharacterLiteral(Lexer* lexer)
     }
 
     multipleCharacterError(lexer);
+
+    return makeToken(lexer, TOKEN_UNKNOWN);
 }
 
 static Token escapedCharacterLiteral(Lexer* lexer)
@@ -546,6 +548,8 @@ static Token stringLiteral(Lexer* lexer, char delimiter, TokenType type)
     }
 
     unterminatedLiteralError(lexer, delimiter);
+    
+    return makeToken(lexer, TOKEN_UNKNOWN);
 }
 
 static Token identifier(Lexer* lexer)

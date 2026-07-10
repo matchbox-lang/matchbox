@@ -296,6 +296,8 @@ static AST* primary(Parser* parser)
             return NULL;
         default:
             expectedExpressionError(parser->currentToken);
+            
+            return NULL;
     }
 }
 

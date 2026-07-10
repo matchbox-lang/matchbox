@@ -19,18 +19,24 @@ static void unterminatedCommentError(Lexer* lexer)
     exit(1);
 }
 
+static void invalidNumberError(Lexer* lexer)
+{
+    fprintf(stderr, "Error: Invalid number literal");
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
 static char peek(Lexer* lexer)
 {
     return *lexer->current.chars;
 }
 
-static char prev(Lexer* lexer)
-{
-    return lexer->current.chars[-1];
-}
-
 static char next(Lexer* lexer)
 {
+    if (*lexer->current.chars == '\0') {
+        return '\0';
+    }
+
     return lexer->current.chars[1];
 }
 
@@ -98,6 +104,33 @@ static bool isODigit(char c)
 static bool isBDigit(char c)
 {
     return c == '0' || c == '1';
+}
+
+static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
+{
+    while (true) {
+        if (isValidDigit(peek(lexer))) {
+            advance(lexer);
+            continue;
+        }
+
+        if (peek(lexer) != '_') {
+            return;
+        }
+
+        advance(lexer);
+
+        if (!isValidDigit(peek(lexer))) {
+            invalidNumberError(lexer);
+        }
+    }
+}
+
+static void validateNumberEnd(Lexer* lexer)
+{
+    if (isAlpha(peek(lexer)) || isDigit(peek(lexer)) || peek(lexer) == '_') {
+        invalidNumberError(lexer);
+    }
 }
 
 static void skipCommentSingle(Lexer* lexer)
@@ -283,87 +316,95 @@ static TokenType getIdentifierType(Lexer* lexer)
 
 static Token floatLiteral(Lexer* lexer)
 {
-    while (isDigit(peek(lexer)) || (peek(lexer) == '_' && isDigit(next(lexer)))) {
-        advance(lexer);
-    }
-
     if (peek(lexer) == '.' && next(lexer) != '.') {
         advance(lexer);
+        scanDigits(lexer, isDigit);
+    }
 
-        while (isDigit(peek(lexer)) || (peek(lexer) == '_' && isDigit(next(lexer)))) {
+    if (peek(lexer) == 'e' || peek(lexer) == 'E') {
+        advance(lexer);
+
+        if (peek(lexer) == '+' || peek(lexer) == '-') {
             advance(lexer);
         }
+
+        if (!isDigit(peek(lexer))) {
+            invalidNumberError(lexer);
+        }
+
+        scanDigits(lexer, isDigit);
     }
+
+    validateNumberEnd(lexer);
 
     return makeToken(lexer, TOKEN_FLOAT_LITERAL);
 }
 
 static Token integerLiteral(Lexer* lexer)
 {
-    while (isDigit(peek(lexer)) || (peek(lexer) == '_' && isDigit(next(lexer)))) {
-        advance(lexer);
-    }
+    scanDigits(lexer, isDigit);
 
     if (peek(lexer) == '.' && next(lexer) != '.') {
         return floatLiteral(lexer);
     }
 
+    if (peek(lexer) == 'e' || peek(lexer) == 'E') {
+        return floatLiteral(lexer);
+    }
+
+    validateNumberEnd(lexer);
+
     return makeToken(lexer, TOKEN_INTEGER_LITERAL);
 }
 
-static Token hexadecimalLiteral(Lexer* lexer)
+static Token prefixedIntegerLiteral(Lexer* lexer, bool (*isValidDigit)(char), TokenType type)
 {
-    while (isXDigit(peek(lexer)) || (peek(lexer) == '_' && isXDigit(next(lexer)))) {
-        advance(lexer);
+    if (!isValidDigit(peek(lexer))) {
+        invalidNumberError(lexer);
     }
 
-    return makeToken(lexer, TOKEN_HEXADECIMAL_LITERAL);
+    scanDigits(lexer, isValidDigit);
+    validateNumberEnd(lexer);
+
+    return makeToken(lexer, type);
 }
 
-static Token octalLiteral(Lexer* lexer)
+static Token zeroLiteral(Lexer* lexer)
 {
-    while (isODigit(peek(lexer)) || (peek(lexer) == '_' && isODigit(next(lexer)))) {
-        advance(lexer);
+    if (match(lexer, 'x') || match(lexer, 'X')) {
+        return prefixedIntegerLiteral(lexer, isXDigit, TOKEN_HEXADECIMAL_LITERAL);
     }
 
-    return makeToken(lexer, TOKEN_OCTAL_LITERAL);
-}
-
-static Token binaryLiteral(Lexer* lexer)
-{
-    while (isBDigit(peek(lexer)) || (peek(lexer) == '_' && isBDigit(next(lexer)))) {
-        advance(lexer);
+    if (match(lexer, 'o') || match(lexer, 'O')) {
+        return prefixedIntegerLiteral(lexer, isODigit, TOKEN_OCTAL_LITERAL);
     }
 
-    return makeToken(lexer, TOKEN_BINARY_LITERAL);
+    if (match(lexer, 'b') || match(lexer, 'B')) {
+        return prefixedIntegerLiteral(lexer, isBDigit, TOKEN_BINARY_LITERAL);
+    }
+
+    return integerLiteral(lexer);
 }
 
-static Token characterLiteral(Lexer* lexer)
+static Token quotedLiteral(Lexer* lexer, char delimiter, TokenType type)
 {
+    bool escaped = false;
+
     while (!isEof(lexer)) {
-        if (peek(lexer) == '\'' && prev(lexer) != '\\') {
-            advance(lexer);
-            return makeToken(lexer, TOKEN_CHARACTER_LITERAL);
+        char c = advance(lexer);
+
+        if (c == delimiter && !escaped) {
+            return makeToken(lexer, type);
         }
 
-        advance(lexer);
-    }
-
-    unterminatedCharacterError(lexer, '\'');
-}
-
-static Token stringLiteral(Lexer* lexer, char c)
-{
-    while (!isEof(lexer)) {
-        if (peek(lexer) == c && prev(lexer) != '\\') {
-            advance(lexer);
-            return makeToken(lexer, TOKEN_STRING_LITERAL);
+        if (c == '\\') {
+            escaped = !escaped;
+        } else {
+            escaped = false;
         }
-
-        advance(lexer);
     }
 
-    unterminatedCharacterError(lexer, c);
+    unterminatedCharacterError(lexer, delimiter);
 }
 
 static Token identifier(Lexer* lexer)
@@ -401,11 +442,7 @@ Token scanToken(Lexer* lexer)
     }
 
     if (c == '0') {
-        if (isXDigit(next(lexer)) && (match(lexer, 'x') || match(lexer, 'X'))) return hexadecimalLiteral(lexer);
-        if (isODigit(next(lexer)) && (match(lexer, 'o') || match(lexer, 'O'))) return octalLiteral(lexer);
-        if (isBDigit(next(lexer)) && (match(lexer, 'b') || match(lexer, 'B'))) return binaryLiteral(lexer);
-
-        return integerLiteral(lexer);
+        return zeroLiteral(lexer);
     }
 
     if (isDigit(c)) {
@@ -414,12 +451,12 @@ Token scanToken(Lexer* lexer)
 
     switch (c) {
         case '"':
-        case '`':   return stringLiteral(lexer, c);
-        case '\'':  return characterLiteral(lexer);
+        case '`':   return quotedLiteral(lexer, c, TOKEN_STRING_LITERAL);
+        case '\'':  return quotedLiteral(lexer, c, TOKEN_CHARACTER_LITERAL);
         case '(':   return makeToken(lexer, TOKEN_LPAREN);
         case ')':   return makeToken(lexer, TOKEN_RPAREN);
-        case '[':   return makeToken(lexer, TOKEN_LBRACE);
-        case ']':   return makeToken(lexer, TOKEN_RBRACE);
+        case '[':   return makeToken(lexer, TOKEN_LSQUARE);
+        case ']':   return makeToken(lexer, TOKEN_RSQUARE);
         case '{':   return makeToken(lexer, TOKEN_LBRACE);
         case '}':   return makeToken(lexer, TOKEN_RBRACE);
         case ':':   return makeToken(lexer, TOKEN_COLON);
@@ -456,9 +493,6 @@ Token scanToken(Lexer* lexer)
             return makeToken(lexer, 
                 match(lexer, '=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
         case '-':
-            if (isDigit(peek(lexer)) || peek(lexer) == '.') {
-                return integerLiteral(lexer);
-            }
             return makeToken(lexer, 
                 match(lexer, '>') ? TOKEN_ARROW :
                 match(lexer, '=') ? TOKEN_MINUS_EQUAL : TOKEN_MINUS);

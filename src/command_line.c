@@ -8,12 +8,12 @@
 
 static void disassembleDoesNotSupportTestError()
 {
-    fprintf(stderr, "Error: -d cannot be used with test\n");
+    fprintf(stderr, "Error: Cannot disassemble tests\n");
 }
 
 static void disassembleRequiresFileError()
 {
-    fprintf(stderr, "Error: -d requires a file\n");
+    fprintf(stderr, "Error: Cannot disassemble without a file\n");
 }
 
 static void unknownOptionError(char* arg)

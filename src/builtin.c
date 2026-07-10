@@ -7,13 +7,13 @@
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {
-    [BUILTIN_EXIT] = {"exit", BUILTIN_EXIT, 0, {}, TOKEN_NONE},
-    [BUILTIN_PRINT] = {"print", BUILTIN_PRINT, 1, {TOKEN_INT}, TOKEN_NONE},
-    [BUILTIN_CLAMP] = {"clamp", BUILTIN_CLAMP, 3, {TOKEN_INT, TOKEN_INT, TOKEN_INT}, TOKEN_INT},
-    [BUILTIN_ABS] = {"abs", BUILTIN_ABS, 1, {TOKEN_INT}, TOKEN_INT},
-    [BUILTIN_MIN] = {"min", BUILTIN_MIN, 2, {TOKEN_INT, TOKEN_INT}, TOKEN_INT},
-    [BUILTIN_MAX] = {"max", BUILTIN_MAX, 2, {TOKEN_INT, TOKEN_INT}, TOKEN_INT},
-    [BUILTIN_BYTEORDER] = {"byteorder", BUILTIN_BYTEORDER, 0, {}, TOKEN_INT}
+    {"exit",        BUILTIN_EXIT,       0, {},                                  TOKEN_NONE},
+    {"print",       BUILTIN_PRINT,      1, {TOKEN_INT},                         TOKEN_NONE},
+    {"clamp",       BUILTIN_CLAMP,      3, {TOKEN_INT, TOKEN_INT, TOKEN_INT},   TOKEN_INT},
+    {"abs",         BUILTIN_ABS,        1, {TOKEN_INT},                         TOKEN_INT},
+    {"min",         BUILTIN_MIN,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},
+    {"max",         BUILTIN_MAX,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},
+    {"byteorder",   BUILTIN_BYTEORDER,  0, {},                                  TOKEN_INT}
 };
 
 Builtin* getBuiltinByName(const char* name)

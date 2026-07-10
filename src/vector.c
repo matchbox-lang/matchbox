@@ -22,8 +22,10 @@ size_t countVector(Vector* vector)
 
 void reserveVector(Vector* vector, size_t capacity)
 {
-    vector->data = realloc(vector->data, sizeof(void*) * capacity);
-    vector->capacity = capacity;
+    if (capacity > vector->capacity) {
+        vector->data = realloc(vector->data, sizeof(void*) * capacity);
+        vector->capacity = capacity;
+    }
 }
 
 void resizeVector(Vector* vector, size_t size)

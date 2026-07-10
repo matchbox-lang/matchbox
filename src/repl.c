@@ -23,7 +23,7 @@ static bool readReplSource(char** source, size_t* size)
 
 static void runReplSource(Compiler* compiler, VM* vm, char* source)
 {
-    compile(compiler, source);
+    compileRepl(compiler, source);
     interpret(vm);
 }
 

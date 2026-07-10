@@ -1,4 +1,5 @@
 #include "value.h"
+#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -24,7 +25,12 @@ size_t countValueArray(ValueArray* array)
 void reserveValueArray(ValueArray* array, size_t capacity)
 {
     if (capacity > array->capacity) {
-        array->data = realloc(array->data, sizeof(Value) * capacity);
+        Value* data = realloc(array->data, sizeof(Value) * capacity);
+        if (!data) {
+            outOfMemoryError();
+        }
+
+        array->data = data;
         array->capacity = capacity;
     }
 }

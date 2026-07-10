@@ -4,6 +4,8 @@
 #include "string_object.h"
 #include <stddef.h>
 
+#define DEFAULT_TABLE_CAPACITY 8
+
 typedef struct TableItem TableItem;
 
 typedef struct TableItem

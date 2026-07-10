@@ -1,11 +1,16 @@
 #include "table.h"
 #include "string_object.h"
+#include "util.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
 TableItem* createTableItem(StringObject* key, void* value, TableItem* next)
 {
     TableItem* item = malloc(sizeof(TableItem));
+    if (!item) {
+        outOfMemoryError();
+    }
+
     item->key = key;
     item->value = value;
     item->next = next;
@@ -24,8 +29,16 @@ void freeTableItem(TableItem* item)
 
 void initTable(Table* table, size_t capacity)
 {
+    if (capacity == 0) {
+        capacity = DEFAULT_TABLE_CAPACITY;
+    }
+
     table->capacity = capacity;
     table->data = calloc(table->capacity, sizeof(TableItem*));
+    if (!table->data) {
+        outOfMemoryError();
+    }
+
     table->count = 0;
 }
 

@@ -1,4 +1,5 @@
 #include "code_object.h"
+#include "util.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -30,7 +31,12 @@ size_t countCodeObject(CodeObject* code)
 void reserveCodeObject(CodeObject* code, size_t capacity)
 {
     if (capacity > code->capacity) {
-        code->data = realloc(code->data, sizeof(uint8_t) * capacity);
+        uint8_t* data = realloc(code->data, sizeof(uint8_t) * capacity);
+        if (!data) {
+            outOfMemoryError();
+        }
+
+        code->data = data;
         code->capacity = capacity;
     }
 }

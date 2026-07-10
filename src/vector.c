@@ -1,4 +1,5 @@
 #include "vector.h"
+#include "util.h"
 #include <stdlib.h>
 
 #define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
@@ -23,7 +24,12 @@ size_t countVector(Vector* vector)
 void reserveVector(Vector* vector, size_t capacity)
 {
     if (capacity > vector->capacity) {
-        vector->data = realloc(vector->data, sizeof(void*) * capacity);
+        void** data = realloc(vector->data, sizeof(void*) * capacity);
+        if (!data) {
+            outOfMemoryError();
+        }
+
+        vector->data = data;
         vector->capacity = capacity;
     }
 }

@@ -75,13 +75,6 @@ static const Keyword keywords[] = {
     {"yield",       5, TOKEN_YIELD}
 };
 
-static void unterminatedCharacterError(const Lexer* lexer, char c)
-{
-    fprintf(stderr, "Error: Missing terminating %c character", c);
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
-    exit(1);
-}
-
 static void unterminatedCommentError(const Lexer* lexer)
 {
     fprintf(stderr, "Error: Unterminated comment");
@@ -89,9 +82,44 @@ static void unterminatedCommentError(const Lexer* lexer)
     exit(1);
 }
 
+static void unterminatedLiteralError(const Lexer* lexer, char c)
+{
+    fprintf(stderr, "Error: Missing terminating %c character", c);
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
 static void invalidNumberError(const Lexer* lexer)
 {
     fprintf(stderr, "Error: Invalid number literal");
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
+static void emptyCharacterError(const Lexer* lexer)
+{
+    fprintf(stderr, "Error: Empty character literal");
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
+static void multipleCharacterError(const Lexer* lexer)
+{
+    fprintf(stderr, "Error: Character literal contains multiple characters");
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
+static void newlineCharacterError(const Lexer* lexer)
+{
+    fprintf(stderr, "Error: Newline in character literal");
+    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
+static void invalidUtf8CharacterError(const Lexer* lexer)
+{
+    fprintf(stderr, "Error: Invalid UTF-8 character literal");
     fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
     exit(1);
 }
@@ -174,6 +202,70 @@ static bool isODigit(char c)
 static bool isBDigit(char c)
 {
     return c == '0' || c == '1';
+}
+
+static bool isUtf8Continuation(char c)
+{
+    return ((unsigned char)c & 0xC0) == 0x80;
+}
+
+static bool hasUtf8Continuations(const char* chars, size_t count)
+{
+    for (size_t i = 1; i <= count; i++) {
+        if (chars[i] == '\0') {
+            return false;
+        }
+
+        if (!isUtf8Continuation(chars[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static size_t utf8CodePointLength(const char* chars)
+{
+    unsigned char first = (unsigned char)chars[0];
+    unsigned char second = (unsigned char)chars[1];
+
+    if (first <= 0x7F) {
+        return 1;
+    }
+
+    if (first >= 0xC2 && first <= 0xDF && hasUtf8Continuations(chars, 1)) {
+        return 2;
+    }
+
+    if (first == 0xE0 && second >= 0xA0 && second <= 0xBF && hasUtf8Continuations(chars, 2)) {
+        return 3;
+    }
+
+    if (first >= 0xE1 && first <= 0xEC && hasUtf8Continuations(chars, 2)) {
+        return 3;
+    }
+
+    if (first == 0xED && second >= 0x80 && second <= 0x9F && hasUtf8Continuations(chars, 2)) {
+        return 3;
+    }
+
+    if (first >= 0xEE && first <= 0xEF && hasUtf8Continuations(chars, 2)) {
+        return 3;
+    }
+
+    if (first == 0xF0 && second >= 0x90 && second <= 0xBF && hasUtf8Continuations(chars, 3)) {
+        return 4;
+    }
+
+    if (first >= 0xF1 && first <= 0xF3 && hasUtf8Continuations(chars, 3)) {
+        return 4;
+    }
+
+    if (first == 0xF4 && second >= 0x80 && second <= 0x8F && hasUtf8Continuations(chars, 3)) {
+        return 4;
+    }
+
+    return 0;
 }
 
 static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
@@ -363,7 +455,79 @@ static Token zeroLiteral(Lexer* lexer)
     return integerLiteral(lexer);
 }
 
-static Token quotedLiteral(Lexer* lexer, char delimiter, TokenType type)
+static void advanceCharacters(Lexer* lexer, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        advance(lexer);
+    }
+}
+
+static Token endCharacterLiteral(Lexer* lexer)
+{
+    if (match(lexer, '\'')) {
+        return makeToken(lexer, TOKEN_CHARACTER_LITERAL);
+    }
+
+    if (peek(lexer) == '\n') {
+        newlineCharacterError(lexer);
+    }
+
+    if (isEof(lexer)) {
+        unterminatedLiteralError(lexer, '\'');
+    }
+
+    multipleCharacterError(lexer);
+}
+
+static Token escapedCharacterLiteral(Lexer* lexer)
+{
+    advance(lexer);
+
+    if (isEof(lexer)) {
+        unterminatedLiteralError(lexer, '\'');
+    }
+
+    if (peek(lexer) == '\n') {
+        newlineCharacterError(lexer);
+    }
+
+    advance(lexer);
+
+    return endCharacterLiteral(lexer);
+}
+
+static Token characterLiteral(Lexer* lexer)
+{
+    size_t length;
+
+    if (isEof(lexer)) {
+        unterminatedLiteralError(lexer, '\'');
+    }
+
+    if (peek(lexer) == '\n') {
+        newlineCharacterError(lexer);
+    }
+
+    if (peek(lexer) == '\'') {
+        emptyCharacterError(lexer);
+    }
+
+    if (peek(lexer) == '\\') {
+        return escapedCharacterLiteral(lexer);
+    }
+
+    length = utf8CodePointLength(lexer->current.chars);
+
+    if (length == 0) {
+        invalidUtf8CharacterError(lexer);
+    }
+
+    advanceCharacters(lexer, length);
+
+    return endCharacterLiteral(lexer);
+}
+
+static Token stringLiteral(Lexer* lexer, char delimiter, TokenType type)
 {
     bool escaped = false;
 
@@ -381,7 +545,7 @@ static Token quotedLiteral(Lexer* lexer, char delimiter, TokenType type)
         }
     }
 
-    unterminatedCharacterError(lexer, delimiter);
+    unterminatedLiteralError(lexer, delimiter);
 }
 
 static Token identifier(Lexer* lexer)
@@ -428,8 +592,8 @@ Token scanToken(Lexer* lexer)
 
     switch (c) {
         case '"':
-        case '`':   return quotedLiteral(lexer, c, TOKEN_STRING_LITERAL);
-        case '\'':  return quotedLiteral(lexer, c, TOKEN_CHARACTER_LITERAL);
+        case '`':   return stringLiteral(lexer, c, TOKEN_STRING_LITERAL);
+        case '\'':  return characterLiteral(lexer);
         case '(':   return makeToken(lexer, TOKEN_LPAREN);
         case ')':   return makeToken(lexer, TOKEN_RPAREN);
         case '[':   return makeToken(lexer, TOKEN_LSQUARE);

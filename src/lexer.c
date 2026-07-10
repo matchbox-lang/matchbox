@@ -5,6 +5,76 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Keyword
+{
+    const char* chars;
+    size_t length;
+    TokenType type;
+} Keyword;
+
+static const Keyword keywords[] = {
+    {"as",          2, TOKEN_AS},
+    {"async",       5, TOKEN_ASYNC},
+    {"await",       5, TOKEN_AWAIT},
+    {"bool",        4, TOKEN_BOOL},
+    {"break",       5, TOKEN_BREAK},
+    {"catch",       5, TOKEN_CATCH},
+    {"char",        4, TOKEN_CHAR},
+    {"class",       5, TOKEN_CLASS},
+    {"const",       5, TOKEN_CONST},
+    {"continue",    8, TOKEN_CONTINUE},
+    {"defer",       5, TOKEN_DEFER},
+    {"double",      6, TOKEN_DOUBLE},
+    {"else",        4, TOKEN_ELSE},
+    {"end",         3, TOKEN_END},
+    {"enum",        4, TOKEN_ENUM},
+    {"extern",      6, TOKEN_EXTERN},
+    {"false",       5, TOKEN_FALSE},
+    {"finally",     7, TOKEN_FINALLY},
+    {"float",       5, TOKEN_FLOAT},
+    {"for",         3, TOKEN_FOR},
+    {"func",        4, TOKEN_FUNC},
+    {"get",         3, TOKEN_GET},
+    {"has",         3, TOKEN_HAS},
+    {"if",          2, TOKEN_IF},
+    {"in",          2, TOKEN_IN},
+    {"int",         3, TOKEN_INT},
+    {"int8",        4, TOKEN_INT8},
+    {"int16",       5, TOKEN_INT16},
+    {"int32",       5, TOKEN_INT32},
+    {"int64",       5, TOKEN_INT64},
+    {"internal",    8, TOKEN_INTERNAL},
+    {"is",          2, TOKEN_IS},
+    {"let",         3, TOKEN_LET},
+    {"match",       5, TOKEN_MATCH},
+    {"private",     7, TOKEN_PRIVATE},
+    {"protocol",    8, TOKEN_PROTOCOL},
+    {"public",      6, TOKEN_PUBLIC},
+    {"return",      6, TOKEN_RETURN},
+    {"self",        4, TOKEN_SELF},
+    {"set",         3, TOKEN_SET},
+    {"sizeof",      6, TOKEN_SIZEOF},
+    {"static",      6, TOKEN_STATIC},
+    {"string",      6, TOKEN_STRING},
+    {"struct",      6, TOKEN_STRUCT},
+    {"throw",       5, TOKEN_THROW},
+    {"true",        4, TOKEN_TRUE},
+    {"try",         3, TOKEN_TRY},
+    {"type",        4, TOKEN_TYPE},
+    {"typeof",      6, TOKEN_TYPEOF},
+    {"uint",        4, TOKEN_UINT},
+    {"uint8",       5, TOKEN_UINT8},
+    {"uint16",      6, TOKEN_UINT16},
+    {"uint32",      6, TOKEN_UINT32},
+    {"uint64",      6, TOKEN_UINT64},
+    {"unless",      6, TOKEN_UNLESS},
+    {"use",         3, TOKEN_USE},
+    {"var",         3, TOKEN_VAR},
+    {"where",       5, TOKEN_WHERE},
+    {"while",       5, TOKEN_WHILE},
+    {"yield",       5, TOKEN_YIELD}
+};
+
 static void unterminatedCharacterError(const Lexer* lexer, char c)
 {
     fprintf(stderr, "Error: Missing terminating %c character", c);
@@ -194,124 +264,41 @@ static void skipWhitespace(Lexer* lexer)
     }
 }
 
-static int checkKeyword(const Lexer* lexer, size_t chars, size_t length, const char* rest)
+static bool isKeyword(const Lexer* lexer, const Keyword* keyword, size_t length)
 {
-    if (lexer->current.chars - lexer->start.chars != chars + length) {
-        return 0;
-    }
-
-    return memcmp(lexer->start.chars + chars, rest, length) == 0;
+    return length == keyword->length &&
+        memcmp(lexer->start.chars, keyword->chars, length) == 0;
 }
 
 static TokenType getIdentifierType(const Lexer* lexer)
 {
-    char c =* lexer->start.chars;
+    size_t length = (size_t)(lexer->current.chars - lexer->start.chars);
+    size_t keywordCount = sizeof(keywords) / sizeof(keywords[0]);
 
-    switch (c) {
-        case 'a':
-            if (checkKeyword(lexer, 1, 1, "s")) return TOKEN_AS;
-            if (checkKeyword(lexer, 1, 4, "sync")) return TOKEN_ASYNC;
-            if (checkKeyword(lexer, 1, 4, "wait")) return TOKEN_AWAIT;
-            break;
-        case 'b':
-            if (checkKeyword(lexer, 1, 3, "ool")) return TOKEN_BOOL;
-            if (checkKeyword(lexer, 1, 4, "reak")) return TOKEN_BREAK;
-            break;
-        case 'c':
-            if (checkKeyword(lexer, 1, 4, "atch")) return TOKEN_CATCH;
-            if (checkKeyword(lexer, 1, 3, "har")) return TOKEN_CHAR;
-            if (checkKeyword(lexer, 1, 4, "lass")) return TOKEN_CLASS;
-            if (checkKeyword(lexer, 1, 4, "onst")) return TOKEN_CONST;
-            if (checkKeyword(lexer, 1, 7, "ontinue")) return TOKEN_CONTINUE;
-            break;
-        case 'd':
-            if (checkKeyword(lexer, 1, 5, "ouble")) return TOKEN_DOUBLE;
-            if (checkKeyword(lexer, 1, 4, "efer")) return TOKEN_DEFER;
-            break;
-        case 'e':
-            if (checkKeyword(lexer, 1, 3, "lse")) return TOKEN_ELSE;
-            if (checkKeyword(lexer, 1, 2, "nd")) return TOKEN_END;
-            if (checkKeyword(lexer, 1, 3, "num")) return TOKEN_ENUM;
-            if (checkKeyword(lexer, 1, 5, "xtern")) return TOKEN_EXTERN;
-            break;
-        case 'f':
-            if (checkKeyword(lexer, 1, 4, "alse")) return TOKEN_FALSE;
-            if (checkKeyword(lexer, 1, 6, "inally")) return TOKEN_FINALLY;
-            if (checkKeyword(lexer, 1, 4, "loat")) return TOKEN_FLOAT;
-            if (checkKeyword(lexer, 1, 2, "or")) return TOKEN_FOR;
-            if (checkKeyword(lexer, 1, 3, "unc")) return TOKEN_FUNC;
-            break;
-        case 'g':
-            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_GET;
-            break;
-        case 'h':
-            if (checkKeyword(lexer, 1, 2, "as")) return TOKEN_HAS;
-            break;
-        case 'i':
-            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_LET;
-            if (checkKeyword(lexer, 1, 1, "f")) return TOKEN_IF;
-            if (checkKeyword(lexer, 1, 1, "n")) return TOKEN_IN;
-            if (checkKeyword(lexer, 1, 2, "nt")) return TOKEN_INT;
-            if (checkKeyword(lexer, 1, 3, "nt8")) return TOKEN_INT8;
-            if (checkKeyword(lexer, 1, 4, "nt16")) return TOKEN_INT16;
-            if (checkKeyword(lexer, 1, 4, "nt32")) return TOKEN_INT32;
-            if (checkKeyword(lexer, 1, 4, "nt64")) return TOKEN_INT64;
-            if (checkKeyword(lexer, 1, 7, "nternal")) return TOKEN_INTERNAL;
-            if (checkKeyword(lexer, 1, 1, "s")) return TOKEN_IS;
-            break;
-        case 'l':
-            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_LET;
-            break;
-        case 'm':
-            if (checkKeyword(lexer, 1, 4, "atch")) return TOKEN_MATCH;
-            break;
-        case 'p':
-            if (checkKeyword(lexer, 1, 7, "rotocol")) return TOKEN_PROTOCOL;
-            if (checkKeyword(lexer, 1, 6, "rivate")) return TOKEN_PRIVATE;
-            if (checkKeyword(lexer, 1, 5, "ublic")) return TOKEN_PUBLIC;
-            break;
-        case 'r':
-            if (checkKeyword(lexer, 1, 5, "eturn")) return TOKEN_RETURN;
-            break;
-        case 's':
-            if (checkKeyword(lexer, 1, 3, "elf")) return TOKEN_SELF;
-            if (checkKeyword(lexer, 1, 2, "et")) return TOKEN_SET;
-            if (checkKeyword(lexer, 1, 5, "izeof")) return TOKEN_SIZEOF;
-            if (checkKeyword(lexer, 1, 5, "tatic")) return TOKEN_STATIC;
-            if (checkKeyword(lexer, 1, 5, "tring")) return TOKEN_STRING;
-            if (checkKeyword(lexer, 1, 5, "truct")) return TOKEN_STRUCT;
-            break;
-        case 't':
-            if (checkKeyword(lexer, 1, 4, "hrow")) return TOKEN_THROW;
-            if (checkKeyword(lexer, 1, 3, "rue")) return TOKEN_TRUE;
-            if (checkKeyword(lexer, 1, 2, "ry")) return TOKEN_TRY;
-            if (checkKeyword(lexer, 1, 3, "ype")) return TOKEN_TYPE;
-            if (checkKeyword(lexer, 1, 5, "ypeof")) return TOKEN_TYPEOF;
-            break;
-        case 'u':
-            if (checkKeyword(lexer, 1, 3, "int")) return TOKEN_UINT;
-            if (checkKeyword(lexer, 1, 4, "int8")) return TOKEN_UINT8;
-            if (checkKeyword(lexer, 1, 5, "int16")) return TOKEN_UINT16;
-            if (checkKeyword(lexer, 1, 5, "int32")) return TOKEN_UINT32;
-            if (checkKeyword(lexer, 1, 5, "int64")) return TOKEN_UINT64;
-            if (checkKeyword(lexer, 1, 5, "nless")) return TOKEN_UNLESS;
-            if (checkKeyword(lexer, 1, 2, "se")) return TOKEN_USE;
-            break;
-        case 'v':
-            if (checkKeyword(lexer, 1, 2, "ar")) return TOKEN_VAR;
-            break;
-        case 'w':
-            if (checkKeyword(lexer, 1, 4, "here")) return TOKEN_WHERE;
-            if (checkKeyword(lexer, 1, 4, "hile")) return TOKEN_WHILE;
-            break;
-        case 'y':
-            if (checkKeyword(lexer, 1, 4, "ield")) return TOKEN_YIELD;
-            break;
-        default:
-            break;
+    for (size_t i = 0; i < keywordCount; i++) {
+        if (!isKeyword(lexer, &keywords[i], length)) {
+            continue;
+        }
+
+        return keywords[i].type;
     }
 
     return TOKEN_IDENTIFIER;
+}
+
+static void scanExponent(Lexer* lexer)
+{
+    advance(lexer);
+
+    if (peek(lexer) == '+' || peek(lexer) == '-') {
+        advance(lexer);
+    }
+
+    if (!isDigit(peek(lexer))) {
+        invalidNumberError(lexer);
+    }
+
+    scanDigits(lexer, isDigit);
 }
 
 static Token floatLiteral(Lexer* lexer)
@@ -322,17 +309,7 @@ static Token floatLiteral(Lexer* lexer)
     }
 
     if (peek(lexer) == 'e' || peek(lexer) == 'E') {
-        advance(lexer);
-
-        if (peek(lexer) == '+' || peek(lexer) == '-') {
-            advance(lexer);
-        }
-
-        if (!isDigit(peek(lexer))) {
-            invalidNumberError(lexer);
-        }
-
-        scanDigits(lexer, isDigit);
+        scanExponent(lexer);
     }
 
     validateNumberEnd(lexer);
@@ -437,16 +414,16 @@ Token scanToken(Lexer* lexer)
 
     char c = advance(lexer);
 
-    if (isAlpha(c)) {
-        return identifier(lexer);
-    }
-
     if (c == '0') {
         return zeroLiteral(lexer);
     }
 
     if (isDigit(c)) {
         return integerLiteral(lexer);
+    }
+
+    if (isAlpha(c)) {
+        return identifier(lexer);
     }
 
     switch (c) {

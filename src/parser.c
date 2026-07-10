@@ -899,10 +899,12 @@ static bool statements(Parser* parser, Vector* nodes, TokenType type)
             return false;
         }
         
-        if (!isEof(parser) && 
+        bool sameLineStatement = !isEof(parser) &&
             parser->currentToken.line == token.line &&
             parser->currentToken.type != type &&
-            parser->prevToken.type != TOKEN_RBRACE) {
+            parser->prevToken.type != TOKEN_RBRACE;
+
+        if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
             consume(parser, TOKEN_SEMICOLON);
         }
 

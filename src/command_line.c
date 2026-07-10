@@ -44,6 +44,18 @@ static bool parseOption(Options* options, char* arg)
         return true;
     }
 
+    if (options->mode == PROGRAM_TEST && strcmp(arg, "-a") == 0) {
+        options->testOutput = TEST_OUTPUT_ALL;
+
+        return true;
+    }
+
+    if (options->mode == PROGRAM_TEST && strcmp(arg, "-p") == 0) {
+        options->testOutput = TEST_OUTPUT_PASSED;
+
+        return true;
+    }
+
     unknownOptionError(arg);
 
     return false;

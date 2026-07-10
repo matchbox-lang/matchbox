@@ -77,7 +77,7 @@ Run tests from the executable:
 matchbox test
 ```
 
-The test command runs `.mb` files under `tests/` by default. Pass a file or directory to run a smaller set, such as `matchbox test tests/Function.mb`. Some files in `tests/` document intended language behavior that may not be implemented yet.
+The test command runs `.mb` files under `tests/` by default and shows failed results. Pass a file or directory to run a smaller set, such as `matchbox test tests/Function.mb`. Use `-a` to show all results or `-p` to show only passed results. Some files in `tests/` document intended language behavior that may not be implemented yet.
 
 ## License
 

@@ -16,7 +16,7 @@
 #define pclose _pclose
 #endif
 
-static void runDirectoryTests(const char* executablePath, const char* path, int* passed, int* failed, int* found);
+static void runDirectoryTests(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output);
 
 static void expectedFileError(const char* path)
 {
@@ -112,8 +112,21 @@ static bool runTestCommand(const char* command, const char* filename)
     return status == 0;
 }
 
-static void printTestResult(bool passedTest, const char* filename)
+static bool shouldPrintTestResult(TestOutput output, bool passedTest)
 {
+    if (output == TEST_OUTPUT_ALL) {
+        return true;
+    }
+
+    return (output == TEST_OUTPUT_PASSED) == passedTest;
+}
+
+static void printTestResult(TestOutput output, bool passedTest, const char* filename)
+{
+    if (!shouldPrintTestResult(output, passedTest)) {
+        return;
+    }
+
     if (passedTest) {
         printf("PASS %s\n", filename);
 
@@ -123,7 +136,7 @@ static void printTestResult(bool passedTest, const char* filename)
     printf("FAIL %s\n", filename);
 }
 
-static bool runTestFile(const char* executablePath, const char* filename)
+static bool runTestFile(const char* executablePath, const char* filename, TestOutput output)
 {
     char* quotedExecutablePath;
     char* quotedFilename;
@@ -131,7 +144,7 @@ static bool runTestFile(const char* executablePath, const char* filename)
     bool passedTest = runTestCommand(command, filename);
 
     freeTestCommand(command, quotedExecutablePath, quotedFilename);
-    printTestResult(passedTest, filename);
+    printTestResult(output, passedTest, filename);
 
     return passedTest;
 }
@@ -146,7 +159,7 @@ static void countTestResult(bool passedTest, int* passed, int* failed)
     (*failed)++;
 }
 
-static void runTestFilePath(const char* executablePath, const char* path, int* passed, int* failed, int* found)
+static void runTestFilePath(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output)
 {
     bool passedTest;
 
@@ -155,7 +168,7 @@ static void runTestFilePath(const char* executablePath, const char* path, int* p
     }
 
     (*found)++;
-    passedTest = runTestFile(executablePath, path);
+    passedTest = runTestFile(executablePath, path, output);
     countTestResult(passedTest, passed, failed);
 }
 
@@ -168,7 +181,7 @@ static char* getDirectoryEntryPath(const char* path, const char* name)
     return joinPath(path, name);
 }
 
-static void runDirectoryEntry(const char* executablePath, const char* path, const char* name, int* passed, int* failed, int* found)
+static void runDirectoryEntry(const char* executablePath, const char* path, const char* name, int* passed, int* failed, int* found, TestOutput output)
 {
     char* child = getDirectoryEntryPath(path, name);
 
@@ -177,17 +190,17 @@ static void runDirectoryEntry(const char* executablePath, const char* path, cons
     }
 
     if (pathIsDirectory(child)) {
-        runDirectoryTests(executablePath, child, passed, failed, found);
+        runDirectoryTests(executablePath, child, passed, failed, found, output);
         free(child);
 
         return;
     }
 
-    runTestFilePath(executablePath, child, passed, failed, found);
+    runTestFilePath(executablePath, child, passed, failed, found, output);
     free(child);
 }
 
-static void runDirectoryTests(const char* executablePath, const char* path, int* passed, int* failed, int* found)
+static void runDirectoryTests(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output)
 {
     DIR* directory = opendir(path);
     struct dirent* entry;
@@ -200,7 +213,7 @@ static void runDirectoryTests(const char* executablePath, const char* path, int*
     }
 
     while ((entry = readdir(directory))) {
-        runDirectoryEntry(executablePath, path, entry->d_name, passed, failed, found);
+        runDirectoryEntry(executablePath, path, entry->d_name, passed, failed, found, output);
     }
 
     closedir(directory);
@@ -223,15 +236,15 @@ static bool validateTestPath(const char* path)
     return true;
 }
 
-static void runTestPath(const char* executablePath, const char* path, int* passed, int* failed, int* found)
+static void runTestPath(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output)
 {
     if (pathIsDirectory(path)) {
-        runDirectoryTests(executablePath, path, passed, failed, found);
+        runDirectoryTests(executablePath, path, passed, failed, found, output);
 
         return;
     }
 
-    runTestFilePath(executablePath, path, passed, failed, found);
+    runTestFilePath(executablePath, path, passed, failed, found, output);
 }
 
 void runTests(Options* options)
@@ -254,7 +267,7 @@ void runTests(Options* options)
         return;
     }
 
-    runTestPath(executablePath, path, &passed, &failed, &found);
+    runTestPath(executablePath, path, &passed, &failed, &found, options->testOutput);
 
     if (found == 0) {
         testsNotFoundError(path);

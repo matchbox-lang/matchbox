@@ -5,33 +5,33 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void unterminatedCharacterError(Lexer* lexer, char c)
+static void unterminatedCharacterError(const Lexer* lexer, char c)
 {
     fprintf(stderr, "Error: Missing terminating %c character", c);
     fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
     exit(1);
 }
 
-static void unterminatedCommentError(Lexer* lexer)
+static void unterminatedCommentError(const Lexer* lexer)
 {
     fprintf(stderr, "Error: Unterminated comment");
     fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
     exit(1);
 }
 
-static void invalidNumberError(Lexer* lexer)
+static void invalidNumberError(const Lexer* lexer)
 {
     fprintf(stderr, "Error: Invalid number literal");
     fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
     exit(1);
 }
 
-static char peek(Lexer* lexer)
+static char peek(const Lexer* lexer)
 {
     return *lexer->current.chars;
 }
 
-static char next(Lexer* lexer)
+static char next(const Lexer* lexer)
 {
     if (*lexer->current.chars == '\0') {
         return '\0';
@@ -53,7 +53,7 @@ static char advance(Lexer* lexer)
     return lexer->current.chars[-1];
 }
 
-static bool isEof(Lexer* lexer)
+static bool isEof(const Lexer* lexer)
 {
     return *lexer->current.chars == '\0';
 }
@@ -69,11 +69,11 @@ static bool match(Lexer* lexer, char c)
     return true;
 }
 
-static Token makeToken(Lexer* lexer, TokenType type)
+static Token makeToken(const Lexer* lexer, TokenType type)
 {
     Token token;
     token.type = type;
-    token.length = lexer->current.chars - lexer->start.chars;
+    token.length = (size_t)(lexer->current.chars - lexer->start.chars);
     token.chars = lexer->start.chars;
     token.line = lexer->start.line;
     token.column = lexer->start.column;
@@ -194,7 +194,7 @@ static void skipWhitespace(Lexer* lexer)
     }
 }
 
-static int checkKeyword(Lexer* lexer, int chars, size_t length, const char* rest)
+static int checkKeyword(const Lexer* lexer, size_t chars, size_t length, const char* rest)
 {
     if (lexer->current.chars - lexer->start.chars != chars + length) {
         return 0;
@@ -203,7 +203,7 @@ static int checkKeyword(Lexer* lexer, int chars, size_t length, const char* rest
     return memcmp(lexer->start.chars + chars, rest, length) == 0;
 }
 
-static TokenType getIdentifierType(Lexer* lexer)
+static TokenType getIdentifierType(const Lexer* lexer)
 {
     char c =* lexer->start.chars;
 

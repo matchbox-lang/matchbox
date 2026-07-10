@@ -11,12 +11,20 @@
 
 #define TEST_DEFAULT_PATH "tests"
 
+typedef struct TestRun {
+    TestOutput output;
+    const char* executablePath;
+    int passed;
+    int failed;
+    int found;
+} TestRun;
+
 #ifdef _WIN32
 #define popen _popen
 #define pclose _pclose
 #endif
 
-static void runDirectoryTests(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output);
+static void runDirectoryTests(TestRun* run, const char* path);
 
 static void expectedFileError(const char* path)
 {
@@ -149,17 +157,18 @@ static bool runTestFile(const char* executablePath, const char* filename, TestOu
     return passedTest;
 }
 
-static void countTestResult(bool passedTest, int* passed, int* failed)
+static void countTestResult(TestRun* run, bool passedTest)
 {
     if (passedTest) {
-        (*passed)++;
+        run->passed++;
+        
         return;
     }
 
-    (*failed)++;
+    run->failed++;
 }
 
-static void runTestFilePath(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output)
+static void runTestFilePath(TestRun* run, const char* path)
 {
     bool passedTest;
 
@@ -167,9 +176,9 @@ static void runTestFilePath(const char* executablePath, const char* path, int* p
         return;
     }
 
-    (*found)++;
-    passedTest = runTestFile(executablePath, path, output);
-    countTestResult(passedTest, passed, failed);
+    run->found++;
+    passedTest = runTestFile(run->executablePath, path, run->output);
+    countTestResult(run, passedTest);
 }
 
 static char* getDirectoryEntryPath(const char* path, const char* name)
@@ -181,7 +190,7 @@ static char* getDirectoryEntryPath(const char* path, const char* name)
     return joinPath(path, name);
 }
 
-static void runDirectoryEntry(const char* executablePath, const char* path, const char* name, int* passed, int* failed, int* found, TestOutput output)
+static void runDirectoryEntry(TestRun* run, const char* path, const char* name)
 {
     char* child = getDirectoryEntryPath(path, name);
 
@@ -190,30 +199,30 @@ static void runDirectoryEntry(const char* executablePath, const char* path, cons
     }
 
     if (pathIsDirectory(child)) {
-        runDirectoryTests(executablePath, child, passed, failed, found, output);
+        runDirectoryTests(run, child);
         free(child);
 
         return;
     }
 
-    runTestFilePath(executablePath, child, passed, failed, found, output);
+    runTestFilePath(run, child);
     free(child);
 }
 
-static void runDirectoryTests(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output)
+static void runDirectoryTests(TestRun* run, const char* path)
 {
     DIR* directory = opendir(path);
     struct dirent* entry;
 
     if (!directory) {
         testDirectoryError(path);
-        (*failed)++;
+        run->failed++;
 
         return;
     }
 
     while ((entry = readdir(directory))) {
-        runDirectoryEntry(executablePath, path, entry->d_name, passed, failed, found, output);
+        runDirectoryEntry(run, path, entry->d_name);
     }
 
     closedir(directory);
@@ -236,45 +245,42 @@ static bool validateTestPath(const char* path)
     return true;
 }
 
-static void runTestPath(const char* executablePath, const char* path, int* passed, int* failed, int* found, TestOutput output)
+static void runTestPath(TestRun* run, const char* path)
 {
     if (pathIsDirectory(path)) {
-        runDirectoryTests(executablePath, path, passed, failed, found, output);
+        runDirectoryTests(run, path);
 
         return;
     }
 
-    runTestFilePath(executablePath, path, passed, failed, found, output);
+    runTestFilePath(run, path);
 }
 
 void runTests(Options* options)
 {
     const char* path = TEST_DEFAULT_PATH;
-    const char* executablePath = PROGRAM_COMMAND;
-    int passed = 0;
-    int failed = 0;
-    int found = 0;
+    TestRun run = {options->testOutput, PROGRAM_COMMAND, 0, 0, 0};
 
     if (options->testPath) {
         path = options->testPath;
     }
 
     if (options->executablePath) {
-        executablePath = options->executablePath;
+        run.executablePath = options->executablePath;
     }
 
     if (!validateTestPath(path)) {
         return;
     }
 
-    runTestPath(executablePath, path, &passed, &failed, &found, options->testOutput);
+    runTestPath(&run, path);
 
-    if (found == 0) {
+    if (run.found == 0) {
         testsNotFoundError(path);
 
         return;
     }
 
-    printf("%d test(s) passed, ", passed);
-    printf("%d test(s) failed.\n", failed);
+    printf("%d test(s) passed, ", run.passed);
+    printf("%d test(s) failed.\n", run.failed);
 }

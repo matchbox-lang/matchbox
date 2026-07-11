@@ -16,9 +16,9 @@
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
 
-static void expression(Compiler* compiler, AST* ast, bool discard);
-static void blocklevelStatements(Compiler* compiler, Vector* nodes);
-static void toplevelStatements(Compiler* compiler, Vector* nodes);
+static void compileExpression(Compiler* compiler, AST* ast, bool discard);
+static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
+static void compileToplevelStatements(Compiler* compiler, Vector* nodes);
 
 static CodeObject* currentCodeObject(Compiler* compiler)
 {
@@ -330,7 +330,7 @@ static void storeVariable(Compiler* compiler, AST* ast)
     }
 }
 
-static void number(Compiler* compiler, AST* ast)
+static void compileNumber(Compiler* compiler, AST* ast)
 {
     if (isLargerThan16BitSigned(ast->intValue)) {
         size_t position = makeConstant(compiler, INT_VALUE(ast->intValue));
@@ -342,10 +342,10 @@ static void number(Compiler* compiler, AST* ast)
     }
 }
 
-static void binary(Compiler* compiler, AST* ast)
+static void compileBinary(Compiler* compiler, AST* ast)
 {
-    expression(compiler, ast->binary.leftExpr, false);
-    expression(compiler, ast->binary.rightExpr, false);
+    compileExpression(compiler, ast->binary.leftExpr, false);
+    compileExpression(compiler, ast->binary.rightExpr, false);
 
     switch (ast->binary.operator.type) {
         case TOKEN_PLUS:
@@ -376,126 +376,126 @@ static void binary(Compiler* compiler, AST* ast)
     }
 }
 
-static void bitNot(Compiler* compiler, AST* ast)
+static void compileBitwiseNOT(Compiler* compiler, AST* ast)
 {
-    expression(compiler, ast->prefix.expr, false);
+    compileExpression(compiler, ast->prefix.expr, false);
     emitBnot(compiler);
 }
 
-static void logNot(Compiler* compiler, AST* ast)
+static void compileLogNot(Compiler* compiler, AST* ast)
 {
-    expression(compiler, ast->prefix.expr, false);
+    compileExpression(compiler, ast->prefix.expr, false);
     emitNot(compiler);
 }
 
-static void negate(Compiler* compiler, AST* ast)
+static void compileNegate(Compiler* compiler, AST* ast)
 {
-    expression(compiler, ast->prefix.expr, false);
+    compileExpression(compiler, ast->prefix.expr, false);
     emitNeg(compiler);
 }
 
-static void prefix(Compiler* compiler, AST* ast)
+static void compilePrefix(Compiler* compiler, AST* ast)
 {
     switch (ast->prefix.operator.type) {
         case TOKEN_EXCLAMATION:
-            return logNot(compiler, ast);
+            return compileLogNot(compiler, ast);
         case TOKEN_TILDE:
-            return bitNot(compiler, ast);
+            return compileBitwiseNOT(compiler, ast);
         case TOKEN_MINUS:
-            return negate(compiler, ast);
+            return compileNegate(compiler, ast);
         default:
             return;
     }
 }
 
-static void variable(Compiler* compiler, AST* ast)
+static void compileVariable(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->variable.symbol);
 }
 
-static void additionAssignment(Compiler* compiler, AST* ast)
+static void compileAdditionAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     emitAdd(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void subtractionAssignment(Compiler* compiler, AST* ast)
+static void compileSubtractionAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     emitSub(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void muliplicationAssignment(Compiler* compiler, AST* ast)
+static void compileMultiplicationAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     emitMul(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void divisionAssignment(Compiler* compiler, AST* ast)
+static void compileDivisionAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     emitDiv(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void remainderAssignment(Compiler* compiler, AST* ast)
+static void compileRemainderAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     emitRem(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void exponentiationAssignment(Compiler* compiler, AST* ast)
+static void compileExponentiationAssignment(Compiler* compiler, AST* ast)
 {
     loadVariable(compiler, ast->assignment.symbol);
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     emitPow(compiler);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void simpleAssignment(Compiler* compiler, AST* ast)
+static void compileSimpleAssignment(Compiler* compiler, AST* ast)
 {
-    expression(compiler, ast->assignment.expr, false);
+    compileExpression(compiler, ast->assignment.expr, false);
     storeVariable(compiler, ast->assignment.symbol);
 }
 
-static void assignment(Compiler* compiler, AST* ast)
+static void compileAssignment(Compiler* compiler, AST* ast)
 {
     switch (ast->assignment.operator.type) {
         case TOKEN_PLUS_EQUAL:
-            return additionAssignment(compiler, ast);
+            return compileAdditionAssignment(compiler, ast);
         case TOKEN_MINUS_EQUAL:
-            return subtractionAssignment(compiler, ast);
+            return compileSubtractionAssignment(compiler, ast);
         case TOKEN_STAR_EQUAL:
-            return muliplicationAssignment(compiler, ast);
+            return compileMultiplicationAssignment(compiler, ast);
         case TOKEN_FLOOR_EQUAL:
         case TOKEN_SLASH_EQUAL:
-            return divisionAssignment(compiler, ast);
+            return compileDivisionAssignment(compiler, ast);
         case TOKEN_PERCENT_EQUAL:
-            return remainderAssignment(compiler, ast);
+            return compileRemainderAssignment(compiler, ast);
         case TOKEN_POWER_EQUAL:
-            return exponentiationAssignment(compiler, ast);
+            return compileExponentiationAssignment(compiler, ast);
         case TOKEN_EQUAL:
-            return simpleAssignment(compiler, ast);
+            return compileSimpleAssignment(compiler, ast);
         default:
             return;
     }
 }
 
-static void arguments(Compiler* compiler, Vector* args)
+static void compileArguments(Compiler* compiler, Vector* args)
 {
     size_t count = countVector(args);
 
     for (size_t i = 0; i < count; i++) {
-        expression(compiler, args->data[i], false);
+        compileExpression(compiler, args->data[i], false);
     }
 }
 
@@ -512,9 +512,9 @@ static int getFunctionPosition(Compiler* compiler, AST* ast)
     return -1;
 }
 
-static void builtinCall(Compiler* compiler, AST* ast, bool discard)
+static void compileBuiltinCall(Compiler* compiler, AST* ast, bool discard)
 {
-    arguments(compiler, &ast->builtinCall.args);
+    compileArguments(compiler, &ast->builtinCall.args);
     emitCallBuiltin(compiler, ast->builtinCall.id);
 
     if (discard) {
@@ -522,10 +522,10 @@ static void builtinCall(Compiler* compiler, AST* ast, bool discard)
     }
 }
 
-static void functionCall(Compiler* compiler, AST* ast, bool discard)
+static void compileFunctionCall(Compiler* compiler, AST* ast, bool discard)
 {
     uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
-    arguments(compiler, &ast->functionCall.args);
+    compileArguments(compiler, &ast->functionCall.args);
     emitCall(compiler, position);
 
     if (discard) {
@@ -533,7 +533,7 @@ static void functionCall(Compiler* compiler, AST* ast, bool discard)
     }
 }
 
-static void functionDefinition(Compiler* compiler, AST* ast)
+static void compileFunctionDefinition(Compiler* compiler, AST* ast)
 {
     AST* body = ast->functionDefinition.body;
     FunctionObject* previousFunction = compiler->function;
@@ -546,7 +546,7 @@ static void functionDefinition(Compiler* compiler, AST* ast)
     compiler->function = function;
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, ast);
-    blocklevelStatements(compiler, &body->compound.statements);
+    compileBlocklevelStatements(compiler, &body->compound.statements);
 
     size_t statementCount = countVector(&body->compound.statements);
     AST* last = NULL;
@@ -562,17 +562,17 @@ static void functionDefinition(Compiler* compiler, AST* ast)
     compiler->function = previousFunction;
 }
 
-static void ret(Compiler* compiler, AST* ast)
+static void compileReturnStatement(Compiler* compiler, AST* ast)
 {
     if (isNone(ast->returnStatement.expr)) {
         return emitRet(compiler);
     }
 
-    expression(compiler, ast->returnStatement.expr, false);
+    compileExpression(compiler, ast->returnStatement.expr, false);
     emitRetv(compiler);
 }
 
-static void variableDefinitionUninitialized(Compiler* compiler, AST* ast)
+static void compileUninitializedVariableDefinition(Compiler* compiler, AST* ast)
 {
     emitPushb(compiler, 0);
 
@@ -581,37 +581,37 @@ static void variableDefinitionUninitialized(Compiler* compiler, AST* ast)
     }
 }
 
-static void variableDefinition(Compiler* compiler, AST* ast)
+static void compileVariableDefinition(Compiler* compiler, AST* ast)
 {
     if (isNone(ast->variableDefinition.expr)) {
-        return variableDefinitionUninitialized(compiler, ast);
+        return compileUninitializedVariableDefinition(compiler, ast);
     }
 
-    expression(compiler, ast->variableDefinition.expr, false);
+    compileExpression(compiler, ast->variableDefinition.expr, false);
 
     if (isTopLevel(ast->variableDefinition.scope)) {
         emitReg(compiler);
     }
 }
 
-static void expression(Compiler* compiler, AST* ast, bool discard)
+static void compileExpression(Compiler* compiler, AST* ast, bool discard)
 {
     switch (ast->type) {
         case AST_BINARY:
-            binary(compiler, ast);
+            compileBinary(compiler, ast);
             break;
         case AST_BUILTIN_CALL:
-            return builtinCall(compiler, ast, discard);
+            return compileBuiltinCall(compiler, ast, discard);
         case AST_FUNCTION_CALL:
-            return functionCall(compiler, ast, discard);
+            return compileFunctionCall(compiler, ast, discard);
         case AST_INTEGER:
-            number(compiler, ast);
+            compileNumber(compiler, ast);
             break;
         case AST_PREFIX:
-            prefix(compiler, ast);
+            compilePrefix(compiler, ast);
             break;
         case AST_VARIABLE:
-            variable(compiler, ast);
+            compileVariable(compiler, ast);
             break;
         default:
             return;
@@ -622,56 +622,56 @@ static void expression(Compiler* compiler, AST* ast, bool discard)
     }
 }
 
-static void statement(Compiler* compiler, AST* ast, bool discard)
+static void compileStatement(Compiler* compiler, AST* ast, bool discard)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            assignment(compiler, ast);
+            compileAssignment(compiler, ast);
             return;
         case AST_BUILTIN_CALL:
-            builtinCall(compiler, ast, discard);
+            compileBuiltinCall(compiler, ast, discard);
             return;
         case AST_FUNCTION_CALL:
-            functionCall(compiler, ast, discard);
+            compileFunctionCall(compiler, ast, discard);
             return;
         case AST_FUNCTION_DEFINITION:
-            functionDefinition(compiler, ast);
+            compileFunctionDefinition(compiler, ast);
             return;
         case AST_RETURN:
-            ret(compiler, ast);
+            compileReturnStatement(compiler, ast);
             return;
         case AST_VARIABLE_DEFINITION:
-            variableDefinition(compiler, ast);
+            compileVariableDefinition(compiler, ast);
             return;
         default:
-            expression(compiler, ast, discard);
+            compileExpression(compiler, ast, discard);
             return;
     }
 }
 
-static void blocklevelStatements(Compiler* compiler, Vector* nodes)
+static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        statement(compiler, nodes->data[i], true);
+        compileStatement(compiler, nodes->data[i], true);
     }
 }
 
-static void toplevelStatements(Compiler* compiler, Vector* nodes)
+static void compileToplevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     while (compiler->statementIndex < count) {
-        statement(compiler, nodes->data[compiler->statementIndex], true);
+        compileStatement(compiler, nodes->data[compiler->statementIndex], true);
         compiler->statementIndex++;
     }
 }
 
-static void replStatement(Compiler* compiler, AST* ast, bool isLast)
+static void compileReplStatement(Compiler* compiler, AST* ast, bool isLast)
 {
     bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_NONE;
-    statement(compiler, ast, !display);
+    compileStatement(compiler, ast, !display);
 
     if (!display) {
         return;
@@ -681,14 +681,14 @@ static void replStatement(Compiler* compiler, AST* ast, bool isLast)
     emitPop(compiler);
 }
 
-static void replStatements(Compiler* compiler, Vector* nodes)
+static void compileReplStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     while (compiler->statementIndex < count) {
         AST* ast = nodes->data[compiler->statementIndex++];
         bool isLast = compiler->statementIndex == count;
-        replStatement(compiler, ast, isLast);
+        compileReplStatement(compiler, ast, isLast);
     }
 }
 
@@ -739,10 +739,10 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
 
 bool compile(Compiler* compiler, char* source)
 {
-    return compileSource(compiler, source, toplevelStatements);
+    return compileSource(compiler, source, compileToplevelStatements);
 }
 
 bool compileRepl(Compiler* compiler, char* source)
 {
-    return compileSource(compiler, source, replStatements);
+    return compileSource(compiler, source, compileReplStatements);
 }

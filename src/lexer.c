@@ -393,7 +393,7 @@ static void scanExponent(Lexer* lexer)
     scanDigits(lexer, isDigit);
 }
 
-static Token floatLiteral(Lexer* lexer)
+static Token scanFloatLiteral(Lexer* lexer)
 {
     if (peek(lexer) == '.' && next(lexer) != '.') {
         advance(lexer);
@@ -409,16 +409,16 @@ static Token floatLiteral(Lexer* lexer)
     return makeToken(lexer, TOKEN_FLOAT_LITERAL);
 }
 
-static Token integerLiteral(Lexer* lexer)
+static Token scanIntegerLiteral(Lexer* lexer)
 {
     scanDigits(lexer, isDigit);
 
     if (peek(lexer) == '.' && next(lexer) != '.') {
-        return floatLiteral(lexer);
+        return scanFloatLiteral(lexer);
     }
 
     if (peek(lexer) == 'e' || peek(lexer) == 'E') {
-        return floatLiteral(lexer);
+        return scanFloatLiteral(lexer);
     }
 
     validateNumberEnd(lexer);
@@ -426,7 +426,7 @@ static Token integerLiteral(Lexer* lexer)
     return makeToken(lexer, TOKEN_INTEGER_LITERAL);
 }
 
-static Token prefixedIntegerLiteral(Lexer* lexer, bool (*isValidDigit)(char), TokenType type)
+static Token scanPrefixedIntegerLiteral(Lexer* lexer, bool (*isValidDigit)(char), TokenType type)
 {
     if (!isValidDigit(peek(lexer))) {
         invalidNumberError(lexer);
@@ -438,21 +438,21 @@ static Token prefixedIntegerLiteral(Lexer* lexer, bool (*isValidDigit)(char), To
     return makeToken(lexer, type);
 }
 
-static Token zeroLiteral(Lexer* lexer)
+static Token scanZeroLiteral(Lexer* lexer)
 {
     if (match(lexer, 'x') || match(lexer, 'X')) {
-        return prefixedIntegerLiteral(lexer, isXDigit, TOKEN_HEXADECIMAL_LITERAL);
+        return scanPrefixedIntegerLiteral(lexer, isXDigit, TOKEN_HEXADECIMAL_LITERAL);
     }
 
     if (match(lexer, 'o') || match(lexer, 'O')) {
-        return prefixedIntegerLiteral(lexer, isODigit, TOKEN_OCTAL_LITERAL);
+        return scanPrefixedIntegerLiteral(lexer, isODigit, TOKEN_OCTAL_LITERAL);
     }
 
     if (match(lexer, 'b') || match(lexer, 'B')) {
-        return prefixedIntegerLiteral(lexer, isBDigit, TOKEN_BINARY_LITERAL);
+        return scanPrefixedIntegerLiteral(lexer, isBDigit, TOKEN_BINARY_LITERAL);
     }
 
-    return integerLiteral(lexer);
+    return scanIntegerLiteral(lexer);
 }
 
 static void advanceCharacters(Lexer* lexer, size_t count)
@@ -498,7 +498,7 @@ static Token escapedCharacterLiteral(Lexer* lexer)
     return endCharacterLiteral(lexer);
 }
 
-static Token characterLiteral(Lexer* lexer)
+static Token scanCharacterLiteral(Lexer* lexer)
 {
     size_t length;
 
@@ -529,7 +529,7 @@ static Token characterLiteral(Lexer* lexer)
     return endCharacterLiteral(lexer);
 }
 
-static Token stringLiteral(Lexer* lexer, char delimiter, TokenType type)
+static Token scanStringLiteral(Lexer* lexer, char delimiter, TokenType type)
 {
     bool escaped = false;
 
@@ -552,7 +552,7 @@ static Token stringLiteral(Lexer* lexer, char delimiter, TokenType type)
     return makeToken(lexer, TOKEN_UNKNOWN);
 }
 
-static Token identifier(Lexer* lexer)
+static Token scanIdentifier(Lexer* lexer)
 {
     while (isAlpha(peek(lexer)) || isDigit(peek(lexer))) {
         advance(lexer);
@@ -583,21 +583,21 @@ Token scanToken(Lexer* lexer)
     char c = advance(lexer);
 
     if (c == '0') {
-        return zeroLiteral(lexer);
+        return scanZeroLiteral(lexer);
     }
 
     if (isDigit(c)) {
-        return integerLiteral(lexer);
+        return scanIntegerLiteral(lexer);
     }
 
     if (isAlpha(c)) {
-        return identifier(lexer);
+        return scanIdentifier(lexer);
     }
 
     switch (c) {
         case '"':
-        case '`':   return stringLiteral(lexer, c, TOKEN_STRING_LITERAL);
-        case '\'':  return characterLiteral(lexer);
+        case '`':   return scanStringLiteral(lexer, c, TOKEN_STRING_LITERAL);
+        case '\'':  return scanCharacterLiteral(lexer);
         case '(':   return makeToken(lexer, TOKEN_LPAREN);
         case ')':   return makeToken(lexer, TOKEN_RPAREN);
         case '[':   return makeToken(lexer, TOKEN_LSQUARE);
@@ -671,7 +671,7 @@ Token scanToken(Lexer* lexer)
                 match(lexer, '.') ? TOKEN_SAFE_ACCESS : TOKEN_QUESTION);
         case '.':
             if (isDigit(peek(lexer))) {
-                return floatLiteral(lexer);
+                return scanFloatLiteral(lexer);
             }
             return makeToken(lexer, 
                 match(lexer, '.') ?

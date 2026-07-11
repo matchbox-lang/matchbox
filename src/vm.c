@@ -1,15 +1,8 @@
 #include "vm.h"
-#include "builtin.h"
-#include "code_object.h"
 #include "function_object.h"
-#include "module_object.h"
 #include "opcode.h"
-#include "value.h"
 #include <math.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define PUSH(value) ((vm->sp++)[0] = (value))
 #define PUSH_BOOL(i) (PUSH(BOOL_VALUE(i)))

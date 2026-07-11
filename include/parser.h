@@ -3,7 +3,6 @@
 
 #include "ast.h"
 #include "lexer.h"
-#include "scope.h"
 #include "token.h"
 
 typedef struct Parser
@@ -11,7 +10,6 @@ typedef struct Parser
     Lexer lexer;
     Token currentToken;
     Token prevToken;
-    Scope* currentScope;
     AST* topLevel;
 } Parser;
 

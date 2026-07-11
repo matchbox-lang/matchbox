@@ -2,8 +2,6 @@
 #include "ast.h"
 #include "conversion.h"
 #include "lexer.h"
-#include "scope.h"
-#include "builtin.h"
 #include "string_object.h"
 #include "token.h"
 #include "vector.h"
@@ -32,14 +30,6 @@ static void expectedOperandError(Token token)
     exit(1);
 }
 
-static void expectedReturnScopeError(Token token)
-{
-    fprintf(stderr, "Error: Expected return inside a function but found ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
 static void expectedTypeError(Token token)
 {
     fprintf(stderr, "Error: Expected type but found ");
@@ -48,59 +38,11 @@ static void expectedTypeError(Token token)
     exit(1);
 }
 
-static void invalidArgumentsError(Token token)
-{
-    fprintf(stderr, "Error: Invalid arguments to function ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void invalidOperandsError(Token token)
-{
-    fprintf(stderr, "Error: Invalid operands to binary ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void invalidTypeError(Token token)
-{
-    fprintf(stderr, "Error: Invalid type for variable ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void redefinitionError(Token token)
-{
-    fprintf(stderr, "Error: Redefinition of ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void undefinedError(Token token)
-{
-    fprintf(stderr, "Error: ");
-    printTokenValue(token);
-    fprintf(stderr, " is undefined on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
 static void expectedTokenError(TokenType type, Token token)
 {
     fprintf(stderr, "Error: Expected %s but found ", tokenTypeName(type));
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void uninitializedError(Token token)
-{
-    fprintf(stderr, "Error: ");
-    printTokenValue(token);
-    fprintf(stderr, " is uninitialized on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
@@ -137,6 +79,7 @@ static AST* integerLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = integerLiteralToValue(token.chars, token.length);
+    
     consume(parser, token.type);
 
     return ast;
@@ -146,6 +89,7 @@ static AST* binaryLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = binaryLiteralToValue(token.chars, token.length);
+
     consume(parser, token.type);
 
     return ast;
@@ -155,6 +99,7 @@ static AST* hexadecimalLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = hexadecimalLiteralToValue(token.chars, token.length);
+
     consume(parser, token.type);
 
     return ast;
@@ -164,6 +109,7 @@ static AST* octalLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = octalLiteralToValue(token.chars, token.length);
+
     consume(parser, token.type);
 
     return ast;
@@ -172,6 +118,7 @@ static AST* octalLiteral(Parser* parser, Token token)
 static AST* groupExpression(Parser* parser)
 {
     consume(parser, TOKEN_LPAREN);
+
     AST* ast = expression(parser);
 
     if (!ast && parser->currentToken.type == TOKEN_RPAREN) {
@@ -180,6 +127,7 @@ static AST* groupExpression(Parser* parser)
     
     if (!ast || isEof(parser)) {
         freeAST(ast);
+        
         return NULL;
     }
 
@@ -194,47 +142,33 @@ static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
         return NULL;
     }
 
-    int a = getTypeId(leftExpr);
-    int b = getTypeId(rightExpr);
-
-    if (a != b) {
-        invalidOperandsError(token);
-    }
-
-    int typeId = isBoolOperatorToken(token.type) ? TOKEN_BOOL : a;
-    
     AST* ast = createAST(AST_BINARY);
     ast->binary.leftExpr = leftExpr;
     ast->binary.operator = token;
     ast->binary.rightExpr = rightExpr;
-    ast->binary.typeId = typeId;
+    ast->binary.typeId = TOKEN_NONE;
 
     return ast;
 }
 
-static AST* variable(Parser* parser)
+static AST* createVariable(Token token)
 {
-    Token token = parser->prevToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser->currentScope, id);
-
-    if (!symbol) {
-        symbol = getLocalSymbol(parser->topLevel->compound.scope, id);
-    }
-
-    freeStringObject(id);
-
-    if (!symbol || !isVariableType(symbol)) {
-        undefinedError(token);
-    }
-    
-    if (!isInitialized(symbol)) {
-        uninitializedError(token);
-    }
-
     AST* ast = createAST(AST_VARIABLE);
-    ast->variable.scope = parser->currentScope;
-    ast->variable.symbol = symbol;
+    ast->variable.scope = NULL;
+    ast->variable.id = copyStringObject(token.chars, token.length);
+    ast->variable.token = token;
+    ast->variable.symbol = NULL;
+
+    return ast;
+}
+
+static AST* createParameter(Token token, StringObject* id)
+{
+    AST* ast = createAST(AST_PARAMETER);
+    ast->parameter.scope = NULL;
+    ast->parameter.id = id;
+    ast->parameter.token = token;
+    ast->parameter.typeId = TOKEN_INT;
 
     return ast;
 }
@@ -247,26 +181,16 @@ static AST* parameter(Parser* parser)
     
     Token token = parser->currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser->currentScope, id);
-
-    if (symbol) {
-        redefinitionError(token);
-    }
     
     consume(parser, TOKEN_IDENTIFIER);
 
-    AST* ast = createAST(AST_PARAMETER);
-    ast->parameter.scope = parser->currentScope;
-    ast->parameter.id = id;
-    ast->parameter.typeId = TOKEN_INT;
+    AST* ast = createParameter(token, id);
 
     if (parser->currentToken.type == TOKEN_COLON) {
         consume(parser, TOKEN_COLON);
         ast->parameter.typeId = parser->currentToken.type;
         consumeType(parser);
     }
-
-    setLocalSymbol(parser->currentScope, id, ast);
 
     return ast;
 }
@@ -290,7 +214,6 @@ static AST* primary(Parser* parser)
             return NULL;
         default:
             expectedExpressionError(parser->currentToken);
-            
             return NULL;
     }
 }
@@ -496,59 +419,19 @@ static AST* expression(Parser* parser)
 
 static AST* returnStatement(Parser* parser)
 {
-    if (parser->currentScope->level < 2) {
-        expectedReturnScopeError(parser->currentToken);
-    }
-
+    Token token = parser->currentToken;
     consume(parser, TOKEN_RETURN);
-    AST* expr = expression(parser);
 
+    AST* expr = expression(parser);
     if (!expr) {
         return NULL;
     }
 
     AST* ast = createAST(AST_RETURN);
-    ast->expression = expr;
+    ast->returnStatement.token = token;
+    ast->returnStatement.expr = expr;
 
     return ast;
-}
-
-static void compareBuiltinSignature(AST* caller, Builtin* builtin, Token token)
-{
-    size_t argCount = countVector(&caller->builtinCall.args);
-
-    if (argCount != builtin->paramCount) {
-        invalidArgumentsError(token);
-    }
-
-    for (int i = 0; i < argCount; i++) {
-        AST* expr = getVectorAt(&caller->builtinCall.args, i);
-        int typeId = getTypeId(expr);
-
-        if (typeId != builtin->params[i]) {
-            invalidArgumentsError(token);
-        }
-    }
-}
-
-static void compareFunctionSignature(AST* caller, AST* callee, Token token)
-{
-    size_t argCount = countVector(&caller->functionCall.args);
-    size_t paramCount = countVector(&callee->functionDefinition.params);
-
-    if (argCount != paramCount) {
-        invalidArgumentsError(token);
-    }
-
-    for (int i = 0; i < argCount; i++) {
-        AST* a = getVectorAt(&caller->functionCall.args, i);
-        AST* b = getVectorAt(&callee->functionDefinition.params, i);
-        int typeId = getTypeId(a);
-
-        if (typeId != b->parameter.typeId) {
-            invalidArgumentsError(token);
-        }
-    }
 }
 
 static bool arguments(Parser* parser, Vector* args)
@@ -628,78 +511,74 @@ static bool parameters(Parser* parser, Vector* params)
     return true;
 }
 
-static AST* builtinCall(Parser* parser, Token token)
+static AST* createFunctionCall(Token token)
 {
-    StringObject* id = copyStringObject(token.chars, token.length);
-    Builtin* builtin = getBuiltinByName(id->chars);
-
-    if (!builtin) {
-        undefinedError(token);
-    }
-
-    freeStringObject(id);
-
-    AST* ast = createAST(AST_BUILTIN_CALL);
-    ast->builtinCall.id = builtin->id;
-    ast->builtinCall.builtin = builtin;
-
-    if (!arguments(parser, &ast->builtinCall.args)) {
-        freeAST(ast);
-        return NULL;
-    }
-
-    compareBuiltinSignature(ast, builtin, token);
+    AST* ast = createAST(AST_FUNCTION_CALL);
+    ast->functionCall.scope = NULL;
+    ast->functionCall.id = copyStringObject(token.chars, token.length);
+    ast->functionCall.token = token;
+    ast->functionCall.symbol = NULL;
 
     return ast;
 }
 
 static AST* functionCall(Parser* parser)
 {
-    Token token = parser->prevToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser->currentScope, id);
-
-    if (!symbol) {
-        symbol = getLocalSymbol(parser->topLevel->compound.scope, id);
-    }
-    
-    freeStringObject(id);
-    
-    if (!symbol) {
-        return builtinCall(parser, token);
-    }
-
-    if (!symbol || !isFunctionDefinition(symbol)) {
-        undefinedError(token);
-    }
-
-    AST* ast = createAST(AST_FUNCTION_CALL);
-    ast->functionCall.scope = parser->currentScope;
-    ast->functionCall.symbol = symbol;
+    AST* ast = createFunctionCall(parser->prevToken);
 
     if (!arguments(parser, &ast->functionCall.args)) {
         freeAST(ast);
+        
         return NULL;
     }
-
-    compareFunctionSignature(ast, symbol, token);
 
     return ast;
 }
 
-static bool hasValueReturn(Vector* statements)
+static AST* createFunctionDefinition(Token token, StringObject* id)
 {
-    size_t count = countVector(statements);
+    AST* ast = createAST(AST_FUNCTION_DEFINITION);
+    ast->functionDefinition.scope = NULL;
+    ast->functionDefinition.id = id;
+    ast->functionDefinition.token = token;
+    ast->functionDefinition.typeId = TOKEN_INT;
+    ast->functionDefinition.hasExplicitReturnType = false;
+    ast->functionDefinition.body = NULL;
 
-    for (size_t i = 0; i < count; i++) {
-        AST* statement = getVectorAt(statements, i);
+    return ast;
+}
 
-        if (statement->type == AST_RETURN) {
-            return true;
-        }
+static void parseFunctionReturnType(Parser* parser, AST* ast)
+{
+    if (parser->currentToken.type != TOKEN_ARROW) {
+        return;
     }
 
-    return false;
+    consume(parser, TOKEN_ARROW);
+    ast->functionDefinition.typeId = parser->currentToken.type;
+    consumeType(parser);
+    ast->functionDefinition.hasExplicitReturnType = true;
+}
+
+static bool parseFunctionBody(Parser* parser, AST* ast)
+{
+    if (isEof(parser)) {
+        return false;
+    }
+
+    consume(parser, TOKEN_LBRACE);
+
+    AST* body = createAST(AST_COMPOUND);
+    body->compound.scope = NULL;
+    ast->functionDefinition.body = body;
+
+    if (!blocklevelStatements(parser, &body->compound.statements)) {
+        return false;
+    }
+
+    consume(parser, TOKEN_RBRACE);
+
+    return true;
 }
 
 static AST* functionDefinition(Parser* parser)
@@ -712,11 +591,6 @@ static AST* functionDefinition(Parser* parser)
 
     Token token = parser->currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser->currentScope, id);
-
-    if (symbol) {
-        redefinitionError(token);
-    }
 
     if (parser->currentToken.type != TOKEN_IDENTIFIER) {
         expectedTokenError(TOKEN_IDENTIFIER, parser->currentToken);
@@ -728,54 +602,33 @@ static AST* functionDefinition(Parser* parser)
         return NULL;
     }
 
-    AST* ast = createAST(AST_FUNCTION_DEFINITION);
-    ast->functionDefinition.scope = createScope(parser->currentScope);
-    ast->functionDefinition.id = id;
-    ast->functionDefinition.typeId = TOKEN_INT;
-    ast->functionDefinition.body = NULL;
+    AST* ast = createFunctionDefinition(token, id);
 
-    bool hasExplicitReturnType = false;
-
-    parser->currentScope = ast->functionDefinition.scope;
-    
     if (!parameters(parser, &ast->functionDefinition.params)) {
-        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
+
         return NULL;
     }
 
-    if (parser->currentToken.type == TOKEN_ARROW) {
-        consume(parser, TOKEN_ARROW);
-        ast->functionDefinition.typeId = parser->currentToken.type;
-        consumeType(parser);
-        hasExplicitReturnType = true;
-    }
+    parseFunctionReturnType(parser, ast);
 
-    if (isEof(parser)) {
-        parser->currentScope = parser->currentScope->parent;
+    if (!parseFunctionBody(parser, ast)) {
         freeAST(ast);
+
         return NULL;
     }
 
-    consume(parser, TOKEN_LBRACE);
+    return ast;
+}
 
-    AST* body = createAST(AST_COMPOUND);
-    body->compound.scope = parser->currentScope;
-    ast->functionDefinition.body = body;
-
-    if (!blocklevelStatements(parser, &body->compound.statements)) {
-        parser->currentScope = parser->currentScope->parent;
-        freeAST(ast);
-        return NULL;
-    }
-
-    if (!hasExplicitReturnType && !hasValueReturn(&body->compound.statements)) {
-        ast->functionDefinition.typeId = TOKEN_NONE;
-    }
-
-    consume(parser, TOKEN_RBRACE);
-    parser->currentScope = parser->currentScope->parent;
-    setLocalSymbol(parser->currentScope, id, ast);
+static AST* createAssignment(Token operator, Token token, AST* expr)
+{
+    AST* ast = createAST(AST_ASSIGNMENT);
+    ast->assignment.scope = NULL;
+    ast->assignment.operator = operator;
+    ast->assignment.token = token;
+    ast->assignment.symbol = NULL;
+    ast->assignment.expr = expr;
 
     return ast;
 }
@@ -784,39 +637,59 @@ static AST* assignment(Parser* parser)
 {
     Token operator = parser->currentToken;
     Token token = parser->prevToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser->currentScope, id);
-
-    if (!symbol) {
-        symbol = getLocalSymbol(parser->topLevel->compound.scope, id);
-    }
-
-    freeStringObject(id);
-
-    if (!symbol) {
-        undefinedError(token);
-    }
-
-    if (parser->currentScope != getScope(symbol) && !isInitialized(symbol)) {
-        uninitializedError(token);
-    }
-    
     consume(parser, operator.type);
-    AST* expr = expression(parser);
 
+    AST* expr = expression(parser);
     if (!expr) {
         return NULL;
     }
 
-    AST* ast = createAST(AST_ASSIGNMENT);
-    ast->assignment.scope = parser->currentScope;
-    ast->assignment.operator = operator;
-    ast->assignment.symbol = symbol;
-    ast->assignment.expr = expr;
-
-    initialize(symbol);
+    AST* ast = createAssignment(operator, token, expr);
 
     return ast;
+}
+
+static AST* createVariableDefinition(Token token, StringObject* id)
+{
+    AST* ast = createAST(AST_VARIABLE_DEFINITION);
+    ast->variableDefinition.scope = NULL;
+    ast->variableDefinition.id = id;
+    ast->variableDefinition.token = token;
+    ast->variableDefinition.position = 0;
+    ast->variableDefinition.expr = NULL;
+
+    return ast;
+}
+
+static void parseVariableType(Parser* parser, AST* ast)
+{
+    if (parser->currentToken.type == TOKEN_COLON) {
+        consume(parser, TOKEN_COLON);
+        ast->variableDefinition.typeId = parser->currentToken.type;
+        consumeType(parser);
+        
+        return;
+    }
+
+    if (parser->currentToken.type != TOKEN_EQUAL) {
+        expectedTokenError(TOKEN_EQUAL, parser->currentToken);
+    }
+}
+
+static bool parseVariableInitializer(Parser* parser, AST* ast)
+{
+    if (parser->currentToken.type != TOKEN_EQUAL) {
+        ast->variableDefinition.expr = createAST(AST_NONE);
+        ast->variableDefinition.typeId = TOKEN_INT;
+
+        return true;
+    }
+
+    consume(parser, TOKEN_EQUAL);
+    ast->variableDefinition.expr = expression(parser);
+    ast->variableDefinition.typeId = TOKEN_NONE;
+
+    return ast->variableDefinition.expr != NULL;
 }
 
 static AST* variableDefinition(Parser* parser)
@@ -829,11 +702,6 @@ static AST* variableDefinition(Parser* parser)
 
     Token token = parser->currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    AST* symbol = getLocalSymbol(parser->currentScope, id);
-
-    if (symbol) {
-        redefinitionError(token);
-    }
 
     consume(parser, TOKEN_IDENTIFIER);
 
@@ -841,45 +709,14 @@ static AST* variableDefinition(Parser* parser)
         return NULL;
     }
 
-    AST* ast = createAST(AST_VARIABLE_DEFINITION);
-    ast->variableDefinition.scope = parser->currentScope;
-    ast->variableDefinition.id = id;
-    ast->variableDefinition.position = getLocalCount(parser->currentScope);
-    ast->variableDefinition.expr = NULL;
+    AST* ast = createVariableDefinition(token, id);
 
-    if (parser->currentToken.type == TOKEN_COLON) {
-        consume(parser, TOKEN_COLON);
-        ast->variableDefinition.typeId = parser->currentToken.type;
-        consumeType(parser);
-    } else if (parser->currentToken.type != TOKEN_EQUAL) {
-        expectedTokenError(TOKEN_EQUAL, parser->currentToken);
-    }
-    
-    if (parser->currentToken.type != TOKEN_EQUAL) {
-        ast->variableDefinition.expr = createAST(AST_NONE);
-        ast->variableDefinition.typeId = TOKEN_INT;
-        setLocalVariableSymbol(parser->currentScope, id, ast);
+    parseVariableType(parser, ast);
 
-        return ast;
-    }
-    
-    consume(parser, TOKEN_EQUAL);
-    AST* expr = expression(parser);
-    
-    if (!expr) {
+    if (!parseVariableInitializer(parser, ast)) {
         freeAST(ast);
         return NULL;
     }
-
-    ast->variableDefinition.typeId = getTypeId(expr);
-    ast->variableDefinition.expr = expr;
-
-    if (ast->variableDefinition.typeId == TOKEN_NONE) {
-        invalidTypeError(token);
-    }
-
-    setLocalVariableSymbol(parser->currentScope, id, ast);
-    initialize(ast);
 
     return ast;
 }
@@ -890,11 +727,13 @@ static AST* identifier(Parser* parser)
     
     if (isAssignmentToken(parser->currentToken.type)) {
         return assignment(parser);
-    } else if (parser->currentToken.type == TOKEN_LPAREN) {
+    }
+
+    if (parser->currentToken.type == TOKEN_LPAREN) {
         return functionCall(parser);
     }
 
-    return variable(parser);
+    return createVariable(parser->prevToken);
 }
 
 static AST* statement(Parser* parser)
@@ -949,7 +788,6 @@ static bool toplevelStatements(Parser* parser)
 
 void initParser(Parser* parser, AST* ast)
 {
-    parser->currentScope = ast->compound.scope;
     parser->topLevel = ast;
 }
 

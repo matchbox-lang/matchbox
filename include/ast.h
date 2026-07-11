@@ -40,6 +40,7 @@ typedef struct AST
         struct {
             Scope* scope;
             Token operator;
+            Token token;
             AST* expr;
             AST* symbol;
         } assignment;
@@ -65,13 +66,17 @@ typedef struct AST
         struct {
             Scope* scope;
             Vector args;
+            StringObject* id;
+            Token token;
             AST* symbol;
         } functionCall;
 
         struct {
             Scope* scope;
             StringObject* id;
+            Token token;
             Vector params;
+            bool hasExplicitReturnType;
             int typeId;
             AST* body;
         } functionDefinition;
@@ -79,6 +84,7 @@ typedef struct AST
         struct {
             Scope* scope;
             StringObject* id;
+            Token token;
             int typeId;
             int position;
         } parameter;
@@ -89,13 +95,21 @@ typedef struct AST
         } prefix;
 
         struct {
+            Token token;
+            AST* expr;
+        } returnStatement;
+
+        struct {
             Scope* scope;
+            StringObject* id;
+            Token token;
             AST* symbol;
         } variable;
 
         struct {
             Scope* scope;
             StringObject* id;
+            Token token;
             bool initialized;
             int typeId;
             int position;
@@ -107,7 +121,6 @@ typedef struct AST
         int intValue;
         Token character;
         Token string;
-        AST* expression;
     };
 } AST;
 

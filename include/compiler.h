@@ -5,12 +5,14 @@
 #include "function_object.h"
 #include "module_object.h"
 #include "parser.h"
+#include "analyzer.h"
 #include "vector.h"
 #include <stddef.h>
 
 typedef struct Compiler
 {
     Parser parser;
+    Analyzer analyzer;
     Vector functionReferences;
     ModuleObject* module;
     FunctionObject* function;

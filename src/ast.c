@@ -67,6 +67,7 @@ void freeAST(AST* ast)
             freeASTVector(&ast->builtinCall.args);
             break;
         case AST_FUNCTION_CALL:
+            freeStringObject(ast->functionCall.id);
             freeASTVector(&ast->functionCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
@@ -81,11 +82,14 @@ void freeAST(AST* ast)
             freeAST(ast->prefix.expr);
             break;
         case AST_RETURN:
-            freeAST(ast->expression);
+            freeAST(ast->returnStatement.expr);
             break;
         case AST_VARIABLE_DEFINITION:
             freeStringObject(ast->variableDefinition.id);
             freeAST(ast->variableDefinition.expr);
+            break;
+        case AST_VARIABLE:
+            freeStringObject(ast->variable.id);
             break;
         default:
             break;

@@ -5,6 +5,7 @@
 #include "module_object.h"
 #include "opcode.h"
 #include "parser.h"
+#include "optimizer.h"
 #include "scope.h"
 #include "token.h"
 #include "util.h"
@@ -558,11 +559,11 @@ static void functionDefinition(Compiler* compiler, AST* ast)
 
 static void ret(Compiler* compiler, AST* ast)
 {
-    if (isNone(ast->expression)) {
+    if (isNone(ast->returnStatement.expr)) {
         return emitRet(compiler);
     }
 
-    expression(compiler, ast->expression, false);
+    expression(compiler, ast->returnStatement.expr, false);
     emitRetv(compiler);
 }
 
@@ -695,6 +696,7 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
     ast->compound.scope = createScope(NULL);
 
     initParser(&compiler->parser, ast);
+    initAnalyzer(&compiler->analyzer, ast);
 
     compiler->module = module;
     compiler->function = getVectorAt(&module->functions, 0);
@@ -715,9 +717,14 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
         return false;
     }
 
+    size_t start = countVector(&compiler->ast->compound.statements);
+
     if (!parse(&compiler->parser, source)) {
         return false;
     }
+
+    analyze(&compiler->analyzer, start);
+    optimize(compiler->ast, start);
 
     clearCodeObject(currentCodeObject(compiler));
     compileStatements(compiler, &compiler->ast->compound.statements);

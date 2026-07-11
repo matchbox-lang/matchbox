@@ -332,13 +332,13 @@ static void storeVariable(Compiler* compiler, AST* ast)
 
 static void compileNumber(Compiler* compiler, AST* ast)
 {
-    if (isLargerThan16BitSigned(ast->intValue)) {
-        size_t position = makeConstant(compiler, INT_VALUE(ast->intValue));
+    if (isLargerThan16BitSigned(ast->integerLiteral.value)) {
+        size_t position = makeConstant(compiler, INT_VALUE(ast->integerLiteral.value));
         emitLdc(compiler, position);
-    } else if (isLargerThan8BitSigned(ast->intValue)) {
-        emitPushh(compiler, ast->intValue);
+    } else if (isLargerThan8BitSigned(ast->integerLiteral.value)) {
+        emitPushh(compiler, ast->integerLiteral.value);
     } else {
-        emitPushb(compiler, ast->intValue);
+        emitPushb(compiler, ast->integerLiteral.value);
     }
 }
 

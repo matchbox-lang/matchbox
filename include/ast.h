@@ -53,9 +53,23 @@ typedef struct AST
         } binary;
 
         struct {
+            bool value;
+            Token token;
+        } booleanLiteral;
+
+        struct {
+            Token token;
+        } characterLiteral;
+
+        struct {
             Scope* scope;
             Vector statements;
         } compound;
+
+        struct {
+            float value;
+            Token token;
+        } floatLiteral;
 
         struct {
             BuiltinId id;
@@ -82,6 +96,11 @@ typedef struct AST
         } functionDefinition;
 
         struct {
+            int value;
+            Token token;
+        } integerLiteral;
+
+        struct {
             Scope* scope;
             StringObject* id;
             Token token;
@@ -100,6 +119,10 @@ typedef struct AST
         } returnStatement;
 
         struct {
+            Token token;
+        } stringLiteral;
+
+        struct {
             Scope* scope;
             StringObject* id;
             Token token;
@@ -115,12 +138,6 @@ typedef struct AST
             int position;
             AST* expr;
         } variableDefinition;
-
-        bool boolValue;
-        float floatValue;
-        int intValue;
-        Token character;
-        Token string;
     };
 } AST;
 

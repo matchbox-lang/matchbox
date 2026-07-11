@@ -78,7 +78,8 @@ static bool isEndOfFile(Parser* parser)
 static AST* parseIntegerLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intValue = integerLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = integerLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.token = token;
     
     consume(parser, token.type);
 
@@ -88,7 +89,8 @@ static AST* parseIntegerLiteral(Parser* parser, Token token)
 static AST* parseBinaryLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intValue = binaryLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = binaryLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.token = token;
 
     consume(parser, token.type);
 
@@ -98,7 +100,8 @@ static AST* parseBinaryLiteral(Parser* parser, Token token)
 static AST* parseHexadecimalLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intValue = hexadecimalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = hexadecimalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.token = token;
 
     consume(parser, token.type);
 
@@ -108,7 +111,8 @@ static AST* parseHexadecimalLiteral(Parser* parser, Token token)
 static AST* parseOctalLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
-    ast->intValue = octalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = octalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.token = token;
 
     consume(parser, token.type);
 

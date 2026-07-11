@@ -7,8 +7,8 @@ static void optimizeNode(AST* ast);
 
 static bool foldBinaryValue(AST* ast, int* value)
 {
-    int left = ast->binary.leftExpr->intValue;
-    int right = ast->binary.rightExpr->intValue;
+    int left = ast->binary.leftExpr->integerLiteral.value;
+    int right = ast->binary.rightExpr->integerLiteral.value;
 
     switch (ast->binary.operator.type) {
         case TOKEN_PLUS:
@@ -59,6 +59,7 @@ static void foldBinary(AST* ast)
     }
 
     int value;
+    Token token = ast->binary.operator;
     
     if (!foldBinaryValue(ast, &value)) {
         return;
@@ -68,7 +69,8 @@ static void foldBinary(AST* ast)
     freeAST(ast->binary.rightExpr);
 
     ast->type = AST_INTEGER;
-    ast->intValue = value;
+    ast->integerLiteral.value = value;
+    ast->integerLiteral.token = token;
 }
 
 static void optimizeNodes(Vector* nodes)

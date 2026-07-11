@@ -20,11 +20,11 @@ ASTNode* createASTNode(ASTNodeType type)
     ast->type = type;
 
     switch (type) {
-        case AST_COMPOUND:
-            initVector(&ast->compound.statements);
-            break;
         case AST_BUILTIN_CALL:
             initVector(&ast->builtinCall.args);
+            break;
+        case AST_COMPOUND:
+            initVector(&ast->compound.statements);
             break;
         case AST_FUNCTION_CALL:
             initVector(&ast->functionCall.args);
@@ -64,12 +64,12 @@ void freeASTNode(ASTNode* ast)
             freeASTNode(ast->binary.leftExpr);
             freeASTNode(ast->binary.rightExpr);
             break;
+        case AST_BUILTIN_CALL:
+            freeASTNodeVector(&ast->builtinCall.args);
+            break;
         case AST_COMPOUND:
             freeScope(ast->compound.scope);
             freeASTNodeVector(&ast->compound.statements);
-            break;
-        case AST_BUILTIN_CALL:
-            freeASTNodeVector(&ast->builtinCall.args);
             break;
         case AST_FUNCTION_CALL:
             freeStringObject(ast->functionCall.id);
@@ -140,12 +140,12 @@ TokenType getTypeId(const ASTNode* ast)
             return ast->binary.typeId;
         case AST_BOOLEAN:
             return TOKEN_BOOL;
+        case AST_BUILTIN_CALL:
+            return ast->builtinCall.builtin->typeId;
         case AST_CHARACTER:
             return TOKEN_CHAR;
         case AST_FLOAT:
             return TOKEN_FLOAT;
-        case AST_BUILTIN_CALL:
-            return ast->builtinCall.builtin->typeId;
         case AST_FUNCTION_CALL:
             return getTypeId(ast->functionCall.symbol);
         case AST_FUNCTION_DEFINITION:

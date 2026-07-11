@@ -15,11 +15,11 @@ typedef enum ASTNodeType
 {
     AST_ASSIGNMENT,
     AST_BINARY,
+    AST_BUILTIN_CALL,
     AST_BOOLEAN,
     AST_CHARACTER,
     AST_COMPOUND,
     AST_FLOAT,
-    AST_BUILTIN_CALL,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
@@ -58,6 +58,12 @@ typedef struct ASTNode
         } booleanLiteral;
 
         struct {
+            BuiltinId id;
+            Vector args;
+            Builtin* builtin;
+        } builtinCall;
+
+        struct {
             Token token;
         } characterLiteral;
 
@@ -70,12 +76,6 @@ typedef struct ASTNode
             float value;
             Token token;
         } floatLiteral;
-
-        struct {
-            BuiltinId id;
-            Vector args;
-            Builtin* builtin;
-        } builtinCall;
 
         struct {
             Scope* scope;

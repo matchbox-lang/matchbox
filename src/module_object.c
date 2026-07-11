@@ -20,6 +20,13 @@ ModuleObject* createModuleObject()
 
 void freeModuleObject(ModuleObject* module)
 {
+    size_t functionCount = countVector(&module->functions);
+
+    for (size_t i = 0; i < functionCount; i++) {
+        FunctionObject* function = getVectorAt(&module->functions, i);
+        freeFunctionObject(function);
+    }
+
     freeVector(&module->functions);
     freeValueArray(&module->constants);
     free(module);
@@ -32,6 +39,11 @@ void disassembleModule(ModuleObject* module)
 
     for (int i = 0; i < functionCount; i++) {
         function = getVectorAt(&module->functions, i);
+
+        if (function->type == FUNCTION_BUILTIN) {
+            continue;
+        }
+
         disassemble(&function->code);
 
         if (i < functionCount - 1) {

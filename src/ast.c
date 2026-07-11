@@ -146,6 +146,21 @@ int getTypeId(AST* ast)
     }
 }
 
+bool isExpressionStatement(AST* ast)
+{
+    switch (ast->type) {
+        case AST_BINARY:
+        case AST_BUILTIN_CALL:
+        case AST_FUNCTION_CALL:
+        case AST_INTEGER:
+        case AST_PREFIX:
+        case AST_VARIABLE:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool isFunctionCall(AST* ast)
 {
     return ast->type == AST_FUNCTION_CALL;

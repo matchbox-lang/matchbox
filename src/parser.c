@@ -88,12 +88,6 @@ static void undefinedError(Token token)
     exit(1);
 }
 
-static void unexpectedEndError(Token token)
-{
-    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
 static void expectedTokenError(TokenType type, Token token)
 {
     fprintf(stderr, "Error: Expected %s but found ", tokenTypeName(type));
@@ -693,6 +687,21 @@ static AST* functionCall(Parser* parser)
     return ast;
 }
 
+static bool hasValueReturn(Vector* statements)
+{
+    size_t count = countVector(statements);
+
+    for (size_t i = 0; i < count; i++) {
+        AST* statement = getVectorAt(statements, i);
+
+        if (statement->type == AST_RETURN) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static AST* functionDefinition(Parser* parser)
 {
     consume(parser, TOKEN_FUNC);
@@ -725,9 +734,12 @@ static AST* functionDefinition(Parser* parser)
     ast->functionDefinition.typeId = TOKEN_INT;
     ast->functionDefinition.body = NULL;
 
+    bool hasExplicitReturnType = false;
+
     parser->currentScope = ast->functionDefinition.scope;
     
     if (!parameters(parser, &ast->functionDefinition.params)) {
+        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
     }
@@ -736,9 +748,11 @@ static AST* functionDefinition(Parser* parser)
         consume(parser, TOKEN_ARROW);
         ast->functionDefinition.typeId = parser->currentToken.type;
         consumeType(parser);
+        hasExplicitReturnType = true;
     }
 
     if (isEof(parser)) {
+        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
     }
@@ -747,13 +761,18 @@ static AST* functionDefinition(Parser* parser)
 
     AST* body = createAST(AST_COMPOUND);
     body->compound.scope = parser->currentScope;
+    ast->functionDefinition.body = body;
 
     if (!blocklevelStatements(parser, &body->compound.statements)) {
+        parser->currentScope = parser->currentScope->parent;
         freeAST(ast);
         return NULL;
     }
 
-    ast->functionDefinition.body = body;
+    if (!hasExplicitReturnType && !hasValueReturn(&body->compound.statements)) {
+        ast->functionDefinition.typeId = TOKEN_NONE;
+    }
+
     consume(parser, TOKEN_RBRACE);
     parser->currentScope = parser->currentScope->parent;
     setLocalSymbol(parser->currentScope, id, ast);
@@ -902,10 +921,12 @@ static bool statements(Parser* parser, Vector* nodes, TokenType type)
             return false;
         }
         
-        if (!isEof(parser) && 
+        bool sameLineStatement = !isEof(parser) &&
             parser->currentToken.line == token.line &&
             parser->currentToken.type != type &&
-            parser->prevToken.type != TOKEN_RBRACE) {
+            parser->prevToken.type != TOKEN_RBRACE;
+
+        if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
             consume(parser, TOKEN_SEMICOLON);
         }
 
@@ -932,12 +953,10 @@ void initParser(Parser* parser, AST* ast)
     parser->topLevel = ast;
 }
 
-void parse(Parser* parser, char* source)
+bool parse(Parser* parser, char* source)
 {
     initLexer(&parser->lexer, source);
     advance(parser);
 
-    if (!toplevelStatements(parser)) {
-        unexpectedEndError(parser->currentToken);
-    }
+    return toplevelStatements(parser);
 }

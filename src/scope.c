@@ -19,6 +19,10 @@ Scope* createScope(Scope* parent)
 
 void freeScope(Scope* scope)
 {
+    if (!scope) {
+        return;
+    }
+
     freeTable(&scope->symbols);
     free(scope);
 }

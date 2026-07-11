@@ -548,7 +548,12 @@ static void functionDefinition(Compiler* compiler, AST* ast)
     pushVectorItem(&compiler->functionReferences, ast);
     blocklevelStatements(compiler, &body->compound.statements);
 
-    AST* last = vectorEnd(&body->compound.statements);
+    size_t statementCount = countVector(&body->compound.statements);
+    AST* last = NULL;
+
+    if (statementCount > 0) {
+        last = getVectorAt(&body->compound.statements, statementCount - 1);
+    }
 
     if (!last || last->type != AST_RETURN) {
         emitRet(compiler);

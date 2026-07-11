@@ -275,9 +275,9 @@ static void run(VM* vm)
                 function = vm->module->functions.data[x];
 
                 if (function->type == FUNCTION_BUILTIN) {
-                    builtin_t fn = vm->builtins[function->builtinId];
+                    builtin_t builtin = vm->builtins[function->builtinId];
                     Value* args = vm->sp - function->paramCount;
-                    Value result = fn(args);
+                    Value result = builtin(args);
 
                     vm->sp -= function->paramCount;
                     PUSH(result);

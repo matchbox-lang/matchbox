@@ -1,6 +1,7 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
 
+#include "token.h"
 #include "value.h"
 
 #define BUILTINS_MAX 7
@@ -21,8 +22,8 @@ typedef struct Builtin
     const char* name;
     BuiltinId id;
     int paramCount;
-    int params[4];
-    int typeId;
+    TokenType params[4];
+    TokenType typeId;
 } Builtin;
 
 extern Builtin builtins[BUILTINS_MAX];

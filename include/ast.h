@@ -49,7 +49,7 @@ typedef struct AST
             Token operator;
             AST* leftExpr;
             AST* rightExpr;
-            int typeId;
+            TokenType typeId;
         } binary;
 
         struct {
@@ -91,7 +91,7 @@ typedef struct AST
             Token token;
             Vector params;
             bool hasExplicitReturnType;
-            int typeId;
+            TokenType typeId;
             AST* body;
         } functionDefinition;
 
@@ -104,7 +104,7 @@ typedef struct AST
             Scope* scope;
             StringObject* id;
             Token token;
-            int typeId;
+            TokenType typeId;
             int position;
         } parameter;
 
@@ -134,7 +134,7 @@ typedef struct AST
             StringObject* id;
             Token token;
             bool initialized;
-            int typeId;
+            TokenType typeId;
             int position;
             AST* expr;
         } variableDefinition;
@@ -144,7 +144,7 @@ typedef struct AST
 AST* createAST(ASTType type);
 void freeAST(AST* ast);
 Scope* getScope(AST* ast);
-int getTypeId(AST* ast);
+TokenType getTypeId(AST* ast);
 bool isExpressionStatement(AST* ast);
 bool isFunctionCall(AST* ast);
 bool isFunctionDefinition(AST* ast);

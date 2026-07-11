@@ -125,7 +125,7 @@ Scope* getScope(AST* ast)
     }
 }
 
-int getTypeId(AST* ast)
+TokenType getTypeId(AST* ast)
 {
     if (!ast) {
         return TOKEN_NONE;

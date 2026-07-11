@@ -54,8 +54,8 @@ static void analyzeBinary(Analyzer* analyzer, AST* ast)
     analyzeNode(analyzer, ast->binary.leftExpr);
     analyzeNode(analyzer, ast->binary.rightExpr);
 
-    int leftType = getTypeId(ast->binary.leftExpr);
-    int rightType = getTypeId(ast->binary.rightExpr);
+    TokenType leftType = getTypeId(ast->binary.leftExpr);
+    TokenType rightType = getTypeId(ast->binary.rightExpr);
 
     if (leftType != rightType) {
         semanticError("Invalid operands to binary ", ast->binary.operator);

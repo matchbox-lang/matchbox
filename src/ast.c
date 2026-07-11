@@ -134,6 +134,12 @@ int getTypeId(AST* ast)
     switch (ast->type) {
         case AST_BINARY:
             return ast->binary.typeId;
+        case AST_BOOLEAN:
+            return TOKEN_BOOL;
+        case AST_CHARACTER:
+            return TOKEN_CHAR;
+        case AST_FLOAT:
+            return TOKEN_FLOAT;
         case AST_BUILTIN_CALL:
             return ast->builtinCall.builtin->typeId;
         case AST_FUNCTION_CALL:
@@ -150,6 +156,8 @@ int getTypeId(AST* ast)
             return getTypeId(ast->prefix.expr);
         case AST_INTEGER:
             return TOKEN_INT;
+        case AST_STRING:
+            return TOKEN_STRING;
         default:
             return TOKEN_NONE;
     }
@@ -159,10 +167,14 @@ bool isExpressionStatement(AST* ast)
 {
     switch (ast->type) {
         case AST_BINARY:
+        case AST_BOOLEAN:
         case AST_BUILTIN_CALL:
+        case AST_CHARACTER:
+        case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
         case AST_PREFIX:
+        case AST_STRING:
         case AST_VARIABLE:
             return true;
         default:
@@ -195,9 +207,13 @@ bool isPrefixOperand(AST* ast)
     switch (ast->type) {
         case AST_ASSIGNMENT:
         case AST_BINARY:
+        case AST_BOOLEAN:
         case AST_BUILTIN_CALL:
+        case AST_CHARACTER:
+        case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
+        case AST_STRING:
         case AST_VARIABLE:
             return true;
         default:

@@ -70,7 +70,7 @@ static void consumeType(Parser* parser)
     consume(parser, parser->currentToken.type);
 }
 
-static bool isEof(Parser* parser)
+static bool isEndOfFile(Parser* parser)
 {
     return parser->currentToken.type == TOKEN_EOF;
 }
@@ -125,7 +125,7 @@ static AST* parseGroupExpression(Parser* parser)
         expectedExpressionError(parser->currentToken);
     }
     
-    if (!ast || isEof(parser)) {
+    if (!ast || isEndOfFile(parser)) {
         freeAST(ast);
         
         return NULL;
@@ -431,7 +431,7 @@ static bool parseArgumentList(Parser* parser, Vector* args)
 {
     consume(parser, TOKEN_LPAREN);
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return false;
     }
 
@@ -441,7 +441,7 @@ static bool parseArgumentList(Parser* parser, Vector* args)
         }
     }
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return false;
     }
 
@@ -463,7 +463,7 @@ static AST* createParameter(Token token, StringObject* id)
 
 static AST* parseParameter(Parser* parser)
 {
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return NULL;
     }
     
@@ -504,7 +504,7 @@ static bool parseParameterList(Parser* parser, Vector* params)
 {
     consume(parser, TOKEN_LPAREN);
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return false;
     }
 
@@ -514,7 +514,7 @@ static bool parseParameterList(Parser* parser, Vector* params)
         }
     }
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return false;
     }
     
@@ -581,7 +581,7 @@ static void parseFunctionReturnType(Parser* parser, AST* ast)
 
 static bool parseFunctionBody(Parser* parser, AST* ast)
 {
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return false;
     }
 
@@ -604,7 +604,7 @@ static AST* parseFunctionDefinition(Parser* parser)
 {
     consume(parser, TOKEN_FUNC);
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return NULL;
     }
 
@@ -617,7 +617,7 @@ static AST* parseFunctionDefinition(Parser* parser)
 
     consume(parser, TOKEN_IDENTIFIER);
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return NULL;
     }
 
@@ -715,7 +715,7 @@ static AST* parseVariableDefinition(Parser* parser)
 {
     consume(parser, TOKEN_VAR);
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return NULL;
     }
 
@@ -724,7 +724,7 @@ static AST* parseVariableDefinition(Parser* parser)
 
     consume(parser, TOKEN_IDENTIFIER);
 
-    if (isEof(parser)) {
+    if (isEndOfFile(parser)) {
         return NULL;
     }
 
@@ -779,7 +779,7 @@ static bool parseStatements(Parser* parser, Vector* nodes, TokenType type)
             return false;
         }
         
-        bool sameLineStatement = !isEof(parser) &&
+        bool sameLineStatement = !isEndOfFile(parser) &&
             parser->currentToken.line == token.line &&
             parser->currentToken.type != type &&
             parser->prevToken.type != TOKEN_RBRACE;

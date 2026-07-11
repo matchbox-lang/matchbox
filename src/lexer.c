@@ -151,7 +151,7 @@ static char advance(Lexer* lexer)
     return lexer->current.chars[-1];
 }
 
-static bool isEof(const Lexer* lexer)
+static bool isEndOfFile(const Lexer* lexer)
 {
     return *lexer->current.chars == '\0';
 }
@@ -299,7 +299,7 @@ static void skipCommentSingle(Lexer* lexer)
 {
     advance(lexer);
     
-    while (!isEof(lexer) && peek(lexer) != '\n') {
+    while (!isEndOfFile(lexer) && peek(lexer) != '\n') {
         advance(lexer);
     }
 }
@@ -309,7 +309,7 @@ static void skipCommentMulti(Lexer* lexer)
     advance(lexer);
     advance(lexer);
 
-    while (!isEof(lexer)) {
+    while (!isEndOfFile(lexer)) {
         if (peek(lexer) == '#' && next(lexer) == '#') {
             advance(lexer);
             advance(lexer);
@@ -472,7 +472,7 @@ static Token endCharacterLiteral(Lexer* lexer)
         newlineCharacterError(lexer);
     }
 
-    if (isEof(lexer)) {
+    if (isEndOfFile(lexer)) {
         unterminatedLiteralError(lexer, '\'');
     }
 
@@ -485,7 +485,7 @@ static Token escapedCharacterLiteral(Lexer* lexer)
 {
     advance(lexer);
 
-    if (isEof(lexer)) {
+    if (isEndOfFile(lexer)) {
         unterminatedLiteralError(lexer, '\'');
     }
 
@@ -502,7 +502,7 @@ static Token scanCharacterLiteral(Lexer* lexer)
 {
     size_t length;
 
-    if (isEof(lexer)) {
+    if (isEndOfFile(lexer)) {
         unterminatedLiteralError(lexer, '\'');
     }
 
@@ -533,7 +533,7 @@ static Token scanStringLiteral(Lexer* lexer, char delimiter, TokenType type)
 {
     bool escaped = false;
 
-    while (!isEof(lexer)) {
+    while (!isEndOfFile(lexer)) {
         char c = advance(lexer);
 
         if (c == delimiter && !escaped) {
@@ -576,7 +576,7 @@ Token scanToken(Lexer* lexer)
     lexer->start.line = lexer->current.line;
     lexer->start.column = lexer->current.column;
 
-    if (isEof(lexer)) {
+    if (isEndOfFile(lexer)) {
         return makeToken(lexer, TOKEN_EOF);
     }
 

@@ -10,7 +10,7 @@ Scope* createScope(Scope* parent)
     Scope* scope = malloc(sizeof(Scope));
     scope->parent = parent;
     scope->localCount = 0;
-    scope->level = getLevel(parent) + 1;
+    scope->level = getScopeLevel(parent) + 1;
 
     initTable(&scope->symbols, 32);
     
@@ -32,12 +32,12 @@ size_t getLocalCount(Scope* scope)
     return scope->localCount;
 }
 
-size_t getLevel(Scope* scope)
+size_t getScopeLevel(Scope* scope)
 {
     return scope ? scope->level : 0;
 }
 
-bool isTopLevel(Scope* scope)
+bool isTopLevelScope(Scope* scope)
 {
     return scope->level == 1;
 }

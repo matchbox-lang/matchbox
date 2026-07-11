@@ -300,7 +300,7 @@ static void loadLocalVariable(Compiler* compiler, AST* ast)
 
 static void loadVariable(Compiler* compiler, AST* ast)
 {
-    if (isTopLevel(ast->variableDefinition.scope)) {
+    if (isTopLevelScope(ast->variableDefinition.scope)) {
         loadGlobalVariable(compiler, ast);
     } else {
         loadLocalVariable(compiler, ast);
@@ -323,7 +323,7 @@ static void storeLocalVariable(Compiler* compiler, AST* ast)
 
 static void storeVariable(Compiler* compiler, AST* ast)
 {
-    if (isTopLevel(ast->variableDefinition.scope)) {
+    if (isTopLevelScope(ast->variableDefinition.scope)) {
         storeGlobalVariable(compiler, ast);
     } else {
         storeLocalVariable(compiler, ast);
@@ -576,7 +576,7 @@ static void compileUninitializedVariableDefinition(Compiler* compiler, AST* ast)
 {
     emitPushb(compiler, 0);
 
-    if (isTopLevel(ast->variableDefinition.scope)) {
+    if (isTopLevelScope(ast->variableDefinition.scope)) {
         emitReg(compiler);
     }
 }
@@ -589,7 +589,7 @@ static void compileVariableDefinition(Compiler* compiler, AST* ast)
 
     compileExpression(compiler, ast->variableDefinition.expr, false);
 
-    if (isTopLevel(ast->variableDefinition.scope)) {
+    if (isTopLevelScope(ast->variableDefinition.scope)) {
         emitReg(compiler);
     }
 }

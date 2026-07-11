@@ -18,8 +18,8 @@ typedef struct Scope
 Scope* createScope(Scope* parent);
 void freeScope(Scope* scope);
 size_t getLocalCount(Scope* scope);
-size_t getLevel(Scope* scope);
-bool isTopLevel(Scope* scope);
+size_t getScopeLevel(Scope* scope);
+bool isTopLevelScope(Scope* scope);
 AST* setLocalSymbol(Scope* scope, StringObject* id, AST* symbol);
 AST* setLocalVariableSymbol(Scope* scope, StringObject* id, AST* symbol);
 AST* getLocalSymbol(Scope* scope, StringObject* id);

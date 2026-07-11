@@ -3,6 +3,7 @@
 #include "scope.h"
 #include "string_object.h"
 #include "token.h"
+#include "util.h"
 #include "vector.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -11,7 +12,11 @@
 
 AST* createAST(ASTType type)
 {
-    AST* ast = malloc(sizeof(AST));
+    AST* ast = calloc(1, sizeof(AST));
+    if (!ast) {
+        outOfMemoryError();
+    }
+
     ast->type = type;
 
     switch (type) {

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 char* joinPath(const char* directory, const char* name);
+void freePath(char* path);
 bool pathExists(const char* path);
 bool pathHasExtension(const char* path, const char* extension);
 bool pathIsCurrentOrParentDirectory(const char* path);

@@ -6,10 +6,9 @@
 #include <string.h>
 #include <sys/stat.h>
 
-static char* allocatePath(size_t length)
+static char* createPath(size_t length)
 {
     char* path = malloc(length + 1);
-
     if (!path) {
         outOfMemoryError();
     }
@@ -45,11 +44,16 @@ char* joinPath(const char* directory, const char* name)
 {
     const char* separator = pathNeedsSeparator(directory) ? "\\" : "";
     size_t length = strlen(directory) + strlen(separator) + strlen(name);
-    char* path = allocatePath(length);
+    char* path = createPath(length);
 
     snprintf(path, length + 1, "%s%s%s", directory, separator, name);
 
     return path;
+}
+
+void freePath(char* path)
+{
+    free(path);
 }
 
 bool pathExists(const char* path)

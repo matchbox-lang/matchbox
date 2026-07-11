@@ -200,13 +200,13 @@ static void runDirectoryEntry(TestRun* run, const char* path, const char* name)
 
     if (pathIsDirectory(child)) {
         runDirectoryTests(run, child);
-        free(child);
+        freePath(child);
 
         return;
     }
 
     runTestFilePath(run, child);
-    free(child);
+    freePath(child);
 }
 
 static void runDirectoryTests(TestRun* run, const char* path)

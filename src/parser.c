@@ -9,10 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static AST* expression(Parser* parser);
-static AST* identifier(Parser* parser);
-static AST* prefix(Parser* parser);
-static bool blocklevelStatements(Parser* parser, Vector* nodes);
+static AST* parseExpression(Parser* parser);
+static AST* parseIdentifier(Parser* parser);
+static AST* parsePrefix(Parser* parser);
+static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
 
 static void expectedExpressionError(Token token)
 {
@@ -75,7 +75,7 @@ static bool isEof(Parser* parser)
     return parser->currentToken.type == TOKEN_EOF;
 }
 
-static AST* integerLiteral(Parser* parser, Token token)
+static AST* parseIntegerLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = integerLiteralToValue(token.chars, token.length);
@@ -85,7 +85,7 @@ static AST* integerLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static AST* binaryLiteral(Parser* parser, Token token)
+static AST* parseBinaryLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = binaryLiteralToValue(token.chars, token.length);
@@ -95,7 +95,7 @@ static AST* binaryLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static AST* hexadecimalLiteral(Parser* parser, Token token)
+static AST* parseHexadecimalLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = hexadecimalLiteralToValue(token.chars, token.length);
@@ -105,7 +105,7 @@ static AST* hexadecimalLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static AST* octalLiteral(Parser* parser, Token token)
+static AST* parseOctalLiteral(Parser* parser, Token token)
 {
     AST* ast = createAST(AST_INTEGER);
     ast->intValue = octalLiteralToValue(token.chars, token.length);
@@ -115,11 +115,11 @@ static AST* octalLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static AST* groupExpression(Parser* parser)
+static AST* parseGroupExpression(Parser* parser)
 {
     consume(parser, TOKEN_LPAREN);
 
-    AST* ast = expression(parser);
+    AST* ast = parseExpression(parser);
 
     if (!ast && parser->currentToken.type == TOKEN_RPAREN) {
         expectedExpressionError(parser->currentToken);
@@ -136,7 +136,7 @@ static AST* groupExpression(Parser* parser)
     return ast;
 }
 
-static AST* binary(AST* leftExpr, AST* rightExpr, Token token)
+static AST* createBinary(AST* leftExpr, AST* rightExpr, Token token)
 {
     if (!rightExpr) {
         return NULL;
@@ -162,6 +162,289 @@ static AST* createVariable(Token token)
     return ast;
 }
 
+static AST* parsePrimary(Parser* parser)
+{
+    switch (parser->currentToken.type) {
+        case TOKEN_INTEGER_LITERAL:
+            return parseIntegerLiteral(parser, parser->currentToken);
+        case TOKEN_BINARY_LITERAL:
+            return parseBinaryLiteral(parser, parser->currentToken);
+        case TOKEN_HEXADECIMAL_LITERAL:
+            return parseHexadecimalLiteral(parser, parser->currentToken);
+        case TOKEN_OCTAL_LITERAL:
+            return parseOctalLiteral(parser, parser->currentToken);
+        case TOKEN_LPAREN:
+            return parseGroupExpression(parser);
+        case TOKEN_IDENTIFIER:
+            return parseIdentifier(parser);
+        case TOKEN_EOF:
+            return NULL;
+        default:
+            expectedExpressionError(parser->currentToken);
+            return NULL;
+    }
+}
+
+static AST* parsePrefixOperand(Parser* parser)
+{
+    if (isPrefixToken(parser->currentToken.type)) {
+        return parsePrefix(parser);
+    }
+
+    Token token = parser->currentToken;
+    AST* expr = parsePrimary(parser);
+    
+    if (!expr) {
+        return NULL;
+    }
+
+    if (!isPrefix(expr) && !isPrefixOperand(expr)) {
+        expectedOperandError(token);
+    }
+    
+    return expr;
+}
+
+static AST* parsePrefix(Parser* parser)
+{
+    if (!isPrefixToken(parser->currentToken.type)) {
+        return parsePrimary(parser);
+    }
+
+    Token token = parser->currentToken;
+    consume(parser, token.type);
+    AST* expr = parsePrefixOperand(parser);
+    
+    if (!expr) {
+        return NULL;
+    }
+
+    AST* ast = createAST(AST_PREFIX);
+    ast->prefix.expr = expr;
+    ast->prefix.operator = token;
+
+    return ast;
+}
+
+static AST* parseExponent(Parser* parser)
+{
+    AST* expr = parsePrefix(parser);
+    Token token = parser->currentToken;
+
+    if (token.type == TOKEN_POWER) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseExponent(parser), token);
+    }
+
+    return expr;
+}
+
+static AST* parseFactor(Parser* parser)
+{
+    AST* expr = parseExponent(parser);
+    Token token = parser->currentToken;
+
+    while (isFactorToken(token.type)) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseExponent(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseTerm(Parser* parser)
+{
+    AST* expr = parseFactor(parser);
+    Token token = parser->currentToken;
+
+    while (isTermToken(token.type)) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseFactor(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseShift(Parser* parser)
+{
+    AST* expr = parseTerm(parser);
+    Token token = parser->currentToken;
+
+    while (isShiftToken(token.type)) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseTerm(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseComparison(Parser* parser)
+{
+    AST* expr = parseShift(parser);
+    Token token = parser->currentToken;
+
+    while (isComparisonToken(token.type)) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseShift(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseEquality(Parser* parser)
+{
+    AST* expr = parseComparison(parser);
+    Token token = parser->currentToken;
+
+    while (isEqualityToken(token.type)) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseComparison(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseBitwiseAND(Parser* parser)
+{
+    AST* expr = parseEquality(parser);
+    Token token = parser->currentToken;
+
+    while (token.type == TOKEN_AMPERSAND) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseEquality(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseBitwiseXOR(Parser* parser)
+{
+    AST* expr = parseBitwiseAND(parser);
+    Token token = parser->currentToken;
+
+    while (token.type == TOKEN_CIRCUMFLEX) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseBitwiseAND(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseBitwiseOR(Parser* parser)
+{
+    AST* expr = parseBitwiseXOR(parser);
+    Token token = parser->currentToken;
+
+    while (token.type == TOKEN_PIPE) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseBitwiseXOR(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseBooleanAND(Parser* parser)
+{
+    AST* expr = parseBitwiseOR(parser);
+    Token token = parser->currentToken;
+
+    while (token.type == TOKEN_BOOLEAN_AND) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseBitwiseOR(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseBooleanOR(Parser* parser)
+{
+    AST* expr = parseBooleanAND(parser);
+    Token token = parser->currentToken;
+
+    while (token.type == TOKEN_BOOLEAN_OR) {
+        consume(parser, token.type);
+        expr = createBinary(expr, parseBooleanAND(parser), token);
+        token = parser->currentToken;
+    }
+
+    return expr;
+}
+
+static AST* parseExpression(Parser* parser)
+{
+    return parseBooleanOR(parser);
+}
+
+static AST* parseReturnStatement(Parser* parser)
+{
+    Token token = parser->currentToken;
+    consume(parser, TOKEN_RETURN);
+
+    AST* expr = parseExpression(parser);
+    if (!expr) {
+        return NULL;
+    }
+
+    AST* ast = createAST(AST_RETURN);
+    ast->returnStatement.token = token;
+    ast->returnStatement.expr = expr;
+
+    return ast;
+}
+
+static bool parseArgument(Parser* parser, Vector* args)
+{
+    AST* expr = parseExpression(parser);
+
+    if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
+        expectedExpressionError(parser->currentToken);
+    }
+
+    if (!expr) {
+        return false;
+    }
+
+    pushVectorItem(args, expr);
+
+    if (parser->currentToken.type == TOKEN_COMMA) {
+        consume(parser, TOKEN_COMMA);
+    }
+
+    return true;
+}
+
+static bool parseArgumentList(Parser* parser, Vector* args)
+{
+    consume(parser, TOKEN_LPAREN);
+
+    if (isEof(parser)) {
+        return false;
+    }
+
+    while (parser->currentToken.type != TOKEN_RPAREN) {
+        if (!parseArgument(parser, args)) {
+            return false;
+        }
+    }
+
+    if (isEof(parser)) {
+        return false;
+    }
+
+    consume(parser, TOKEN_RPAREN);
+
+    return true;
+}
+
 static AST* createParameter(Token token, StringObject* id)
 {
     AST* ast = createAST(AST_PARAMETER);
@@ -173,7 +456,7 @@ static AST* createParameter(Token token, StringObject* id)
     return ast;
 }
 
-static AST* parameter(Parser* parser)
+static AST* parseParameter(Parser* parser)
 {
     if (isEof(parser)) {
         return NULL;
@@ -195,246 +478,7 @@ static AST* parameter(Parser* parser)
     return ast;
 }
 
-static AST* primary(Parser* parser)
-{
-    switch (parser->currentToken.type) {
-        case TOKEN_INTEGER_LITERAL:
-            return integerLiteral(parser, parser->currentToken);
-        case TOKEN_BINARY_LITERAL:
-            return binaryLiteral(parser, parser->currentToken);
-        case TOKEN_HEXADECIMAL_LITERAL:
-            return hexadecimalLiteral(parser, parser->currentToken);
-        case TOKEN_OCTAL_LITERAL:
-            return octalLiteral(parser, parser->currentToken);
-        case TOKEN_LPAREN:
-            return groupExpression(parser);
-        case TOKEN_IDENTIFIER:
-            return identifier(parser);
-        case TOKEN_EOF:
-            return NULL;
-        default:
-            expectedExpressionError(parser->currentToken);
-            return NULL;
-    }
-}
-
-static AST* prefixOperand(Parser* parser)
-{
-    if (isPrefixToken(parser->currentToken.type)) {
-        return prefix(parser);
-    }
-
-    Token token = parser->currentToken;
-    AST* expr = primary(parser);
-    
-    if (!expr) {
-        return NULL;
-    }
-
-    if (!isPrefix(expr) && !isPrefixOperand(expr)) {
-        expectedOperandError(token);
-    }
-    
-    return expr;
-}
-
-static AST* prefix(Parser* parser)
-{
-    if (!isPrefixToken(parser->currentToken.type)) {
-        return primary(parser);
-    }
-
-    Token token = parser->currentToken;
-    consume(parser, token.type);
-    AST* expr = prefixOperand(parser);
-    
-    if (!expr) {
-        return NULL;
-    }
-
-    AST* ast = createAST(AST_PREFIX);
-    ast->prefix.expr = expr;
-    ast->prefix.operator = token;
-
-    return ast;
-}
-
-static AST* exponent(Parser* parser)
-{
-    AST* expr = prefix(parser);
-    Token token = parser->currentToken;
-
-    if (token.type == TOKEN_POWER) {
-        consume(parser, token.type);
-        expr = binary(expr, exponent(parser), token);
-    }
-
-    return expr;
-}
-
-static AST* factor(Parser* parser)
-{
-    AST* expr = exponent(parser);
-    Token token = parser->currentToken;
-
-    while (isFactorToken(token.type)) {
-        consume(parser, token.type);
-        expr = binary(expr, exponent(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* term(Parser* parser)
-{
-    AST* expr = factor(parser);
-    Token token = parser->currentToken;
-
-    while (isTermToken(token.type)) {
-        consume(parser, token.type);
-        expr = binary(expr, factor(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* shift(Parser* parser)
-{
-    AST* expr = term(parser);
-    Token token = parser->currentToken;
-
-    while (isShiftToken(token.type)) {
-        consume(parser, token.type);
-        expr = binary(expr, term(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* comparison(Parser* parser)
-{
-    AST* expr = shift(parser);
-    Token token = parser->currentToken;
-
-    while (isComparisonToken(token.type)) {
-        consume(parser, token.type);
-        expr = binary(expr, shift(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* equality(Parser* parser)
-{
-    AST* expr = comparison(parser);
-    Token token = parser->currentToken;
-
-    while (isEqualityToken(token.type)) {
-        consume(parser, token.type);
-        expr = binary(expr, comparison(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* bitwiseAND(Parser* parser)
-{
-    AST* expr = equality(parser);
-    Token token = parser->currentToken;
-
-    while (token.type == TOKEN_AMPERSAND) {
-        consume(parser, token.type);
-        expr = binary(expr, equality(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* bitwiseXOR(Parser* parser)
-{
-    AST* expr = bitwiseAND(parser);
-    Token token = parser->currentToken;
-
-    while (token.type == TOKEN_CIRCUMFLEX) {
-        consume(parser, token.type);
-        expr = binary(expr, bitwiseAND(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* bitwiseOR(Parser* parser)
-{
-    AST* expr = bitwiseXOR(parser);
-    Token token = parser->currentToken;
-
-    while (token.type == TOKEN_PIPE) {
-        consume(parser, token.type);
-        expr = binary(expr, bitwiseXOR(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* booleanAND(Parser* parser)
-{
-    AST* expr = bitwiseOR(parser);
-    Token token = parser->currentToken;
-
-    while (token.type == TOKEN_BOOLEAN_AND) {
-        consume(parser, token.type);
-        expr = binary(expr, bitwiseOR(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* booleanOR(Parser* parser)
-{
-    AST* expr = booleanAND(parser);
-    Token token = parser->currentToken;
-
-    while (token.type == TOKEN_BOOLEAN_OR) {
-        consume(parser, token.type);
-        expr = binary(expr, booleanAND(parser), token);
-        token = parser->currentToken;
-    }
-
-    return expr;
-}
-
-static AST* expression(Parser* parser)
-{
-    return booleanOR(parser);
-}
-
-static AST* returnStatement(Parser* parser)
-{
-    Token token = parser->currentToken;
-    consume(parser, TOKEN_RETURN);
-
-    AST* expr = expression(parser);
-    if (!expr) {
-        return NULL;
-    }
-
-    AST* ast = createAST(AST_RETURN);
-    ast->returnStatement.token = token;
-    ast->returnStatement.expr = expr;
-
-    return ast;
-}
-
-static bool arguments(Parser* parser, Vector* args)
+static bool parseParameterList(Parser* parser, Vector* params)
 {
     consume(parser, TOKEN_LPAREN);
 
@@ -443,52 +487,12 @@ static bool arguments(Parser* parser, Vector* args)
     }
 
     while (parser->currentToken.type != TOKEN_RPAREN) {
-        AST* expr = expression(parser);
-
-        if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
-            expectedExpressionError(parser->currentToken);
-        }
-
-        if (!expr) {
+        AST* param = parseParameter(parser);
+        if (!param) {
             return false;
         }
 
-        pushVectorItem(args, expr);
-
-        if (parser->currentToken.type == TOKEN_COMMA) {
-            consume(parser, TOKEN_COMMA);
-        }
-    }
-
-    if (isEof(parser)) {
-        return false;
-    }
-
-    consume(parser, TOKEN_RPAREN);
-
-    return true;
-}
-
-static bool parameters(Parser* parser, Vector* params)
-{
-    consume(parser, TOKEN_LPAREN);
-
-    if (isEof(parser)) {
-        return false;
-    }
-
-    while (parser->currentToken.type != TOKEN_RPAREN) {
-        AST* expr = parameter(parser);
-
-        if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
-            expectedExpressionError(parser->currentToken);
-        }
-
-        if (!expr) {
-            return false;
-        }
-
-        pushVectorItem(params, expr);
+        pushVectorItem(params, param);
 
         if (parser->currentToken.type == TOKEN_COMMA) {
             consume(parser, TOKEN_COMMA);
@@ -522,11 +526,11 @@ static AST* createFunctionCall(Token token)
     return ast;
 }
 
-static AST* functionCall(Parser* parser)
+static AST* parseFunctionCall(Parser* parser)
 {
     AST* ast = createFunctionCall(parser->prevToken);
 
-    if (!arguments(parser, &ast->functionCall.args)) {
+    if (!parseArgumentList(parser, &ast->functionCall.args)) {
         freeAST(ast);
         
         return NULL;
@@ -572,7 +576,7 @@ static bool parseFunctionBody(Parser* parser, AST* ast)
     body->compound.scope = NULL;
     ast->functionDefinition.body = body;
 
-    if (!blocklevelStatements(parser, &body->compound.statements)) {
+    if (!parseBlocklevelStatements(parser, &body->compound.statements)) {
         return false;
     }
 
@@ -581,7 +585,7 @@ static bool parseFunctionBody(Parser* parser, AST* ast)
     return true;
 }
 
-static AST* functionDefinition(Parser* parser)
+static AST* parseFunctionDefinition(Parser* parser)
 {
     consume(parser, TOKEN_FUNC);
 
@@ -604,7 +608,7 @@ static AST* functionDefinition(Parser* parser)
 
     AST* ast = createFunctionDefinition(token, id);
 
-    if (!parameters(parser, &ast->functionDefinition.params)) {
+    if (!parseParameterList(parser, &ast->functionDefinition.params)) {
         freeAST(ast);
 
         return NULL;
@@ -633,13 +637,13 @@ static AST* createAssignment(Token operator, Token token, AST* expr)
     return ast;
 }
 
-static AST* assignment(Parser* parser)
+static AST* parseAssignment(Parser* parser)
 {
     Token operator = parser->currentToken;
     Token token = parser->prevToken;
     consume(parser, operator.type);
 
-    AST* expr = expression(parser);
+    AST* expr = parseExpression(parser);
     if (!expr) {
         return NULL;
     }
@@ -686,13 +690,13 @@ static bool parseVariableInitializer(Parser* parser, AST* ast)
     }
 
     consume(parser, TOKEN_EQUAL);
-    ast->variableDefinition.expr = expression(parser);
+    ast->variableDefinition.expr = parseExpression(parser);
     ast->variableDefinition.typeId = TOKEN_NONE;
 
     return ast->variableDefinition.expr != NULL;
 }
 
-static AST* variableDefinition(Parser* parser)
+static AST* parseVariableDefinition(Parser* parser)
 {
     consume(parser, TOKEN_VAR);
 
@@ -721,41 +725,41 @@ static AST* variableDefinition(Parser* parser)
     return ast;
 }
 
-static AST* identifier(Parser* parser)
+static AST* parseIdentifier(Parser* parser)
 {
     consume(parser, TOKEN_IDENTIFIER);
     
     if (isAssignmentToken(parser->currentToken.type)) {
-        return assignment(parser);
+        return parseAssignment(parser);
     }
 
     if (parser->currentToken.type == TOKEN_LPAREN) {
-        return functionCall(parser);
+        return parseFunctionCall(parser);
     }
 
     return createVariable(parser->prevToken);
 }
 
-static AST* statement(Parser* parser)
+static AST* parseStatement(Parser* parser)
 {
     switch (parser->currentToken.type) {
         case TOKEN_FUNC:
-            return functionDefinition(parser);
+            return parseFunctionDefinition(parser);
         case TOKEN_VAR:
-            return variableDefinition(parser);
+            return parseVariableDefinition(parser);
         case TOKEN_RETURN:
-            return returnStatement(parser);
+            return parseReturnStatement(parser);
         default:
-            return expression(parser);
+            return parseExpression(parser);
     }
 }
 
-static bool statements(Parser* parser, Vector* nodes, TokenType type)
+static bool parseStatements(Parser* parser, Vector* nodes, TokenType type)
 {
     Token token = parser->currentToken;
 
     while (token.type != type) {
-        AST* stmt = statement(parser);
+        AST* stmt = parseStatement(parser);
         if (!stmt) {
             return false;
         }
@@ -776,14 +780,14 @@ static bool statements(Parser* parser, Vector* nodes, TokenType type)
     return true;
 }
 
-static bool blocklevelStatements(Parser* parser, Vector* nodes)
+static bool parseBlocklevelStatements(Parser* parser, Vector* nodes)
 {
-    return statements(parser, nodes, TOKEN_RBRACE);
+    return parseStatements(parser, nodes, TOKEN_RBRACE);
 }
 
-static bool toplevelStatements(Parser* parser)
+static bool parseToplevelStatements(Parser* parser)
 {
-    return statements(parser, &parser->topLevel->compound.statements, TOKEN_EOF);
+    return parseStatements(parser, &parser->topLevel->compound.statements, TOKEN_EOF);
 }
 
 void initParser(Parser* parser, AST* ast)
@@ -796,5 +800,5 @@ bool parse(Parser* parser, char* source)
     initLexer(&parser->lexer, source);
     advance(parser);
 
-    return toplevelStatements(parser);
+    return parseToplevelStatements(parser);
 }

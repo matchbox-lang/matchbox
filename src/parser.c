@@ -401,9 +401,14 @@ static AST* parseReturnStatement(Parser* parser)
     return ast;
 }
 
-static bool parseArgument(Parser* parser, Vector* args)
+static AST* parseArgument(Parser* parser)
 {
-    AST* expr = parseExpression(parser);
+    return parseExpression(parser);
+}
+
+static bool parseArgumentListItem(Parser* parser, Vector* args)
+{
+    AST* expr = parseArgument(parser);
 
     if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
         expectedExpressionError(parser->currentToken);
@@ -431,7 +436,7 @@ static bool parseArgumentList(Parser* parser, Vector* args)
     }
 
     while (parser->currentToken.type != TOKEN_RPAREN) {
-        if (!parseArgument(parser, args)) {
+        if (!parseArgumentListItem(parser, args)) {
             return false;
         }
     }
@@ -478,6 +483,23 @@ static AST* parseParameter(Parser* parser)
     return ast;
 }
 
+static bool parseParameterListItem(Parser* parser, Vector* params)
+{
+    AST* param = parseParameter(parser);
+
+    if (!param) {
+        return false;
+    }
+
+    pushVectorItem(params, param);
+
+    if (parser->currentToken.type == TOKEN_COMMA) {
+        consume(parser, TOKEN_COMMA);
+    }
+
+    return true;
+}
+
 static bool parseParameterList(Parser* parser, Vector* params)
 {
     consume(parser, TOKEN_LPAREN);
@@ -487,15 +509,8 @@ static bool parseParameterList(Parser* parser, Vector* params)
     }
 
     while (parser->currentToken.type != TOKEN_RPAREN) {
-        AST* param = parseParameter(parser);
-        if (!param) {
+        if (!parseParameterListItem(parser, params)) {
             return false;
-        }
-
-        pushVectorItem(params, param);
-
-        if (parser->currentToken.type == TOKEN_COMMA) {
-            consume(parser, TOKEN_COMMA);
         }
     }
 

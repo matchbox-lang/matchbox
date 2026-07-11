@@ -139,6 +139,6 @@ bool isVariableDefinition(AST* ast);
 bool isVariableType(AST* ast);
 bool isNone(AST* ast);
 bool isInitialized(AST* ast);
-void initialize(AST* ast);
+void initializeVariable(AST* ast);
 
 #endif

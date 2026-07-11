@@ -225,7 +225,7 @@ static void analyzeAssignment(Analyzer* analyzer, AST* ast)
 
     freeStringObject(id);
 
-    if (!symbol) {
+    if (!symbol || !isVariableType(symbol)) {
         symbolError("undefined", ast->assignment.token);
     }
 
@@ -236,7 +236,7 @@ static void analyzeAssignment(Analyzer* analyzer, AST* ast)
     analyzeNode(analyzer, ast->assignment.expr);
     ast->assignment.scope = analyzer->currentScope;
     ast->assignment.symbol = symbol;
-    initialize(symbol);
+    initializeVariable(symbol);
 }
 
 static void analyzeVariableDefinition(Analyzer* analyzer, AST* ast)
@@ -252,7 +252,7 @@ static void analyzeVariableDefinition(Analyzer* analyzer, AST* ast)
     if (!isNone(ast->variableDefinition.expr)) {
         analyzeNode(analyzer, ast->variableDefinition.expr);
         ast->variableDefinition.typeId = getTypeId(ast->variableDefinition.expr);
-        initialize(ast);
+        initializeVariable(ast);
     }
 
     if (ast->variableDefinition.typeId == TOKEN_NONE) {

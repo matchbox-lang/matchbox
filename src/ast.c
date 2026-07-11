@@ -229,7 +229,7 @@ bool isInitialized(AST* ast)
     return ast->type == AST_PARAMETER;
 }
 
-void initialize(AST* ast)
+void initializeVariable(AST* ast)
 {
     if (isVariableDefinition(ast)) {
         ast->variableDefinition.initialized = true;

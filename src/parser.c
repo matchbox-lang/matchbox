@@ -40,7 +40,7 @@ static void expectedTypeError(Token token)
 
 static void expectedTokenError(TokenType type, Token token)
 {
-    fprintf(stderr, "Error: Expected %s but found ", tokenTypeName(type));
+    fprintf(stderr, "Error: Expected %s but found ", getTokenTypeName(type));
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);

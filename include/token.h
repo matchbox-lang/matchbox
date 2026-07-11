@@ -153,7 +153,7 @@ typedef struct Token
 
 void printToken(Token* token);
 void printTokenValue(Token token);
-const char* tokenTypeName(TokenType type);
+const char* getTokenTypeName(TokenType type);
 bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
 bool isComparisonToken(TokenType type);

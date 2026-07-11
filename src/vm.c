@@ -46,8 +46,6 @@ static void run(VM* vm)
     int32_t a;
     int32_t b;
     int32_t x;
-    Builtin builtin;
-    Value value;
 
     vm->ip = function->code.data;
     
@@ -55,21 +53,23 @@ static void run(VM* vm)
 
     while ((opcode = READ_UINT8())) {
         switch (opcode) {
-            case OP_LDC:
+            case OP_LDC: {
                 x = READ_UINT8();
-                value = vm->module->constants.data[x];
+                Value value = vm->module->constants.data[x];
                 PUSH(value);
                 break;
+            }
 
             case OP_REG:
                 pushValue(&vm->globals, POP());
                 break;
 
-            case OP_LDG:
+            case OP_LDG: {
                 x = READ_UINT8();
-                value = vm->globals.data[x];
+                Value value = vm->globals.data[x];
                 PUSH(value);
                 break;
+            }
 
             case OP_STG:
                 x = READ_UINT8();
@@ -270,17 +270,19 @@ static void run(VM* vm)
                 vm->ip += READ_UINT16();
                 break;
 
-            case OP_CALL_BUILTIN:
-                x = READ_UINT8();
-                builtin = builtins[x];
-                value = vm->builtins[x](vm->sp - builtin.paramCount);
-                vm->sp -= builtin.paramCount;
-                PUSH(value);
-                break;
-
             case OP_CALL:
                 x = READ_UINT16();
                 function = vm->module->functions.data[x];
+
+                if (function->type == FUNCTION_BUILTIN) {
+                    builtin_t fn = vm->builtins[function->builtinId];
+                    Value* args = vm->sp - function->paramCount;
+                    Value result = fn(args);
+
+                    vm->sp -= function->paramCount;
+                    PUSH(result);
+                    break;
+                }
 
                 TEST_OVERFLOW(function->maxStackCount);
                 PUSH_INT(function->paramCount);
@@ -299,14 +301,15 @@ static void run(VM* vm)
                 PUSH_INT(0);
                 break;
 
-            case OP_RETV:
-                value = POP();
+            case OP_RETV: {
+                Value result = POP();
                 vm->sp = vm->fp;
                 vm->fp = POP_POINTER();
                 vm->ip = POP_POINTER();
                 vm->sp -= POP_INT();
-                PUSH(value);
+                PUSH(result);
                 break;
+            }
 
             default:
                 return;

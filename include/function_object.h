@@ -5,10 +5,18 @@
 
 #define AS_FUNCTION_OBJECT(value) ((FunctionObject*)AS_OBJECT(value))
 
+typedef enum FunctionType
+{
+    FUNCTION_BUILTIN,
+    FUNCTION_DEFINED
+} FunctionType;
+
 typedef struct FunctionObject
 {
     Object obj;
+    FunctionType type;
     CodeObject code;
+    int builtinId;
     int paramCount;
     int localCount;
     int maxStackCount;

@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include "ast.h"
+#include "builtin.h"
 #include "code_object.h"
 #include "function_object.h"
 #include "module_object.h"
@@ -13,12 +14,26 @@
 #include "vector.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
 
 static void compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileToplevelStatements(Compiler* compiler, Vector* nodes);
+
+static void functionPositionOverflowError()
+{
+    fprintf(stderr, "Error: Cannot create more than 65536 functions\n");
+    exit(1);
+}
+
+static void functionNotFoundError(ASTNode* ast)
+{
+    fprintf(stderr, "Error: Could not find function %s\n", ast->functionDefinition.id->chars);
+    exit(1);
+}
 
 static CodeObject* currentCodeObject(Compiler* compiler)
 {
@@ -245,12 +260,6 @@ static void emitNeg(Compiler* compiler)
 static void emitNot(Compiler* compiler)
 {
     write8(compiler, OP_NOT);
-}
-
-static void emitCallBuiltin(Compiler* compiler, uint8_t imm)
-{
-    write8(compiler, OP_CALL_BUILTIN);
-    write8(compiler, imm);
 }
 
 static void emitCall(Compiler* compiler, uint16_t imm)
@@ -499,23 +508,76 @@ static void compileArguments(Compiler* compiler, Vector* args)
     }
 }
 
-static int getFunctionPosition(Compiler* compiler, ASTNode* ast)
+static uint16_t makeFunctionPosition(size_t position)
 {
-    size_t functionCount = countVector(&compiler->functionReferences);
-    
-    for (int i = 0; i < functionCount; i++) {
-        if (ast == compiler->functionReferences.data[i]) {
-            return i;
+    if (position > UINT16_MAX) {
+        functionPositionOverflowError();
+    }
+
+    return (uint16_t)position;
+}
+
+static FunctionObject* createBuiltinFunctionObject(BuiltinId id)
+{
+    FunctionObject* function = createFunctionObject();
+    function->type = FUNCTION_BUILTIN;
+    function->builtinId = id;
+    function->paramCount = builtins[id].paramCount;
+
+    return function;
+}
+
+static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
+{
+    ASTNode* body = ast->functionDefinition.body;
+    FunctionObject* function = createFunctionObject();
+    function->paramCount = countVector(&ast->functionDefinition.params);
+    function->localCount = body->compound.scope->localCount;
+    function->maxStackCount = function->localCount + 3;
+
+    return function;
+}
+
+static uint16_t getBuiltinFunctionPosition(Compiler* compiler, BuiltinId id)
+{
+    size_t functionCount = countVector(&compiler->module->functions);
+
+    for (size_t i = 0; i < functionCount; i++) {
+        FunctionObject* function = getVectorAt(&compiler->module->functions, i);
+
+        if (function->type == FUNCTION_BUILTIN && function->builtinId == id) {
+            return makeFunctionPosition(i);
         }
     }
 
-    return -1;
+    uint16_t position = makeFunctionPosition(functionCount);
+    FunctionObject* function = createBuiltinFunctionObject(id);
+
+    pushVectorItem(&compiler->module->functions, function);
+    pushVectorItem(&compiler->functionReferences, NULL);
+
+    return position;
+}
+
+static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
+{
+    size_t functionCount = countVector(&compiler->functionReferences);
+    
+    for (size_t i = 0; i < functionCount; i++) {
+        if (ast == compiler->functionReferences.data[i]) {
+            return makeFunctionPosition(i);
+        }
+    }
+
+    functionNotFoundError(ast);
+
+    return 0;
 }
 
 static void compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
     compileArguments(compiler, &ast->builtinCall.args);
-    emitCallBuiltin(compiler, ast->builtinCall.id);
+    emitCall(compiler, getBuiltinFunctionPosition(compiler, ast->builtinCall.id));
 
     if (discard) {
         emitPop(compiler);
@@ -525,6 +587,7 @@ static void compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 static void compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
     uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
+
     compileArguments(compiler, &ast->functionCall.args);
     emitCall(compiler, position);
 
@@ -535,12 +598,9 @@ static void compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
 {
-    ASTNode* body = ast->functionDefinition.body;
     FunctionObject* previousFunction = compiler->function;
-    FunctionObject* function = createFunctionObject();
-    function->paramCount = countVector(&ast->functionDefinition.params);
-    function->localCount = body->compound.scope->localCount;
-    function->maxStackCount = function->localCount + 3;
+    FunctionObject* function = createDefinedFunctionObject(ast);
+    ASTNode* body = ast->functionDefinition.body;
     
     compiler->stackCount = function->maxStackCount;
     compiler->function = function;
@@ -677,7 +737,7 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
         return;
     }
 
-    emitCallBuiltin(compiler, BUILTIN_PRINT);
+    emitCall(compiler, getBuiltinFunctionPosition(compiler, BUILTIN_PRINT));
     emitPop(compiler);
 }
 
@@ -695,7 +755,10 @@ static void compileReplStatements(Compiler* compiler, Vector* nodes)
 void initCompiler(Compiler* compiler, ModuleObject* module)
 {
     initVector(&compiler->functionReferences);
-    pushVectorItem(&compiler->functionReferences, NULL);
+
+    for (size_t i = 0; i < countVector(&module->functions); i++) {
+        pushVectorItem(&compiler->functionReferences, NULL);
+    }
 
     ASTNode* ast = createASTNode(AST_COMPOUND);
     ast->compound.scope = createScope(NULL);

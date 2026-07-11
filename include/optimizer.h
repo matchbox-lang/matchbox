@@ -4,6 +4,6 @@
 #include "ast.h"
 #include <stddef.h>
 
-void optimize(AST* ast, size_t start);
+void optimize(ASTNode* ast, size_t start);
 
 #endif

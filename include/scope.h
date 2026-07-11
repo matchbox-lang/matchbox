@@ -4,7 +4,7 @@
 #include "object.h"
 #include "table.h"
 
-typedef struct AST AST;
+typedef struct ASTNode ASTNode;
 typedef struct Scope Scope;
 
 typedef struct Scope
@@ -20,9 +20,9 @@ void freeScope(Scope* scope);
 size_t getLocalCount(Scope* scope);
 size_t getScopeLevel(Scope* scope);
 bool isTopLevelScope(Scope* scope);
-AST* setLocalSymbol(Scope* scope, StringObject* id, AST* symbol);
-AST* setLocalVariableSymbol(Scope* scope, StringObject* id, AST* symbol);
-AST* getLocalSymbol(Scope* scope, StringObject* id);
-AST* getSymbol(Scope* scope, StringObject* id);
+ASTNode* setLocalSymbol(Scope* scope, StringObject* id, ASTNode* symbol);
+ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol);
+ASTNode* getLocalSymbol(Scope* scope, StringObject* id);
+ASTNode* getSymbol(Scope* scope, StringObject* id);
 
 #endif

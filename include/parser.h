@@ -7,13 +7,13 @@
 
 typedef struct Parser
 {
-    AST* topLevel;
+    ASTNode* topLevel;
     Lexer lexer;
     Token currentToken;
     Token prevToken;
 } Parser;
 
-void initParser(Parser* parser, AST* ast);
+void initParser(Parser* parser, ASTNode* ast);
 bool parse(Parser* parser, char* source);
 
 #endif

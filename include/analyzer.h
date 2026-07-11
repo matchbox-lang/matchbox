@@ -6,11 +6,11 @@
 
 typedef struct Analyzer
 {
-    AST* topLevel;
+    ASTNode* topLevel;
     Scope* currentScope;
 } Analyzer;
 
-void initAnalyzer(Analyzer* analyzer, AST* ast);
+void initAnalyzer(Analyzer* analyzer, ASTNode* ast);
 bool analyze(Analyzer* analyzer, size_t start);
 
 #endif

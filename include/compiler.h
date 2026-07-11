@@ -16,7 +16,7 @@ typedef struct Compiler
     Vector functionReferences;
     ModuleObject* module;
     FunctionObject* function;
-    AST* ast;
+    ASTNode* ast;
     size_t statementIndex;
     int stackCount;
 } Compiler;

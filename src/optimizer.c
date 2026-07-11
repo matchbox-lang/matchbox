@@ -3,9 +3,9 @@
 #include "vector.h"
 #include <math.h>
 
-static void optimizeNode(AST* ast);
+static void optimizeNode(ASTNode* ast);
 
-static bool foldBinaryValue(AST* ast, int* value)
+static bool foldBinaryValue(ASTNode* ast, int* value)
 {
     int left = ast->binary.leftExpr->integerLiteral.value;
     int right = ast->binary.rightExpr->integerLiteral.value;
@@ -48,7 +48,7 @@ static bool foldBinaryValue(AST* ast, int* value)
     }
 }
 
-static void foldBinary(AST* ast)
+static void foldBinary(ASTNode* ast)
 {
     if (ast->binary.leftExpr->type != AST_INTEGER) {
         return;
@@ -65,8 +65,8 @@ static void foldBinary(AST* ast)
         return;
     }
 
-    freeAST(ast->binary.leftExpr);
-    freeAST(ast->binary.rightExpr);
+    freeASTNode(ast->binary.leftExpr);
+    freeASTNode(ast->binary.rightExpr);
 
     ast->type = AST_INTEGER;
     ast->integerLiteral.value = value;
@@ -82,7 +82,7 @@ static void optimizeNodes(Vector* nodes)
     }
 }
 
-static void optimizeNode(AST* ast)
+static void optimizeNode(ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
@@ -116,7 +116,7 @@ static void optimizeNode(AST* ast)
     }
 }
 
-void optimize(AST* ast, size_t start)
+void optimize(ASTNode* ast, size_t start)
 {
     size_t count = countVector(&ast->compound.statements);
 

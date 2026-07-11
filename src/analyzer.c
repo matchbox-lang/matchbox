@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void analyzeNode(Analyzer* analyzer, AST* ast);
+static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
 
 static void semanticError(char* message, Token token)
 {
@@ -25,9 +25,9 @@ static void symbolError(char* message, Token token)
     exit(1);
 }
 
-static AST* findSymbol(Analyzer* analyzer, StringObject* id)
+static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
 {
-    AST* symbol = getLocalSymbol(analyzer->currentScope, id);
+    ASTNode* symbol = getLocalSymbol(analyzer->currentScope, id);
     if (symbol) {
         return symbol;
     }
@@ -49,7 +49,7 @@ static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
     analyzeNodes(analyzer, nodes, 0);
 }
 
-static void analyzeBinary(Analyzer* analyzer, AST* ast)
+static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
     analyzeNode(analyzer, ast->binary.rightExpr);
@@ -68,9 +68,9 @@ static void analyzeBinary(Analyzer* analyzer, AST* ast)
     }
 }
 
-static void analyzeVariable(Analyzer* analyzer, AST* ast)
+static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 {
-    AST* symbol = findSymbol(analyzer, ast->variable.id);
+    ASTNode* symbol = findSymbol(analyzer, ast->variable.id);
 
     if (!symbol || !isVariableType(symbol)) {
         symbolError("undefined", ast->variable.token);
@@ -84,7 +84,7 @@ static void analyzeVariable(Analyzer* analyzer, AST* ast)
     ast->variable.symbol = symbol;
 }
 
-static void analyzeParameter(Analyzer* analyzer, AST* ast)
+static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->parameter.id)) {
         semanticError("Redefinition of ", ast->parameter.token);
@@ -94,7 +94,7 @@ static void analyzeParameter(Analyzer* analyzer, AST* ast)
     setLocalSymbol(analyzer->currentScope, ast->parameter.id, ast);
 }
 
-static void validateBuiltinCall(AST* ast, Builtin* builtin, Token token)
+static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 {
     size_t count = countVector(&ast->functionCall.args);
 
@@ -103,7 +103,7 @@ static void validateBuiltinCall(AST* ast, Builtin* builtin, Token token)
     }
 
     for (size_t i = 0; i < count; i++) {
-        AST* arg = getVectorAt(&ast->functionCall.args, i);
+        ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
 
         if (getTypeId(arg) != builtin->params[i]) {
             semanticError("Invalid arguments to function ", token);
@@ -111,7 +111,7 @@ static void validateBuiltinCall(AST* ast, Builtin* builtin, Token token)
     }
 }
 
-static void convertBuiltinCall(AST* ast, Builtin* builtin)
+static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
 {
     Vector args = ast->functionCall.args;
     
@@ -123,7 +123,7 @@ static void convertBuiltinCall(AST* ast, Builtin* builtin)
     ast->builtinCall.builtin = builtin;
 }
 
-static void analyzeBuiltinCall(AST* ast)
+static void analyzeBuiltinCall(ASTNode* ast)
 {
     Builtin* builtin = getBuiltinByName(ast->functionCall.id->chars);
     if (!builtin) {
@@ -134,7 +134,7 @@ static void analyzeBuiltinCall(AST* ast)
     convertBuiltinCall(ast, builtin);
 }
 
-static void validateFunctionCall(AST* caller, AST* callee, Token token)
+static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = countVector(&caller->functionCall.args);
     size_t paramCount = countVector(&callee->functionDefinition.params);
@@ -144,8 +144,8 @@ static void validateFunctionCall(AST* caller, AST* callee, Token token)
     }
 
     for (size_t i = 0; i < count; i++) {
-        AST* arg = getVectorAt(&caller->functionCall.args, i);
-        AST* param = getVectorAt(&callee->functionDefinition.params, i);
+        ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
+        ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
 
         if (getTypeId(arg) != param->parameter.typeId) {
             semanticError("Invalid arguments to function ", token);
@@ -153,11 +153,11 @@ static void validateFunctionCall(AST* caller, AST* callee, Token token)
     }
 }
 
-static void analyzeFunctionCall(Analyzer* analyzer, AST* ast)
+static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeExpressionNodes(analyzer, &ast->functionCall.args);
 
-    AST* symbol = findSymbol(analyzer, ast->functionCall.id);
+    ASTNode* symbol = findSymbol(analyzer, ast->functionCall.id);
     if (!symbol) {
         analyzeBuiltinCall(ast);
         return;
@@ -177,7 +177,7 @@ static bool hasValueReturn(Vector* statements)
     size_t count = countVector(statements);
 
     for (size_t i = 0; i < count; i++) {
-        AST* statement = getVectorAt(statements, i);
+        ASTNode* statement = getVectorAt(statements, i);
 
         if (statement->type == AST_RETURN) {
             return true;
@@ -187,7 +187,7 @@ static bool hasValueReturn(Vector* statements)
     return false;
 }
 
-static void analyzeFunction(Analyzer* analyzer, AST* ast)
+static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->functionDefinition.id)) {
         semanticError("Redefinition of ", ast->functionDefinition.token);
@@ -203,7 +203,7 @@ static void analyzeFunction(Analyzer* analyzer, AST* ast)
     size_t count = countVector(&ast->functionDefinition.params);
 
     for (size_t i = 0; i < count; i++) {
-        AST* param = getVectorAt(&ast->functionDefinition.params, i);
+        ASTNode* param = getVectorAt(&ast->functionDefinition.params, i);
         param->parameter.position = count - i - 1;
     }
 
@@ -218,10 +218,10 @@ static void analyzeFunction(Analyzer* analyzer, AST* ast)
     setLocalSymbol(parent, ast->functionDefinition.id, ast);
 }
 
-static void analyzeAssignment(Analyzer* analyzer, AST* ast)
+static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     StringObject* id = copyStringObject(ast->assignment.token.chars, ast->assignment.token.length);
-    AST* symbol = findSymbol(analyzer, id);
+    ASTNode* symbol = findSymbol(analyzer, id);
 
     freeStringObject(id);
 
@@ -239,7 +239,7 @@ static void analyzeAssignment(Analyzer* analyzer, AST* ast)
     initializeVariable(symbol);
 }
 
-static void analyzeVariableDefinition(Analyzer* analyzer, AST* ast)
+static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->variableDefinition.id)) {
         semanticError("Redefinition of ", ast->variableDefinition.token);
@@ -262,7 +262,7 @@ static void analyzeVariableDefinition(Analyzer* analyzer, AST* ast)
     setLocalVariableSymbol(analyzer->currentScope, ast->variableDefinition.id, ast);
 }
 
-static void analyzeNode(Analyzer* analyzer, AST* ast)
+static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
@@ -293,7 +293,7 @@ static void analyzeNode(Analyzer* analyzer, AST* ast)
     }
 }
 
-void initAnalyzer(Analyzer* analyzer, AST* ast)
+void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
 {
     analyzer->topLevel = ast;
     analyzer->currentScope = ast->compound.scope;

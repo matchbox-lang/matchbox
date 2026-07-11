@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-AST* createAST(ASTType type)
+ASTNode* createASTNode(ASTNodeType type)
 {
-    AST* ast = calloc(1, sizeof(AST));
+    ASTNode* ast = calloc(1, sizeof(ASTNode));
     if (!ast) {
         outOfMemoryError();
     }
@@ -39,18 +39,18 @@ AST* createAST(ASTType type)
     return ast;
 }
 
-static void freeASTVector(Vector* nodes)
+static void freeASTNodeVector(Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        freeAST(nodes->data[i]);
+        freeASTNode(nodes->data[i]);
     }
 
     freeVector(nodes);
 }
 
-void freeAST(AST* ast)
+void freeASTNode(ASTNode* ast)
 {
     if (!ast) {
         return;
@@ -58,40 +58,40 @@ void freeAST(AST* ast)
 
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            freeAST(ast->assignment.expr);
+            freeASTNode(ast->assignment.expr);
             break;
         case AST_BINARY:
-            freeAST(ast->binary.leftExpr);
-            freeAST(ast->binary.rightExpr);
+            freeASTNode(ast->binary.leftExpr);
+            freeASTNode(ast->binary.rightExpr);
             break;
         case AST_COMPOUND:
             freeScope(ast->compound.scope);
-            freeASTVector(&ast->compound.statements);
+            freeASTNodeVector(&ast->compound.statements);
             break;
         case AST_BUILTIN_CALL:
-            freeASTVector(&ast->builtinCall.args);
+            freeASTNodeVector(&ast->builtinCall.args);
             break;
         case AST_FUNCTION_CALL:
             freeStringObject(ast->functionCall.id);
-            freeASTVector(&ast->functionCall.args);
+            freeASTNodeVector(&ast->functionCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
             freeStringObject(ast->functionDefinition.id);
-            freeASTVector(&ast->functionDefinition.params);
-            freeAST(ast->functionDefinition.body);
+            freeASTNodeVector(&ast->functionDefinition.params);
+            freeASTNode(ast->functionDefinition.body);
             break;
         case AST_PARAMETER:
             freeStringObject(ast->parameter.id);
             break;
         case AST_PREFIX:
-            freeAST(ast->prefix.expr);
+            freeASTNode(ast->prefix.expr);
             break;
         case AST_RETURN:
-            freeAST(ast->returnStatement.expr);
+            freeASTNode(ast->returnStatement.expr);
             break;
         case AST_VARIABLE_DEFINITION:
             freeStringObject(ast->variableDefinition.id);
-            freeAST(ast->variableDefinition.expr);
+            freeASTNode(ast->variableDefinition.expr);
             break;
         case AST_VARIABLE:
             freeStringObject(ast->variable.id);
@@ -103,7 +103,7 @@ void freeAST(AST* ast)
     free(ast);
 }
 
-Scope* getScope(AST* ast)
+Scope* getScope(ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
@@ -125,7 +125,7 @@ Scope* getScope(AST* ast)
     }
 }
 
-TokenType getTypeId(AST* ast)
+TokenType getTypeId(ASTNode* ast)
 {
     if (!ast) {
         return TOKEN_NONE;
@@ -163,7 +163,7 @@ TokenType getTypeId(AST* ast)
     }
 }
 
-bool isExpressionStatement(AST* ast)
+bool isExpressionStatement(ASTNode* ast)
 {
     switch (ast->type) {
         case AST_BINARY:
@@ -182,27 +182,27 @@ bool isExpressionStatement(AST* ast)
     }
 }
 
-bool isFunctionCall(AST* ast)
+bool isFunctionCall(ASTNode* ast)
 {
     return ast->type == AST_FUNCTION_CALL;
 }
 
-bool isFunctionDefinition(AST* ast)
+bool isFunctionDefinition(ASTNode* ast)
 {
     return ast->type == AST_FUNCTION_DEFINITION;
 }
 
-bool isParameter(AST* ast)
+bool isParameter(ASTNode* ast)
 {
     return ast->type == AST_PARAMETER;
 }
 
-bool isPrefix(AST* ast)
+bool isPrefix(ASTNode* ast)
 {
     return ast->type == AST_PREFIX;
 }
 
-bool isPrefixOperand(AST* ast)
+bool isPrefixOperand(ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
@@ -221,27 +221,27 @@ bool isPrefixOperand(AST* ast)
     }
 }
 
-bool isVariable(AST* ast)
+bool isVariable(ASTNode* ast)
 {
     return ast->type == AST_VARIABLE;
 }
 
-bool isVariableDefinition(AST* ast)
+bool isVariableDefinition(ASTNode* ast)
 {
     return ast->type == AST_VARIABLE_DEFINITION;
 }
 
-bool isVariableType(AST* ast)
+bool isVariableType(ASTNode* ast)
 {
     return ast->type == AST_PARAMETER || ast->type == AST_VARIABLE_DEFINITION;
 }
 
-bool isNone(AST* ast)
+bool isNone(ASTNode* ast)
 {
     return ast->type == AST_NONE;
 }
 
-bool isInitialized(AST* ast)
+bool isInitialized(ASTNode* ast)
 {
     if (ast->type == AST_VARIABLE_DEFINITION) {
         return ast->variableDefinition.initialized;
@@ -250,7 +250,7 @@ bool isInitialized(AST* ast)
     return ast->type == AST_PARAMETER;
 }
 
-void initializeVariable(AST* ast)
+void initializeVariable(ASTNode* ast)
 {
     if (isVariableDefinition(ast)) {
         ast->variableDefinition.initialized = true;

@@ -6,12 +6,12 @@
 #include "vector.h"
 #include <stdbool.h>
 
-typedef struct AST AST;
+typedef struct ASTNode ASTNode;
 typedef struct StringObject StringObject;
 typedef struct Scope Scope;
 typedef struct Builtin Builtin;
 
-typedef enum ASTType
+typedef enum ASTNodeType
 {
     AST_ASSIGNMENT,
     AST_BINARY,
@@ -30,25 +30,25 @@ typedef enum ASTType
     AST_VARIABLE,
     AST_VARIABLE_DEFINITION,
     AST_NONE
-} ASTType;
+} ASTNodeType;
 
-typedef struct AST
+typedef struct ASTNode
 {
-    ASTType type;
+    ASTNodeType type;
 
     union {
         struct {
             Scope* scope;
             Token operator;
             Token token;
-            AST* expr;
-            AST* symbol;
+            ASTNode* expr;
+            ASTNode* symbol;
         } assignment;
 
         struct {
             Token operator;
-            AST* leftExpr;
-            AST* rightExpr;
+            ASTNode* leftExpr;
+            ASTNode* rightExpr;
             TokenType typeId;
         } binary;
 
@@ -82,7 +82,7 @@ typedef struct AST
             Vector args;
             StringObject* id;
             Token token;
-            AST* symbol;
+            ASTNode* symbol;
         } functionCall;
 
         struct {
@@ -92,7 +92,7 @@ typedef struct AST
             Vector params;
             bool hasExplicitReturnType;
             TokenType typeId;
-            AST* body;
+            ASTNode* body;
         } functionDefinition;
 
         struct {
@@ -110,12 +110,12 @@ typedef struct AST
 
         struct {
             Token operator;
-            AST* expr;
+            ASTNode* expr;
         } prefix;
 
         struct {
             Token token;
-            AST* expr;
+            ASTNode* expr;
         } returnStatement;
 
         struct {
@@ -126,7 +126,7 @@ typedef struct AST
             Scope* scope;
             StringObject* id;
             Token token;
-            AST* symbol;
+            ASTNode* symbol;
         } variable;
 
         struct {
@@ -136,26 +136,26 @@ typedef struct AST
             bool initialized;
             TokenType typeId;
             int position;
-            AST* expr;
+            ASTNode* expr;
         } variableDefinition;
     };
-} AST;
+} ASTNode;
 
-AST* createAST(ASTType type);
-void freeAST(AST* ast);
-Scope* getScope(AST* ast);
-TokenType getTypeId(AST* ast);
-bool isExpressionStatement(AST* ast);
-bool isFunctionCall(AST* ast);
-bool isFunctionDefinition(AST* ast);
-bool isParameter(AST* ast);
-bool isPrefix(AST* ast);
-bool isPrefixOperand(AST* ast);
-bool isVariable(AST* ast);
-bool isVariableDefinition(AST* ast);
-bool isVariableType(AST* ast);
-bool isNone(AST* ast);
-bool isInitialized(AST* ast);
-void initializeVariable(AST* ast);
+ASTNode* createASTNode(ASTNodeType type);
+void freeASTNode(ASTNode* ast);
+Scope* getScope(ASTNode* ast);
+TokenType getTypeId(ASTNode* ast);
+bool isExpressionStatement(ASTNode* ast);
+bool isFunctionCall(ASTNode* ast);
+bool isFunctionDefinition(ASTNode* ast);
+bool isParameter(ASTNode* ast);
+bool isPrefix(ASTNode* ast);
+bool isPrefixOperand(ASTNode* ast);
+bool isVariable(ASTNode* ast);
+bool isVariableDefinition(ASTNode* ast);
+bool isVariableType(ASTNode* ast);
+bool isNone(ASTNode* ast);
+bool isInitialized(ASTNode* ast);
+void initializeVariable(ASTNode* ast);
 
 #endif

@@ -103,8 +103,12 @@ void freeASTNode(ASTNode* ast)
     free(ast);
 }
 
-Scope* getScope(ASTNode* ast)
+Scope* getScope(const ASTNode* ast)
 {
+    if (!ast) {
+        return NULL;
+    }
+
     switch (ast->type) {
         case AST_ASSIGNMENT:
             return ast->assignment.scope;
@@ -125,7 +129,7 @@ Scope* getScope(ASTNode* ast)
     }
 }
 
-TokenType getTypeId(ASTNode* ast)
+TokenType getTypeId(const ASTNode* ast)
 {
     if (!ast) {
         return TOKEN_NONE;
@@ -163,8 +167,12 @@ TokenType getTypeId(ASTNode* ast)
     }
 }
 
-bool isExpressionStatement(ASTNode* ast)
+bool isExpressionStatement(const ASTNode* ast)
 {
+    if (!ast) {
+        return false;
+    }
+
     switch (ast->type) {
         case AST_BINARY:
         case AST_BOOLEAN:
@@ -182,28 +190,32 @@ bool isExpressionStatement(ASTNode* ast)
     }
 }
 
-bool isFunctionCall(ASTNode* ast)
+bool isFunctionCall(const ASTNode* ast)
 {
-    return ast->type == AST_FUNCTION_CALL;
+    return ast && ast->type == AST_FUNCTION_CALL;
 }
 
-bool isFunctionDefinition(ASTNode* ast)
+bool isFunctionDefinition(const ASTNode* ast)
 {
-    return ast->type == AST_FUNCTION_DEFINITION;
+    return ast && ast->type == AST_FUNCTION_DEFINITION;
 }
 
-bool isParameter(ASTNode* ast)
+bool isParameter(const ASTNode* ast)
 {
-    return ast->type == AST_PARAMETER;
+    return ast && ast->type == AST_PARAMETER;
 }
 
-bool isPrefix(ASTNode* ast)
+bool isPrefix(const ASTNode* ast)
 {
-    return ast->type == AST_PREFIX;
+    return ast && ast->type == AST_PREFIX;
 }
 
-bool isPrefixOperand(ASTNode* ast)
+bool isPrefixOperand(const ASTNode* ast)
 {
+    if (!ast) {
+        return false;
+    }
+
     switch (ast->type) {
         case AST_ASSIGNMENT:
         case AST_BINARY:
@@ -221,28 +233,33 @@ bool isPrefixOperand(ASTNode* ast)
     }
 }
 
-bool isVariable(ASTNode* ast)
+bool isVariable(const ASTNode* ast)
 {
-    return ast->type == AST_VARIABLE;
+    return ast && ast->type == AST_VARIABLE;
 }
 
-bool isVariableDefinition(ASTNode* ast)
+bool isVariableDefinition(const ASTNode* ast)
 {
-    return ast->type == AST_VARIABLE_DEFINITION;
+    return ast && ast->type == AST_VARIABLE_DEFINITION;
 }
 
-bool isVariableType(ASTNode* ast)
+bool isVariableType(const ASTNode* ast)
 {
-    return ast->type == AST_PARAMETER || ast->type == AST_VARIABLE_DEFINITION;
+    return ast &&
+        (ast->type == AST_PARAMETER || ast->type == AST_VARIABLE_DEFINITION);
 }
 
-bool isNone(ASTNode* ast)
+bool isNone(const ASTNode* ast)
 {
-    return ast->type == AST_NONE;
+    return ast && ast->type == AST_NONE;
 }
 
-bool isInitialized(ASTNode* ast)
+bool isInitialized(const ASTNode* ast)
 {
+    if (!ast) {
+        return false;
+    }
+
     if (ast->type == AST_VARIABLE_DEFINITION) {
         return ast->variableDefinition.initialized;
     }

@@ -143,19 +143,19 @@ typedef struct ASTNode
 
 ASTNode* createASTNode(ASTNodeType type);
 void freeASTNode(ASTNode* ast);
-Scope* getScope(ASTNode* ast);
-TokenType getTypeId(ASTNode* ast);
-bool isExpressionStatement(ASTNode* ast);
-bool isFunctionCall(ASTNode* ast);
-bool isFunctionDefinition(ASTNode* ast);
-bool isParameter(ASTNode* ast);
-bool isPrefix(ASTNode* ast);
-bool isPrefixOperand(ASTNode* ast);
-bool isVariable(ASTNode* ast);
-bool isVariableDefinition(ASTNode* ast);
-bool isVariableType(ASTNode* ast);
-bool isNone(ASTNode* ast);
-bool isInitialized(ASTNode* ast);
+Scope* getScope(const ASTNode* ast);
+TokenType getTypeId(const ASTNode* ast);
+bool isExpressionStatement(const ASTNode* ast);
+bool isFunctionCall(const ASTNode* ast);
+bool isFunctionDefinition(const ASTNode* ast);
+bool isParameter(const ASTNode* ast);
+bool isPrefix(const ASTNode* ast);
+bool isPrefixOperand(const ASTNode* ast);
+bool isVariable(const ASTNode* ast);
+bool isVariableDefinition(const ASTNode* ast);
+bool isVariableType(const ASTNode* ast);
+bool isNone(const ASTNode* ast);
+bool isInitialized(const ASTNode* ast);
 void initializeVariable(ASTNode* ast);
 
 #endif

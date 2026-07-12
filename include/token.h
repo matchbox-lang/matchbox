@@ -49,7 +49,7 @@ typedef enum TokenType
     TOKEN_CATCH,
     TOKEN_FINALLY,
     TOKEN_THROW,
-    TOKEN_NONE,
+    TOKEN_VOID,
     TOKEN_INT,
     TOKEN_UINT,
     TOKEN_INT8,

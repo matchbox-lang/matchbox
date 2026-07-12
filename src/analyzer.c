@@ -212,7 +212,7 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 
     if (!ast->functionDefinition.hasExplicitReturnType &&
         !hasValueReturn(&ast->functionDefinition.body->compound.statements)) {
-        ast->functionDefinition.typeId = TOKEN_NONE;
+        ast->functionDefinition.typeId = TOKEN_VOID;
     }
 
     setLocalSymbol(parent, ast->functionDefinition.id, ast);
@@ -255,7 +255,7 @@ static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
         initializeVariable(ast);
     }
 
-    if (ast->variableDefinition.typeId == TOKEN_NONE) {
+    if (ast->variableDefinition.typeId == TOKEN_VOID) {
         semanticError("Invalid type for variable ", ast->variableDefinition.token);
     }
 

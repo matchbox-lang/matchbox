@@ -730,7 +730,7 @@ static void compileToplevelStatements(Compiler* compiler, Vector* nodes)
 
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
-    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_NONE;
+    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
     compileStatement(compiler, ast, !display);
 
     if (!display) {

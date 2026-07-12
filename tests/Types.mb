@@ -13,3 +13,4 @@ var f: double = 0.0         # 64-bit floating-point number
 var c: char = 'a'           # 32-bit Unicode character
 var s: string = "abc"       # Sequence of Unicode characters
 var b: bool = false         # Boolean value: true or false
+var v: void                 # No return type

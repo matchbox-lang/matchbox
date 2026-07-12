@@ -132,7 +132,7 @@ Scope* getScope(const ASTNode* ast)
 TokenType getTypeId(const ASTNode* ast)
 {
     if (!ast) {
-        return TOKEN_NONE;
+        return TOKEN_VOID;
     }
 
     switch (ast->type) {
@@ -163,7 +163,7 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_STRING:
             return TOKEN_STRING;
         default:
-            return TOKEN_NONE;
+            return TOKEN_VOID;
     }
 }
 

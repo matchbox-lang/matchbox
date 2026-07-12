@@ -70,6 +70,7 @@ static const Keyword keywords[] = {
     {"unless",      6, TOKEN_UNLESS},
     {"use",         3, TOKEN_USE},
     {"var",         3, TOKEN_VAR},
+    {"void",        4, TOKEN_VOID},
     {"where",       5, TOKEN_WHERE},
     {"while",       5, TOKEN_WHILE},
     {"yield",       5, TOKEN_YIELD}

@@ -1,4 +1,4 @@
-type Operation = func(int) -> int
+type Operation = (int) -> int
 
 func fn(op: Operation, n) {
     var result = op(n)

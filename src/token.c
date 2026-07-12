@@ -70,7 +70,7 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_CATCH:               return "catch";
         case TOKEN_FINALLY:             return "finally";
         case TOKEN_THROW:               return "throw";
-        case TOKEN_NONE:                return "none";
+        case TOKEN_VOID:                return "void";
         case TOKEN_INT:                 return "int";
         case TOKEN_UINT:                return "uint";
         case TOKEN_INT8:                return "int8";
@@ -185,7 +185,7 @@ bool isAssignmentToken(TokenType type)
 
 bool isTypeToken(TokenType type)
 {
-    return type == TOKEN_INT;
+    return type == TOKEN_INT || type == TOKEN_VOID;
 }
 
 bool isComparisonToken(TokenType type)

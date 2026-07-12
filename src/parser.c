@@ -150,7 +150,7 @@ static ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token to
     ast->binary.leftExpr = leftExpr;
     ast->binary.operator = token;
     ast->binary.rightExpr = rightExpr;
-    ast->binary.typeId = TOKEN_NONE;
+    ast->binary.typeId = TOKEN_UNKNOWN;
 
     return ast;
 }
@@ -710,7 +710,7 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
 
     consume(parser, TOKEN_EQUAL);
     ast->variableDefinition.expr = parseExpression(parser);
-    ast->variableDefinition.typeId = TOKEN_NONE;
+    ast->variableDefinition.typeId = TOKEN_UNKNOWN;
 
     return ast->variableDefinition.expr != NULL;
 }

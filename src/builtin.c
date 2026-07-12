@@ -7,8 +7,8 @@
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {
-    {"exit",        BUILTIN_EXIT,       0, {},                                  TOKEN_NONE},
-    {"print",       BUILTIN_PRINT,      1, {TOKEN_INT},                         TOKEN_NONE},
+    {"exit",        BUILTIN_EXIT,       0, {},                                  TOKEN_VOID},
+    {"print",       BUILTIN_PRINT,      1, {TOKEN_INT},                         TOKEN_VOID},
     {"clamp",       BUILTIN_CLAMP,      3, {TOKEN_INT, TOKEN_INT, TOKEN_INT},   TOKEN_INT},
     {"abs",         BUILTIN_ABS,        1, {TOKEN_INT},                         TOKEN_INT},
     {"min",         BUILTIN_MIN,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},

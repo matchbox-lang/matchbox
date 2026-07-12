@@ -3,26 +3,9 @@
 #include "opcode.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#define PUSH(value) ((vm->sp++)[0] = (value))
-#define PUSH_BOOL(i) (PUSH(BOOL_VALUE(i)))
-#define PUSH_FLOAT(i) (PUSH(FLOAT_VALUE(i)))
-#define PUSH_INT(i) (PUSH(INT_VALUE(i)))
-#define PUSH_POINTER(i) (PUSH(POINTER_VALUE(i)))
-
-#define POP() ((--vm->sp)[0])
-#define POP_BOOL() (AS_BOOL(POP()))
-#define POP_FLOAT() (AS_FLOAT(POP()))
-#define POP_INT() (AS_INT(POP()))
-#define POP_POINTER() (AS_POINTER(POP()))
-
-#define READ_UINT8() ((uint8_t)*(vm->ip++))
-#define READ_UINT16() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
-
-#define TEST_OVERFLOW(n) if (vm->sp - vm->stack + (n) > STACK_MAX) \
-    stackOverflowError()
-
-static void stackOverflowError()
+static void stackOverflowError(void)
 {
     fprintf(stderr, "Error: Stack overflow\n");
     exit(1);
@@ -39,278 +22,152 @@ static void initBuiltins(VM* vm)
     vm->builtins[BUILTIN_BYTEORDER] = builtinByteorder;
 }
 
+static void testFrameOverflow(VM* vm, Value* frame, int maxStackCount)
+{
+    if (frame - vm->stack - 2 + maxStackCount > STACK_MAX) {
+        stackOverflowError();
+    }
+}
+
 static void run(VM* vm)
 {
-    uint8_t opcode;
     FunctionObject* function = vm->module->functions.data[0];
-    int32_t a;
-    int32_t b;
-    int32_t x;
-
-    vm->ip = function->code.data;
+    vm->ip = (Instruction*)function->code.data;
     
-    TEST_OVERFLOW(function->maxStackCount);
+    if (function->maxStackCount > STACK_MAX) {
+        stackOverflowError();
+    }
 
-    while ((opcode = READ_UINT8())) {
+    for (;;) {
+        Instruction inst = *vm->ip++;
+        Opcode opcode = (Opcode)OPCODE(inst);
+        uint8_t a = OPERAND_A(inst);
+        uint8_t b = OPERAND_B(inst);
+        uint8_t c = OPERAND_C(inst);
+
         switch (opcode) {
-            case OP_LDC: {
-                x = READ_UINT8();
-                Value value = vm->module->constants.data[x];
-                PUSH(value);
+            case OP_HLT:
+                return;
+            case OP_NOP:
                 break;
-            }
-
+            case OP_MOV:
+                vm->fp[a] = vm->fp[b];
+                break;
+            case OP_LDC:
+                vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
+                break;
+            case OP_LDI:
+                vm->fp[a] = INT_VALUE((int16_t)OPERAND_BC(inst));
+                break;
             case OP_REG:
-                pushValue(&vm->globals, POP());
+                pushValue(&vm->globals, vm->fp[a]);
                 break;
-
-            case OP_LDG: {
-                x = READ_UINT8();
-                Value value = vm->globals.data[x];
-                PUSH(value);
+            case OP_LDG:
+                vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
+                break;
+            case OP_STG:
+                vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
+                break;
+            case OP_ADD:
+                int b = AS_INT(vm->fp[b]);
+                int c = AS_INT(vm->fp[c]);
+                vm->fp[a] = INT_VALUE(b + c);
+                break;
+            case OP_SUB:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) - AS_INT(vm->fp[c]));
+                break;
+            case OP_MUL:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) * AS_INT(vm->fp[c]));
+                break;
+            case OP_DIV:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) / AS_INT(vm->fp[c]));
+                break;
+            case OP_REM:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) % AS_INT(vm->fp[c]));
+                break;
+            case OP_POW:
+                vm->fp[a] = INT_VALUE(pow(AS_INT(vm->fp[b]), AS_INT(vm->fp[c])));
+                break;
+            case OP_BAND:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) & AS_INT(vm->fp[c]));
+                break;
+            case OP_BOR:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) | AS_INT(vm->fp[c]));
+                break;
+            case OP_BXOR:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) ^ AS_INT(vm->fp[c]));
+                break;
+            case OP_BNOT:
+                vm->fp[a] = INT_VALUE(~AS_INT(vm->fp[b]));
+                break;
+            case OP_LSL:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) << AS_INT(vm->fp[c]));
+                break;
+            case OP_LSR:
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) >> AS_INT(vm->fp[c]));
+                break;
+            case OP_ASR:
+                vm->fp[a] = INT_VALUE(~(~AS_INT(vm->fp[b]) >> AS_INT(vm->fp[c])));
+                break;
+            case OP_NOT:
+                vm->fp[a] = INT_VALUE(!AS_INT(vm->fp[b]));
+                break;
+            case OP_NEG:
+                vm->fp[a] = INT_VALUE(-AS_INT(vm->fp[b]));
+                break;
+            case OP_BEQ:
+                if (AS_INT(vm->fp[a]) == AS_INT(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BLT:
+                if (AS_INT(vm->fp[a]) < AS_INT(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BLE:
+                if (AS_INT(vm->fp[a]) <= AS_INT(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_JMP: {
+                int32_t offset = OPERAND_ABC(inst);
+                if (offset & 0x800000) {
+                    offset |= ~0xffffff;
+                }
+                vm->ip += offset;
                 break;
             }
-
-            case OP_STG:
-                x = READ_UINT8();
-                vm->globals.data[x] = POP();
-                break;
-
-            case OP_LDL:
-                x = (int8_t) READ_UINT8();
-                PUSH(vm->fp[x]);
-                break;
-
-            case OP_LDL_0:
-                PUSH(vm->fp[0]);
-                break;
-
-            case OP_LDL_1:
-                PUSH(vm->fp[1]);
-                break;
-
-            case OP_LDL_2:
-                PUSH(vm->fp[2]);
-                break;
-
-            case OP_LDL_3:
-                PUSH(vm->fp[3]);
-                break;
-
-            case OP_STL:
-                x = (int8_t) READ_UINT8();
-                vm->fp[x] = POP();
-                break;
-
-            case OP_STL_0:
-                vm->fp[0] = POP();
-                break;
-
-            case OP_STL_1:
-                vm->fp[1] = POP();
-                break;
-
-            case OP_STL_2:
-                vm->fp[2] = POP();
-                break;
-
-            case OP_STL_3:
-                vm->fp[3] = POP();
-                break;
-
-            case OP_PUSHB:
-                x = (int8_t) READ_UINT8();
-                PUSH_INT(x);
-                break;
-
-            case OP_PUSHH:
-                x = (int16_t) READ_UINT16();
-                PUSH_INT(x);
-                break;
-
-            case OP_PUSH_0:
-                PUSH_INT(0);
-                break;
-
-            case OP_PUSH_1:
-                PUSH_INT(1);
-                break;
-
-            case OP_PUSH_2:
-                PUSH_INT(2);
-                break;
-
-            case OP_PUSH_3:
-                PUSH_INT(3);
-                break;
-
-            case OP_POP:
-                vm->sp--;
-                break;
-
-            case OP_DUP:
-                PUSH(vm->sp[-1]);
-                break;
-
-            case OP_INC:
-                AS_INT(vm->sp[-1])++;
-                break;
-
-            case OP_DEC:
-                AS_INT(vm->sp[-1])--;
-                break;
-            
-            case OP_ADD:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a + b);
-                break;
-
-            case OP_SUB:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a - b);
-                break;
-
-            case OP_MUL:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a * b);
-                break;
-
-            case OP_DIV:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a / b);
-                break;
-
-            case OP_REM:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a % b);
-                break;
-
-            case OP_POW:
-                b = POP_INT();
-                a = POP_INT();
-                x = pow(a, b);
-                PUSH_INT(x);
-                break;
-
-            case OP_BAND:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a & b);
-                break;
-
-            case OP_BOR:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a | b);
-                break;
-
-            case OP_BXOR:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a ^ b);
-                break;
-
-            case OP_BNOT:
-                x = AS_INT(vm->sp[-1]);
-                vm->sp[-1] = INT_VALUE(~x);
-                break;
-
-            case OP_LSL:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a << b);
-                break;
-
-            case OP_LSR:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(a >> b);
-                break;
-
-            case OP_ASR:
-                b = POP_INT();
-                a = POP_INT();
-                PUSH_INT(~(~a >> b));
-                break;
-
-            case OP_NEG:
-                x = AS_INT(vm->sp[-1]);
-                vm->sp[-1] = INT_VALUE(-x);
-                break;
-
-            case OP_NOT:
-                x = AS_INT(vm->sp[-1]);
-                vm->sp[-1] = INT_VALUE(!x);
-                break;
-
-            case OP_BEQ:
-                b = AS_INT(vm->sp[-1]);
-                a = AS_INT(vm->sp[-2]);
-                if (a == b) vm->ip += READ_UINT16();
-                break;
-
-            case OP_BLT:
-                b = AS_INT(vm->sp[-1]);
-                a = AS_INT(vm->sp[-2]);
-                if (a < b) vm->ip += READ_UINT16();
-                break;
-
-            case OP_BLE:
-                b = AS_INT(vm->sp[-1]);
-                a = AS_INT(vm->sp[-2]);
-                if (a <= b) vm->ip += READ_UINT16();
-                break;
-
-            case OP_JMP:
-                vm->ip += READ_UINT16();
-                break;
-
-            case OP_CALL:
-                x = READ_UINT16();
-                function = vm->module->functions.data[x];
+            case OP_CALL: {
+                Value* newFrame = vm->fp + a + 1;
+                function = AS_FUNCTION_OBJECT(newFrame[-1]);
 
                 if (function->type == FUNCTION_BUILTIN) {
                     builtin_t builtin = vm->builtins[function->builtinId];
-                    Value* args = vm->sp - function->paramCount;
-                    Value result = builtin(args);
-
-                    vm->sp -= function->paramCount;
-                    PUSH(result);
+                    newFrame[0] = builtin(newFrame);
                     break;
                 }
-
-                TEST_OVERFLOW(function->maxStackCount);
-                PUSH_INT(function->paramCount);
-                PUSH_POINTER(vm->ip);
-                PUSH_POINTER(vm->fp);
-
-                vm->ip = function->code.data;
-                vm->fp = vm->sp;
-                break;
-
-            case OP_RET:
-                vm->sp = vm->fp;
-                vm->fp = POP_POINTER();
-                vm->ip = POP_POINTER();
-                vm->sp -= POP_INT();
-                PUSH_INT(0);
-                break;
-
-            case OP_RETV: {
-                Value result = POP();
-                vm->sp = vm->fp;
-                vm->fp = POP_POINTER();
-                vm->ip = POP_POINTER();
-                vm->sp -= POP_INT();
-                PUSH(result);
+                
+                testFrameOverflow(vm, newFrame, function->maxStackCount);
+                newFrame[-2] = POINTER_VALUE(vm->ip);
+                newFrame[-1] = POINTER_VALUE(vm->fp);
+                vm->fp = newFrame;
+                vm->ip = (Instruction*)function->code.data;
                 break;
             }
-
+            case OP_RET: {
+                Value* frame = vm->fp;
+                frame[0] = INT_VALUE(0);
+                vm->ip = AS_POINTER(frame[-2]);
+                vm->fp = AS_POINTER(frame[-1]);
+                break;
+            }
+            case OP_RETV: {
+                Value* frame = vm->fp;
+                vm->ip = AS_POINTER(frame[-2]);
+                vm->fp = AS_POINTER(frame[-1]);
+                break;
+            }
             default:
                 return;
         }
@@ -321,7 +178,7 @@ void initVM(VM* vm, ModuleObject* module)
 {
     initValueArray(&vm->globals);
     initBuiltins(vm);
-    
+
     vm->module = module;
     vm->ip = NULL;
     vm->sp = vm->stack;
@@ -336,21 +193,13 @@ void freeVM(VM* vm)
 void inspectStack(VM* vm)
 {
     for (int i = 0; i < STACK_MAX; i++) {
-        char* arrow = &vm->stack[i] == vm->sp ? " <-" : "";
-        int n = AS_INT(vm->stack[i]);
-
-        printf("%d: %d%s\n", i, n, arrow);
+        printf("%d: %d\n", i, AS_INT(vm->stack[i]));
     }
 }
 
 void interpret(VM* vm)
 {
-    if (!vm->module) {
-        return;
+    if (vm->module) {
+        run(vm);
     }
-
-    run(vm);
 }
-
-#undef READ_UINT8
-#undef READ_UINT16

@@ -211,7 +211,7 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* param = getVectorAt(&ast->functionDefinition.params, i);
-        param->parameter.position = count - i - 1;
+        param->parameter.position = i;
     }
 
     analyzeExpressionNodes(analyzer, &ast->functionDefinition.body->compound.statements);

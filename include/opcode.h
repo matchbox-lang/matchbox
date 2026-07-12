@@ -1,55 +1,49 @@
 #ifndef OPCODE_H
 #define OPCODE_H
 
+#include <stdint.h>
+
+typedef uint32_t Instruction;
+
+#define OPCODE(inst) ((uint8_t)(inst))
+#define OPERAND_A(inst) ((uint8_t)((inst) >> 8))
+#define OPERAND_B(inst) ((uint8_t)((inst) >> 16))
+#define OPERAND_C(inst) ((uint8_t)((inst) >> 24))
+#define OPERAND_BC(inst) ((uint16_t)((OPERAND_B(inst) << 8) | OPERAND_C(inst)))
+#define OPERAND_ABC(inst) ((uint32_t)((OPERAND_A(inst) << 16) | (OPERAND_B(inst) << 8) | OPERAND_C(inst)))
+
 typedef enum Opcode
 {
-    OP_HLT,         	// hlt
-    OP_LDC,         	// ldc imm8
-    OP_REG,         	// reg
-    OP_LDG,         	// ldg imm8
-    OP_STG,         	// stg imm8
-    OP_LDL,         	// ldl imm8
-    OP_LDL_0,       	// ldl_0
-    OP_LDL_1,       	// ldl_1
-    OP_LDL_2,       	// ldl_2
-    OP_LDL_3,       	// ldl_3
-    OP_STL,         	// stl imm8
-    OP_STL_0,       	// stl_0
-    OP_STL_1,       	// stl_1
-    OP_STL_2,       	// stl_2
-    OP_STL_3,       	// stl_3
-    OP_PUSHB,       	// pushb imm8
-    OP_PUSHH,       	// pushh imm16
-    OP_PUSH_0,      	// push_0
-    OP_PUSH_1,      	// push_1
-    OP_PUSH_2,      	// push_2
-    OP_PUSH_3,      	// push_3
-    OP_POP,         	// pop
-    OP_DUP,         	// dup
-    OP_INC,         	// inc
-    OP_DEC,         	// dec
-    OP_ADD,         	// add
-    OP_SUB,         	// sub
-    OP_MUL,         	// mul
-    OP_DIV,         	// div
-    OP_REM,         	// rem
-    OP_POW,         	// pow
-    OP_BAND,        	// band
-    OP_BOR,         	// bor
-    OP_BXOR,        	// bxor
-    OP_BNOT,        	// bnot
-    OP_LSL,         	// lsl
-    OP_LSR,         	// lsr
-    OP_ASR,         	// asr
-    OP_NOT,         	// not
-    OP_NEG,         	// neg
-    OP_BEQ,         	// beq imm16
-    OP_BLT,         	// blt imm16
-    OP_BLE,         	// ble imm16
-    OP_JMP,         	// jmp imm16
-    OP_CALL,            // call imm16
-    OP_RET,         	// ret
-    OP_RETV         	// retv
+    OP_HLT,     // HLT
+    OP_NOP,     // NOP
+    OP_MOV,     // MOV A, B
+    OP_LDC,     // LDC A, imm16
+    OP_LDI,     // LDI A, imm16
+    OP_REG,     // REG A
+    OP_LDG,     // LDG A, imm16
+    OP_STG,     // STG A, imm16
+    OP_ADD,     // ADD A, B, C
+    OP_SUB,     // SUB A, B, C
+    OP_MUL,     // MUL A, B, C
+    OP_DIV,     // DIV A, B, C
+    OP_REM,     // REM A, B, C
+    OP_POW,     // POW A, B, C
+    OP_BAND,    // BAND A, B, C
+    OP_BOR,     // BOR A, B, C
+    OP_BXOR,    // BXOR A, B, C
+    OP_BNOT,    // BNOT A, B
+    OP_LSL,     // LSL A, B, C
+    OP_LSR,     // LSR A, B, C
+    OP_ASR,     // ASR A, B, C
+    OP_NOT,     // NOT A, B
+    OP_NEG,     // NEG A, B
+    OP_BEQ,     // BEQ A, B, imm8
+    OP_BLT,     // BLT A, B, imm8
+    OP_BLE,     // BLE A, B, imm8
+    OP_JMP,     // JMP imm24
+    OP_CALL,    // CALL A
+    OP_RET,     // RET
+    OP_RETV     // RETV
 } Opcode;
 
 #endif

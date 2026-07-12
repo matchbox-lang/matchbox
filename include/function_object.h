@@ -18,6 +18,7 @@ typedef struct FunctionObject
     CodeObject code;
     int builtinId;
     int paramCount;
+    int returnCount;
     int localCount;
     int maxStackCount;
 } FunctionObject;

@@ -40,16 +40,29 @@ static CodeObject* currentCodeObject(Compiler* compiler)
     return &compiler->function->code;
 }
 
-static void incStackCount(Compiler* compiler)
+static int allocateRegister(Compiler* compiler)
 {
-    if (++compiler->stackCount > compiler->function->maxStackCount) {
-        compiler->function->maxStackCount = compiler->stackCount;
+    int reg = compiler->registerCount++;
+    int extent = compiler->registerCount + 2;
+
+    if (extent > compiler->function->maxStackCount) {
+        compiler->function->maxStackCount = extent;
     }
+
+    return reg;
 }
 
-static void decStackCount(Compiler* compiler)
+static int releaseRegister(Compiler* compiler)
 {
-    compiler->stackCount--;
+    return --compiler->registerCount;
+}
+
+static int peekRegister(Compiler* compiler)
+{
+    int reg = releaseRegister(compiler);
+    allocateRegister(compiler);
+
+    return reg;
 }
 
 static void write8(Compiler* compiler, uint8_t n)
@@ -57,226 +70,212 @@ static void write8(Compiler* compiler, uint8_t n)
     pushByte(currentCodeObject(compiler), n);
 }
 
-static void write16(Compiler* compiler, int16_t n)
+static void emitInstruction(Compiler* compiler, Opcode opcode, uint8_t a, uint8_t b, uint8_t c)
 {
-    pushByte(currentCodeObject(compiler), (n >> 8) & 0xFF);
-    pushByte(currentCodeObject(compiler), n & 0xFF);
+    write8(compiler, opcode);
+    write8(compiler, a);
+    write8(compiler, b);
+    write8(compiler, c);
 }
 
 static void emitHlt(Compiler* compiler)
 {
-    write8(compiler, OP_HLT);
+    emitInstruction(compiler, OP_HLT, 0, 0, 0);
 }
 
-static void emitLdc(Compiler* compiler, uint8_t imm)
+static void emitMov(Compiler* compiler, int dst, int src)
 {
-    incStackCount(compiler);
-    write8(compiler, OP_LDC);
-    write8(compiler, imm);
+    emitInstruction(compiler, OP_MOV, dst, src, 0);
+}
+
+static int emitLdc(Compiler* compiler, uint16_t imm)
+{
+    int reg = allocateRegister(compiler);
+
+    emitInstruction(compiler, OP_LDC, reg, imm >> 8, imm);
+
+    return reg;
+}
+
+static void emitLdi(Compiler* compiler, int16_t imm)
+{
+    int reg = allocateRegister(compiler);
+
+    emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
 }
 
 static void emitReg(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_REG);
+    int reg = releaseRegister(compiler);
+
+    emitInstruction(compiler, OP_REG, reg, 0, 0);
 }
 
-static void emitLdg(Compiler* compiler, uint8_t imm)
+static void emitLdg(Compiler* compiler, uint16_t imm)
 {
-    incStackCount(compiler);
-    write8(compiler, OP_LDG);
-    write8(compiler, imm);
+    int reg = allocateRegister(compiler);
+
+    emitInstruction(compiler, OP_LDG, reg, imm >> 8, imm);
 }
 
-static void emitStg(Compiler* compiler, uint8_t imm)
+static void emitStg(Compiler* compiler, uint16_t imm)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_STG);
-    write8(compiler, imm);
+    int reg = releaseRegister(compiler);
+
+    emitInstruction(compiler, OP_STG, reg, imm >> 8, imm);
 }
 
-static void emitLdl(Compiler* compiler, int8_t imm)
+static void emitLdl(Compiler* compiler, uint8_t src)
 {
-    incStackCount(compiler);
+    int dst = allocateRegister(compiler);
 
-    switch (imm) {
-        case 0:
-            write8(compiler, OP_LDL_0);
-            break;
-        case 1:
-            write8(compiler, OP_LDL_1);
-            break;
-        case 2:
-            write8(compiler, OP_LDL_2);
-            break;
-        case 3:
-            write8(compiler, OP_LDL_3);
-            break;
-        default:
-            write8(compiler, OP_LDL);
-            write8(compiler, imm);
-            break;
-    }
+    emitMov(compiler, dst, src);
 }
 
-static void emitStl(Compiler* compiler, int8_t imm)
+static void emitStl(Compiler* compiler, uint8_t dst)
 {
-    decStackCount(compiler);
+    int src = releaseRegister(compiler);
 
-    switch (imm) {
-        case 0:
-            write8(compiler, OP_STL_0);
-            break;
-        case 1:
-            write8(compiler, OP_STL_1);
-            break;
-        case 2:
-            write8(compiler, OP_STL_2);
-            break;
-        case 3:
-            write8(compiler, OP_STL_3);
-            break;
-        default:
-            write8(compiler, OP_STL);
-            write8(compiler, imm);
-            break;
-    }
-}
-
-static void emitPushb(Compiler* compiler, int8_t imm)
-{
-    incStackCount(compiler);
-
-    switch (imm) {
-        case 0:
-            write8(compiler, OP_PUSH_0);
-            break;
-        case 1:
-            write8(compiler, OP_PUSH_1);
-            break;
-        case 2:
-            write8(compiler, OP_PUSH_2);
-            break;
-        case 3:
-            write8(compiler, OP_PUSH_3);
-            break;
-        default:
-            write8(compiler, OP_PUSHB);
-            write8(compiler, imm);
-            break;
-    }
-}
-
-static void emitPushh(Compiler* compiler, int16_t imm)
-{
-    incStackCount(compiler);
-    write8(compiler, OP_PUSHH);
-    write16(compiler, imm);
-}
-
-static void emitPop(Compiler* compiler)
-{
-    decStackCount(compiler);
-    write8(compiler, OP_POP);
+    emitMov(compiler, dst, src);
 }
 
 static void emitAdd(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_ADD);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_ADD, left, left, right);
 }
 
 static void emitSub(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_SUB);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_SUB, left, left, right);
 }
 
 static void emitMul(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_MUL);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_MUL, left, left, right);
 }
 
 static void emitDiv(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_DIV);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_DIV, left, left, right);
 }
 
 static void emitRem(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_REM);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_REM, left, left, right);
 }
 
 static void emitPow(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_POW);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_POW, left, left, right);
 }
 
 static void emitBand(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_BAND);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_BAND, left, left, right);
 }
 
 static void emitBor(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_BOR);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_BOR, left, left, right);
 }
 
 static void emitBxor(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_BXOR);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_BXOR, left, left, right);
 }
 
 static void emitBnot(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_BNOT);
+    int reg = peekRegister(compiler);
+
+    emitInstruction(compiler, OP_BNOT, reg, reg, 0);
 }
 
 static void emitLsl(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_LSL);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_LSL, left, left, right);
 }
 
 static void emitLsr(Compiler* compiler)
 {
-    decStackCount(compiler);
-    write8(compiler, OP_LSR);
+    int right = releaseRegister(compiler);
+    int left = right - 1;
+
+    emitInstruction(compiler, OP_LSR, left, left, right);
 }
 
 static void emitNeg(Compiler* compiler)
 {
-    write8(compiler, OP_NEG);
+    int reg = peekRegister(compiler);
+
+    emitInstruction(compiler, OP_NEG, reg, reg, 0);
 }
 
 static void emitNot(Compiler* compiler)
 {
-    write8(compiler, OP_NOT);
+    int reg = peekRegister(compiler);
+
+    emitInstruction(compiler, OP_NOT, reg, reg, 0);
 }
 
-static void emitCall(Compiler* compiler, uint16_t imm)
+static void emitCallInstruction(Compiler* compiler, uint8_t functionRegister)
 {
-    write8(compiler, OP_CALL);
-    write16(compiler, imm);
+    emitInstruction(compiler, OP_CALL, functionRegister, 0, 0);
 }
 
 static void emitRet(Compiler* compiler)
 {
-    incStackCount(compiler);
-    write8(compiler, OP_RET);
+    emitInstruction(compiler, OP_RET, 0, 0, 0);
 }
 
 static void emitRetv(Compiler* compiler)
 {
-    write8(compiler, OP_RETV);
+    emitInstruction(compiler, OP_RETV, 0, 0, 0);
+}
+
+static int getCallAreaCount(FunctionObject* function)
+{
+    int returnSlots = function->returnCount;
+
+    if (!returnSlots) {
+        returnSlots = 1;
+    }
+
+    if (function->paramCount > returnSlots) {
+        return function->paramCount;
+    }
+
+    return returnSlots;
 }
 
 static size_t makeConstant(Compiler* compiler, Value value)
@@ -284,25 +283,61 @@ static size_t makeConstant(Compiler* compiler, Value value)
     return pushValue(&compiler->module->constants, value) - 1;
 }
 
-static int getLocalPosition(ASTNode* ast)
+typedef struct CallArea
+{
+    int resultRegister;
+    int functionRegister;
+} CallArea;
+
+static CallArea openCallArea(Compiler* compiler, FunctionObject* function)
+{
+    CallArea call = { .resultRegister = compiler->registerCount };
+
+    allocateRegister(compiler);
+    size_t constant = makeConstant(compiler, POINTER_VALUE(function));
+    call.functionRegister = emitLdc(compiler, (uint16_t)constant);
+
+    return call;
+}
+
+static void closeCallArea(Compiler* compiler, FunctionObject* function,
+    CallArea call, bool discard)
+{
+    int end = call.functionRegister + 1 + getCallAreaCount(function);
+
+    while (compiler->registerCount < end) {
+        emitLdi(compiler, 0);
+    }
+
+    emitCallInstruction(compiler, (uint8_t)call.functionRegister);
+
+    if (!discard && function->returnCount) {
+        emitMov(compiler, call.resultRegister, call.functionRegister + 1);
+        compiler->registerCount = call.resultRegister + 1;
+    } else {
+        compiler->registerCount = call.resultRegister;
+    }
+}
+
+static int getLocalPosition(Compiler* compiler, ASTNode* ast)
 {
     if (isParameter(ast)) {
-        return -(ast->parameter.position + 4);
+        return ast->parameter.position;
     }
     
-    return ast->variableDefinition.position;
+    return compiler->frameBaseCount + ast->variableDefinition.position;
 }
 
 static void loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(ast);
+    int position = getLocalPosition(compiler, ast);
 
     emitLdg(compiler, position);
 }
 
 static void loadLocalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(ast);
+    int position = getLocalPosition(compiler, ast);
 
     emitLdl(compiler, position);
 }
@@ -318,14 +353,14 @@ static void loadVariable(Compiler* compiler, ASTNode* ast)
 
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(ast);
+    int position = getLocalPosition(compiler, ast);
 
     emitStg(compiler, position);
 }
 
 static void storeLocalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(ast);
+    int position = getLocalPosition(compiler, ast);
 
     emitStl(compiler, position);
 }
@@ -344,10 +379,8 @@ static void compileNumber(Compiler* compiler, ASTNode* ast)
     if (isLargerThan16BitSigned(ast->integerLiteral.value)) {
         size_t position = makeConstant(compiler, INT_VALUE(ast->integerLiteral.value));
         emitLdc(compiler, position);
-    } else if (isLargerThan8BitSigned(ast->integerLiteral.value)) {
-        emitPushh(compiler, ast->integerLiteral.value);
     } else {
-        emitPushb(compiler, ast->integerLiteral.value);
+        emitLdi(compiler, ast->integerLiteral.value);
     }
 }
 
@@ -523,6 +556,13 @@ static FunctionObject* createBuiltinFunctionObject(BuiltinId id)
     function->type = FUNCTION_BUILTIN;
     function->builtinId = id;
     function->paramCount = builtins[id].paramCount;
+    function->returnCount = 1;
+
+    if (builtins[id].typeId == TOKEN_VOID) {
+        function->returnCount = 0;
+    }
+
+    function->maxStackCount = 2 + getCallAreaCount(function);
 
     return function;
 }
@@ -532,8 +572,16 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     ASTNode* body = ast->functionDefinition.body;
     FunctionObject* function = createFunctionObject();
     function->paramCount = countVector(&ast->functionDefinition.params);
+    function->returnCount = 1;
+
+    if (ast->functionDefinition.typeId == TOKEN_VOID) {
+        function->returnCount = 0;
+    }
+
     function->localCount = body->compound.scope->localCount;
-    function->maxStackCount = function->localCount + 3;
+
+    int base = getCallAreaCount(function);
+    function->maxStackCount = base + 2;
 
     return function;
 }
@@ -574,35 +622,50 @@ static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
     return 0;
 }
 
+static void compileCall(Compiler* compiler, FunctionObject* function, Vector* args, bool discard)
+{
+    CallArea call = openCallArea(compiler, function);
+    compileArguments(compiler, args);
+    closeCallArea(compiler, function, call, discard);
+}
+
+static void compileCallWithArgument(Compiler* compiler, FunctionObject* function, int argumentRegister, bool discard)
+{
+    CallArea call = openCallArea(compiler, function);
+    int callArgumentRegister = compiler->registerCount;
+
+    allocateRegister(compiler);
+    emitMov(compiler, callArgumentRegister, argumentRegister);
+    closeCallArea(compiler, function, call, discard);
+    releaseRegister(compiler);
+}
+
 static void compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    compileArguments(compiler, &ast->builtinCall.args);
-    emitCall(compiler, getBuiltinFunctionPosition(compiler, ast->builtinCall.id));
+    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.id);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    if (discard) {
-        emitPop(compiler);
-    }
+    compileCall(compiler, function, &ast->builtinCall.args, discard);
 }
 
 static void compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
     uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    compileArguments(compiler, &ast->functionCall.args);
-    emitCall(compiler, position);
-
-    if (discard) {
-        emitPop(compiler);
-    }
+    compileCall(compiler, function, &ast->functionCall.args, discard);
 }
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
 {
     FunctionObject* previousFunction = compiler->function;
+    int previousFrameBaseCount = compiler->frameBaseCount;
+    int previousRegisterCount = compiler->registerCount;
     FunctionObject* function = createDefinedFunctionObject(ast);
     ASTNode* body = ast->functionDefinition.body;
     
-    compiler->stackCount = function->maxStackCount;
+    compiler->frameBaseCount = getCallAreaCount(function);
+    compiler->registerCount = compiler->frameBaseCount;
     compiler->function = function;
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, ast);
@@ -616,25 +679,31 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     }
 
     if (!last || last->type != AST_RETURN) {
+        compiler->registerCount = compiler->frameBaseCount;
         emitRet(compiler);
     }
     
     compiler->function = previousFunction;
+    compiler->frameBaseCount = previousFrameBaseCount;
+    compiler->registerCount = previousRegisterCount;
 }
 
 static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
 {
     if (isNone(ast->returnStatement.expr)) {
+        compiler->registerCount = compiler->frameBaseCount;
         return emitRet(compiler);
     }
 
     compileExpression(compiler, ast->returnStatement.expr, false);
+    emitStl(compiler, 0);
+    compiler->registerCount = compiler->frameBaseCount;
     emitRetv(compiler);
 }
 
 static void compileUninitializedVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
-    emitPushb(compiler, 0);
+    emitLdi(compiler, 0);
 
     if (isTopLevelScope(ast->variableDefinition.scope)) {
         emitReg(compiler);
@@ -678,7 +747,7 @@ static void compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
     }
 
     if (discard) {
-        emitPop(compiler);
+        releaseRegister(compiler);
     }
 }
 
@@ -731,14 +800,18 @@ static void compileToplevelStatements(Compiler* compiler, Vector* nodes)
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
     bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
+
     compileStatement(compiler, ast, !display);
 
     if (!display) {
         return;
     }
 
-    emitCall(compiler, getBuiltinFunctionPosition(compiler, BUILTIN_PRINT));
-    emitPop(compiler);
+    int valueRegister = peekRegister(compiler);
+    uint16_t position = getBuiltinFunctionPosition(compiler, BUILTIN_PRINT);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+
+    compileCallWithArgument(compiler, function, valueRegister, true);
 }
 
 static void compileReplStatements(Compiler* compiler, Vector* nodes)
@@ -770,7 +843,8 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
     compiler->function = getVectorAt(&module->functions, 0);
     compiler->ast = ast;
     compiler->statementIndex = 0;
-    compiler->stackCount = 0;
+    compiler->registerCount = 0;
+    compiler->frameBaseCount = 0;
 }
 
 void freeCompiler(Compiler* compiler)
@@ -793,7 +867,6 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
 
     analyze(&compiler->analyzer, start);
     optimize(compiler->ast, start);
-
     clearCodeObject(currentCodeObject(compiler));
     compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);

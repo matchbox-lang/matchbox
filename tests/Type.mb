@@ -11,5 +11,3 @@ type Point = {x: int, y: int}
 type Number = int|float
 
 type Numbers = Set[Number]
-
-type Void = ()

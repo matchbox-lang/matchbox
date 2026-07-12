@@ -172,7 +172,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     validateFunctionCall(ast, symbol, ast->functionCall.token);
 }
 
-static bool hasValueReturn(Vector* statements)
+static TokenType getFunctionReturnValueType(Vector* statements)
 {
     size_t count = countVector(statements);
 
@@ -180,11 +180,18 @@ static bool hasValueReturn(Vector* statements)
         ASTNode* statement = getVectorAt(statements, i);
 
         if (statement->type == AST_RETURN) {
-            return true;
+            return getTypeId(statement->returnStatement.expr);
         }
     }
 
-    return false;
+    return TOKEN_VOID;
+}
+
+static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
+{
+    if (ast->functionDefinition.typeId != type) {
+        semanticError("Invalid return type for function ", ast->functionDefinition.token);
+    }
 }
 
 static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
@@ -210,9 +217,12 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     analyzeExpressionNodes(analyzer, &ast->functionDefinition.body->compound.statements);
     analyzer->currentScope = parent;
 
-    if (!ast->functionDefinition.hasExplicitReturnType &&
-        !hasValueReturn(&ast->functionDefinition.body->compound.statements)) {
-        ast->functionDefinition.typeId = TOKEN_VOID;
+    TokenType returnValueType = getFunctionReturnValueType(&ast->functionDefinition.body->compound.statements);
+
+    if (ast->functionDefinition.hasExplicitReturnType) {
+        validateFunctionReturnValueType(ast, returnValueType);
+    } else {
+        ast->functionDefinition.typeId = returnValueType;
     }
 
     setLocalSymbol(parent, ast->functionDefinition.id, ast);

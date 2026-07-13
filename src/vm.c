@@ -135,7 +135,7 @@ static void run(VM* vm)
             }
             case OP_CALL: {
                 Value* newFrame = vm->fp + a + 1;
-                function = AS_FUNCTION_OBJECT(newFrame[-1]);
+                function = vm->module->functions.data[OPERAND_BC(inst)];
 
                 if (function->type == FUNCTION_BUILTIN) {
                     builtin_t builtin = vm->builtins[function->builtinId];

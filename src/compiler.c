@@ -144,9 +144,11 @@ static int emitLdg(Compiler* compiler, uint16_t imm)
     return reg;
 }
 
-static void emitCallInstruction(Compiler* compiler, uint8_t functionRegister)
+static void emitCallInstruction(Compiler* compiler, uint8_t functionRegister,
+    uint16_t functionPosition)
 {
-    emitInstruction(compiler, OP_CALL, functionRegister, 0, 0);
+    emitInstruction(compiler, OP_CALL, functionRegister,
+        functionPosition >> 8, functionPosition);
 }
 
 static void emitRet(Compiler* compiler)
@@ -185,19 +187,18 @@ typedef struct CallArea
     int functionRegister;
 } CallArea;
 
-static CallArea openCallArea(Compiler* compiler, FunctionObject* function)
+static CallArea openCallArea(Compiler* compiler)
 {
     CallArea call = { .resultRegister = compiler->registerCount };
 
     allocateRegister(compiler);
-    size_t constant = makeConstant(compiler, POINTER_VALUE(function));
-    call.functionRegister = emitLdc(compiler, (uint16_t)constant);
+    call.functionRegister = allocateRegister(compiler);
 
     return call;
 }
 
 static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
-    CallArea call, bool discard)
+    uint16_t functionPosition, CallArea call, bool discard)
 {
     int end = call.functionRegister + 1 + getCallAreaCount(function);
 
@@ -205,7 +206,7 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
         emitLdi(compiler, 0);
     }
 
-    emitCallInstruction(compiler, (uint8_t)call.functionRegister);
+    emitCallInstruction(compiler, (uint8_t)call.functionRegister, functionPosition);
 
     if (!discard && function->returnCount) {
         emitMov(compiler, call.resultRegister, call.functionRegister + 1);
@@ -527,21 +528,23 @@ static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
     return 0;
 }
 
-static Operand compileCall(Compiler* compiler, FunctionObject* function, Vector* args, bool discard)
+static Operand compileCall(Compiler* compiler, FunctionObject* function,
+    uint16_t functionPosition, Vector* args, bool discard)
 {
-    CallArea call = openCallArea(compiler, function);
+    CallArea call = openCallArea(compiler);
     compileArguments(compiler, args);
-    return closeCallArea(compiler, function, call, discard);
+    return closeCallArea(compiler, function, functionPosition, call, discard);
 }
 
-static void compileCallWithArgument(Compiler* compiler, FunctionObject* function, Operand argument, bool discard)
+static void compileCallWithArgument(Compiler* compiler, FunctionObject* function,
+    uint16_t functionPosition, Operand argument, bool discard)
 {
-    CallArea call = openCallArea(compiler, function);
+    CallArea call = openCallArea(compiler);
     int callArgumentRegister = compiler->registerCount;
 
     allocateRegister(compiler);
     emitMov(compiler, callArgumentRegister, argument.reg);
-    closeCallArea(compiler, function, call, discard);
+    closeCallArea(compiler, function, functionPosition, call, discard);
     releaseOperand(compiler, argument);
 }
 
@@ -550,7 +553,7 @@ static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard
     uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.id);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    return compileCall(compiler, function, &ast->builtinCall.args, discard);
+    return compileCall(compiler, function, position, &ast->builtinCall.args, discard);
 }
 
 static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)
@@ -558,7 +561,7 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
     uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    return compileCall(compiler, function, &ast->functionCall.args, discard);
+    return compileCall(compiler, function, position, &ast->functionCall.args, discard);
 }
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
@@ -712,7 +715,7 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
     uint16_t position = getBuiltinFunctionPosition(compiler, BUILTIN_PRINT);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    compileCallWithArgument(compiler, function, value, true);
+    compileCallWithArgument(compiler, function, position, value, true);
 }
 
 static void compileReplStatements(Compiler* compiler, Vector* nodes)

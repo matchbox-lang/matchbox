@@ -113,7 +113,7 @@ static void printInstruction(int8_t c)
         case OP_BLT:        printOpcodeBranch("BLT"); break;
         case OP_BLE:        printOpcodeBranch("BLE"); break;
         case OP_JMP:        printOpcodeInt24("JMP"); break;
-        case OP_CALL:       printOpcodeRegister("CALL"); break;
+        case OP_CALL:       printOpcodeRegisterUint16("CALL"); break;
         case OP_RET:        printOpcode("RET"); break;
         case OP_RETV:       printOpcode("RETV"); break;
         default:

@@ -17,8 +17,8 @@ typedef struct VM
     Instruction* ip;
     Value* sp;
     Value* fp;
+    Value* gp;
     ModuleObject* module;
-    ValueArray globals;
 } VM;
 
 void initVM(VM* vm, ModuleObject* module);

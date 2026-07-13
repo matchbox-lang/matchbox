@@ -59,14 +59,11 @@ static void run(VM* vm)
             case OP_LDI:
                 vm->fp[a] = INT_VALUE((int16_t)OPERAND_BC(inst));
                 break;
-            case OP_REG:
-                pushValue(&vm->globals, vm->fp[a]);
-                break;
             case OP_LDG:
-                vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
+                vm->fp[a] = vm->gp[OPERAND_BC(inst)];
                 break;
             case OP_STG:
-                vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
+                vm->gp[OPERAND_BC(inst)] = vm->fp[a];
                 break;
             case OP_ADD:
                 vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) + AS_INT(vm->fp[c]));
@@ -174,18 +171,18 @@ static void run(VM* vm)
 
 void initVM(VM* vm, ModuleObject* module)
 {
-    initValueArray(&vm->globals);
     initBuiltins(vm);
 
     vm->module = module;
     vm->ip = NULL;
     vm->sp = vm->stack;
     vm->fp = vm->stack;
+    vm->gp = vm->stack;
 }
 
 void freeVM(VM* vm)
 {
-    freeValueArray(&vm->globals);
+    (void)vm;
 }
 
 void inspectStack(VM* vm)

@@ -104,13 +104,6 @@ static void emitLdi(Compiler* compiler, int16_t imm)
     emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
 }
 
-static void emitReg(Compiler* compiler)
-{
-    int reg = releaseRegister(compiler);
-
-    emitInstruction(compiler, OP_REG, reg, 0, 0);
-}
-
 static void emitLdg(Compiler* compiler, uint16_t imm)
 {
     int reg = allocateRegister(compiler);
@@ -330,9 +323,7 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
 
 static void loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(compiler, ast);
-
-    emitLdg(compiler, position);
+    emitLdg(compiler, ast->variableDefinition.position);
 }
 
 static void loadLocalVariable(Compiler* compiler, ASTNode* ast)
@@ -353,9 +344,7 @@ static void loadVariable(Compiler* compiler, ASTNode* ast)
 
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(compiler, ast);
-
-    emitStg(compiler, position);
+    emitStg(compiler, ast->variableDefinition.position);
 }
 
 static void storeLocalVariable(Compiler* compiler, ASTNode* ast)
@@ -701,26 +690,18 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
     emitRetv(compiler);
 }
 
-static void compileUninitializedVariableDefinition(Compiler* compiler, ASTNode* ast)
+static void compileUninitializedVariableDefinition(Compiler* compiler)
 {
     emitLdi(compiler, 0);
-
-    if (isTopLevelScope(ast->variableDefinition.scope)) {
-        emitReg(compiler);
-    }
 }
 
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
     if (isNone(ast->variableDefinition.expr)) {
-        return compileUninitializedVariableDefinition(compiler, ast);
+        return compileUninitializedVariableDefinition(compiler);
     }
 
     compileExpression(compiler, ast->variableDefinition.expr, false);
-
-    if (isTopLevelScope(ast->variableDefinition.scope)) {
-        emitReg(compiler);
-    }
 }
 
 static void compileExpression(Compiler* compiler, ASTNode* ast, bool discard)

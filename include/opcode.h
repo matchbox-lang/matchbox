@@ -19,7 +19,6 @@ typedef enum Opcode
     OP_MOV,     // MOV A, B
     OP_LDC,     // LDC A, imm16
     OP_LDI,     // LDI A, imm16
-    OP_REG,     // REG A
     OP_LDG,     // LDG A, imm16
     OP_STG,     // STG A, imm16
     OP_ADD,     // ADD A, B, C

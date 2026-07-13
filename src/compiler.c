@@ -25,6 +25,12 @@ typedef struct Operand
     bool temporary;
 } Operand;
 
+typedef struct CallArea
+{
+    int resultRegister;
+    int frameRegister;
+} CallArea;
+
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileToplevelStatements(Compiler* compiler, Vector* nodes);
@@ -93,6 +99,7 @@ static void emitMov(Compiler* compiler, int dst, int src)
 static Operand makeOperand(int reg, bool temporary)
 {
     Operand operand = {reg, temporary};
+
     return operand;
 }
 
@@ -115,7 +122,9 @@ static Operand materializeOperand(Compiler* compiler, Operand operand)
     }
 
     int reg = allocateRegister(compiler);
+
     emitMov(compiler, reg, operand.reg);
+    
     return makeOperand(reg, true);
 }
 
@@ -133,6 +142,7 @@ static int emitLdi(Compiler* compiler, int16_t imm)
     int reg = allocateRegister(compiler);
 
     emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
+
     return reg;
 }
 
@@ -141,14 +151,14 @@ static int emitLdg(Compiler* compiler, uint16_t imm)
     int reg = allocateRegister(compiler);
 
     emitInstruction(compiler, OP_LDG, reg, imm >> 8, imm);
+
     return reg;
 }
 
 static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister,
     uint16_t functionPosition)
 {
-    emitInstruction(compiler, OP_CALL, frameRegister,
-        functionPosition >> 8, functionPosition);
+    emitInstruction(compiler, OP_CALL, frameRegister, functionPosition >> 8, functionPosition);
 }
 
 static void emitRet(Compiler* compiler)
@@ -181,12 +191,6 @@ static size_t makeConstant(Compiler* compiler, Value value)
     return pushValue(&compiler->module->constants, value) - 1;
 }
 
-typedef struct CallArea
-{
-    int resultRegister;
-    int frameRegister;
-} CallArea;
-
 static CallArea openCallArea(Compiler* compiler)
 {
     CallArea call = { .resultRegister = compiler->registerCount };
@@ -212,9 +216,11 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     if (!discard && function->returnCount) {
         emitMov(compiler, call.resultRegister, call.frameRegister);
         compiler->registerCount = call.resultRegister + 1;
+        
         return makeOperand(call.resultRegister, true);
     } else {
         compiler->registerCount = call.resultRegister;
+
         return noOperand();
     }
 }
@@ -242,6 +248,7 @@ static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 static Operand loadLocalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = getLocalPosition(compiler, ast);
+
     return makeOperand(position, false);
 }
 
@@ -256,14 +263,18 @@ static Operand loadVariable(Compiler* compiler, ASTNode* ast)
 
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    emitInstruction(compiler, OP_STG, value.reg,
+    emitInstruction(
+        compiler, OP_STG,
+        value.reg,
         ast->variableDefinition.position >> 8,
-        ast->variableDefinition.position);
+        ast->variableDefinition.position
+    );
 }
 
 static void storeLocalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = getLocalPosition(compiler, ast);
+
     emitMov(compiler, position, value.reg);
 }
 
@@ -295,6 +306,7 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
     }
 
     ASTNode* symbol = ast->variable.symbol;
+
     return !isTopLevelScope(symbol->variableDefinition.scope)
         || !compiler->frameBaseCount;
 }
@@ -314,6 +326,7 @@ static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode,
     }
 
     emitInstruction(compiler, opcode, dst, left.reg, right.reg);
+    
     return makeOperand(dst, true);
 }
 
@@ -360,11 +373,14 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
 {
     if (operand.temporary) {
         emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
+
         return operand;
     }
 
     int dst = allocateRegister(compiler);
+
     emitInstruction(compiler, opcode, dst, operand.reg, 0);
+
     return makeOperand(dst, true);
 }
 
@@ -389,8 +405,7 @@ static Operand compileVariable(Compiler* compiler, ASTNode* ast)
     return loadVariable(compiler, ast->variable.symbol);
 }
 
-static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast,
-    Opcode opcode)
+static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode opcode)
 {
     Operand left = loadVariable(compiler, ast->assignment.symbol);
 
@@ -407,6 +422,7 @@ static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast,
 static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
 {
     Operand value = compileExpression(compiler, ast->assignment.expr, false);
+
     storeVariable(compiler, ast->assignment.symbol, value);
 }
 
@@ -486,7 +502,6 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     }
 
     function->localCount = body->compound.scope->localCount;
-
     int base = getCallAreaCount(function);
     function->maxStackCount = base + 2;
 
@@ -533,6 +548,7 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
     uint16_t functionPosition, Vector* args, bool discard)
 {
     CallArea call = openCallArea(compiler);
+
     compileArguments(compiler, args);
     return closeCallArea(compiler, function, functionPosition, call, discard);
 }
@@ -601,10 +617,12 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
 {
     if (isNone(ast->returnStatement.expr)) {
         compiler->registerCount = compiler->frameBaseCount;
+        
         return emitRet(compiler);
     }
 
     Operand value = compileExpression(compiler, ast->returnStatement.expr, false);
+
     emitMov(compiler, 0, value.reg);
     releaseOperand(compiler, value);
     compiler->registerCount = compiler->frameBaseCount;
@@ -623,6 +641,7 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 
     if (!value.temporary) {
         int reg = allocateRegister(compiler);
+
         emitMov(compiler, reg, value.reg);
     }
 }
@@ -654,6 +673,7 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
 
     if (discard) {
         releaseOperand(compiler, result);
+
         return noOperand();
     }
 
@@ -706,7 +726,6 @@ static void compileToplevelStatements(Compiler* compiler, Vector* nodes)
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
     bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
-
     Operand value = compileStatement(compiler, ast, !display);
 
     if (!display) {
@@ -726,6 +745,7 @@ static void compileReplStatements(Compiler* compiler, Vector* nodes)
     while (compiler->statementIndex < count) {
         ASTNode* ast = nodes->data[compiler->statementIndex++];
         bool isLast = compiler->statementIndex == count;
+
         compileReplStatement(compiler, ast, isLast);
     }
 }
@@ -775,6 +795,7 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
     clearCodeObject(currentCodeObject(compiler));
     compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);
+
     return true;
 }
 

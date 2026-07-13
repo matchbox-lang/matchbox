@@ -271,11 +271,39 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
     );
 }
 
+static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    if (!value.temporary || count < INSTRUCTION_SIZE) {
+        return false;
+    }
+
+    size_t start = count - INSTRUCTION_SIZE;
+
+    if (code->data[start + OPERAND_A_OFFSET] != value.reg) {
+        return false;
+    }
+
+    Opcode opcode = (Opcode)code->data[start];
+
+    if (!(getOpcodeFlags(opcode) & OP_FLAG_WRITES_A)) {
+        return false;
+    }
+
+    setByteAt(code, start + OPERAND_A_OFFSET, dst);
+
+    return true;
+}
+
 static void storeLocalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = getLocalPosition(compiler, ast);
 
-    emitMov(compiler, position, value.reg);
+    if (!retargetTemporary(compiler, value, position)) {
+        emitMov(compiler, position, value.reg);
+    }
 }
 
 static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)

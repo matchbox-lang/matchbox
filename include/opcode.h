@@ -12,6 +12,15 @@ typedef uint32_t Instruction;
 #define OPERAND_BC(inst) ((uint16_t)((OPERAND_B(inst) << 8) | OPERAND_C(inst)))
 #define OPERAND_ABC(inst) ((uint32_t)((OPERAND_A(inst) << 16) | (OPERAND_B(inst) << 8) | OPERAND_C(inst)))
 
+#define INSTRUCTION_SIZE 4
+#define OPERAND_A_OFFSET 1
+
+typedef enum OpcodeFlag
+{
+    OP_FLAG_NONE = 0,
+    OP_FLAG_WRITES_A = 1 << 0
+} OpcodeFlag;
+
 typedef enum Opcode
 {
     OP_HLT,     // HLT
@@ -44,5 +53,7 @@ typedef enum Opcode
     OP_RET,     // RET
     OP_RETV     // RETV A
 } Opcode;
+
+OpcodeFlag getOpcodeFlags(Opcode opcode);
 
 #endif

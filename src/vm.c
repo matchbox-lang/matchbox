@@ -134,7 +134,7 @@ static void run(VM* vm)
                 break;
             }
             case OP_CALL: {
-                Value* newFrame = vm->fp + a + 1;
+                Value* newFrame = vm->fp + a;
                 function = vm->module->functions.data[OPERAND_BC(inst)];
 
                 if (function->type == FUNCTION_BUILTIN) {

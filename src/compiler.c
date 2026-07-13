@@ -144,10 +144,10 @@ static int emitLdg(Compiler* compiler, uint16_t imm)
     return reg;
 }
 
-static void emitCallInstruction(Compiler* compiler, uint8_t functionRegister,
+static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister,
     uint16_t functionPosition)
 {
-    emitInstruction(compiler, OP_CALL, functionRegister,
+    emitInstruction(compiler, OP_CALL, frameRegister,
         functionPosition >> 8, functionPosition);
 }
 
@@ -184,7 +184,7 @@ static size_t makeConstant(Compiler* compiler, Value value)
 typedef struct CallArea
 {
     int resultRegister;
-    int functionRegister;
+    int frameRegister;
 } CallArea;
 
 static CallArea openCallArea(Compiler* compiler)
@@ -192,7 +192,8 @@ static CallArea openCallArea(Compiler* compiler)
     CallArea call = { .resultRegister = compiler->registerCount };
 
     allocateRegister(compiler);
-    call.functionRegister = allocateRegister(compiler);
+    allocateRegister(compiler);
+    call.frameRegister = compiler->registerCount;
 
     return call;
 }
@@ -200,16 +201,16 @@ static CallArea openCallArea(Compiler* compiler)
 static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     uint16_t functionPosition, CallArea call, bool discard)
 {
-    int end = call.functionRegister + 1 + getCallAreaCount(function);
+    int end = call.frameRegister + getCallAreaCount(function);
 
     while (compiler->registerCount < end) {
         emitLdi(compiler, 0);
     }
 
-    emitCallInstruction(compiler, (uint8_t)call.functionRegister, functionPosition);
+    emitCallInstruction(compiler, (uint8_t)call.frameRegister, functionPosition);
 
     if (!discard && function->returnCount) {
-        emitMov(compiler, call.resultRegister, call.functionRegister + 1);
+        emitMov(compiler, call.resultRegister, call.frameRegister);
         compiler->registerCount = call.resultRegister + 1;
         return makeOperand(call.resultRegister, true);
     } else {

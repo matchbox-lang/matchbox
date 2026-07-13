@@ -69,9 +69,7 @@ static void run(VM* vm)
                 vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
                 break;
             case OP_ADD:
-                int b = AS_INT(vm->fp[b]);
-                int c = AS_INT(vm->fp[c]);
-                vm->fp[a] = INT_VALUE(b + c);
+                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) + AS_INT(vm->fp[c]));
                 break;
             case OP_SUB:
                 vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) - AS_INT(vm->fp[c]));

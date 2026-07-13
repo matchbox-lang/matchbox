@@ -31,7 +31,7 @@ static void printOpcodeRegister(const char* name)
     uint8_t a = READ_UINT8();
     ptr += 2;
 
-    printf("%-11s R%d\n", name, a);
+    printf("%-7s R%d\n", name, a);
 }
 
 static void printOpcodeRegisters2(const char* name)
@@ -40,7 +40,7 @@ static void printOpcodeRegisters2(const char* name)
     uint8_t b = READ_UINT8();
     ptr++;
 
-    printf("%-11s R%d, R%d\n", name, a, b);
+    printf("%-7s R%d, R%d\n", name, a, b);
 }
 
 static void printOpcodeRegisters3(const char* name)
@@ -49,7 +49,7 @@ static void printOpcodeRegisters3(const char* name)
     uint8_t b = READ_UINT8();
     uint8_t c = READ_UINT8();
 
-    printf("%-11s R%d, R%d, R%d\n", name, a, b, c);
+    printf("%-7s R%d, R%d, R%d\n", name, a, b, c);
 }
 
 static void printOpcodeRegisterInt16(const char* name)
@@ -57,7 +57,7 @@ static void printOpcodeRegisterInt16(const char* name)
     uint8_t a = READ_UINT8();
     int16_t imm = READ_INT16();
 
-    printf("%-11s R%d, %d\n", name, a, imm);
+    printf("%-7s R%d, #%d\n", name, a, imm);
 }
 
 static void printOpcodeRegisterUint16(const char* name)
@@ -65,7 +65,7 @@ static void printOpcodeRegisterUint16(const char* name)
     uint8_t a = READ_UINT8();
     uint16_t imm = READ_UINT16();
 
-    printf("%-11s R%d, %u\n", name, a, imm);
+    printf("%-7s R%d, #%u\n", name, a, imm);
 }
 
 static void printOpcodeBranch(const char* name)
@@ -74,14 +74,14 @@ static void printOpcodeBranch(const char* name)
     uint8_t b = READ_UINT8();
     int8_t offset = READ_INT8();
 
-    printf("%-11s R%d, R%d, %d\n", name, a, b, offset);
+    printf("%-7s R%d, R%d, #%d\n", name, a, b, offset);
 }
 
 static void printOpcodeInt24(const char* name)
 {
     int32_t imm = READ_INT24();
 
-    printf("%-11s %d\n", name, imm);
+    printf("%-7s #%d\n", name, imm);
 }
 
 static void printInstruction(int8_t c)

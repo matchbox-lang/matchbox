@@ -42,7 +42,7 @@ typedef enum Opcode
     OP_JMP,     // JMP imm24
     OP_CALL,    // CALL A, imm16
     OP_RET,     // RET
-    OP_RETV     // RETV
+    OP_RETV     // RETV A
 } Opcode;
 
 #endif

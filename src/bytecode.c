@@ -115,7 +115,7 @@ static void printInstruction(int8_t c)
         case OP_JMP:        printOpcodeInt24("JMP"); break;
         case OP_CALL:       printOpcodeRegisterUint16("CALL"); break;
         case OP_RET:        printOpcode("RET"); break;
-        case OP_RETV:       printOpcode("RETV"); break;
+        case OP_RETV:       printOpcodeRegister("RETV"); break;
         default:
             unknownOpcodeError(c);
     }

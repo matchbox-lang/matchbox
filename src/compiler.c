@@ -166,9 +166,9 @@ static void emitRet(Compiler* compiler)
     emitInstruction(compiler, OP_RET, 0, 0, 0);
 }
 
-static void emitRetv(Compiler* compiler)
+static void emitRetv(Compiler* compiler, int src)
 {
-    emitInstruction(compiler, OP_RETV, 0, 0, 0);
+    emitInstruction(compiler, OP_RETV, src, 0, 0);
 }
 
 static int getCallAreaCount(FunctionObject* function)
@@ -642,10 +642,9 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
 
     Operand value = compileExpression(compiler, ast->returnStatement.expr, false);
 
-    emitMov(compiler, 0, value.reg);
+    emitRetv(compiler, value.reg);
     releaseOperand(compiler, value);
     compiler->registerCount = compiler->frameBaseCount;
-    emitRetv(compiler);
 }
 
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)

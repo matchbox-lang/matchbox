@@ -151,13 +151,13 @@ static void run(VM* vm)
             }
             case OP_RET: {
                 Value* frame = vm->fp;
-                frame[0] = INT_VALUE(0);
                 vm->ip = AS_POINTER(frame[-2]);
                 vm->fp = AS_POINTER(frame[-1]);
                 break;
             }
             case OP_RETV: {
                 Value* frame = vm->fp;
+                frame[0] = frame[a];
                 vm->ip = AS_POINTER(frame[-2]);
                 vm->fp = AS_POINTER(frame[-1]);
                 break;

@@ -8,7 +8,7 @@
 
 #define STACK_MAX 1024
 
-typedef Value (*builtin_t)(Value* args);
+typedef void (*builtin_t)(Value* args);
 
 typedef struct VM
 {

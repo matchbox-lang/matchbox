@@ -138,8 +138,7 @@ static void run(VM* vm)
                 function = vm->module->functions.data[OPERAND_BC(inst)];
 
                 if (function->type == FUNCTION_BUILTIN) {
-                    builtin_t builtin = vm->builtins[function->builtinId];
-                    newFrame[0] = builtin(newFrame);
+                    vm->builtins[function->builtinId](newFrame);
                     break;
                 }
                 

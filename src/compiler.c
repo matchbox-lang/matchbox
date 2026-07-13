@@ -547,6 +547,18 @@ static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
 static Operand compileCall(Compiler* compiler, FunctionObject* function,
     uint16_t functionPosition, Vector* args, bool discard)
 {
+    if (function->type == FUNCTION_BUILTIN && !function->returnCount
+        && function->paramCount == 1) {
+        CallArea call = openCallArea(compiler);
+        Operand argument = compileExpression(compiler, args->data[0], false);
+
+        emitCallInstruction(compiler, (uint8_t)argument.reg, functionPosition);
+        releaseOperand(compiler, argument);
+        compiler->registerCount = call.resultRegister;
+
+        return noOperand();
+    }
+
     CallArea call = openCallArea(compiler);
 
     compileArguments(compiler, args);
@@ -556,6 +568,13 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
 static void compileCallWithArgument(Compiler* compiler, FunctionObject* function,
     uint16_t functionPosition, Operand argument, bool discard)
 {
+    if (function->type == FUNCTION_BUILTIN && !function->returnCount) {
+        emitCallInstruction(compiler, (uint8_t)argument.reg, functionPosition);
+        releaseOperand(compiler, argument);
+
+        return;
+    }
+
     CallArea call = openCallArea(compiler);
     int callArgumentRegister = compiler->registerCount;
 

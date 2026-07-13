@@ -29,12 +29,12 @@ typedef struct Builtin
 extern Builtin builtins[BUILTINS_MAX];
 
 Builtin* getBuiltinByName(const char* name);
-Value builtinExit(Value* args);
-Value builtinPrint(Value* args);
-Value builtinClamp(Value* args);
-Value builtinAbs(Value* args);
-Value builtinMin(Value* args);
-Value builtinMax(Value* args);
-Value builtinByteorder(Value* args);
+void builtinExit(Value* frame);
+void builtinPrint(Value* frame);
+void builtinClamp(Value* frame);
+void builtinAbs(Value* frame);
+void builtinMin(Value* frame);
+void builtinMax(Value* frame);
+void builtinByteorder(Value* frame);
 
 #endif

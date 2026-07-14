@@ -243,6 +243,35 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     return compiler->frameBaseCount + ast->variableDefinition.position;
 }
 
+static Operand loadGlobalFromPreviousInstruction(Compiler* compiler,
+    CodeObject* code, size_t count, int position)
+{
+    size_t start = count - INSTRUCTION_SIZE;
+    uint16_t storedPosition = code->data[start + 2] << 8 | code->data[start + 3];
+
+    if (code->data[start] == OP_STG && storedPosition == position) {
+        return makeOperand(code->data[start + OPERAND_A_OFFSET], false);
+    }
+
+    int reg = emitLdg(compiler, position);
+
+    return makeOperand(reg, true);
+}
+
+static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    if (count < INSTRUCTION_SIZE) {
+        int reg = emitLdg(compiler, position);
+
+        return makeOperand(reg, true);
+    }
+
+    return loadGlobalFromPreviousInstruction(compiler, code, count, position);
+}
+
 static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = ast->variableDefinition.position;
@@ -251,7 +280,7 @@ static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
         return makeOperand(position, false);
     }
 
-    return makeOperand(emitLdg(compiler, position), true);
+    return loadGlobalWithStoreForwarding(compiler, position);
 }
 
 static Operand loadLocalVariable(Compiler* compiler, ASTNode* ast)

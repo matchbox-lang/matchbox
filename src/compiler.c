@@ -668,15 +668,16 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
 {
-    FunctionObject* previousFunction = compiler->function;
     int previousFrameBaseCount = compiler->frameBaseCount;
     int previousRegisterCount = compiler->registerCount;
+    FunctionObject* previousFunction = compiler->function;
     FunctionObject* function = createDefinedFunctionObject(ast);
     ASTNode* body = ast->functionDefinition.body;
     
     compiler->frameBaseCount = getCallAreaCount(function);
     compiler->registerCount = compiler->frameBaseCount;
     compiler->function = function;
+    
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, ast);
     compileBlocklevelStatements(compiler, &body->compound.statements);

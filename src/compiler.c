@@ -33,7 +33,7 @@ typedef struct CallArea
 
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
-static void compileToplevelStatements(Compiler* compiler, Vector* nodes);
+static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 
 static void functionPositionOverflowError()
 {
@@ -797,7 +797,7 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes)
     }
 }
 
-static void compileToplevelStatements(Compiler* compiler, Vector* nodes)
+static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
@@ -885,7 +885,7 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
 
 bool compile(Compiler* compiler, char* source)
 {
-    return compileSource(compiler, source, compileToplevelStatements);
+    return compileSource(compiler, source, compileTopLevelStatements);
 }
 
 bool compileRepl(Compiler* compiler, char* source)

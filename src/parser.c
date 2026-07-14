@@ -804,7 +804,7 @@ static bool parseBlocklevelStatements(Parser* parser, Vector* nodes)
     return parseStatements(parser, nodes, TOKEN_RBRACE);
 }
 
-static bool parseToplevelStatements(Parser* parser)
+static bool parseTopLevelStatements(Parser* parser)
 {
     return parseStatements(parser, &parser->topLevel->compound.statements, TOKEN_EOF);
 }
@@ -819,5 +819,5 @@ bool parse(Parser* parser, char* source)
     initLexer(&parser->lexer, source);
     advance(parser);
 
-    return parseToplevelStatements(parser);
+    return parseTopLevelStatements(parser);
 }

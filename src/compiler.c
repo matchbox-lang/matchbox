@@ -202,13 +202,22 @@ static CallArea openCallArea(Compiler* compiler)
     return call;
 }
 
+static void allocateCallAreaRegister(Compiler* compiler, FunctionObject* function)
+{
+    if (!function->paramCount && !function->returnCount) {
+        allocateRegister(compiler);
+    } else {
+        emitLdi(compiler, 0);
+    }
+}
+
 static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     uint16_t functionPosition, CallArea call, bool discard)
 {
     int end = call.frameRegister + getCallAreaCount(function);
 
     while (compiler->registerCount < end) {
-        emitLdi(compiler, 0);
+        allocateCallAreaRegister(compiler, function);
     }
 
     emitCallInstruction(compiler, (uint8_t)call.frameRegister, functionPosition);

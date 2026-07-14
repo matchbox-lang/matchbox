@@ -11,6 +11,7 @@ typedef uint32_t Instruction;
 #define OPERAND_C(inst) ((uint8_t)((inst) >> 24))
 #define OPERAND_BC(inst) ((uint16_t)((OPERAND_B(inst) << 8) | OPERAND_C(inst)))
 #define OPERAND_ABC(inst) ((uint32_t)((OPERAND_A(inst) << 16) | (OPERAND_B(inst) << 8) | OPERAND_C(inst)))
+#define SIGNED_OPERAND_ABC(inst) ((int32_t)(OPERAND_ABC(inst) ^ 0x800000u) - 0x800000)
 
 #define INSTRUCTION_SIZE 4
 #define OPERAND_A_OFFSET 1

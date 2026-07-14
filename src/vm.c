@@ -125,14 +125,9 @@ static void run(VM* vm)
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_JMP: {
-                int32_t offset = OPERAND_ABC(inst);
-                if (offset & 0x800000) {
-                    offset |= ~0xffffff;
-                }
-                vm->ip += offset;
+            case OP_JMP:
+                vm->ip += SIGNED_OPERAND_ABC(inst);
                 break;
-            }
             case OP_CALL: {
                 Value* newFrame = vm->fp + a;
                 function = vm->module->functions.data[OPERAND_BC(inst)];

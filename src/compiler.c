@@ -313,13 +313,23 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     return compiler->frameBaseCount + ast->variableDefinition.position;
 }
 
-static Operand loadGlobalFromPreviousInstruction(Compiler* compiler,
-    CodeObject* code, size_t count, int position)
+static Operand loadGlobalFromPreviousInstruction(Compiler* compiler, CodeObject* code, size_t count, int position)
 {
     size_t start = count - INSTRUCTION_SIZE;
-    uint16_t storedPosition = code->data[start + 2] << 8 | code->data[start + 3];
+    Opcode opcode = (Opcode)code->data[start];
+    uint16_t storedPosition;
 
-    if (code->data[start] == OP_STG && storedPosition == position) {
+    if (opcode == OP_STG) {
+        storedPosition = code->data[start + 2] << 8 | code->data[start + 3];
+    } else if (opcode == OP_LDI_STG) {
+        storedPosition = code->data[start + 3];
+    } else {
+        int reg = emitLdg(compiler, position);
+
+        return makeOperand(reg, true);
+    }
+
+    if (storedPosition == position) {
         return makeOperand(code->data[start + OPERAND_A_OFFSET], false);
     }
 
@@ -369,13 +379,48 @@ static Operand loadVariable(Compiler* compiler, ASTNode* ast)
     return loadLocalVariable(compiler, ast);
 }
 
+static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    if (!value.temporary || count < INSTRUCTION_SIZE || position > UINT8_MAX) {
+        return false;
+    }
+
+    size_t start = count - INSTRUCTION_SIZE;
+
+    if (code->data[start] != OP_LDI
+        || code->data[start + OPERAND_A_OFFSET] != value.reg) {
+        return false;
+    }
+
+    int16_t imm = (int16_t)(code->data[start + 2] << 8 | code->data[start + 3]);
+
+    if (imm < INT8_MIN || imm > INT8_MAX) {
+        return false;
+    }
+
+    setByteAt(code, start, OP_LDI_STG);
+    setByteAt(code, start + 2, imm);
+    setByteAt(code, start + 3, position);
+
+    return true;
+}
+
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
+    int position = ast->variableDefinition.position;
+
+    if (fuseLdiStore(compiler, value, position)) {
+        return;
+    }
+
     emitInstruction(
         compiler, OP_STG,
         value.reg,
-        ast->variableDefinition.position >> 8,
-        ast->variableDefinition.position
+        position >> 8,
+        position
     );
 }
 

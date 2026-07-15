@@ -35,38 +35,56 @@ typedef enum OpcodeFlag
 
 typedef enum Opcode
 {
-    OP_HLT,     // HLT
-    OP_NOP,     // NOP
-    OP_MOV,     // MOV A, B
-    OP_LDC,     // LDC A, imm16
-    OP_LDG,     // LDG A, imm16
-    OP_LDI,     // LDI A, imm16
-    OP_STG,     // STG A, imm16
-    OP_ADD,     // ADD A, B, C
-    OP_SUB,     // SUB A, B, C
-    OP_MUL,     // MUL A, B, C
-    OP_DIV,     // DIV A, B, C
-    OP_REM,     // REM A, B, C
-    OP_POW,     // POW A, B, C
-    OP_BAND,    // BAND A, B, C
-    OP_BOR,     // BOR A, B, C
-    OP_BXOR,    // BXOR A, B, C
-    OP_BNOT,    // BNOT A, B
-    OP_LSL,     // LSL A, B, C
-    OP_LSR,     // LSR A, B, C
-    OP_ASR,     // ASR A, B, C
-    OP_NOT,     // NOT A, B
-    OP_NEG,     // NEG A, B
-    OP_BEQ,     // BEQ A, B, imm8
-    OP_BLT,     // BLT A, B, imm8
-    OP_BLE,     // BLE A, B, imm8
-    OP_JMP,     // JMP imm24
-    OP_CALL,    // CALL A, imm16
-    OP_LDC_CALL, // LDC_CALL A, imm10, imm6
-    OP_LDI_CALL, // LDI_CALL A, imm10, imm6
-    OP_LDG_CALL, // LDG_CALL A, imm10, imm6
-    OP_RET,     // RET
-    OP_RETV     // RETV A
+    // Control
+    OP_HLT,
+    OP_NOP,
+
+    // Data movement
+    OP_MOV,
+    OP_LDI,
+    OP_LDC,
+    OP_LDG,
+    OP_STG,
+
+    // Arithmetic
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+    OP_REM,
+    OP_POW,
+
+    // Bitwise
+    OP_BAND,
+    OP_BOR,
+    OP_BXOR,
+    OP_BNOT,
+    OP_LSL,
+    OP_LSR,
+    OP_ASR,
+
+    // Unary
+    OP_NOT,
+    OP_NEG,
+
+    // Branching
+    OP_BEQ,
+    OP_BLT,
+    OP_BLE,
+    OP_JMP,
+
+    // Functions
+    OP_CALL,
+    OP_RET,
+    OP_RETV,
+
+    // Superinstructions
+    OP_LDC_CALL,
+    OP_LDG_CALL,
+    OP_LDI_CALL,
+    OP_LDI_STG,
+
+    OP_COUNT
 } Opcode;
 
 OpcodeFlag getOpcodeFlags(Opcode opcode);

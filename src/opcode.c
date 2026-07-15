@@ -1,10 +1,9 @@
 #include "opcode.h"
-#include <stddef.h>
 
-static const OpcodeFlag opcodeFlags[] = {
+static const OpcodeFlag opcodeFlags[OP_COUNT] = {
     [OP_MOV] = OP_FLAG_WRITES_A,
-    [OP_LDC] = OP_FLAG_WRITES_A,
     [OP_LDI] = OP_FLAG_WRITES_A,
+    [OP_LDC] = OP_FLAG_WRITES_A,
     [OP_LDG] = OP_FLAG_WRITES_A,
     [OP_ADD] = OP_FLAG_WRITES_A,
     [OP_SUB] = OP_FLAG_WRITES_A,
@@ -21,14 +20,12 @@ static const OpcodeFlag opcodeFlags[] = {
     [OP_ASR] = OP_FLAG_WRITES_A,
     [OP_NOT] = OP_FLAG_WRITES_A,
     [OP_NEG] = OP_FLAG_WRITES_A,
-    [OP_RETV] = OP_FLAG_NONE
+    [OP_LDI_STG] = OP_FLAG_WRITES_A
 };
 
 OpcodeFlag getOpcodeFlags(Opcode opcode)
 {
-    size_t count = sizeof(opcodeFlags) / sizeof(*opcodeFlags);
-
-    if ((unsigned)opcode >= count) {
+    if ((unsigned)opcode >= OP_COUNT) {
         return OP_FLAG_NONE;
     }
 

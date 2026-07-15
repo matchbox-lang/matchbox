@@ -54,11 +54,11 @@ static void run(VM* vm)
             case OP_MOV:
                 vm->fp[a] = vm->fp[b];
                 break;
-            case OP_LDC:
-                vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
-                break;
             case OP_LDI:
                 vm->fp[a] = INT_VALUE((int16_t)OPERAND_BC(inst));
+                break;
+            case OP_LDC:
+                vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
                 break;
             case OP_LDG:
                 vm->fp[a] = vm->gp[OPERAND_BC(inst)];
@@ -129,6 +129,40 @@ static void run(VM* vm)
             case OP_JMP:
                 vm->ip += SIGNED_OPERAND_ABC(inst);
                 break;
+            case OP_CALL:
+                functionPosition = OPERAND_BC(inst);
+
+                call: {
+                    Value* newFrame = vm->fp + a;
+                    function = vm->module->functions.data[functionPosition];
+
+                    if (function->type == FUNCTION_BUILTIN) {
+                        vm->builtins[function->builtinId](newFrame);
+                        break;
+                    }
+
+                    testFrameOverflow(vm, newFrame, function->maxStackCount);
+                    newFrame[-2] = POINTER_VALUE(vm->ip);
+                    newFrame[-1] = POINTER_VALUE(vm->fp);
+                    vm->fp = newFrame;
+                    vm->ip = (Instruction*)function->code.data;
+                    break;
+                }
+            case OP_RET: {
+                Value* frame = vm->fp;
+                
+                vm->ip = AS_POINTER(frame[-2]);
+                vm->fp = AS_POINTER(frame[-1]);
+                break;
+            }
+            case OP_RETV: {
+                Value* frame = vm->fp;
+
+                frame[0] = frame[a];
+                vm->ip = AS_POINTER(frame[-2]);
+                vm->fp = AS_POINTER(frame[-1]);
+                break;
+            }
             case OP_LDC_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
 
@@ -151,38 +185,10 @@ static void run(VM* vm)
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
-            case OP_CALL:
-                functionPosition = OPERAND_BC(inst);
-
-                call: {
-                    Value* newFrame = vm->fp + a;
-                    function = vm->module->functions.data[functionPosition];
-
-                    if (function->type == FUNCTION_BUILTIN) {
-                        vm->builtins[function->builtinId](newFrame);
-                        break;
-                    }
-
-                    testFrameOverflow(vm, newFrame, function->maxStackCount);
-                    newFrame[-2] = POINTER_VALUE(vm->ip);
-                    newFrame[-1] = POINTER_VALUE(vm->fp);
-                    vm->fp = newFrame;
-                    vm->ip = (Instruction*)function->code.data;
-                    break;
-                }
-            case OP_RET: {
-                Value* frame = vm->fp;
-                vm->ip = AS_POINTER(frame[-2]);
-                vm->fp = AS_POINTER(frame[-1]);
+            case OP_LDI_STG:
+                vm->fp[a] = INT_VALUE((int8_t)b);
+                vm->gp[c] = vm->fp[a];
                 break;
-            }
-            case OP_RETV: {
-                Value* frame = vm->fp;
-                frame[0] = frame[a];
-                vm->ip = AS_POINTER(frame[-2]);
-                vm->fp = AS_POINTER(frame[-1]);
-                break;
-            }
             default:
                 return;
         }

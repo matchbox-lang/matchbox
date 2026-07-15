@@ -68,6 +68,15 @@ static void printOpcodeRegisterUint16(const char* name)
     printf("%-11s R%d, #%u\n", name, a, imm);
 }
 
+static void printOpcodeRegisterInt8Uint8(const char* name)
+{
+    uint8_t a = READ_UINT8();
+    int8_t imm = READ_INT8();
+    uint8_t position = READ_UINT8();
+
+    printf("%-11s R%d, #%d, #%u\n", name, a, imm, position);
+}
+
 static void printLoadCall(const char* name)
 {
     uint8_t a = READ_UINT8();
@@ -107,8 +116,8 @@ static void printInstruction(int8_t c)
         case OP_HLT:        printOpcode("HLT"); break;
         case OP_NOP:        printOpcode("NOP"); break;
         case OP_MOV:        printOpcodeRegisters2("MOV"); break;
-        case OP_LDC:        printOpcodeRegisterUint16("LDC"); break;
         case OP_LDI:        printOpcodeRegisterInt16("LDI"); break;
+        case OP_LDC:        printOpcodeRegisterUint16("LDC"); break;
         case OP_LDG:        printOpcodeRegisterUint16("LDG"); break;
         case OP_STG:        printOpcodeRegisterUint16("STG"); break;
         case OP_ADD:        printOpcodeRegisters3("ADD"); break;
@@ -131,11 +140,12 @@ static void printInstruction(int8_t c)
         case OP_BLE:        printOpcodeBranch("BLE"); break;
         case OP_JMP:        printOpcodeInt24("JMP"); break;
         case OP_CALL:       printOpcodeRegisterUint16("CALL"); break;
+        case OP_RET:        printOpcode("RET"); break;
+        case OP_RETV:       printOpcodeRegister("RETV"); break;
         case OP_LDC_CALL:   printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:   printLoadCall("LDG_CALL"); break;
         case OP_LDI_CALL:   printSignedLoadCall("LDI_CALL"); break;
-        case OP_RET:        printOpcode("RET"); break;
-        case OP_RETV:       printOpcodeRegister("RETV"); break;
+        case OP_LDI_STG:    printOpcodeRegisterInt8Uint8("LDI_STG"); break;
         default:
             unknownOpcodeError(c);
     }

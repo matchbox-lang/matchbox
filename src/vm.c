@@ -178,6 +178,10 @@ static void run(VM* vm)
                 vm->fp[a] = INT_VALUE((int8_t)b);
                 vm->fp[a + 1] = INT_VALUE((int8_t)c);
                 break;
+            case OP_MOV2:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->fp[c];
+                break;
             case OP_LDC_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
 

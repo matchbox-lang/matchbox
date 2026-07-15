@@ -81,6 +81,7 @@ typedef enum Opcode
     // Repeated instructions
     OP_CALL2,
     OP_LDI2,
+    OP_MOV2,
 
     // Fused instructions
     OP_LDC_CALL,

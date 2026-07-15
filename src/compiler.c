@@ -92,9 +92,35 @@ static void emitHlt(Compiler* compiler)
     emitInstruction(compiler, OP_HLT, 0, 0, 0);
 }
 
+static bool fuseMovMov(Compiler* compiler, int dst, int src)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    if (count < INSTRUCTION_SIZE) {
+        return false;
+    }
+
+    size_t start = count - INSTRUCTION_SIZE;
+
+    if (code->data[start] != OP_MOV
+        || code->data[start + OPERAND_A_OFFSET] + 1 != dst) {
+        return false;
+    }
+
+    setByteAt(code, start, OP_MOV2);
+    setByteAt(code, start + 3, src);
+
+    return true;
+}
+
 static void emitMov(Compiler* compiler, int dst, int src)
 {
     if (dst == src) {
+        return;
+    }
+
+    if (fuseMovMov(compiler, dst, src)) {
         return;
     }
 

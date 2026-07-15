@@ -416,12 +416,7 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
         return;
     }
 
-    emitInstruction(
-        compiler, OP_STG,
-        value.reg,
-        position >> 8,
-        position
-    );
+    emitInstruction(compiler, OP_STG, value.reg, position >> 8, position);
 }
 
 static bool retargetTemporary(Compiler* compiler, Operand value, int dst)

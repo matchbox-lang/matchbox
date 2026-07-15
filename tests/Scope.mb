@@ -2,57 +2,58 @@ var x = 10
 var y = 20
 
 func updateGlobal() {
-    print(x)       # 10
+    print(x)
     x = 15
-    print(x)       # 15
+    print(x)
 }
 
 func testLocal(x: int) {
-    print(x)       # 100 — parameter shadows global x
-    print(y)       # 20  — reads global y
+    print(x)
+    print(y)
 
     var local = 200
-    print(local)   # 200
+    print(local)
 
     func inner(x: int) {
-        print(x)   # 300 — own parameter
-        print(y)   # 20  — reads global y
+        print(x)
+        print(y)
     }
 
     inner(300)
 
-    print(x)       # 100
-    print(local)   # 200
+    print(x)
+    print(local)
 }
 
 func testShadowing() {
-    print(x)       # 15 — reads global x
+    print(x)
 
     var x = 400
 
-    print(x)       # 400 — local x shadows global x
+    print(x)
     x = 450
-    print(x)       # 450
+    print(x)
 
     func inner() {
-        print(x)   # 15 — reads global x, not testShadowing's local x
+        print(x)
         x = 25
-        print(x)   # 25 — modifies global x
+        print(x)
     }
 
     inner()
 
-    print(x)       # 450 — local x is unchanged
+    print(x)
 }
 
-print(x)           # 10
-print(y)           # 20
+print(x)
+print(y)
 
 updateGlobal()
-print(x)           # 15
+
+print(x)
 
 testLocal(100)
 testShadowing()
 
-print(x)           # 25
-print(y)           # 20
+print(x)
+print(y)

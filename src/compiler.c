@@ -164,7 +164,7 @@ static bool fuseLdiLdi(Compiler* compiler, int reg, int16_t imm)
         return false;
     }
 
-    setByteAt(code, start, OP_LDI_LDI);
+    setByteAt(code, start, OP_LDI2);
     setByteAt(code, start + 2, previousImm);
     setByteAt(code, start + 3, imm);
 

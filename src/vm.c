@@ -196,7 +196,7 @@ static void run(VM* vm)
                 vm->builtins[function->builtinId](newFrame + 1);
                 break;
             }
-            case OP_LDI_LDI:
+            case OP_LDI2:
                 vm->fp[a] = INT_VALUE((int8_t)b);
                 vm->fp[a + 1] = INT_VALUE((int8_t)c);
                 break;

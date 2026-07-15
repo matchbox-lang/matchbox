@@ -164,7 +164,7 @@ static void printInstruction(int8_t c)
         case OP_LDG_CALL:   printLoadCall("LDG_CALL"); break;
         case OP_LDI_CALL:   printSignedLoadCall("LDI_CALL"); break;
         case OP_CALL_CALL:  printOpcodeRegisterUint8Uint8("CALL_CALL"); break;
-        case OP_LDI_LDI:    printOpcodeRegisterInt8Int8("LDI_LDI"); break;
+        case OP_LDI2:       printOpcodeRegisterInt8Int8("LDI2"); break;
         case OP_LDI_STG:    printOpcodeRegisterInt8Uint8("LDI_STG"); break;
         default:
             unknownOpcodeError(c);

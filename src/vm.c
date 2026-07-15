@@ -157,10 +157,12 @@ static void run(VM* vm)
             }
             case OP_RETV: {
                 Value* frame = vm->fp;
+                Instruction* ip = AS_POINTER(frame[-2]);
+                Value* fp = AS_POINTER(frame[-1]);
 
-                frame[0] = frame[a];
-                vm->ip = AS_POINTER(frame[-2]);
-                vm->fp = AS_POINTER(frame[-1]);
+                frame[-2] = frame[a];
+                vm->ip = ip;
+                vm->fp = fp;
                 break;
             }
             case OP_LDC_CALL: {

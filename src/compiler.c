@@ -52,6 +52,11 @@ static CodeObject* currentCodeObject(Compiler* compiler)
     return &compiler->function->code;
 }
 
+static bool isCompilingTopLevel(Compiler* compiler)
+{
+    return compiler->function == getVectorAt(&compiler->module->functions, 0);
+}
+
 static int allocateRegister(Compiler* compiler)
 {
     int reg = compiler->registerCount++;
@@ -318,17 +323,7 @@ static void emitRetv(Compiler* compiler, int src)
 
 static int getCallAreaCount(FunctionObject* function)
 {
-    int returnSlots = function->returnCount;
-
-    if (!returnSlots) {
-        returnSlots = 1;
-    }
-
-    if (function->paramCount > returnSlots) {
-        return function->paramCount;
-    }
-
-    return returnSlots;
+    return function->paramCount;
 }
 
 static size_t makeConstant(Compiler* compiler, Value value)
@@ -347,13 +342,9 @@ static CallArea openCallArea(Compiler* compiler)
     return call;
 }
 
-static void allocateCallAreaRegister(Compiler* compiler, FunctionObject* function)
+static void allocateCallAreaRegister(Compiler* compiler)
 {
-    if (!function->paramCount && !function->returnCount) {
-        allocateRegister(compiler);
-    } else {
-        emitLdi(compiler, 0);
-    }
+    emitLdi(compiler, 0);
 }
 
 static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
@@ -362,13 +353,12 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     int end = call.frameRegister + getCallAreaCount(function);
 
     while (compiler->registerCount < end) {
-        allocateCallAreaRegister(compiler, function);
+        allocateCallAreaRegister(compiler);
     }
 
     emitCallInstruction(compiler, (uint8_t)call.frameRegister, functionPosition);
 
     if (!discard && function->returnCount) {
-        emitMov(compiler, call.resultRegister, call.frameRegister);
         compiler->registerCount = call.resultRegister + 1;
         
         return makeOperand(call.resultRegister, true);
@@ -431,7 +421,7 @@ static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = ast->variableDefinition.position;
 
-    if (!compiler->frameBaseCount) {
+    if (isCompilingTopLevel(compiler)) {
         return makeOperand(position, false);
     }
 
@@ -559,7 +549,7 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
     ASTNode* symbol = ast->variable.symbol;
 
     return !isTopLevelScope(symbol->variableDefinition.scope)
-        || !compiler->frameBaseCount;
+        || isCompilingTopLevel(compiler);
 }
 
 static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode,

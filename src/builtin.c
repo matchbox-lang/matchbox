@@ -54,7 +54,7 @@ void builtinClamp(Value* frame)
         num = max;
     }
 
-    frame[0] = INT_VALUE(num);
+    frame[-2] = INT_VALUE(num);
 }
 
 void builtinAbs(Value* frame)
@@ -62,7 +62,7 @@ void builtinAbs(Value* frame)
     int32_t n = AS_INT(frame[0]);
     int32_t x = n < 0 ? -n : n;
     
-    frame[0] = INT_VALUE(x);
+    frame[-2] = INT_VALUE(x);
 }
 
 void builtinMin(Value* frame)
@@ -71,7 +71,7 @@ void builtinMin(Value* frame)
     int32_t b = AS_INT(frame[1]);
     int32_t x = a < b ? a : b;
     
-    frame[0] = INT_VALUE(x);
+    frame[-2] = INT_VALUE(x);
 }
 
 void builtinMax(Value* frame)
@@ -80,7 +80,7 @@ void builtinMax(Value* frame)
     int32_t b = AS_INT(frame[1]);
     int32_t x = a > b ? a : b;
     
-    frame[0] = INT_VALUE(x);
+    frame[-2] = INT_VALUE(x);
 }
 
 void builtinByteorder(Value* frame)
@@ -88,5 +88,5 @@ void builtinByteorder(Value* frame)
     int32_t i = 1;
     char* c = (char*)&i;
     
-    frame[0] = INT_VALUE(*c == 0);
+    frame[-2] = INT_VALUE(*c == 0);
 }

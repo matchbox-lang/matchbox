@@ -20,6 +20,7 @@ static const OpcodeFlag opcodeFlags[OP_COUNT] = {
     [OP_ASR] = OP_FLAG_WRITES_A,
     [OP_NOT] = OP_FLAG_WRITES_A,
     [OP_NEG] = OP_FLAG_WRITES_A,
+    [OP_LDI_LDI] = OP_FLAG_WRITES_A,
     [OP_LDI_STG] = OP_FLAG_WRITES_A
 };
 

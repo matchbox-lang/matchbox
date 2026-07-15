@@ -185,6 +185,10 @@ static void run(VM* vm)
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
+            case OP_LDI_LDI:
+                vm->fp[a] = INT_VALUE((int8_t)b);
+                vm->fp[a + 1] = INT_VALUE((int8_t)c);
+                break;
             case OP_LDI_STG:
                 vm->fp[a] = INT_VALUE((int8_t)b);
                 vm->gp[c] = vm->fp[a];

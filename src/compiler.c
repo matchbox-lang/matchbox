@@ -137,9 +137,42 @@ static int emitLdc(Compiler* compiler, uint16_t imm)
     return reg;
 }
 
+static bool fuseLdiLdi(Compiler* compiler, int reg, int16_t imm)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    if (imm < INT8_MIN || imm > INT8_MAX || count < INSTRUCTION_SIZE) {
+        return false;
+    }
+
+    size_t start = count - INSTRUCTION_SIZE;
+
+    if (code->data[start] != OP_LDI
+        || code->data[start + OPERAND_A_OFFSET] + 1 != reg) {
+        return false;
+    }
+
+    int16_t previousImm = (int16_t)(code->data[start + 2] << 8 | code->data[start + 3]);
+
+    if (previousImm < INT8_MIN || previousImm > INT8_MAX) {
+        return false;
+    }
+
+    setByteAt(code, start, OP_LDI_LDI);
+    setByteAt(code, start + 2, previousImm);
+    setByteAt(code, start + 3, imm);
+
+    return true;
+}
+
 static int emitLdi(Compiler* compiler, int16_t imm)
 {
     int reg = allocateRegister(compiler);
+
+    if (fuseLdiLdi(compiler, reg, imm)) {
+        return reg;
+    }
 
     emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
 

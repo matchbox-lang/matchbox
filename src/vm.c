@@ -185,6 +185,15 @@ static void run(VM* vm)
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
+            case OP_CALL_CALL: {
+                Value* newFrame = vm->fp + a;
+
+                function = vm->module->functions.data[b];
+                vm->builtins[function->builtinId](newFrame);
+                function = vm->module->functions.data[c];
+                vm->builtins[function->builtinId](newFrame + 1);
+                break;
+            }
             case OP_LDI_LDI:
                 vm->fp[a] = INT_VALUE((int8_t)b);
                 vm->fp[a + 1] = INT_VALUE((int8_t)c);

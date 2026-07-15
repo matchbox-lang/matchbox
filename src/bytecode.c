@@ -86,6 +86,15 @@ static void printOpcodeRegisterInt8Int8(const char* name)
     printf("%-11s R%d, #%d, #%d\n", name, a, first, second);
 }
 
+static void printOpcodeRegisterUint8Uint8(const char* name)
+{
+    uint8_t a = READ_UINT8();
+    uint8_t first = READ_UINT8();
+    uint8_t second = READ_UINT8();
+
+    printf("%-11s R%d, #%u, #%u\n", name, a, first, second);
+}
+
 static void printLoadCall(const char* name)
 {
     uint8_t a = READ_UINT8();
@@ -154,6 +163,7 @@ static void printInstruction(int8_t c)
         case OP_LDC_CALL:   printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:   printLoadCall("LDG_CALL"); break;
         case OP_LDI_CALL:   printSignedLoadCall("LDI_CALL"); break;
+        case OP_CALL_CALL:  printOpcodeRegisterUint8Uint8("CALL_CALL"); break;
         case OP_LDI_LDI:    printOpcodeRegisterInt8Int8("LDI_LDI"); break;
         case OP_LDI_STG:    printOpcodeRegisterInt8Uint8("LDI_STG"); break;
         default:

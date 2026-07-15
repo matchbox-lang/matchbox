@@ -13,6 +13,17 @@ typedef uint32_t Instruction;
 #define OPERAND_ABC(inst) ((uint32_t)((OPERAND_A(inst) << 16) | (OPERAND_B(inst) << 8) | OPERAND_C(inst)))
 #define SIGNED_OPERAND_ABC(inst) ((int32_t)(OPERAND_ABC(inst) ^ 0x800000u) - 0x800000)
 
+#define LOAD_CALL_FUNCTION_BITS 6
+#define LOAD_CALL_FUNCTION_MASK 0x3fu
+#define LOAD_CALL_OPERAND_MASK 0x3ffu
+#define LOAD_CALL_SIGNED_OPERAND_MIN -512
+#define LOAD_CALL_SIGNED_OPERAND_MAX 511
+
+#define LOAD_CALL_FUNCTION(operands) ((uint8_t)((operands) & LOAD_CALL_FUNCTION_MASK))
+#define LOAD_CALL_OPERAND(operands) ((uint16_t)((operands) >> LOAD_CALL_FUNCTION_BITS))
+#define LOAD_CALL_SIGNED_OPERAND(operands) \
+    ((int16_t)((int32_t)((LOAD_CALL_OPERAND(operands) ^ 0x200u)) - 0x200))
+
 #define INSTRUCTION_SIZE 4
 #define OPERAND_A_OFFSET 1
 
@@ -28,8 +39,8 @@ typedef enum Opcode
     OP_NOP,     // NOP
     OP_MOV,     // MOV A, B
     OP_LDC,     // LDC A, imm16
-    OP_LDI,     // LDI A, imm16
     OP_LDG,     // LDG A, imm16
+    OP_LDI,     // LDI A, imm16
     OP_STG,     // STG A, imm16
     OP_ADD,     // ADD A, B, C
     OP_SUB,     // SUB A, B, C
@@ -51,6 +62,9 @@ typedef enum Opcode
     OP_BLE,     // BLE A, B, imm8
     OP_JMP,     // JMP imm24
     OP_CALL,    // CALL A, imm16
+    OP_LDC_CALL, // LDC_CALL A, imm10, imm6
+    OP_LDI_CALL, // LDI_CALL A, imm10, imm6
+    OP_LDG_CALL, // LDG_CALL A, imm10, imm6
     OP_RET,     // RET
     OP_RETV     // RETV A
 } Opcode;

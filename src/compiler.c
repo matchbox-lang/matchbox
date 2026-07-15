@@ -155,9 +155,79 @@ static int emitLdg(Compiler* compiler, uint16_t imm)
     return reg;
 }
 
-static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister,
-    uint16_t functionPosition)
+static Opcode getLoadCallOpcode(Opcode opcode)
 {
+    switch (opcode) {
+        case OP_LDC:
+            return OP_LDC_CALL;
+        case OP_LDG:
+            return OP_LDG_CALL;
+        case OP_LDI:
+            return OP_LDI_CALL;
+        default:
+            return OP_HLT;
+    }
+}
+
+static bool isLoadCallOperandValid(Opcode opcode, uint16_t operands)
+{
+    if (opcode != OP_LDI) {
+        return operands <= LOAD_CALL_OPERAND_MASK;
+    }
+
+    int16_t imm = (int16_t)operands;
+
+    return imm >= LOAD_CALL_SIGNED_OPERAND_MIN
+        && imm <= LOAD_CALL_SIGNED_OPERAND_MAX;
+}
+
+static bool fuseLoadCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    if (count < INSTRUCTION_SIZE) {
+        return false;
+    }
+
+    size_t start = count - INSTRUCTION_SIZE;
+    Opcode opcode = (Opcode)code->data[start];
+    Opcode fusedOpcode = getLoadCallOpcode(opcode);
+
+    if (fusedOpcode == OP_HLT) {
+        return false;
+    }
+
+    if (code->data[start + OPERAND_A_OFFSET] != frameRegister) {
+        return false;
+    }
+
+    uint16_t operands = code->data[start + 2] << 8 | code->data[start + 3];
+
+    if (!isLoadCallOperandValid(opcode, operands)) {
+        return false;
+    }
+
+    if (functionPosition > LOAD_CALL_FUNCTION_MASK) {
+        return false;
+    }
+
+    operands = ((operands & LOAD_CALL_OPERAND_MASK) << LOAD_CALL_FUNCTION_BITS)
+        | functionPosition;
+
+    setByteAt(code, start, fusedOpcode);
+    setByteAt(code, start + 2, operands >> 8);
+    setByteAt(code, start + 3, operands);
+
+    return true;
+}
+
+static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+{
+    if (fuseLoadCall(compiler, frameRegister, functionPosition)) {
+        return;
+    }
+
     emitInstruction(compiler, OP_CALL, frameRegister, functionPosition >> 8, functionPosition);
 }
 

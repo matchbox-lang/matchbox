@@ -31,7 +31,8 @@ static void testFrameOverflow(VM* vm, Value* frame, int maxStackCount)
 
 static void run(VM* vm)
 {
-    FunctionObject* function = vm->module->functions.data[0];
+    uint16_t functionPosition = 0;
+    FunctionObject* function = vm->module->functions.data[functionPosition];
     vm->ip = (Instruction*)function->code.data;
     
     if (function->maxStackCount > STACK_MAX) {
@@ -128,22 +129,47 @@ static void run(VM* vm)
             case OP_JMP:
                 vm->ip += SIGNED_OPERAND_ABC(inst);
                 break;
-            case OP_CALL: {
-                Value* newFrame = vm->fp + a;
-                function = vm->module->functions.data[OPERAND_BC(inst)];
+            case OP_LDC_CALL: {
+                uint16_t operands = OPERAND_BC(inst);
 
-                if (function->type == FUNCTION_BUILTIN) {
-                    vm->builtins[function->builtinId](newFrame);
+                vm->fp[a] = vm->module->constants.data[LOAD_CALL_OPERAND(operands)];
+                functionPosition = LOAD_CALL_FUNCTION(operands);
+                goto call;
+            }
+            case OP_LDG_CALL: {
+                uint16_t operands = OPERAND_BC(inst);
+
+                vm->fp[a] = vm->gp[LOAD_CALL_OPERAND(operands)];
+                functionPosition = LOAD_CALL_FUNCTION(operands);
+                goto call;
+            }
+            case OP_LDI_CALL: {
+                uint16_t operands = OPERAND_BC(inst);
+                int16_t imm = LOAD_CALL_SIGNED_OPERAND(operands);
+
+                vm->fp[a] = INT_VALUE(imm);
+                functionPosition = LOAD_CALL_FUNCTION(operands);
+                goto call;
+            }
+            case OP_CALL:
+                functionPosition = OPERAND_BC(inst);
+
+                call: {
+                    Value* newFrame = vm->fp + a;
+                    function = vm->module->functions.data[functionPosition];
+
+                    if (function->type == FUNCTION_BUILTIN) {
+                        vm->builtins[function->builtinId](newFrame);
+                        break;
+                    }
+
+                    testFrameOverflow(vm, newFrame, function->maxStackCount);
+                    newFrame[-2] = POINTER_VALUE(vm->ip);
+                    newFrame[-1] = POINTER_VALUE(vm->fp);
+                    vm->fp = newFrame;
+                    vm->ip = (Instruction*)function->code.data;
                     break;
                 }
-                
-                testFrameOverflow(vm, newFrame, function->maxStackCount);
-                newFrame[-2] = POINTER_VALUE(vm->ip);
-                newFrame[-1] = POINTER_VALUE(vm->fp);
-                vm->fp = newFrame;
-                vm->ip = (Instruction*)function->code.data;
-                break;
-            }
             case OP_RET: {
                 Value* frame = vm->fp;
                 vm->ip = AS_POINTER(frame[-2]);

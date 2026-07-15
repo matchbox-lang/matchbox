@@ -165,6 +165,19 @@ static void run(VM* vm)
                 vm->fp = fp;
                 break;
             }
+            case OP_CALL2: {
+                Value* newFrame = vm->fp + a;
+
+                function = vm->module->functions.data[b];
+                vm->builtins[function->builtinId](newFrame);
+                function = vm->module->functions.data[c];
+                vm->builtins[function->builtinId](newFrame + 1);
+                break;
+            }
+            case OP_LDI2:
+                vm->fp[a] = INT_VALUE((int8_t)b);
+                vm->fp[a + 1] = INT_VALUE((int8_t)c);
+                break;
             case OP_LDC_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
 
@@ -187,19 +200,6 @@ static void run(VM* vm)
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
-            case OP_CALL_CALL: {
-                Value* newFrame = vm->fp + a;
-
-                function = vm->module->functions.data[b];
-                vm->builtins[function->builtinId](newFrame);
-                function = vm->module->functions.data[c];
-                vm->builtins[function->builtinId](newFrame + 1);
-                break;
-            }
-            case OP_LDI2:
-                vm->fp[a] = INT_VALUE((int8_t)b);
-                vm->fp[a + 1] = INT_VALUE((int8_t)c);
-                break;
             case OP_LDI_STG:
                 vm->fp[a] = INT_VALUE((int8_t)b);
                 vm->gp[c] = vm->fp[a];

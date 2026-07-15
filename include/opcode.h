@@ -78,12 +78,14 @@ typedef enum Opcode
     OP_RET,
     OP_RETV,
 
-    // Superinstructions
+    // Repeated instructions
+    OP_CALL2,
+    OP_LDI2,
+
+    // Fused instructions
     OP_LDC_CALL,
     OP_LDG_CALL,
     OP_LDI_CALL,
-    OP_CALL_CALL,
-    OP_LDI2,
     OP_LDI_STG,
 
     OP_COUNT

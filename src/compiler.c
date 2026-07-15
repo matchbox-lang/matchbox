@@ -291,7 +291,7 @@ static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t fun
         return false;
     }
 
-    setByteAt(code, start, OP_CALL_CALL);
+    setByteAt(code, start, OP_CALL2);
     setByteAt(code, start + 2, previousFunctionPosition);
     setByteAt(code, start + 3, functionPosition);
 

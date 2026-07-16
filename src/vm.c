@@ -136,11 +136,6 @@ static void run(VM* vm)
                     Value* newFrame = vm->fp + a;
                     function = vm->module->functions.data[functionPosition];
 
-                    if (function->type == FUNCTION_BUILTIN) {
-                        vm->builtins[function->builtinId](newFrame);
-                        break;
-                    }
-
                     testFrameOverflow(vm, newFrame, function->maxStackCount);
                     newFrame[-2] = POINTER_VALUE(vm->ip);
                     newFrame[-1] = POINTER_VALUE(vm->fp);
@@ -148,6 +143,13 @@ static void run(VM* vm)
                     vm->ip = (Instruction*)function->code.data;
                     break;
                 }
+            case OP_CALLBI: {
+                Value* newFrame = vm->fp + a;
+
+                function = vm->module->functions.data[OPERAND_BC(inst)];
+                vm->builtins[function->builtinId](newFrame);
+                break;
+            }
             case OP_RET: {
                 Value* frame = vm->fp;
                 
@@ -165,7 +167,7 @@ static void run(VM* vm)
                 vm->fp = fp;
                 break;
             }
-            case OP_CALL2: {
+            case OP_CALLBI2: {
                 Value* newFrame = vm->fp + a;
 
                 function = vm->module->functions.data[b];

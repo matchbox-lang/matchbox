@@ -293,7 +293,7 @@ static bool isBuiltinFunctionPosition(Compiler* compiler, uint16_t position)
     return function->type == FUNCTION_BUILTIN;
 }
 
-static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+static bool fuseBuiltinCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
     CodeObject* code = currentCodeObject(compiler);
     size_t count = countCodeObject(code);
@@ -304,7 +304,7 @@ static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t fun
 
     size_t start = count - INSTRUCTION_SIZE;
 
-    if (code->data[start] != OP_CALL
+    if (code->data[start] != OP_CALLBI
         || code->data[start + OPERAND_A_OFFSET] + 1 != frameRegister
         || code->data[start + 2] != 0) {
         return false;
@@ -312,21 +312,33 @@ static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t fun
 
     uint8_t previousFunctionPosition = code->data[start + 3];
 
-    if (!isBuiltinFunctionPosition(compiler, previousFunctionPosition)
-        || !isBuiltinFunctionPosition(compiler, functionPosition)) {
-        return false;
-    }
-
-    setByteAt(code, start, OP_CALL2);
+    setByteAt(code, start, OP_CALLBI2);
     setByteAt(code, start + 2, previousFunctionPosition);
     setByteAt(code, start + 3, functionPosition);
 
     return true;
 }
 
+static bool emitBuiltinCallInstruction(Compiler* compiler, uint8_t frameRegister,
+    uint16_t functionPosition)
+{
+    if (!isBuiltinFunctionPosition(compiler, functionPosition)) {
+        return false;
+    }
+
+    if (fuseBuiltinCallCall(compiler, frameRegister, functionPosition)) {
+        return true;
+    }
+
+    emitInstruction(compiler, OP_CALLBI, frameRegister,
+        functionPosition >> 8, functionPosition);
+
+    return true;
+}
+
 static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
-    if (fuseCallCall(compiler, frameRegister, functionPosition)) {
+    if (emitBuiltinCallInstruction(compiler, frameRegister, functionPosition)) {
         return;
     }
 

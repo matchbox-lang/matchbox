@@ -31,6 +31,16 @@ typedef struct CallArea
     int frameRegister;
 } CallArea;
 
+typedef struct PreviousInstruction
+{
+    CodeObject* code;
+    size_t start;
+    Opcode opcode;
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
+} PreviousInstruction;
+
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
@@ -92,7 +102,7 @@ static void emitHlt(Compiler* compiler)
     emitInstruction(compiler, OP_HLT, 0, 0, 0);
 }
 
-static bool fuseMovMov(Compiler* compiler, int dst, int src)
+static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* instruction)
 {
     CodeObject* code = currentCodeObject(compiler);
     size_t count = countCodeObject(code);
@@ -103,13 +113,28 @@ static bool fuseMovMov(Compiler* compiler, int dst, int src)
 
     size_t start = count - INSTRUCTION_SIZE;
 
-    if (code->data[start] != OP_MOV
-        || code->data[start + OPERAND_A_OFFSET] + 1 != dst) {
+    instruction->code = code;
+    instruction->start = start;
+    instruction->opcode = (Opcode)code->data[start];
+    instruction->a = code->data[start + 1];
+    instruction->b = code->data[start + 2];
+    instruction->c = code->data[start + 3];
+
+    return true;
+}
+
+static bool fuseMovMov(Compiler* compiler, int dst, int src)
+{
+    PreviousInstruction previous;
+
+    if (!getPreviousInstruction(compiler, &previous)
+        || previous.a + 1 != dst
+        || previous.opcode != OP_MOV) {
         return false;
     }
 
-    setByteAt(code, start, OP_MOV2);
-    setByteAt(code, start + 3, src);
+    setByteAt(previous.code, previous.start, OP_MOV2);
+    setByteAt(previous.code, previous.start + 3, src);
 
     return true;
 }
@@ -170,29 +195,25 @@ static int emitLdc(Compiler* compiler, uint16_t imm)
 
 static bool fuseLdiLdi(Compiler* compiler, int reg, int16_t imm)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    PreviousInstruction previous;
 
-    if (imm < INT8_MIN || imm > INT8_MAX || count < INSTRUCTION_SIZE) {
+    if (isLargerThan8BitSigned(imm) || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
 
-    size_t start = count - INSTRUCTION_SIZE;
-
-    if (code->data[start] != OP_LDI
-        || code->data[start + OPERAND_A_OFFSET] + 1 != reg) {
+    if (previous.opcode != OP_LDI || previous.a + 1 != reg) {
         return false;
     }
 
-    int16_t previousImm = (int16_t)(code->data[start + 2] << 8 | code->data[start + 3]);
+    int16_t previousImm = (int16_t)(previous.b << 8 | previous.c);
 
-    if (previousImm < INT8_MIN || previousImm > INT8_MAX) {
+    if (isLargerThan8BitSigned(previousImm)) {
         return false;
     }
 
-    setByteAt(code, start, OP_LDI2);
-    setByteAt(code, start + 2, previousImm);
-    setByteAt(code, start + 3, imm);
+    setByteAt(previous.code, previous.start, OP_LDI2);
+    setByteAt(previous.code, previous.start + 2, previousImm);
+    setByteAt(previous.code, previous.start + 3, imm);
 
     return true;
 }
@@ -247,41 +268,35 @@ static bool isLoadCallOperandValid(Opcode opcode, uint16_t operands)
 
 static bool fuseLoadCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    PreviousInstruction previous;
 
-    if (count < INSTRUCTION_SIZE) {
+    if (functionPosition > LOAD_CALL_FUNCTION_MASK
+        || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
 
-    size_t start = count - INSTRUCTION_SIZE;
-    Opcode opcode = (Opcode)code->data[start];
-    Opcode fusedOpcode = getLoadCallOpcode(opcode);
+    Opcode fusedOpcode = getLoadCallOpcode(previous.opcode);
 
     if (fusedOpcode == OP_HLT) {
         return false;
     }
 
-    if (code->data[start + OPERAND_A_OFFSET] != frameRegister) {
+    if (previous.a != frameRegister) {
         return false;
     }
 
-    uint16_t operands = code->data[start + 2] << 8 | code->data[start + 3];
+    uint16_t operands = previous.b << 8 | previous.c;
 
-    if (!isLoadCallOperandValid(opcode, operands)) {
-        return false;
-    }
-
-    if (functionPosition > LOAD_CALL_FUNCTION_MASK) {
+    if (!isLoadCallOperandValid(previous.opcode, operands)) {
         return false;
     }
 
     operands = ((operands & LOAD_CALL_OPERAND_MASK) << LOAD_CALL_FUNCTION_BITS)
         | functionPosition;
 
-    setByteAt(code, start, fusedOpcode);
-    setByteAt(code, start + 2, operands >> 8);
-    setByteAt(code, start + 3, operands);
+    setByteAt(previous.code, previous.start, fusedOpcode);
+    setByteAt(previous.code, previous.start + 2, operands >> 8);
+    setByteAt(previous.code, previous.start + 3, operands);
 
     return true;
 }
@@ -295,30 +310,28 @@ static bool isBuiltinFunctionAtPosition(Compiler* compiler, uint16_t position)
 
 static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    PreviousInstruction previous;
 
-    if (functionPosition > UINT8_MAX || count < INSTRUCTION_SIZE) {
+    if (functionPosition > UINT8_MAX
+        || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
 
-    size_t start = count - INSTRUCTION_SIZE;
-
-    if (code->data[start] != OP_CALL
-        || code->data[start + OPERAND_A_OFFSET] + 1 != frameRegister
-        || code->data[start + 2] != 0) {
+    if (previous.opcode != OP_CALL
+        || previous.a + 1 != frameRegister
+        || previous.b != 0) {
         return false;
     }
 
-    uint8_t previousFunctionPosition = code->data[start + 3];
+    uint8_t previousFunctionPosition = previous.c;
 
     if (!isBuiltinFunctionAtPosition(compiler, previousFunctionPosition)) {
         return false;
     }
 
-    setByteAt(code, start, OP_CALL2);
-    setByteAt(code, start + 2, previousFunctionPosition);
-    setByteAt(code, start + 3, functionPosition);
+    setByteAt(previous.code, previous.start, OP_CALL2);
+    setByteAt(previous.code, previous.start + 2, previousFunctionPosition);
+    setByteAt(previous.code, previous.start + 3, functionPosition);
 
     return true;
 }
@@ -403,43 +416,28 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     return compiler->frameBaseCount + ast->variableDefinition.position;
 }
 
-static Operand loadGlobalFromPreviousInstruction(Compiler* compiler, CodeObject* code, size_t count, int position)
-{
-    size_t start = count - INSTRUCTION_SIZE;
-    Opcode opcode = (Opcode)code->data[start];
-    uint16_t storedPosition;
-
-    if (opcode == OP_STG) {
-        storedPosition = code->data[start + 2] << 8 | code->data[start + 3];
-    } else if (opcode == OP_LDI_STG) {
-        storedPosition = code->data[start + 3];
-    } else {
-        int reg = emitLdg(compiler, position);
-
-        return makeOperand(reg, true);
-    }
-
-    if (storedPosition == position) {
-        return makeOperand(code->data[start + OPERAND_A_OFFSET], false);
-    }
-
-    int reg = emitLdg(compiler, position);
-
-    return makeOperand(reg, true);
-}
-
 static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    PreviousInstruction previous;
+    uint16_t storedPosition;
 
-    if (count < INSTRUCTION_SIZE) {
-        int reg = emitLdg(compiler, position);
-
-        return makeOperand(reg, true);
+    if (!getPreviousInstruction(compiler, &previous)) {
+        return makeOperand(emitLdg(compiler, position), true);
     }
 
-    return loadGlobalFromPreviousInstruction(compiler, code, count, position);
+    if (previous.opcode == OP_STG) {
+        storedPosition = previous.b << 8 | previous.c;
+    } else if (previous.opcode == OP_LDI_STG) {
+        storedPosition = previous.c;
+    } else {
+        return makeOperand(emitLdg(compiler, position), true);
+    }
+
+    if (storedPosition != position) {
+        return makeOperand(emitLdg(compiler, position), true);
+    }
+
+    return makeOperand(previous.a, false);
 }
 
 static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
@@ -471,29 +469,26 @@ static Operand loadVariable(Compiler* compiler, ASTNode* ast)
 
 static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    PreviousInstruction previous;
 
-    if (!value.temporary || count < INSTRUCTION_SIZE || position > UINT8_MAX) {
+    if (!value.temporary || position > UINT8_MAX
+        || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
 
-    size_t start = count - INSTRUCTION_SIZE;
-
-    if (code->data[start] != OP_LDI
-        || code->data[start + OPERAND_A_OFFSET] != value.reg) {
+    if (previous.opcode != OP_LDI || previous.a != value.reg) {
         return false;
     }
 
-    int16_t imm = (int16_t)(code->data[start + 2] << 8 | code->data[start + 3]);
+    int16_t imm = (int16_t)(previous.b << 8 | previous.c);
 
-    if (imm < INT8_MIN || imm > INT8_MAX) {
+    if (isLargerThan8BitSigned(imm)) {
         return false;
     }
 
-    setByteAt(code, start, OP_LDI_STG);
-    setByteAt(code, start + 2, imm);
-    setByteAt(code, start + 3, position);
+    setByteAt(previous.code, previous.start, OP_LDI_STG);
+    setByteAt(previous.code, previous.start + 2, imm);
+    setByteAt(previous.code, previous.start + 3, position);
 
     return true;
 }
@@ -511,26 +506,19 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 
 static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    PreviousInstruction previous;
 
-    if (!value.temporary || count < INSTRUCTION_SIZE) {
+    if (!value.temporary
+        || !getPreviousInstruction(compiler, &previous)
+        || previous.a != value.reg) {
         return false;
     }
 
-    size_t start = count - INSTRUCTION_SIZE;
-
-    if (code->data[start + OPERAND_A_OFFSET] != value.reg) {
+    if (!(getOpcodeFlags(previous.opcode) & OP_FLAG_WRITES_A)) {
         return false;
     }
 
-    Opcode opcode = (Opcode)code->data[start];
-
-    if (!(getOpcodeFlags(opcode) & OP_FLAG_WRITES_A)) {
-        return false;
-    }
-
-    setByteAt(code, start + OPERAND_A_OFFSET, dst);
+    setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, dst);
 
     return true;
 }

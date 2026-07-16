@@ -1,24 +1,59 @@
-var x = 50
+var x = 10
+var y = 20
 
-print(x)
-
-func foo(y: int) {
-    var x = 100
-    
+func updateGlobal() {
     print(x)
-    print(y)
+    x = 15
+    print(x)
 }
 
-func bar(y: int) {
-    func inner(x) {
+func testLocal(x: int) {
+    print(x)
+    print(y)
+
+    var local = 200
+    print(local)
+
+    func inner(x: int) {
+        print(x)
+        print(y)
+    }
+
+    inner(300)
+
+    print(x)
+    print(local)
+}
+
+func testShadowing() {
+    print(x)
+
+    var x = 400
+
+    print(x)
+    x = 450
+    print(x)
+
+    func inner() {
+        print(x)
+        x = 25
         print(x)
     }
 
-    x = 25
-    inner(250)
+    inner()
+
     print(x)
-    print(y)
 }
 
-foo(x)
-bar(125)
+print(x)
+print(y)
+
+updateGlobal()
+
+print(x)
+
+testLocal(100)
+testShadowing()
+
+print(x)
+print(y)

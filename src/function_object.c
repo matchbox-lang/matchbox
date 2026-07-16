@@ -7,10 +7,11 @@ FunctionObject* createFunctionObject()
 {
     FunctionObject* function = ALLOCATE_OBJECT(FunctionObject, OBJ_FUNCTION);
     function->type = FUNCTION_DEFINED;
-    function->builtinId = 0;
+    function->entry = enterBytecodeFunction;
+    function->localCount = 0;
     function->maxStackCount = 0;
     function->paramCount = 0;
-    function->localCount = 0;
+    function->returnCount = 0;
     
     initCodeObject(&function->code);
 

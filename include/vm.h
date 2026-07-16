@@ -1,23 +1,20 @@
 #ifndef VM_H
 #define VM_H
 
-#include "builtin.h"
 #include "module_object.h"
+#include "opcode.h"
 #include <stdint.h>
 
 #define STACK_MAX 1024
 
-typedef Value (*builtin_t)(Value* args);
-
 typedef struct VM
 {
     Value stack[STACK_MAX];
-    builtin_t builtins[BUILTINS_MAX];
-    uint8_t* ip;
+    Instruction* ip;
     Value* sp;
     Value* fp;
+    Value* gp;
     ModuleObject* module;
-    ValueArray globals;
 } VM;
 
 void initVM(VM* vm, ModuleObject* module);

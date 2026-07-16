@@ -18,7 +18,8 @@ typedef struct Compiler
     FunctionObject* function;
     ASTNode* ast;
     size_t statementIndex;
-    int stackCount;
+    int registerCount;
+    int frameBaseCount;
 } Compiler;
 
 void initCompiler(Compiler* compiler, ModuleObject* module);

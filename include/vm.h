@@ -18,7 +18,6 @@ typedef struct VM
 
 void initVM(VM* vm, ModuleObject* module);
 void freeVM(VM* vm);
-void inspectStack(VM* vm);
 void interpret(VM* vm);
 
 #endif

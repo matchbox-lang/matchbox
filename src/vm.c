@@ -216,13 +216,6 @@ void freeVM(VM* vm)
     (void)vm;
 }
 
-void inspectStack(VM* vm)
-{
-    for (int i = 0; i < STACK_MAX; i++) {
-        printf("%d: %d\n", i, AS_INT(vm->stack[i]));
-    }
-}
-
 void interpret(VM* vm)
 {
     if (vm->module) {

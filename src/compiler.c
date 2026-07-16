@@ -286,23 +286,19 @@ static bool fuseLoadCall(Compiler* compiler, uint8_t frameRegister, uint16_t fun
     return true;
 }
 
-static bool isBuiltinFunctionPosition(Compiler* compiler, uint16_t position)
+static bool isBuiltinFunctionAtPosition(Compiler* compiler, uint16_t position)
 {
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return function->type == FUNCTION_BUILTIN;
 }
 
-static bool fuseBuiltinCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
     CodeObject* code = currentCodeObject(compiler);
     size_t count = countCodeObject(code);
 
     if (functionPosition > UINT8_MAX || count < INSTRUCTION_SIZE) {
-        return false;
-    }
-
-    if (!isBuiltinFunctionPosition(compiler, functionPosition)) {
         return false;
     }
 
@@ -316,7 +312,7 @@ static bool fuseBuiltinCallCall(Compiler* compiler, uint8_t frameRegister, uint1
 
     uint8_t previousFunctionPosition = code->data[start + 3];
 
-    if (!isBuiltinFunctionPosition(compiler, previousFunctionPosition)) {
+    if (!isBuiltinFunctionAtPosition(compiler, previousFunctionPosition)) {
         return false;
     }
 
@@ -329,7 +325,7 @@ static bool fuseBuiltinCallCall(Compiler* compiler, uint8_t frameRegister, uint1
 
 static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
-    if (fuseBuiltinCallCall(compiler, frameRegister, functionPosition)) {
+    if (fuseCallCall(compiler, frameRegister, functionPosition)) {
         return;
     }
 

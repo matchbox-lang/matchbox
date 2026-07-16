@@ -75,12 +75,11 @@ typedef enum Opcode
 
     // Functions
     OP_CALL,
-    OP_CALLBI,
     OP_RET,
     OP_RETV,
 
     // Repeated instructions
-    OP_CALLBI2,
+    OP_CALL2,
     OP_LDI2,
     OP_MOV2,
 

@@ -1,6 +1,7 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
 
+#include "function_object.h"
 #include "token.h"
 #include "value.h"
 
@@ -21,6 +22,7 @@ typedef struct Builtin
 {
     const char* name;
     BuiltinId id;
+    FunctionEntry entry;
     int paramCount;
     TokenType params[4];
     TokenType typeId;
@@ -29,12 +31,12 @@ typedef struct Builtin
 extern Builtin builtins[BUILTINS_MAX];
 
 Builtin* getBuiltinByName(const char* name);
-void builtinExit(Value* frame);
-void builtinPrint(Value* frame);
-void builtinClamp(Value* frame);
-void builtinAbs(Value* frame);
-void builtinMin(Value* frame);
-void builtinMax(Value* frame);
-void builtinByteorder(Value* frame);
+void builtinExit(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrint(VM* vm, FunctionObject* function, Value* frame);
+void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
+void builtinAbs(VM* vm, FunctionObject* function, Value* frame);
+void builtinMin(VM* vm, FunctionObject* function, Value* frame);
+void builtinMax(VM* vm, FunctionObject* function, Value* frame);
+void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

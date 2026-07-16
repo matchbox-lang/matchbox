@@ -302,9 +302,13 @@ static bool fuseBuiltinCallCall(Compiler* compiler, uint8_t frameRegister, uint1
         return false;
     }
 
+    if (!isBuiltinFunctionPosition(compiler, functionPosition)) {
+        return false;
+    }
+
     size_t start = count - INSTRUCTION_SIZE;
 
-    if (code->data[start] != OP_CALLBI
+    if (code->data[start] != OP_CALL
         || code->data[start + OPERAND_A_OFFSET] + 1 != frameRegister
         || code->data[start + 2] != 0) {
         return false;
@@ -312,33 +316,20 @@ static bool fuseBuiltinCallCall(Compiler* compiler, uint8_t frameRegister, uint1
 
     uint8_t previousFunctionPosition = code->data[start + 3];
 
-    setByteAt(code, start, OP_CALLBI2);
+    if (!isBuiltinFunctionPosition(compiler, previousFunctionPosition)) {
+        return false;
+    }
+
+    setByteAt(code, start, OP_CALL2);
     setByteAt(code, start + 2, previousFunctionPosition);
     setByteAt(code, start + 3, functionPosition);
 
     return true;
 }
 
-static bool emitBuiltinCallInstruction(Compiler* compiler, uint8_t frameRegister,
-    uint16_t functionPosition)
-{
-    if (!isBuiltinFunctionPosition(compiler, functionPosition)) {
-        return false;
-    }
-
-    if (fuseBuiltinCallCall(compiler, frameRegister, functionPosition)) {
-        return true;
-    }
-
-    emitInstruction(compiler, OP_CALLBI, frameRegister,
-        functionPosition >> 8, functionPosition);
-
-    return true;
-}
-
 static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
 {
-    if (emitBuiltinCallInstruction(compiler, frameRegister, functionPosition)) {
+    if (fuseBuiltinCallCall(compiler, frameRegister, functionPosition)) {
         return;
     }
 
@@ -756,7 +747,7 @@ static FunctionObject* createBuiltinFunctionObject(BuiltinId id)
 {
     FunctionObject* function = createFunctionObject();
     function->type = FUNCTION_BUILTIN;
-    function->builtinId = id;
+    function->entry = builtins[id].entry;
     function->paramCount = builtins[id].paramCount;
     function->returnCount = 1;
 
@@ -794,7 +785,7 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, BuiltinId id)
     for (size_t i = 0; i < functionCount; i++) {
         FunctionObject* function = getVectorAt(&compiler->module->functions, i);
 
-        if (function->type == FUNCTION_BUILTIN && function->builtinId == id) {
+        if (function->type == FUNCTION_BUILTIN && function->entry == builtins[id].entry) {
             return makeFunctionPosition(i);
         }
     }

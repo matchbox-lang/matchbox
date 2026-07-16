@@ -11,19 +11,29 @@ typedef enum FunctionType
     FUNCTION_DEFINED
 } FunctionType;
 
+typedef struct VM VM;
+typedef struct FunctionObject FunctionObject;
+
+typedef void (*FunctionEntry)(
+    VM* vm,
+    FunctionObject* function,
+    Value* frame
+);
+
 typedef struct FunctionObject
 {
     Object obj;
     FunctionType type;
+    FunctionEntry entry;
     CodeObject code;
-    int builtinId;
-    int paramCount;
-    int returnCount;
     int localCount;
     int maxStackCount;
+    int paramCount;
+    int returnCount;
 } FunctionObject;
 
 FunctionObject* createFunctionObject();
 void freeFunctionObject(FunctionObject* function);
+void enterBytecodeFunction(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

@@ -7,13 +7,13 @@
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {
-    {"exit",        BUILTIN_EXIT,       0, {},                                  TOKEN_VOID},
-    {"print",       BUILTIN_PRINT,      1, {TOKEN_INT},                         TOKEN_VOID},
-    {"clamp",       BUILTIN_CLAMP,      3, {TOKEN_INT, TOKEN_INT, TOKEN_INT},   TOKEN_INT},
-    {"abs",         BUILTIN_ABS,        1, {TOKEN_INT},                         TOKEN_INT},
-    {"min",         BUILTIN_MIN,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},
-    {"max",         BUILTIN_MAX,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},
-    {"byteorder",   BUILTIN_BYTEORDER,  0, {},                                  TOKEN_INT}
+    {"exit",        BUILTIN_EXIT,       builtinExit,       0, {},                                  TOKEN_VOID},
+    {"print",       BUILTIN_PRINT,      builtinPrint,      1, {TOKEN_INT},                         TOKEN_VOID},
+    {"clamp",       BUILTIN_CLAMP,      builtinClamp,      3, {TOKEN_INT, TOKEN_INT, TOKEN_INT},   TOKEN_INT},
+    {"abs",         BUILTIN_ABS,        builtinAbs,        1, {TOKEN_INT},                         TOKEN_INT},
+    {"min",         BUILTIN_MIN,        builtinMin,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},
+    {"max",         BUILTIN_MAX,        builtinMax,        2, {TOKEN_INT, TOKEN_INT},              TOKEN_INT},
+    {"byteorder",   BUILTIN_BYTEORDER,  builtinByteorder,  0, {},                                  TOKEN_INT}
 };
 
 Builtin* getBuiltinByName(const char* name)
@@ -29,21 +29,30 @@ Builtin* getBuiltinByName(const char* name)
     return NULL;
 }
 
-void builtinExit(Value* frame)
+void builtinExit(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
     (void)frame;
+
     exit(0);
 }
 
-void builtinPrint(Value* frame)
+void builtinPrint(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
+
     int32_t n = AS_INT(frame[0]);
     
     printf("%d\n", n);
 }
 
-void builtinClamp(Value* frame)
+void builtinClamp(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
+
     int32_t num = AS_INT(frame[0]);
     int32_t min = AS_INT(frame[1]);
     int32_t max = AS_INT(frame[2]);
@@ -57,16 +66,22 @@ void builtinClamp(Value* frame)
     frame[-2] = INT_VALUE(num);
 }
 
-void builtinAbs(Value* frame)
+void builtinAbs(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
+
     int32_t n = AS_INT(frame[0]);
     int32_t x = n < 0 ? -n : n;
     
     frame[-2] = INT_VALUE(x);
 }
 
-void builtinMin(Value* frame)
+void builtinMin(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
+
     int32_t a = AS_INT(frame[0]);
     int32_t b = AS_INT(frame[1]);
     int32_t x = a < b ? a : b;
@@ -74,8 +89,11 @@ void builtinMin(Value* frame)
     frame[-2] = INT_VALUE(x);
 }
 
-void builtinMax(Value* frame)
+void builtinMax(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
+
     int32_t a = AS_INT(frame[0]);
     int32_t b = AS_INT(frame[1]);
     int32_t x = a > b ? a : b;
@@ -83,8 +101,11 @@ void builtinMax(Value* frame)
     frame[-2] = INT_VALUE(x);
 }
 
-void builtinByteorder(Value* frame)
+void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
 {
+    (void)vm;
+    (void)function;
+
     int32_t i = 1;
     char* c = (char*)&i;
     

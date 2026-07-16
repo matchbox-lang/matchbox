@@ -11,22 +11,21 @@ static void stackOverflowError(void)
     exit(1);
 }
 
-static void initBuiltins(VM* vm)
-{
-    vm->builtins[BUILTIN_EXIT] = builtinExit;
-    vm->builtins[BUILTIN_PRINT] = builtinPrint;
-    vm->builtins[BUILTIN_CLAMP] = builtinClamp;
-    vm->builtins[BUILTIN_ABS] = builtinAbs;
-    vm->builtins[BUILTIN_MIN] = builtinMin;
-    vm->builtins[BUILTIN_MAX] = builtinMax;
-    vm->builtins[BUILTIN_BYTEORDER] = builtinByteorder;
-}
-
 static void testFrameOverflow(VM* vm, Value* frame, int maxStackCount)
 {
     if (frame - vm->stack - 2 + maxStackCount > STACK_MAX) {
         stackOverflowError();
     }
+}
+
+void enterBytecodeFunction(VM* vm, FunctionObject* function, Value* frame)
+{
+    testFrameOverflow(vm, frame, function->maxStackCount);
+
+    frame[-2] = POINTER_VALUE(vm->ip);
+    frame[-1] = POINTER_VALUE(vm->fp);
+    vm->fp = frame;
+    vm->ip = (Instruction*)function->code.data;
 }
 
 static void run(VM* vm)
@@ -135,19 +134,7 @@ static void run(VM* vm)
                 call: {
                     Value* newFrame = vm->fp + a;
                     function = vm->module->functions.data[functionPosition];
-
-                    testFrameOverflow(vm, newFrame, function->maxStackCount);
-                    newFrame[-2] = POINTER_VALUE(vm->ip);
-                    newFrame[-1] = POINTER_VALUE(vm->fp);
-                    vm->fp = newFrame;
-                    vm->ip = (Instruction*)function->code.data;
-                    break;
-                }
-            case OP_CALLBI: {
-                Value* newFrame = vm->fp + a;
-
-                function = vm->module->functions.data[OPERAND_BC(inst)];
-                vm->builtins[function->builtinId](newFrame);
+                    function->entry(vm, function, newFrame);
                 break;
             }
             case OP_RET: {
@@ -167,13 +154,13 @@ static void run(VM* vm)
                 vm->fp = fp;
                 break;
             }
-            case OP_CALLBI2: {
+            case OP_CALL2: {
                 Value* newFrame = vm->fp + a;
 
                 function = vm->module->functions.data[b];
-                vm->builtins[function->builtinId](newFrame);
+                function->entry(vm, function, newFrame);
                 function = vm->module->functions.data[c];
-                vm->builtins[function->builtinId](newFrame + 1);
+                function->entry(vm, function, newFrame + 1);
                 break;
             }
             case OP_LDI2:
@@ -218,8 +205,6 @@ static void run(VM* vm)
 
 void initVM(VM* vm, ModuleObject* module)
 {
-    initBuiltins(vm);
-
     vm->module = module;
     vm->ip = NULL;
     vm->sp = vm->stack;

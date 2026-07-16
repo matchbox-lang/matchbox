@@ -207,7 +207,6 @@ void initVM(VM* vm, ModuleObject* module)
 {
     vm->module = module;
     vm->ip = NULL;
-    vm->sp = vm->stack;
     vm->fp = vm->stack;
     vm->gp = vm->stack;
 }

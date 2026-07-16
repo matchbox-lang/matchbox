@@ -11,7 +11,6 @@ typedef struct VM
 {
     Value stack[STACK_MAX];
     Instruction* ip;
-    Value* sp;
     Value* fp;
     Value* gp;
     ModuleObject* module;

@@ -1,6 +1,6 @@
-var a = {'x': 1, 'y': 2, 'z': 3}
+let a = {'x': 1, 'y': 2, 'z': 3}
 
-var numbers = {
+let numbers = {
     "One": 1,
     "Two": 2,
     "Three": 3,

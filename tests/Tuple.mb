@@ -1,5 +1,5 @@
-var product = ("LT-1000", 1099.99)
-var model, price = product
+let product = ("LT-1000", 1099.99)
+let model, price = product
 
 print(model)
 print(price)

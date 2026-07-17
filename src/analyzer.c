@@ -243,6 +243,10 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
         symbolError("uninitialized", ast->assignment.token);
     }
 
+    if (isVariableDefinition(symbol) && symbol->variableDefinition.fixed && isInitialized(symbol)) {
+        semanticError("Cannot reassign fixed binding ", ast->assignment.token);
+    }
+
     analyzeNode(analyzer, ast->assignment.expr);
     ast->assignment.scope = analyzer->currentScope;
     ast->assignment.symbol = symbol;

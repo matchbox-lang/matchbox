@@ -14,6 +14,6 @@ func mul(a, b) {
     return a * b
 }
 
-var a = Entity[int](5)
-var b = add(5, 8)
-var c = mul(5, 8)
+let a = Entity[int](5)
+let b = add(5, 8)
+let c = mul(5, 8)

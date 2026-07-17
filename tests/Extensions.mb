@@ -20,5 +20,5 @@ func Rect += (n) {
     h += n
 }
 
-var r = Rect(4)
+let r = Rect(4)
 r.printArea()

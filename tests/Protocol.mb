@@ -12,5 +12,5 @@ class Sheep {
     }
 }
 
-var sheep = Sheep()
+let sheep = Sheep()
 shout(sheep)

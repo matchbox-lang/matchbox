@@ -2,8 +2,8 @@ func add(a, b) {
     return a + b
 }
 
-var a = 10
-var b = 20
-var result = add(a, b)
+let a = 10
+let b = 20
+let result = add(a, b)
 
 print(result)

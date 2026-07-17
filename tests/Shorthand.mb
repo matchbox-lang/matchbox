@@ -1,13 +1,13 @@
-var c = a ? a : b
-var c = a ?? b
+let c = a ? a : b
+let c = a ?? b
 
-var matrix: int[2][3] = [1, 2, 3, 4, 5, 6]
+let matrix: int[2][3] = [1, 2, 3, 4, 5, 6]
 
-var a = [x for x in 1..10]
-var b = [x for x in 1..10 where x > 2]
-var c = [y for x in matrix for y in x]
-var d = [[y for y in range(5)] for x in range(5)]
-var e = [[y for y in x] for x in matrix]
+let a = [x for x in 1..10]
+let b = [x for x in 1..10 where x > 2]
+let c = [y for x in matrix for y in x]
+let d = [[y for y in range(5)] for x in range(5)]
+let e = [[y for y in x] for x in matrix]
 
 if x == y print(true)
 

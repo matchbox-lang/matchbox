@@ -1,19 +1,19 @@
-var str = "Hello World!\n"
+let str = "Hello World!\n"
 
-var apples = 4
-var bananas = 3
+let apples = 4
+let bananas = 3
 
-var str = "I have %d apples." % apples
-var str = "I have %d fruit." % (apples + bananas)
-var str = $"I have {apples} apples."
-var str = $"I have {apples + bananas} fruit."
+let str = "I have %d apples." % apples
+let str = "I have %d fruit." % (apples + bananas)
+let str = $"I have {apples} apples."
+let str = $"I have {apples + bananas} fruit."
 
-var str = `C:\path\to\file`
-var str = `I have {apples} apples.`
+let str = `C:\path\to\file`
+let str = `I have {apples} apples.`
 
-var str = """Multi
+let str = """Multi
 Line
 String"""
 
-var str = """I have {apples} apples."""
-var str = ```I have {apples} apples.```
+let str = """I have {apples} apples."""
+let str = ```I have {apples} apples.```

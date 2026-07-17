@@ -133,6 +133,7 @@ typedef struct ASTNode
             Scope* scope;
             StringObject* id;
             Token token;
+            bool fixed;
             bool initialized;
             TokenType typeId;
             int position;

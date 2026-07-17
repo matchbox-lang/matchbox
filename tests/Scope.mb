@@ -1,5 +1,5 @@
 var x = 10
-var y = 20
+let y = 20
 
 func updateGlobal() {
     print(x)
@@ -11,7 +11,7 @@ func testLocal(x: int) {
     print(x)
     print(y)
 
-    var local = 200
+    let local = 200
     print(local)
 
     func inner(x: int) {

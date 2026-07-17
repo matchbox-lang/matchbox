@@ -3,7 +3,7 @@ enum Optional[T] {
     None
 }
 
-var num = Some(5)
+let num = Some(5)
 
 if let n = num {
     print(n)

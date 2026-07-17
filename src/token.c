@@ -62,7 +62,7 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_PRIVATE:             return "private";
         case TOKEN_PUBLIC:              return "public";
         case TOKEN_SELF:                return "self";
-        case TOKEN_ASYNC:               return "async";
+        case TOKEN_SPAWN:               return "spawn";
         case TOKEN_AWAIT:               return "await";
         case TOKEN_DEFER:               return "defer";
         case TOKEN_EXTERN:              return "extern";

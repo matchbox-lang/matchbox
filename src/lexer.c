@@ -14,7 +14,6 @@ typedef struct Keyword
 
 static const Keyword keywords[] = {
     {"as",          2, TOKEN_AS},
-    {"async",       5, TOKEN_ASYNC},
     {"await",       5, TOKEN_AWAIT},
     {"bool",        4, TOKEN_BOOL},
     {"break",       5, TOKEN_BREAK},
@@ -54,6 +53,7 @@ static const Keyword keywords[] = {
     {"self",        4, TOKEN_SELF},
     {"set",         3, TOKEN_SET},
     {"sizeof",      6, TOKEN_SIZEOF},
+    {"spawn",       5, TOKEN_SPAWN},
     {"static",      6, TOKEN_STATIC},
     {"string",      6, TOKEN_STRING},
     {"struct",      6, TOKEN_STRUCT},

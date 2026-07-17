@@ -1,7 +1,9 @@
-async func hello(seconds: int) {
+func hello(seconds: int) {
     print("Hello")
     await timer(seconds)
     print(" World!")
 }
 
-hello(10)
+let task = spawn hello(10)
+
+await task

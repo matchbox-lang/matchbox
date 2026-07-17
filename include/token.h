@@ -41,7 +41,7 @@ typedef enum TokenType
     TOKEN_PRIVATE,
     TOKEN_PUBLIC,
     TOKEN_SELF,
-    TOKEN_ASYNC,
+    TOKEN_SPAWN,
     TOKEN_AWAIT,
     TOKEN_DEFER,
     TOKEN_EXTERN,

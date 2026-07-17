@@ -44,7 +44,6 @@ typedef enum TokenType
     TOKEN_SPAWN,
     TOKEN_AWAIT,
     TOKEN_DEFER,
-    TOKEN_EXTERN,
     TOKEN_TRY,
     TOKEN_CATCH,
     TOKEN_FINALLY,

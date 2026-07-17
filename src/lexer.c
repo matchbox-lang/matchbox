@@ -27,7 +27,6 @@ static const Keyword keywords[] = {
     {"else",        4, TOKEN_ELSE},
     {"end",         3, TOKEN_END},
     {"enum",        4, TOKEN_ENUM},
-    {"extern",      6, TOKEN_EXTERN},
     {"false",       5, TOKEN_FALSE},
     {"finally",     7, TOKEN_FINALLY},
     {"float",       5, TOKEN_FLOAT},

@@ -65,7 +65,6 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_SPAWN:               return "spawn";
         case TOKEN_AWAIT:               return "await";
         case TOKEN_DEFER:               return "defer";
-        case TOKEN_EXTERN:              return "extern";
         case TOKEN_TRY:                 return "try";
         case TOKEN_CATCH:               return "catch";
         case TOKEN_FINALLY:             return "finally";

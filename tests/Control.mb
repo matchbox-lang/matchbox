@@ -1,5 +1,5 @@
 var i = 0
-var arr = [1, 2, 3]
+let arr = [1, 2, 3]
 
 if i < 5 {
     print("i is less than 5")
@@ -9,7 +9,7 @@ if i < 5 {
     print("i is 5")
 }
 
-var x = if i < 5 {
+let x = if i < 5 {
     "i is less than 5"
 } else if i > 5 {
     "i is greater than 5"
@@ -39,7 +39,7 @@ match {
         print("i is 5")
 }
 
-var x = match {
+let x = match {
     case i < 5
         "i is less than 5"
     case i > 5
@@ -48,7 +48,7 @@ var x = match {
         "i is 5"
 }
 
-var x = match (1, 2) {
+let x = match (1, 2) {
     case (0, 0)
         "The point is at the origin, (0, 0)"
     case (0, y)

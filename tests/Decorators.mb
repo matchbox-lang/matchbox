@@ -1,7 +1,7 @@
 type Operation = (int) -> int
 
 func fn(op: Operation, n) {
-    var result = op(n)
+    let result = op(n)
     print("Result {result}")
 
     return result

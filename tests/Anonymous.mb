@@ -5,7 +5,7 @@ struct Point {
     y: int
 }
 
-var add: Operation = (a, b) in a * b
+let add: Operation = (a, b) in a * b
 
 func invoke(a, b, op: Operation) {
     print(op(a, b))

@@ -1,5 +1,5 @@
 var a = 2
-var b = 3
+let b = 3
 
 a + b
 a - b

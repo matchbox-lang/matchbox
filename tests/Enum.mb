@@ -6,4 +6,4 @@ enum Events {
     Status(int)
 }
 
-var event = Events.Status(200)
+let event = Events.Status(200)

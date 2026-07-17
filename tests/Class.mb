@@ -6,7 +6,7 @@ class Foo {
     }
 }
 
-var x = Foo(5)
-var id = x.getId()
+let x = Foo(5)
+let id = x.getId()
 
 print(id)

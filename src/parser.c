@@ -672,12 +672,13 @@ static ASTNode* parseAssignment(Parser* parser)
     return ast;
 }
 
-static ASTNode* createVariableDefinitionNode(Token token, StringObject* id)
+static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed)
 {
     ASTNode* ast = createASTNode(AST_VARIABLE_DEFINITION);
     ast->variableDefinition.scope = NULL;
     ast->variableDefinition.id = id;
     ast->variableDefinition.token = token;
+    ast->variableDefinition.fixed = fixed;
     ast->variableDefinition.position = 0;
     ast->variableDefinition.expr = NULL;
 
@@ -717,7 +718,9 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
 
 static ASTNode* parseVariableDefinition(Parser* parser)
 {
-    consume(parser, TOKEN_VAR);
+    bool fixed = parser->currentToken.type == TOKEN_LET;
+
+    consume(parser, parser->currentToken.type);
 
     if (isEndOfFile(parser)) {
         return NULL;
@@ -732,9 +735,13 @@ static ASTNode* parseVariableDefinition(Parser* parser)
         return NULL;
     }
 
-    ASTNode* ast = createVariableDefinitionNode(token, id);
+    ASTNode* ast = createVariableDefinitionNode(token, id, fixed);
 
     parseVariableType(parser, ast);
+
+    if (fixed && parser->currentToken.type != TOKEN_EQUAL) {
+        expectedTokenError(TOKEN_EQUAL, parser->currentToken);
+    }
 
     if (!parseVariableInitializer(parser, ast)) {
         freeASTNode(ast);
@@ -764,6 +771,7 @@ static ASTNode* parseStatement(Parser* parser)
     switch (parser->currentToken.type) {
         case TOKEN_FUNC:
             return parseFunctionDefinition(parser);
+        case TOKEN_LET:
         case TOKEN_VAR:
             return parseVariableDefinition(parser);
         case TOKEN_RETURN:

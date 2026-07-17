@@ -193,27 +193,61 @@ static int emitLdc(Compiler* compiler, uint16_t imm)
     return reg;
 }
 
-static bool fuseLdiLdi(Compiler* compiler, int reg, int16_t imm)
+static Opcode getLoadPairOpcode(Opcode first, Opcode second)
+{
+    if (first == OP_LDI && second == OP_LDI) {
+        return OP_LDI2;
+    }
+
+    if (first == OP_LDI && second == OP_LDG) {
+        return OP_LDI_LDG;
+    }
+
+    if (first == OP_LDG && second == OP_LDI) {
+        return OP_LDG_LDI;
+    }
+
+    if (first == OP_LDG && second == OP_LDG) {
+        return OP_LDG2;
+    }
+
+    return OP_HLT;
+}
+
+static bool isLoadPairOperandValid(Opcode opcode, uint16_t operand)
+{
+    if (opcode != OP_LDI) {
+        return operand <= UINT8_MAX;
+    }
+
+    return !isLargerThan8BitSigned((int16_t)operand);
+}
+
+static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t operand)
 {
     PreviousInstruction previous;
 
-    if (isLargerThan8BitSigned(imm) || !getPreviousInstruction(compiler, &previous)) {
+    if (!isLoadPairOperandValid(opcode, operand)
+        || !getPreviousInstruction(compiler, &previous)
+        || previous.a + 1 != reg) {
         return false;
     }
 
-    if (previous.opcode != OP_LDI || previous.a + 1 != reg) {
+    Opcode fusedOpcode = getLoadPairOpcode(previous.opcode, opcode);
+
+    if (fusedOpcode == OP_HLT) {
         return false;
     }
 
-    int16_t previousImm = (int16_t)(previous.b << 8 | previous.c);
+    uint16_t previousOperand = (uint16_t)(previous.b << 8 | previous.c);
 
-    if (isLargerThan8BitSigned(previousImm)) {
+    if (!isLoadPairOperandValid(previous.opcode, previousOperand)) {
         return false;
     }
 
-    setByteAt(previous.code, previous.start, OP_LDI2);
-    setByteAt(previous.code, previous.start + 2, previousImm);
-    setByteAt(previous.code, previous.start + 3, imm);
+    setByteAt(previous.code, previous.start, fusedOpcode);
+    setByteAt(previous.code, previous.start + 2, previousOperand);
+    setByteAt(previous.code, previous.start + 3, operand);
 
     return true;
 }
@@ -222,7 +256,7 @@ static int emitLdi(Compiler* compiler, int16_t imm)
 {
     int reg = allocateRegister(compiler);
 
-    if (fuseLdiLdi(compiler, reg, imm)) {
+    if (fuseLoadPair(compiler, OP_LDI, reg, (uint16_t)imm)) {
         return reg;
     }
 
@@ -234,6 +268,10 @@ static int emitLdi(Compiler* compiler, int16_t imm)
 static int emitLdg(Compiler* compiler, uint16_t imm)
 {
     int reg = allocateRegister(compiler);
+
+    if (fuseLoadPair(compiler, OP_LDG, reg, imm)) {
+        return reg;
+    }
 
     emitInstruction(compiler, OP_LDG, reg, imm >> 8, imm);
 

@@ -77,6 +77,15 @@ static void printOpcodeRegisterInt8Uint8(const char* name)
     printf("%-15s R%d, #%d, #%u\n", name, a, imm, position);
 }
 
+static void printOpcodeRegisterUint8Int8(const char* name)
+{
+    uint8_t a = READ_UINT8();
+    uint8_t position = READ_UINT8();
+    int8_t imm = READ_INT8();
+
+    printf("%-15s R%d, #%u, #%d\n", name, a, position, imm);
+}
+
 static void printOpcodeRegisterInt8Int8(const char* name)
 {
     uint8_t a = READ_UINT8();
@@ -162,11 +171,14 @@ static void printInstruction(int8_t c)
         case OP_RETV:           printOpcodeRegister("RETV"); break;
         case OP_CALL2:          printOpcodeRegisterUint8Uint8("CALL2"); break;
         case OP_LDI2:           printOpcodeRegisterInt8Int8("LDI2"); break;
+        case OP_LDG2:           printOpcodeRegisterUint8Uint8("LDG2"); break;
         case OP_MOV2:           printOpcodeRegisters3("MOV2"); break;
         case OP_LDC_CALL:       printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:       printLoadCall("LDG_CALL"); break;
         case OP_LDI_CALL:       printSignedLoadCall("LDI_CALL"); break;
         case OP_LDI_STG:        printOpcodeRegisterInt8Uint8("LDI_STG"); break;
+        case OP_LDI_LDG:        printOpcodeRegisterInt8Uint8("LDI_LDG"); break;
+        case OP_LDG_LDI:        printOpcodeRegisterUint8Int8("LDG_LDI"); break;
         default:
             unknownOpcodeError(c);
     }

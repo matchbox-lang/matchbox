@@ -426,6 +426,7 @@ func cancelTask() {
         # OK: Cancelled tasks must still be awaited
         await task
     } catch {
+        print("Caught cancellation")
     }
 
     # OK: Task access ended after await

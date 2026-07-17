@@ -367,6 +367,7 @@ func destructionOnThrow() {
         # OK: Resource is dropped while unwinding
         throw "Failure"
     } catch {
+        print("Caught failure")
     }
 }
 

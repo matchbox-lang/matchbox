@@ -12,6 +12,7 @@ static bool nodeUsesId(ASTNode* ast, StringObject* id);
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
 static void validateNodeEffects(ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
+static void transferExclusiveReference(ASTNode* expression);
 
 static void semanticError(char* message, Token token)
 {
@@ -426,6 +427,11 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
         }
 
         ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
+
+        if (getReferenceType(arg) != REFERENCE_NONE) {
+            continue;
+        }
+
         ASTNode* origin = referenceOriginFromExpression(arg);
 
         if (!origin && isVariable(arg)) {
@@ -656,7 +662,6 @@ static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
 static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
-    bool initializesBinding = !isInitialized(symbol);
 
     if (analyzer->currentScope != getScope(symbol) && !isInitialized(symbol)) {
         symbolError("uninitialized", token);
@@ -666,18 +671,12 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
         symbolError("moved", token);
     }
 
-    ReferenceType referenceType = getReferenceType(symbol);
-
-    if (referenceType == REFERENCE_SHARED && !initializesBinding) {
-        semanticError("Cannot mutate through shared reference ", token);
-    }
-
-    if (referenceType == REFERENCE_NONE
+    if (getReferenceType(symbol) == REFERENCE_NONE
         && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
         semanticError("Cannot mutate binding while shared access is active ", token);
     }
 
-    if (referenceType == REFERENCE_NONE && isVariableDefinition(symbol)
+    if (getReferenceType(symbol) == REFERENCE_NONE && isVariableDefinition(symbol)
         && symbol->variableDefinition.fixed && isInitialized(symbol)) {
         semanticError("Cannot reassign fixed binding ", token);
     }
@@ -693,16 +692,26 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
     }
 }
 
-static void initializeReferenceBinding(ASTNode* ast, ASTNode* symbol)
+static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializesBinding)
 {
     if (getReferenceType(symbol) == REFERENCE_NONE) {
         return;
     }
 
+    if (!initializesBinding && symbol->variableDefinition.referenceAccessActive) {
+        releaseReferenceAccess(symbol);
+    }
+
     symbol->variableDefinition.referenceOrigin = referenceOriginFromExpression(ast->assignment.expr);
-    activateReferenceAccess(symbol);
+
+    if (getReferenceType(symbol) == REFERENCE_EXCLUSIVE && isVariable(ast->assignment.expr)) {
+        transferExclusiveReference(ast->assignment.expr);
+    } else {
+        activateReferenceAccess(symbol);
+    }
+
     symbol->variableDefinition.referenceAccessActive = true;
-    ast->assignment.initializesBinding = true;
+    ast->assignment.initializesBinding = initializesBinding;
 }
 
 static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
@@ -716,10 +725,7 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     ast->assignment.scope = analyzer->currentScope;
     ast->assignment.symbol = symbol;
 
-    if (initializesBinding) {
-        initializeReferenceBinding(ast, symbol);
-    }
-
+    updateReferenceBinding(ast, symbol, initializesBinding);
     initializeVariable(symbol);
 }
 

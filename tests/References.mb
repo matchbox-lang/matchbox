@@ -10,6 +10,19 @@ func testExclusive(n: ^int) {
     print(n)
 }
 
+func testReferences(left: &int, right: ^int) {
+    print(left)
+    print(right)
+}
+
+func returnShared(n: &int) -> &int {
+    return n
+}
+
+func returnExclusive(n: ^int) -> ^int {
+    return n
+}
+
 var a = 10
 var b = &a
 
@@ -21,7 +34,7 @@ var assignedReference: &int
 assignedReference = &a
 print(assignedReference)
 
-# Error: A reference initializer requires a reference variable type
+# Error: Cannot initialize int with &int
 # var invalidCopy: int = &a
 
 # OK: a is copied
@@ -56,3 +69,113 @@ testShared(b)
 
 # OK: Reads through &a and copies the referenced int
 testNoReference(&a)
+
+var c = 20
+var inferredExclusive = ^c
+var explicitExclusive: ^int = inferredExclusive
+var assignedExclusive: ^int
+assignedExclusive = explicitExclusive
+
+# OK: Reads through an exclusive reference and copies the referenced int
+testNoReference(assignedExclusive)
+
+# OK: Passes the existing ^int
+testExclusive(assignedExclusive)
+
+# Error: Expected &int, received ^int
+# testShared(assignedExclusive)
+
+var d = 30
+var sharedReassignment: &int = &c
+sharedReassignment = &d
+print(sharedReassignment)
+
+var e = 40
+var exclusiveReassignment: ^int = ^e
+
+var f = 50
+exclusiveReassignment = ^f
+print(exclusiveReassignment)
+
+let fixedShared: &int = &d
+
+# Error: Fixed bindings cannot be reassigned
+# fixedShared = &c
+
+let fixedValue = 60
+
+# OK: Shared access does not modify a fixed binding
+testShared(&fixedValue)
+
+# Error: Exclusive access cannot be taken from a fixed binding
+# testExclusive(^fixedValue)
+
+var returnedShared: &int = returnShared(&d)
+print(returnedShared)
+
+var g = 70
+var returnedExclusive: ^int = returnExclusive(^g)
+print(returnedExclusive)
+
+var h = 80
+var i = 90
+
+# OK: Shared and exclusive access target different values
+testReferences(&h, ^i)
+
+# Error: h cannot have shared and exclusive access in the same call
+# testReferences(&h, ^h)
+
+# Error: Expected &int, received int
+# var invalidSharedAssignment: &int = h
+
+# Error: Expected ^int, received int
+# var invalidExclusiveAssignment: ^int = h
+
+# Error: Expected ^int, received &int
+# var invalidExclusiveFromShared: ^int = &h
+
+# Error: Expected &int, received ^int
+# var invalidSharedFromExclusive: &int = ^h
+
+# Error: Expected a type after &
+# var missingSharedType: &
+
+# Error: Expected a type after ^
+# var missingExclusiveType: ^
+
+# Error: Expected an expression after &
+# var missingSharedExpression = &
+
+# Error: Expected an expression after ^
+# var missingExclusiveExpression = ^
+
+# Error: Nested references are not supported
+# var sharedShared: &&int
+
+# Error: Nested references are not supported
+# var exclusiveShared: ^&int
+
+# Error: Nested references are not supported
+# var sharedExclusive: &^int
+
+# Error: Nested references are not supported
+# var exclusiveExclusive: ^^int
+
+# Error: A literal cannot be borrowed
+# testShared(&10)
+
+# Error: A literal cannot be exclusively borrowed
+# testExclusive(^10)
+
+# Error: A temporary value cannot be borrowed
+# testShared(&(h + 1))
+
+# Error: A temporary value cannot be exclusively borrowed
+# testExclusive(^(h + 1))
+
+# Error: Expected an expression inside parentheses
+# testShared(&())
+
+# Error: Expected an expression inside parentheses
+# testExclusive(^())

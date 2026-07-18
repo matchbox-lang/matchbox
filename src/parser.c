@@ -360,7 +360,7 @@ static ASTNode* parseBooleanAND(Parser* parser)
     ASTNode* expr = parseBitwiseOR(parser);
     Token token = parser->currentToken;
 
-    while (token.type == TOKEN_BOOLEAN_AND) {
+    while (token.type == TOKEN_AND) {
         consume(parser, token.type);
         expr = createBinaryNode(expr, parseBitwiseOR(parser), token);
         token = parser->currentToken;
@@ -374,7 +374,7 @@ static ASTNode* parseBooleanOR(Parser* parser)
     ASTNode* expr = parseBooleanAND(parser);
     Token token = parser->currentToken;
 
-    while (token.type == TOKEN_BOOLEAN_OR) {
+    while (token.type == TOKEN_OR) {
         consume(parser, token.type);
         expr = createBinaryNode(expr, parseBooleanAND(parser), token);
         token = parser->currentToken;

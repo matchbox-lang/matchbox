@@ -681,7 +681,7 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
 
     switch (ast->prefix.operator.type) {
-        case TOKEN_EXCLAMATION:
+        case TOKEN_NOT:
             return emitUnaryOperand(compiler, OP_NOT, operand);
         case TOKEN_TILDE:
             return emitUnaryOperand(compiler, OP_BNOT, operand);

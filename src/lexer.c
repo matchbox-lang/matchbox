@@ -13,6 +13,7 @@ typedef struct Keyword
 } Keyword;
 
 static const Keyword keywords[] = {
+    {"and",         3, TOKEN_AND},
     {"as",          2, TOKEN_AS},
     {"await",       5, TOKEN_AWAIT},
     {"bool",        4, TOKEN_BOOL},
@@ -33,7 +34,6 @@ static const Keyword keywords[] = {
     {"for",         3, TOKEN_FOR},
     {"func",        4, TOKEN_FUNC},
     {"get",         3, TOKEN_GET},
-    {"has",         3, TOKEN_HAS},
     {"if",          2, TOKEN_IF},
     {"in",          2, TOKEN_IN},
     {"int",         3, TOKEN_INT},
@@ -45,6 +45,8 @@ static const Keyword keywords[] = {
     {"is",          2, TOKEN_IS},
     {"let",         3, TOKEN_LET},
     {"match",       5, TOKEN_MATCH},
+    {"not",         3, TOKEN_NOT},
+    {"or",          2, TOKEN_OR},
     {"private",     7, TOKEN_PRIVATE},
     {"protocol",    8, TOKEN_PROTOCOL},
     {"public",      6, TOKEN_PUBLIC},
@@ -621,14 +623,14 @@ Token scanToken(Lexer* lexer)
             return makeToken(lexer, 
                 match(lexer, '~') ? TOKEN_NOT_TILDE :
                 match(lexer, '=') ?
-                match(lexer, '=') ? TOKEN_NOT_EQUAL_EQUAL : TOKEN_NOT_EQUAL : TOKEN_EXCLAMATION);
+                match(lexer, '=') ? TOKEN_NOT_EQUAL_EQUAL : TOKEN_NOT_EQUAL : TOKEN_UNKNOWN);
         case '&':
             return makeToken(lexer, 
-                match(lexer, '&') ? TOKEN_BOOLEAN_AND :
+                match(lexer, '&') ? TOKEN_UNKNOWN :
                 match(lexer, '=') ? TOKEN_AND_EQUAL : TOKEN_AMPERSAND);
         case '|':
             return makeToken(lexer, 
-                match(lexer, '|') ? TOKEN_BOOLEAN_OR :
+                match(lexer, '|') ? TOKEN_UNKNOWN :
                 match(lexer, '>') ? TOKEN_PIPE_FORWARD :
                 match(lexer, '=') ? TOKEN_OR_EQUAL : TOKEN_PIPE);
         case '^':

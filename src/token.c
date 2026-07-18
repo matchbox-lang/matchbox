@@ -32,7 +32,6 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_ELSE:                return "else";
         case TOKEN_IN:                  return "in";
         case TOKEN_IS:                  return "is";
-        case TOKEN_HAS:                 return "has";
         case TOKEN_SIZEOF:              return "sizeof";
         case TOKEN_TYPEOF:              return "typeof";
         case TOKEN_FOR:                 return "for";
@@ -115,9 +114,9 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_LESS:                return "<";
         case TOKEN_LESS_EQUAL:          return "<=";
         case TOKEN_SPACESHIP:           return "<=>";
-        case TOKEN_BOOLEAN_AND:         return "&&";
-        case TOKEN_BOOLEAN_OR:          return "||";
-        case TOKEN_EXCLAMATION:         return "!";
+        case TOKEN_AND:                 return "and";
+        case TOKEN_OR:                  return "or";
+        case TOKEN_NOT:                 return "not";
         case TOKEN_AMPERSAND:           return "&";
         case TOKEN_PIPE:                return "|";
         case TOKEN_CIRCUMFLEX:          return "^";
@@ -257,7 +256,7 @@ bool isFactorToken(TokenType type)
 bool isPrefixToken(TokenType type)
 {
     switch (type) {
-        case TOKEN_EXCLAMATION:
+        case TOKEN_NOT:
         case TOKEN_MINUS:
         case TOKEN_TILDE:
             return true;

@@ -30,22 +30,21 @@ a >= b
 a <= b
 a <=> b
 
-a && b
-a || b
-
-|>
-<|
+a and b
+a or b
+not (a > b)
 
 a in 0..10
+a not in 0..10
 a is T
-a has T
-
-sizeof a
-typeof a
+a is not T
 
 -a
-!a
 ~a
+
+sizeof(a)
+alignof(a)
+typeof(a)
 
 a & b
 a | b
@@ -71,3 +70,6 @@ a..^3
 ...[1, 2, 3]
 
 a -> b
+
+|>
+<|

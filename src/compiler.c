@@ -282,12 +282,14 @@ static int emitLdg(Compiler* compiler, uint16_t imm)
 static Opcode getLoadCallOpcode(Opcode opcode)
 {
     switch (opcode) {
+        case OP_LDI:
+            return OP_LDI_CALL;
         case OP_LDC:
             return OP_LDC_CALL;
         case OP_LDG:
             return OP_LDG_CALL;
-        case OP_LDI:
-            return OP_LDI_CALL;
+        case OP_LDR:
+            return OP_LDR_CALL;
         default:
             return OP_HLT;
     }
@@ -324,7 +326,9 @@ static bool fuseLoadCall(Compiler* compiler, uint8_t frameRegister, uint16_t fun
         return false;
     }
 
-    uint16_t operands = previous.b << 8 | previous.c;
+    uint16_t operands = previous.opcode == OP_LDR
+        ? previous.b
+        : previous.b << 8 | previous.c;
 
     if (!isLoadCallOperandValid(previous.opcode, operands)) {
         return false;

@@ -195,6 +195,14 @@ static void run(VM* vm)
                 vm->fp[a] = vm->gp[b];
                 vm->fp[a + 1] = INT_VALUE((int8_t)c);
                 break;
+            case OP_LDI_CALL: {
+                uint16_t operands = OPERAND_BC(inst);
+                int16_t imm = LOAD_CALL_SIGNED_OPERAND(operands);
+
+                vm->fp[a] = INT_VALUE(imm);
+                functionPosition = LOAD_CALL_FUNCTION(operands);
+                goto call;
+            }
             case OP_LDC_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
 
@@ -209,11 +217,10 @@ static void run(VM* vm)
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
-            case OP_LDI_CALL: {
+            case OP_LDR_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
-                int16_t imm = LOAD_CALL_SIGNED_OPERAND(operands);
 
-                vm->fp[a] = INT_VALUE(imm);
+                vm->fp[a] = *(Value*)AS_POINTER(vm->fp[LOAD_CALL_OPERAND(operands)]);
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }

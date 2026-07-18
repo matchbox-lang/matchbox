@@ -89,9 +89,10 @@ typedef enum Opcode
     OP_MOV2,
 
     // Fused calls
+    OP_LDI_CALL,
     OP_LDC_CALL,
     OP_LDG_CALL,
-    OP_LDI_CALL,
+    OP_LDR_CALL,
 
     // Fused data movement
     OP_LDI_STG,

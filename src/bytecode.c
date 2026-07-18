@@ -177,9 +177,10 @@ static void printInstruction(int8_t c)
         case OP_LDI2:           printOpcodeRegisterInt8Int8("LDI2"); break;
         case OP_LDG2:           printOpcodeRegisterUint8Uint8("LDG2"); break;
         case OP_MOV2:           printOpcodeRegisters3("MOV2"); break;
+        case OP_LDI_CALL:       printSignedLoadCall("LDI_CALL"); break;
         case OP_LDC_CALL:       printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:       printLoadCall("LDG_CALL"); break;
-        case OP_LDI_CALL:       printSignedLoadCall("LDI_CALL"); break;
+        case OP_LDR_CALL:       printLoadCall("LDR_CALL"); break;
         case OP_LDI_STG:        printOpcodeRegisterInt8Uint8("LDI_STG"); break;
         case OP_LDI_LDG:        printOpcodeRegisterInt8Uint8("LDI_LDG"); break;
         case OP_LDG_LDI:        printOpcodeRegisterUint8Int8("LDG_LDI"); break;

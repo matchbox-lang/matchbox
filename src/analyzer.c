@@ -339,8 +339,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
 
-        if (getTypeId(arg) != builtin->params[i]
-            || getReferenceType(arg) != REFERENCE_NONE) {
+        if (getTypeId(arg) != builtin->params[i]) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -384,7 +383,11 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
 
         ReferenceType argumentType = getReferenceType(arg);
         ReferenceType parameterType = getReferenceType(param);
-        bool compatibleReference = argumentType == parameterType
+        bool valueParameter = parameterType == REFERENCE_NONE;
+        bool implicitBorrow = argumentType == REFERENCE_NONE;
+        bool compatibleReference = valueParameter
+            || implicitBorrow
+            || argumentType == parameterType
             || (argumentType == REFERENCE_EXCLUSIVE && parameterType == REFERENCE_SHARED);
 
         if (getTypeId(arg) != param->parameter.typeId || !compatibleReference) {
@@ -406,6 +409,29 @@ static void validateEffectAccess(ASTNode* origin, ReferenceType type, Token toke
     if (type == REFERENCE_EXCLUSIVE
         && (isExclusivelyBorrowed(origin) || *getSharedBorrowCount(origin))) {
         semanticError("Function requires exclusive access to borrowed binding ", token);
+    }
+}
+
+static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token token)
+{
+    size_t count = countVector(&caller->functionCall.args);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
+        ReferenceType type = getReferenceType(param);
+
+        if (type == REFERENCE_NONE) {
+            continue;
+        }
+
+        ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
+        ASTNode* origin = referenceOriginFromExpression(arg);
+
+        if (!origin && isVariable(arg)) {
+            origin = getReferenceOriginOrSelf(arg->variable.symbol);
+        }
+
+        validateEffectAccess(origin, type, token);
     }
 }
 
@@ -539,6 +565,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     ast->functionCall.scope = analyzer->currentScope;
     ast->functionCall.symbol = symbol;
     validateFunctionCall(ast, symbol, ast->functionCall.token);
+    validateCallArgumentAccess(ast, symbol, ast->functionCall.token);
     validateArgumentBorrows(ast);
     validateEffectsInVector(&symbol->functionDefinition.body->compound.statements);
     ast->functionCall.referenceOrigin = getCallReferenceOrigin(ast, symbol);

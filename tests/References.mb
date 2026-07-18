@@ -1,10 +1,47 @@
-func inc(n: ^int) {
-    n += 1
+func testNoReference(n: int) {
+    print(n)
 }
 
-let a = 9
-let b = ^a
+func testShared(n: &int) {
+    print(n)
+}
 
-inc(b)
+func testExclusive(n: ^int) {
+    print(n)
+}
 
-print(a) # 10
+var a = 10
+var b = &a
+
+# OK: a is copied
+testNoReference(a)
+
+# OK: Another shared borrow
+testShared(a)
+
+# Error: b still holds shared access to a
+# testExclusive(a)
+
+# OK: Explicit shared borrow
+testShared(&a)
+
+# Error: b still holds shared access to a
+# testExclusive(^a)
+
+# OK: Reads through b and copies the referenced int
+testNoReference(b)
+
+# OK: Passes the existing &int
+testShared(b)
+
+# Error: Expected ^int, received &int
+# testExclusive(b)
+
+# Error: Expected &int, received &&int
+# testShared(&b)
+
+# Error: Expected ^int, received ^&int
+# testExclusive(^b)
+
+# OK: Reads through &a and copies the referenced int
+testNoReference(&a)

@@ -989,7 +989,7 @@ static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
     }
 
     if (ast->type == AST_VARIABLE) {
-        return loadVariable(compiler, ast->variable.symbol);
+        return referenceVariable(compiler, ast->variable.symbol);
     }
 
     if (ast->type == AST_FUNCTION_CALL) {

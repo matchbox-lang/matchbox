@@ -38,33 +38,33 @@ static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
     return getLocalSymbol(analyzer->topLevel->compound.scope, id);
 }
 
-static size_t* getSharedBorrowCount(ASTNode* symbol)
+static size_t* getSharedAccessCount(ASTNode* symbol)
 {
     if (isParameter(symbol)) {
-        return &symbol->parameter.sharedBorrowCount;
+        return &symbol->parameter.sharedAccessCount;
     }
 
-    return &symbol->variableDefinition.sharedBorrowCount;
+    return &symbol->variableDefinition.sharedAccessCount;
 }
 
-static bool isExclusivelyBorrowed(ASTNode* symbol)
+static bool hasExclusiveAccess(ASTNode* symbol)
 {
     if (isParameter(symbol)) {
-        return symbol->parameter.exclusivelyBorrowed;
+        return symbol->parameter.exclusiveAccessActive;
     }
 
-    return symbol->variableDefinition.exclusivelyBorrowed;
+    return symbol->variableDefinition.exclusiveAccessActive;
 }
 
-static void setExclusivelyBorrowed(ASTNode* symbol, bool borrowed)
+static void setExclusiveAccess(ASTNode* symbol, bool active)
 {
     if (isParameter(symbol)) {
-        symbol->parameter.exclusivelyBorrowed = borrowed;
+        symbol->parameter.exclusiveAccessActive = active;
 
         return;
     }
 
-    symbol->variableDefinition.exclusivelyBorrowed = borrowed;
+    symbol->variableDefinition.exclusiveAccessActive = active;
 }
 
 static bool isMoved(ASTNode* symbol)
@@ -168,30 +168,30 @@ static bool nodesUseIdAfter(Vector* nodes, size_t start, StringObject* id)
     return false;
 }
 
-static void releaseBorrow(ASTNode* reference)
+static void releaseReferenceAccess(ASTNode* reference)
 {
     ASTNode* origin = reference->variableDefinition.referenceOrigin;
 
     if (reference->variableDefinition.referenceType == REFERENCE_SHARED) {
-        (*getSharedBorrowCount(origin))--;
+        (*getSharedAccessCount(origin))--;
     } else {
-        setExclusivelyBorrowed(origin, false);
+        setExclusiveAccess(origin, false);
     }
 
-    reference->variableDefinition.borrowActive = false;
+    reference->variableDefinition.referenceAccessActive = false;
 }
 
-static void releaseDeadBorrows(Vector* nodes, size_t next)
+static void releaseInactiveReferenceAccess(Vector* nodes, size_t next)
 {
     for (size_t i = 0; i < next; i++) {
         ASTNode* ast = getVectorAt(nodes, i);
 
-        if (!isVariableDefinition(ast) || !ast->variableDefinition.borrowActive) {
+        if (!isVariableDefinition(ast) || !ast->variableDefinition.referenceAccessActive) {
             continue;
         }
 
         if (!nodesUseIdAfter(nodes, next, ast->variableDefinition.id)) {
-            releaseBorrow(ast);
+            releaseReferenceAccess(ast);
         }
     }
 }
@@ -202,7 +202,7 @@ static void analyzeNodes(Analyzer* analyzer, Vector* nodes, size_t start)
 
     for (size_t i = start; i < count; i++) {
         analyzeNode(analyzer, getVectorAt(nodes, i));
-        releaseDeadBorrows(nodes, i + 1);
+        releaseInactiveReferenceAccess(nodes, i + 1);
     }
 }
 
@@ -247,8 +247,8 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
     }
 
     if (getReferenceType(symbol) == REFERENCE_NONE
-        && isExclusivelyBorrowed(symbol)) {
-        semanticError("Cannot access exclusively borrowed binding ", ast->variable.token);
+        && hasExclusiveAccess(symbol)) {
+        semanticError("Cannot read binding while exclusive access is active ", ast->variable.token);
     }
 
     ast->variable.scope = analyzer->currentScope;
@@ -283,22 +283,22 @@ static ASTNode* findReferenceSymbol(Analyzer* analyzer, ASTNode* variable)
     return symbol;
 }
 
-static void validateReferenceBorrow(ASTNode* ast, ASTNode* variable, ASTNode* symbol)
+static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* symbol)
 {
     ReferenceType requested = getReferenceType(ast);
     ReferenceType existing = getReferenceType(symbol);
 
     if (existing != REFERENCE_NONE) {
-        semanticError("Cannot borrow a reference again ", ast->prefix.operator);
+        semanticError("Cannot create a reference to another reference ", ast->prefix.operator);
     }
 
-    if (requested == REFERENCE_SHARED && isExclusivelyBorrowed(symbol)) {
-        semanticError("Cannot share exclusively borrowed binding ", variable->variable.token);
+    if (requested == REFERENCE_SHARED && hasExclusiveAccess(symbol)) {
+        semanticError("Cannot share binding while exclusive access is active ", variable->variable.token);
     }
 
     if (requested == REFERENCE_EXCLUSIVE
-        && (isExclusivelyBorrowed(symbol) || *getSharedBorrowCount(symbol))) {
-        semanticError("Cannot exclusively borrow active binding ", variable->variable.token);
+        && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
+        semanticError("Cannot take exclusive access while another access is active ", variable->variable.token);
     }
 }
 
@@ -306,7 +306,7 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* variable = getReferenceVariable(ast);
     ASTNode* symbol = findReferenceSymbol(analyzer, variable);
-    validateReferenceBorrow(ast, variable, symbol);
+    validateReferenceAccess(ast, variable, symbol);
 
     variable->variable.scope = analyzer->currentScope;
     variable->variable.symbol = symbol;
@@ -384,9 +384,9 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
         ReferenceType argumentType = getReferenceType(arg);
         ReferenceType parameterType = getReferenceType(param);
         bool valueParameter = parameterType == REFERENCE_NONE;
-        bool implicitBorrow = argumentType == REFERENCE_NONE;
+        bool implicitAccess = argumentType == REFERENCE_NONE;
         bool compatibleReference = valueParameter
-            || implicitBorrow
+            || implicitAccess
             || argumentType == parameterType
             || (argumentType == REFERENCE_EXCLUSIVE && parameterType == REFERENCE_SHARED);
 
@@ -402,13 +402,13 @@ static void validateEffectAccess(ASTNode* origin, ReferenceType type, Token toke
         return;
     }
 
-    if (type == REFERENCE_SHARED && isExclusivelyBorrowed(origin)) {
-        semanticError("Function requires shared access to borrowed binding ", token);
+    if (type == REFERENCE_SHARED && hasExclusiveAccess(origin)) {
+        semanticError("Function requires shared access while exclusive access is active ", token);
     }
 
     if (type == REFERENCE_EXCLUSIVE
-        && (isExclusivelyBorrowed(origin) || *getSharedBorrowCount(origin))) {
-        semanticError("Function requires exclusive access to borrowed binding ", token);
+        && (hasExclusiveAccess(origin) || *getSharedAccessCount(origin))) {
+        semanticError("Function requires exclusive access while another access is active ", token);
     }
 }
 
@@ -486,7 +486,7 @@ static void validateNodeEffects(ASTNode* ast)
     }
 }
 
-static bool borrowsConflict(ASTNode* leftOrigin, ReferenceType leftType, ASTNode* right)
+static bool referenceAccessConflicts(ASTNode* leftOrigin, ReferenceType leftType, ASTNode* right)
 {
     ASTNode* rightOrigin = referenceOriginFromExpression(right);
     ReferenceType rightType = getReferenceType(right);
@@ -495,7 +495,7 @@ static bool borrowsConflict(ASTNode* leftOrigin, ReferenceType leftType, ASTNode
         && (leftType == REFERENCE_EXCLUSIVE || rightType == REFERENCE_EXCLUSIVE);
 }
 
-static void validateArgumentBorrow(Vector* arguments, size_t position, Token token)
+static void validateArgumentAccess(Vector* arguments, size_t position, Token token)
 {
     ASTNode* left = getVectorAt(arguments, position);
     ASTNode* leftOrigin = referenceOriginFromExpression(left);
@@ -510,21 +510,21 @@ static void validateArgumentBorrow(Vector* arguments, size_t position, Token tok
     for (size_t i = position + 1; i < count; i++) {
         ASTNode* right = getVectorAt(arguments, i);
 
-        if (!borrowsConflict(leftOrigin, leftType, right)) {
+        if (!referenceAccessConflicts(leftOrigin, leftType, right)) {
             continue;
         }
 
-        semanticError("Conflicting borrows in call ", token);
+        semanticError("Conflicting reference access in call ", token);
     }
 }
 
-static void validateArgumentBorrows(ASTNode* ast)
+static void validateArgumentAccesses(ASTNode* ast)
 {
     Vector* arguments = &ast->functionCall.args;
     size_t count = countVector(arguments);
 
     for (size_t i = 0; i < count; i++) {
-        validateArgumentBorrow(arguments, i, ast->functionCall.token);
+        validateArgumentAccess(arguments, i, ast->functionCall.token);
     }
 }
 
@@ -566,7 +566,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     ast->functionCall.symbol = symbol;
     validateFunctionCall(ast, symbol, ast->functionCall.token);
     validateCallArgumentAccess(ast, symbol, ast->functionCall.token);
-    validateArgumentBorrows(ast);
+    validateArgumentAccesses(ast);
     validateEffectsInVector(&symbol->functionDefinition.body->compound.statements);
     ast->functionCall.referenceOrigin = getCallReferenceOrigin(ast, symbol);
 }
@@ -671,8 +671,8 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
     }
 
     if (referenceType == REFERENCE_NONE
-        && (isExclusivelyBorrowed(symbol) || *getSharedBorrowCount(symbol))) {
-        semanticError("Cannot mutate borrowed binding ", token);
+        && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
+        semanticError("Cannot mutate binding while shared access is active ", token);
     }
 
     if (referenceType == REFERENCE_NONE && isVariableDefinition(symbol)
@@ -701,20 +701,20 @@ static void transferExclusiveReference(ASTNode* expression)
         return;
     }
 
-    source->variableDefinition.borrowActive = false;
+    source->variableDefinition.referenceAccessActive = false;
 }
 
-static void activateReferenceBorrow(ASTNode* ast)
+static void activateReferenceAccess(ASTNode* ast)
 {
     ASTNode* origin = ast->variableDefinition.referenceOrigin;
 
     if (ast->variableDefinition.referenceType == REFERENCE_SHARED) {
-        (*getSharedBorrowCount(origin))++;
+        (*getSharedAccessCount(origin))++;
 
         return;
     }
 
-    setExclusivelyBorrowed(origin, true);
+    setExclusiveAccess(origin, true);
 }
 
 static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
@@ -759,10 +759,10 @@ static void trackVariableReference(ASTNode* ast)
     if (transfersExclusive) {
         transferExclusiveReference(expression);
     } else {
-        activateReferenceBorrow(ast);
+        activateReferenceAccess(ast);
     }
 
-    ast->variableDefinition.borrowActive = true;
+    ast->variableDefinition.referenceAccessActive = true;
 }
 
 static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)

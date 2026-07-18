@@ -117,8 +117,8 @@ typedef struct ASTNode
             TokenType typeId;
             ReferenceType referenceType;
             ASTNode* referenceOrigin;
-            size_t sharedBorrowCount;
-            bool exclusivelyBorrowed;
+            size_t sharedAccessCount;
+            bool exclusiveAccessActive;
             bool moved;
             int position;
         } parameter;
@@ -153,10 +153,10 @@ typedef struct ASTNode
             TokenType typeId;
             ReferenceType referenceType;
             ASTNode* referenceOrigin;
-            size_t sharedBorrowCount;
-            bool exclusivelyBorrowed;
+            size_t sharedAccessCount;
+            bool exclusiveAccessActive;
             bool moved;
-            bool borrowActive;
+            bool referenceAccessActive;
             int position;
             ASTNode* expr;
         } variableDefinition;

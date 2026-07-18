@@ -40,13 +40,13 @@ print(assignedReference)
 # OK: a is copied
 testNoReference(a)
 
-# OK: Another shared borrow
+# OK: Another shared access
 testShared(a)
 
 # Error: b still holds shared access to a
 # testExclusive(a)
 
-# OK: Explicit shared borrow
+# OK: Explicit shared access
 testShared(&a)
 
 # Error: b still holds shared access to a
@@ -162,16 +162,16 @@ testReferences(&h, ^i)
 # Error: Nested references are not supported
 # var exclusiveExclusive: ^^int
 
-# Error: A literal cannot be borrowed
+# Error: Shared access cannot be taken from a literal
 # testShared(&10)
 
-# Error: A literal cannot be exclusively borrowed
+# Error: Exclusive access cannot be taken from a literal
 # testExclusive(^10)
 
-# Error: A temporary value cannot be borrowed
+# Error: Shared access cannot be taken from a temporary value
 # testShared(&(h + 1))
 
-# Error: A temporary value cannot be exclusively borrowed
+# Error: Exclusive access cannot be taken from a temporary value
 # testExclusive(^(h + 1))
 
 # Error: Expected an expression inside parentheses

@@ -339,7 +339,8 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
 
-        if (getTypeId(arg) != builtin->params[i]) {
+        if (getTypeId(arg) != builtin->params[i]
+            || getReferenceType(arg) != REFERENCE_NONE) {
             semanticError("Invalid arguments to function ", token);
         }
     }

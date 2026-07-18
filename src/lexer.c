@@ -13,6 +13,7 @@ typedef struct Keyword
 } Keyword;
 
 static const Keyword keywords[] = {
+    {"alignof",     7, TOKEN_ALIGNOF},
     {"and",         3, TOKEN_AND},
     {"as",          2, TOKEN_AS},
     {"await",       5, TOKEN_AWAIT},

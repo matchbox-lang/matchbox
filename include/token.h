@@ -12,6 +12,7 @@ typedef enum TokenType
     TOKEN_IN,
     TOKEN_IS,
     TOKEN_SIZEOF,
+    TOKEN_ALIGNOF, 
     TOKEN_TYPEOF,
     TOKEN_FOR,
     TOKEN_WHILE,

@@ -33,6 +33,7 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_IN:                  return "in";
         case TOKEN_IS:                  return "is";
         case TOKEN_SIZEOF:              return "sizeof";
+        case TOKEN_ALIGNOF:             return "alignof";
         case TOKEN_TYPEOF:              return "typeof";
         case TOKEN_FOR:                 return "for";
         case TOKEN_WHILE:               return "while";

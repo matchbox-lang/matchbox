@@ -50,6 +50,7 @@ typedef struct ASTNode
             Token token;
             ASTNode* expr;
             ASTNode* symbol;
+            bool initializesBinding;
         } assignment;
 
         struct {

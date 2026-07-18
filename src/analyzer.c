@@ -11,6 +11,7 @@
 static bool nodeUsesId(ASTNode* ast, StringObject* id);
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
 static void validateNodeEffects(ASTNode* ast);
+static void activateReferenceAccess(ASTNode* ast);
 
 static void semanticError(char* message, Token token)
 {
@@ -655,6 +656,7 @@ static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
 static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
+    bool initializesBinding = !isInitialized(symbol);
 
     if (analyzer->currentScope != getScope(symbol) && !isInitialized(symbol)) {
         symbolError("uninitialized", token);
@@ -666,7 +668,7 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
 
     ReferenceType referenceType = getReferenceType(symbol);
 
-    if (referenceType == REFERENCE_SHARED) {
+    if (referenceType == REFERENCE_SHARED && !initializesBinding) {
         semanticError("Cannot mutate through shared reference ", token);
     }
 
@@ -681,14 +683,43 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
     }
 }
 
+static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
+{
+    ASTNode* expression = ast->assignment.expr;
+
+    if (getTypeId(symbol) != getTypeId(expression)
+        || getReferenceType(symbol) != getReferenceType(expression)) {
+        semanticError("Assignment type does not match binding ", ast->assignment.token);
+    }
+}
+
+static void initializeReferenceBinding(ASTNode* ast, ASTNode* symbol)
+{
+    if (getReferenceType(symbol) == REFERENCE_NONE) {
+        return;
+    }
+
+    symbol->variableDefinition.referenceOrigin = referenceOriginFromExpression(ast->assignment.expr);
+    activateReferenceAccess(symbol);
+    symbol->variableDefinition.referenceAccessActive = true;
+    ast->assignment.initializesBinding = true;
+}
+
 static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
+    bool initializesBinding = !isInitialized(symbol);
     validateAssignmentTarget(analyzer, ast, symbol);
 
     analyzeNode(analyzer, ast->assignment.expr);
+    validateAssignmentType(ast, symbol);
     ast->assignment.scope = analyzer->currentScope;
     ast->assignment.symbol = symbol;
+
+    if (initializesBinding) {
+        initializeReferenceBinding(ast, symbol);
+    }
+
     initializeVariable(symbol);
 }
 
@@ -727,14 +758,25 @@ static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* expression = ast->variableDefinition.expr;
+    TokenType declaredType = ast->variableDefinition.typeId;
+    ReferenceType declaredReferenceType = ast->variableDefinition.referenceType;
 
     if (isNone(expression)) {
         return;
     }
 
     analyzeNode(analyzer, expression);
-    ast->variableDefinition.typeId = getTypeId(expression);
-    ast->variableDefinition.referenceType = getReferenceType(expression);
+    TokenType expressionType = getTypeId(expression);
+    ReferenceType expressionReferenceType = getReferenceType(expression);
+
+    if (declaredType == TOKEN_UNKNOWN) {
+        ast->variableDefinition.typeId = expressionType;
+        ast->variableDefinition.referenceType = expressionReferenceType;
+    } else if (declaredType != expressionType
+        || declaredReferenceType != expressionReferenceType) {
+        semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
+    }
+
     ast->variableDefinition.referenceOrigin = referenceOriginFromExpression(expression);
     initializeVariable(ast);
 }
@@ -748,7 +790,8 @@ static void validateVariableType(ASTNode* ast)
 
 static void trackVariableReference(ASTNode* ast)
 {
-    if (ast->variableDefinition.referenceType == REFERENCE_NONE) {
+    if (ast->variableDefinition.referenceType == REFERENCE_NONE
+        || !ast->variableDefinition.initialized) {
         return;
     }
 

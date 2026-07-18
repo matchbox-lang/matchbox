@@ -786,6 +786,13 @@ static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode o
 
 static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->assignment.initializesBinding) {
+        Operand reference = compileReferenceExpression(compiler, ast->assignment.expr);
+        storeVariable(compiler, ast->assignment.symbol, reference);
+
+        return;
+    }
+
     Operand value = compileExpression(compiler, ast->assignment.expr, false);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, value);

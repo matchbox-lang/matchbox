@@ -13,6 +13,17 @@ func testExclusive(n: ^int) {
 var a = 10
 var b = &a
 
+var copiedInferType = a
+var copied: int = a
+var inferredReference = &a
+var explicitReference: &int = &a
+var assignedReference: &int
+assignedReference = &a
+print(assignedReference)
+
+# Error: A reference initializer requires a reference variable type
+# var invalidCopy: int = &a
+
 # OK: a is copied
 testNoReference(a)
 

@@ -675,6 +675,7 @@ static ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr)
     ast->assignment.token = token;
     ast->assignment.symbol = NULL;
     ast->assignment.expr = expr;
+    ast->assignment.initializesBinding = false;
 
     return ast;
 }
@@ -702,6 +703,8 @@ static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool
     ast->variableDefinition.id = id;
     ast->variableDefinition.token = token;
     ast->variableDefinition.fixed = fixed;
+    ast->variableDefinition.typeId = TOKEN_UNKNOWN;
+    ast->variableDefinition.referenceType = REFERENCE_NONE;
     ast->variableDefinition.position = 0;
     ast->variableDefinition.expr = NULL;
 
@@ -712,6 +715,7 @@ static void parseVariableType(Parser* parser, ASTNode* ast)
 {
     if (parser->currentToken.type == TOKEN_COLON) {
         consume(parser, TOKEN_COLON);
+        ast->variableDefinition.referenceType = parseReferenceType(parser);
         ast->variableDefinition.typeId = parser->currentToken.type;
         consumeType(parser);
         
@@ -727,14 +731,16 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
 {
     if (parser->currentToken.type != TOKEN_EQUAL) {
         ast->variableDefinition.expr = createASTNode(AST_NONE);
-        ast->variableDefinition.typeId = TOKEN_INT;
+
+        if (ast->variableDefinition.typeId == TOKEN_UNKNOWN) {
+            ast->variableDefinition.typeId = TOKEN_INT;
+        }
 
         return true;
     }
 
     consume(parser, TOKEN_EQUAL);
     ast->variableDefinition.expr = parseExpression(parser);
-    ast->variableDefinition.typeId = TOKEN_UNKNOWN;
 
     return ast->variableDefinition.expr != NULL;
 }

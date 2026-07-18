@@ -7,6 +7,7 @@
 typedef struct Analyzer
 {
     ASTNode* topLevel;
+    ASTNode* function;
     Scope* currentScope;
 } Analyzer;
 

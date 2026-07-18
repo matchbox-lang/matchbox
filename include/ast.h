@@ -11,6 +11,13 @@ typedef struct StringObject StringObject;
 typedef struct Scope Scope;
 typedef struct Builtin Builtin;
 
+typedef enum ReferenceType
+{
+    REFERENCE_SHARED,
+    REFERENCE_EXCLUSIVE,
+    REFERENCE_NONE
+} ReferenceType;
+
 typedef enum ASTNodeType
 {
     AST_ASSIGNMENT,
@@ -83,6 +90,7 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             ASTNode* symbol;
+            ASTNode* referenceOrigin;
         } functionCall;
 
         struct {
@@ -92,6 +100,8 @@ typedef struct ASTNode
             Vector params;
             bool hasExplicitReturnType;
             TokenType typeId;
+            ReferenceType returnReferenceType;
+            ASTNode* returnReferenceOrigin;
             ASTNode* body;
         } functionDefinition;
 
@@ -105,6 +115,11 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             TokenType typeId;
+            ReferenceType referenceType;
+            ASTNode* referenceOrigin;
+            size_t sharedBorrowCount;
+            bool exclusivelyBorrowed;
+            bool moved;
             int position;
         } parameter;
 
@@ -136,6 +151,12 @@ typedef struct ASTNode
             bool fixed;
             bool initialized;
             TokenType typeId;
+            ReferenceType referenceType;
+            ASTNode* referenceOrigin;
+            size_t sharedBorrowCount;
+            bool exclusivelyBorrowed;
+            bool moved;
+            bool borrowActive;
             int position;
             ASTNode* expr;
         } variableDefinition;
@@ -146,6 +167,8 @@ ASTNode* createASTNode(ASTNodeType type);
 void freeASTNode(ASTNode* ast);
 Scope* getScope(const ASTNode* ast);
 TokenType getTypeId(const ASTNode* ast);
+ASTNode* getReferenceOrigin(const ASTNode* ast);
+ReferenceType getReferenceType(const ASTNode* ast);
 bool isExpressionStatement(const ASTNode* ast);
 bool isFunctionCall(const ASTNode* ast);
 bool isFunctionDefinition(const ASTNode* ast);

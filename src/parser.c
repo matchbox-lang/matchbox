@@ -48,7 +48,7 @@ static void expectedTokenError(TokenType type, Token token)
 
 static void advance(Parser* parser)
 {
-    parser->prevToken = parser->currentToken;
+    parser->previousToken = parser->currentToken;
     parser->currentToken = scanToken(&parser->lexer);
 }
 
@@ -68,6 +68,23 @@ static void consumeType(Parser* parser)
     }
 
     consume(parser, parser->currentToken.type);
+}
+
+static ReferenceType parseReferenceType(Parser* parser)
+{
+    if (parser->currentToken.type == TOKEN_AMPERSAND) {
+        consume(parser, TOKEN_AMPERSAND);
+
+        return REFERENCE_SHARED;
+    }
+
+    if (parser->currentToken.type == TOKEN_CIRCUMFLEX) {
+        consume(parser, TOKEN_CIRCUMFLEX);
+
+        return REFERENCE_EXCLUSIVE;
+    }
+
+    return REFERENCE_NONE;
 }
 
 static bool isEndOfFile(Parser* parser)
@@ -461,6 +478,7 @@ static ASTNode* createParameterNode(Token token, StringObject* id)
     ast->parameter.id = id;
     ast->parameter.token = token;
     ast->parameter.typeId = TOKEN_INT;
+    ast->parameter.referenceType = REFERENCE_NONE;
 
     return ast;
 }
@@ -480,6 +498,7 @@ static ASTNode* parseParameter(Parser* parser)
 
     if (parser->currentToken.type == TOKEN_COLON) {
         consume(parser, TOKEN_COLON);
+        ast->parameter.referenceType = parseReferenceType(parser);
         ast->parameter.typeId = parser->currentToken.type;
         consumeType(parser);
     }
@@ -541,13 +560,14 @@ static ASTNode* createFunctionCallNode(Token token)
     ast->functionCall.id = copyStringObject(token.chars, token.length);
     ast->functionCall.token = token;
     ast->functionCall.symbol = NULL;
+    ast->functionCall.referenceOrigin = NULL;
 
     return ast;
 }
 
 static ASTNode* parseFunctionCall(Parser* parser)
 {
-    ASTNode* ast = createFunctionCallNode(parser->prevToken);
+    ASTNode* ast = createFunctionCallNode(parser->previousToken);
 
     if (!parseArgumentList(parser, &ast->functionCall.args)) {
         freeASTNode(ast);
@@ -565,6 +585,8 @@ static ASTNode* createFunctionDefinitionNode(Token token, StringObject* id)
     ast->functionDefinition.id = id;
     ast->functionDefinition.token = token;
     ast->functionDefinition.typeId = TOKEN_INT;
+    ast->functionDefinition.returnReferenceType = REFERENCE_NONE;
+    ast->functionDefinition.returnReferenceOrigin = NULL;
     ast->functionDefinition.hasExplicitReturnType = false;
     ast->functionDefinition.body = NULL;
 
@@ -578,6 +600,7 @@ static void parseFunctionReturnType(Parser* parser, ASTNode* ast)
     }
 
     consume(parser, TOKEN_ARROW);
+    ast->functionDefinition.returnReferenceType = parseReferenceType(parser);
     ast->functionDefinition.typeId = parser->currentToken.type;
     consumeType(parser);
     ast->functionDefinition.hasExplicitReturnType = true;
@@ -659,7 +682,7 @@ static ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr)
 static ASTNode* parseAssignment(Parser* parser)
 {
     Token operator = parser->currentToken;
-    Token token = parser->prevToken;
+    Token token = parser->previousToken;
     consume(parser, operator.type);
 
     ASTNode* expr = parseExpression(parser);
@@ -763,7 +786,7 @@ static ASTNode* parseIdentifier(Parser* parser)
         return parseFunctionCall(parser);
     }
 
-    return createVariableNode(parser->prevToken);
+    return createVariableNode(parser->previousToken);
 }
 
 static ASTNode* parseStatement(Parser* parser)
@@ -794,7 +817,7 @@ static bool parseStatements(Parser* parser, Vector* nodes, TokenType type)
         bool sameLineStatement = !isEndOfFile(parser) &&
             parser->currentToken.line == token.line &&
             parser->currentToken.type != type &&
-            parser->prevToken.type != TOKEN_RBRACE;
+            parser->previousToken.type != TOKEN_RBRACE;
 
         if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
             consume(parser, TOKEN_SEMICOLON);

@@ -167,6 +167,68 @@ TokenType getTypeId(const ASTNode* ast)
     }
 }
 
+ASTNode* getReferenceOrigin(const ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    if (ast->type == AST_PARAMETER) {
+        return ast->parameter.referenceOrigin;
+    }
+
+    if (ast->type == AST_FUNCTION_CALL) {
+        return ast->functionCall.referenceOrigin;
+    }
+
+    if (ast->type == AST_VARIABLE) {
+        return getReferenceOrigin(ast->variable.symbol);
+    }
+
+    if (ast->type == AST_VARIABLE_DEFINITION) {
+        return ast->variableDefinition.referenceOrigin;
+    }
+
+    return NULL;
+}
+
+static ReferenceType getPrefixReferenceType(TokenType operatorType)
+{
+    if (operatorType == TOKEN_AMPERSAND) {
+        return REFERENCE_SHARED;
+    }
+
+    if (operatorType == TOKEN_CIRCUMFLEX) {
+        return REFERENCE_EXCLUSIVE;
+    }
+
+    return REFERENCE_NONE;
+}
+
+ReferenceType getReferenceType(const ASTNode* ast)
+{
+    if (!ast) {
+        return REFERENCE_NONE;
+    }
+
+    switch (ast->type) {
+        case AST_FUNCTION_CALL:
+            return ast->functionCall.symbol->functionDefinition.returnReferenceType;
+        case AST_FUNCTION_DEFINITION:
+            return ast->functionDefinition.returnReferenceType;
+        case AST_PARAMETER:
+            return ast->parameter.referenceType;
+        case AST_PREFIX:
+            return getPrefixReferenceType(ast->prefix.operator.type);
+        case AST_VARIABLE:
+            return getReferenceType(ast->variable.symbol);
+        case AST_VARIABLE_DEFINITION:
+            return ast->variableDefinition.referenceType;
+        default:
+            return REFERENCE_NONE;
+    }
+}
+
 bool isExpressionStatement(const ASTNode* ast)
 {
     if (!ast) {

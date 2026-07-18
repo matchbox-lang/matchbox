@@ -65,6 +65,18 @@ static void run(VM* vm)
             case OP_STG:
                 vm->gp[OPERAND_BC(inst)] = vm->fp[a];
                 break;
+            case OP_REFL:
+                vm->fp[a] = POINTER_VALUE(&vm->fp[b]);
+                break;
+            case OP_REFG:
+                vm->fp[a] = POINTER_VALUE(&vm->gp[OPERAND_BC(inst)]);
+                break;
+            case OP_LDR:
+                vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);
+                break;
+            case OP_STR:
+                *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
+                break;
             case OP_ADD:
                 vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) + AS_INT(vm->fp[c]));
                 break;

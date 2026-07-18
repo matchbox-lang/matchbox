@@ -147,6 +147,10 @@ static void printInstruction(int8_t c)
         case OP_LDC:            printOpcodeRegisterUint16("LDC"); break;
         case OP_LDG:            printOpcodeRegisterUint16("LDG"); break;
         case OP_STG:            printOpcodeRegisterUint16("STG"); break;
+        case OP_REFL:           printOpcodeRegisters2("REFL"); break;
+        case OP_REFG:           printOpcodeRegisterUint16("REFG"); break;
+        case OP_LDR:            printOpcodeRegisters2("LDR"); break;
+        case OP_STR:            printOpcodeRegisters2("STR"); break;
         case OP_ADD:            printOpcodeRegisters3("ADD"); break;
         case OP_SUB:            printOpcodeRegisters3("SUB"); break;
         case OP_MUL:            printOpcodeRegisters3("MUL"); break;

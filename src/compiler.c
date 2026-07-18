@@ -42,6 +42,7 @@ typedef struct PreviousInstruction
 } PreviousInstruction;
 
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
+static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 
@@ -505,16 +506,53 @@ static Operand loadVariable(Compiler* compiler, ASTNode* ast)
     return loadLocalVariable(compiler, ast);
 }
 
+static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
+{
+    if (getReferenceType(ast) != REFERENCE_NONE) {
+        return loadVariable(compiler, ast);
+    }
+
+    int reg = allocateRegister(compiler);
+
+    if (isTopLevelScope(getScope(ast))) {
+        int position = ast->variableDefinition.position;
+        emitInstruction(compiler, OP_REFG, reg, position >> 8, position);
+
+        return makeOperand(reg, true);
+    }
+
+    emitInstruction(compiler, OP_REFL, reg, getLocalPosition(compiler, ast), 0);
+
+    return makeOperand(reg, true);
+}
+
+static Operand dereferenceOperand(Compiler* compiler, Operand operand)
+{
+    if (operand.temporary) {
+        emitInstruction(compiler, OP_LDR, operand.reg, operand.reg, 0);
+
+        return operand;
+    }
+
+    int reg = allocateRegister(compiler);
+
+    emitInstruction(compiler, OP_LDR, reg, operand.reg, 0);
+
+    return makeOperand(reg, true);
+}
+
 static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
 {
     PreviousInstruction previous;
 
-    if (!value.temporary || position > UINT8_MAX
+    if (!value.temporary
+        || position > UINT8_MAX
         || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
 
-    if (previous.opcode != OP_LDI || previous.a != value.reg) {
+    if (previous.opcode != OP_LDI
+        || previous.a != value.reg) {
         return false;
     }
 
@@ -546,8 +584,11 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
 {
     PreviousInstruction previous;
 
-    if (!value.temporary
-        || !getPreviousInstruction(compiler, &previous)
+    if (!value.temporary) {
+        return false;
+    }
+
+    if (!getPreviousInstruction(compiler, &previous)
         || previous.a != value.reg) {
         return false;
     }
@@ -585,6 +626,7 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     if (isLargerThan16BitSigned(ast->integerLiteral.value)) {
         size_t position = makeConstant(compiler, INT_VALUE(ast->integerLiteral.value));
+
         return makeOperand(emitLdc(compiler, position), true);
     }
 
@@ -603,8 +645,7 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
         || isCompilingTopLevel(compiler);
 }
 
-static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode,
-    Operand left, Operand right)
+static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
     int dst;
 
@@ -670,7 +711,6 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
     }
 
     int dst = allocateRegister(compiler);
-
     emitInstruction(compiler, opcode, dst, operand.reg, 0);
 
     return makeOperand(dst, true);
@@ -678,6 +718,10 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
 
 static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 {
+    if (getReferenceType(ast) != REFERENCE_NONE) {
+        return dereferenceOperand(compiler, compileReferenceExpression(compiler, ast));
+    }
+
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
 
     switch (ast->prefix.operator.type) {
@@ -694,12 +738,37 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 
 static Operand compileVariable(Compiler* compiler, ASTNode* ast)
 {
-    return loadVariable(compiler, ast->variable.symbol);
+    Operand value = loadVariable(compiler, ast->variable.symbol);
+
+    if (getReferenceType(ast) == REFERENCE_NONE) {
+        return value;
+    }
+
+    return dereferenceOperand(compiler, value);
+}
+
+static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand value)
+{
+    if (getReferenceType(symbol) == REFERENCE_NONE) {
+        storeVariable(compiler, symbol, value);
+
+        return;
+    }
+
+    Operand reference = loadVariable(compiler, symbol);
+
+    emitInstruction(compiler, OP_STR, value.reg, reference.reg, 0);
+    releaseOperand(compiler, value);
+    releaseOperand(compiler, reference);
 }
 
 static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode opcode)
 {
     Operand left = loadVariable(compiler, ast->assignment.symbol);
+
+    if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
+        left = dereferenceOperand(compiler, left);
+    }
 
     if (!left.temporary && !isDirectVariable(compiler, ast->assignment.expr)) {
         left = materializeOperand(compiler, left);
@@ -708,14 +777,14 @@ static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode o
     Operand right = compileExpression(compiler, ast->assignment.expr, false);
     Operand result = emitBinaryOperands(compiler, opcode, left, right);
 
-    storeVariable(compiler, ast->assignment.symbol, result);
+    storeAssignmentValue(compiler, ast->assignment.symbol, result);
 }
 
 static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
 {
     Operand value = compileExpression(compiler, ast->assignment.expr, false);
 
-    storeVariable(compiler, ast->assignment.symbol, value);
+    storeAssignmentValue(compiler, ast->assignment.symbol, value);
 }
 
 static void compileAssignment(Compiler* compiler, ASTNode* ast)
@@ -741,13 +810,29 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
     }
 }
 
-static void compileArguments(Compiler* compiler, Vector* args)
+static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast, bool reference)
+{
+    if (reference) {
+        return compileReferenceExpression(compiler, ast);
+    }
+
+    return compileExpression(compiler, ast, false);
+}
+
+static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
 {
     size_t count = countVector(args);
 
     for (size_t i = 0; i < count; i++) {
         int argumentRegister = compiler->registerCount;
-        Operand argument = compileExpression(compiler, args->data[i], false);
+        ASTNode* param = NULL;
+
+        if (params) {
+            param = getVectorAt(params, i);
+        }
+
+        bool reference = param && getReferenceType(param) != REFERENCE_NONE;
+        Operand argument = compileReferenceAwareExpression(compiler, args->data[i], reference);
 
         if (!argument.temporary) {
             allocateRegister(compiler);
@@ -837,10 +922,9 @@ static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
 }
 
 static Operand compileCall(Compiler* compiler, FunctionObject* function,
-    uint16_t functionPosition, Vector* args, bool discard)
+    uint16_t functionPosition, Vector* args, Vector* params, bool discard)
 {
-    if (function->type == FUNCTION_BUILTIN && !function->returnCount
-        && function->paramCount == 1) {
+    if (function->type == FUNCTION_BUILTIN && !function->returnCount && function->paramCount == 1) {
         CallArea call = openCallArea(compiler);
         Operand argument = compileExpression(compiler, args->data[0], false);
 
@@ -853,7 +937,7 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
 
     CallArea call = openCallArea(compiler);
 
-    compileArguments(compiler, args);
+    compileArguments(compiler, args, params);
     return closeCallArea(compiler, function, functionPosition, call, discard);
 }
 
@@ -881,15 +965,42 @@ static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard
     uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.id);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    return compileCall(compiler, function, position, &ast->builtinCall.args, discard);
+    return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
 }
 
 static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
     uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+    Vector* params = &ast->functionCall.symbol->functionDefinition.params;
+    Operand result = compileCall(compiler, function, position, &ast->functionCall.args, params, discard);
 
-    return compileCall(compiler, function, position, &ast->functionCall.args, discard);
+    if (discard || getReferenceType(ast) == REFERENCE_NONE) {
+        return result;
+    }
+
+    return dereferenceOperand(compiler, result);
+}
+
+static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
+{
+    if (ast->type == AST_PREFIX) {
+        return referenceVariable(compiler, ast->prefix.expr->variable.symbol);
+    }
+
+    if (ast->type == AST_VARIABLE) {
+        return loadVariable(compiler, ast->variable.symbol);
+    }
+
+    if (ast->type == AST_FUNCTION_CALL) {
+        uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
+        FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+        Vector* params = &ast->functionCall.symbol->functionDefinition.params;
+
+        return compileCall(compiler, function, position, &ast->functionCall.args, params, false);
+    }
+
+    return noOperand();
 }
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
@@ -933,7 +1044,8 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
         return emitRet(compiler);
     }
 
-    Operand value = compileExpression(compiler, ast->returnStatement.expr, false);
+    bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
+    Operand value = compileReferenceAwareExpression(compiler, ast->returnStatement.expr, reference);
 
     emitRetv(compiler, value.reg);
     releaseOperand(compiler, value);
@@ -947,7 +1059,8 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
     if (isNone(ast->variableDefinition.expr)) {
         value = makeOperand(emitLdi(compiler, 0), true);
     } else {
-        value = compileExpression(compiler, ast->variableDefinition.expr, false);
+        bool reference = getReferenceType(ast) != REFERENCE_NONE;
+        value = compileReferenceAwareExpression(compiler, ast->variableDefinition.expr, reference);
     }
 
     if (!value.temporary) {
@@ -1036,7 +1149,10 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
-    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
+    bool display = isLast
+        && isExpressionStatement(ast)
+        && getTypeId(ast) != TOKEN_VOID;
+        
     Operand value = compileStatement(compiler, ast, !display);
 
     if (!display) {

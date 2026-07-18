@@ -10,7 +10,7 @@ typedef struct Parser
     ASTNode* topLevel;
     Lexer lexer;
     Token currentToken;
-    Token prevToken;
+    Token previousToken;
 } Parser;
 
 void initParser(Parser* parser, ASTNode* ast);

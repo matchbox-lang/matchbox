@@ -45,6 +45,10 @@ typedef enum Opcode
     OP_LDC,
     OP_LDG,
     OP_STG,
+    OP_REFL,
+    OP_REFG,
+    OP_LDR,
+    OP_STR,
 
     // Arithmetic
     OP_ADD,

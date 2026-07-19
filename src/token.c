@@ -28,7 +28,6 @@ const char* getTokenTypeName(TokenType type)
 {
     switch (type) {
         case TOKEN_IF:                  return "if";
-        case TOKEN_UNLESS:              return "unless";
         case TOKEN_ELSE:                return "else";
         case TOKEN_IN:                  return "in";
         case TOKEN_IS:                  return "is";

@@ -69,7 +69,6 @@ static const Keyword keywords[] = {
     {"uint16",      6, TOKEN_UINT16},
     {"uint32",      6, TOKEN_UINT32},
     {"uint64",      6, TOKEN_UINT64},
-    {"unless",      6, TOKEN_UNLESS},
     {"use",         3, TOKEN_USE},
     {"var",         3, TOKEN_VAR},
     {"void",        4, TOKEN_VOID},

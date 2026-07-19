@@ -7,7 +7,6 @@
 typedef enum TokenType
 {
     TOKEN_IF,
-    TOKEN_UNLESS,
     TOKEN_ELSE,
     TOKEN_IN,
     TOKEN_IS,

@@ -17,9 +17,3 @@ let description = if value < 5 {
 }
 
 print(description)
-
-unless value == 0 {
-    print("value is not 0")
-} else {
-    print("value is 0")
-}

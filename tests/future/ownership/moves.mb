@@ -2,10 +2,6 @@ func consume(values: List<int>) {
     print(values.count())
 }
 
-func consumeInt(value: int) {
-    print(value)
-}
-
 func moveIntoCall() {
     let values = List(1, 2, 3)
     
@@ -17,13 +13,6 @@ func moveIntoTask() {
     let task = spawn consume(values)
 
     await task
-}
-
-func copyIntoCall() {
-    let value = 42
-
-    consumeInt(value)
-    print(value)
 }
 
 func appendAndReturn(values: List<int>) -> List<int> {
@@ -42,5 +31,4 @@ func returnOwnership() {
 
 moveIntoCall()
 moveIntoTask()
-copyIntoCall()
 returnOwnership()

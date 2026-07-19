@@ -1,0 +1,7 @@
+let value: int = 10
+
+func printValue() -> void {
+    print(value)
+}
+
+printValue()

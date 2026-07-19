@@ -1,0 +1,36 @@
+func read(value: &int) {
+    print(value)
+}
+
+func readExclusive(value: ^int) {
+    print(value)
+}
+
+func returnShared(value: &int) -> &int {
+    return value
+}
+
+func sharedAccess() {
+    var value = 10
+    let first = &value
+    let second = &value
+
+    read(first)
+    read(second)
+    value = 11
+    print(value)
+}
+
+func exclusiveAccess() {
+    let value = 20
+
+    readExclusive(^value)
+    print(value)
+}
+
+var value = 30
+let returned = returnShared(&value)
+
+sharedAccess()
+exclusiveAccess()
+print(returned)

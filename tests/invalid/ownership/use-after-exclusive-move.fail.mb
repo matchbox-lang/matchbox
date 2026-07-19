@@ -1,0 +1,5 @@
+var value = 10
+let first = ^value
+let second: ^int = first
+
+print(first)

@@ -1,0 +1,8 @@
+func consume(value: int) {
+    print(value)
+}
+
+let value = 42
+
+consume(value)
+print(value)

@@ -1,0 +1,3 @@
+let value = 10
+
+print(not value)

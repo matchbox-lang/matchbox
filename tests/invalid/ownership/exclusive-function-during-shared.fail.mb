@@ -1,0 +1,10 @@
+var value = 10
+
+func writeValue() {
+    value = 20
+}
+
+let shared = &value
+
+writeValue()
+print(shared)

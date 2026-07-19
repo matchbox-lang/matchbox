@@ -1,7 +1,6 @@
 let appName = "Matchbox"
 let numbers = List(1, 2, 3)
 
-var count = 0
 var users = List("Alice", "Bob")
 
 func readAppName() {
@@ -14,14 +13,6 @@ func readNumbers() {
 
 func writeNumbers() {
     numbers.add(4)
-}
-
-func readCount() {
-    print(count)
-}
-
-func writeCount() {
-    count += 1
 }
 
 func readUsers() {
@@ -39,8 +30,6 @@ func replaceUsers() {
 readAppName()
 readNumbers()
 writeNumbers()
-readCount()
-writeCount()
 readUsers()
 writeUsers()
 replaceUsers()

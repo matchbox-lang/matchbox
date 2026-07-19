@@ -1,0 +1,19 @@
+let appId = 10
+var count = 0
+
+func readAppId() {
+    print(appId)
+}
+
+func readCount() {
+    print(count)
+}
+
+func writeCount() {
+    count += 1
+}
+
+readAppId()
+readCount()
+writeCount()
+readCount()

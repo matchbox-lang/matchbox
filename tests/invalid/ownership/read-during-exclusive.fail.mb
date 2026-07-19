@@ -1,0 +1,5 @@
+var value = 10
+let exclusive = ^value
+
+print(value)
+print(exclusive)

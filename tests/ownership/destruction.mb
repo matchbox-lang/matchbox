@@ -28,6 +28,7 @@ func destructionOnThrow() {
 
 func destructionAfterMove() {
     let resource = Resource("move")
+    
     consumeResource(resource)
 }
 

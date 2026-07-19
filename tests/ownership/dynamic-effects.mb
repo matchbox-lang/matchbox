@@ -24,6 +24,7 @@ func invokeOperation(operation: &CounterOperation) {
 
 func dynamicEffect(operation: &CounterOperation) {
     let task = spawn invokeOperation(operation)
+
     await task
     readCount()
 }

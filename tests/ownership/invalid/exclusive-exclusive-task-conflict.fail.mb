@@ -6,5 +6,6 @@ func writeCount() {
 
 let first = spawn writeCount()
 let second = spawn writeCount()
+
 await first
 await second

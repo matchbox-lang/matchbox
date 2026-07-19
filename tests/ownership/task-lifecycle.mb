@@ -10,11 +10,13 @@ func writeCount() {
 
 func writeThenFail() {
     writeCount()
+
     throw "Task failed"
 }
 
 func awaitOnce() {
     let task = spawn writeCount()
+    
     await task
 }
 
@@ -30,6 +32,7 @@ func failedTask() {
 
 func cancelTask() {
     let task = spawn writeCount()
+
     task.cancel()
 
     try {

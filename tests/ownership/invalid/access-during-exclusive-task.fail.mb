@@ -4,5 +4,6 @@ func append(values: ^List<int>) {
 
 let values = List(1, 2, 3)
 let task = spawn append(^values)
+
 print(values.count())
 await task

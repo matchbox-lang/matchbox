@@ -13,12 +13,14 @@ func returnReference(values: &List<int>) -> &List<int> {
 func sharedReference() {
     var values = List(1, 2, 3)
     let reference = &values
+
     print(reference.count())
     values.add(4)
 }
 
 func exclusiveReference() {
     let values = List(1, 2, 3)
+
     appendList(^values)
     print(values.count())
 }
@@ -26,6 +28,7 @@ func exclusiveReference() {
 func sharedTaskReference() {
     let values = List(1, 2, 3)
     let task = spawn readList(&values)
+
     print(values.count())
     await task
 }
@@ -33,6 +36,7 @@ func sharedTaskReference() {
 func exclusiveTaskReference() {
     let values = List(1, 2, 3)
     let task = spawn appendList(^values)
+    
     await task
     values.add(5)
 }

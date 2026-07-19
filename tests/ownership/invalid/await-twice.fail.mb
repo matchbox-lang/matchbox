@@ -3,5 +3,6 @@ func work() {
 }
 
 let task = spawn work()
+
 await task
 await task

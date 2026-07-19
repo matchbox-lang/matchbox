@@ -32,4 +32,5 @@ takeExclusive(exclusive)
 
 var a = 30
 var b = 40
+
 takeReferences(&a, ^b)

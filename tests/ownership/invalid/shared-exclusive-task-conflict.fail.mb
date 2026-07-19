@@ -9,5 +9,6 @@ func writeCount() {
 }
 
 let task = spawn readCount()
+
 writeCount()
 await task

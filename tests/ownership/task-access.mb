@@ -20,12 +20,14 @@ func updateCount() {
 func sharedTasks() {
     let first = spawn readCount()
     let second = spawn readCount()
+
     await first
     await second
 }
 
 func sharedThenExclusive() {
     let task = spawn readCount()
+
     await task
     writeCount()
 }
@@ -33,6 +35,7 @@ func sharedThenExclusive() {
 func sequentialExclusiveAccess() {
     let first = spawn writeCount()
     await first
+
     let second = spawn writeCount()
     await second
 }
@@ -40,12 +43,14 @@ func sequentialExclusiveAccess() {
 func independentAccess() {
     let first = spawn writeCount()
     let second = spawn writeUsers()
+
     await first
     await second
 }
 
 func propagatedAccess() {
     let task = spawn updateCount()
+
     await task
     readCount()
 }

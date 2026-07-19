@@ -4,4 +4,5 @@ func takeReferences(a: &int, b: ^int) {
 }
 
 var value = 10
+
 takeReferences(&value, ^value)

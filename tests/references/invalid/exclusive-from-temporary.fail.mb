@@ -3,4 +3,5 @@ func takeExclusive(n: ^int) {
 }
 
 var value = 10
+
 takeExclusive(^(value + 1))

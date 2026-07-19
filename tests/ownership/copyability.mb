@@ -20,8 +20,10 @@ func readBatch(batch: &Batch) {
 }
 
 let point = CopyPoint(1, 2)
+
 consumePoint(point)
 print(point.x)
 
 let batch = Batch(List(1, 2, 3))
+
 consumeBatch(batch)

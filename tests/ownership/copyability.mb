@@ -1,4 +1,4 @@
-struct CopyPoint {
+struct Point {
     x: int
     y: int
 }
@@ -7,7 +7,7 @@ struct Batch {
     values: List<int>
 }
 
-func consumePoint(point: CopyPoint) {
+func consumePoint(point: Point) {
     print(point.x, point.y)
 }
 
@@ -19,7 +19,7 @@ func readBatch(batch: &Batch) {
     print(batch.values.count())
 }
 
-let point = CopyPoint(1, 2)
+let point = Point(1, 2)
 
 consumePoint(point)
 print(point.x)

@@ -1,4 +1,4 @@
-let value = 2
+let value = 123
 
 sizeof(value)
 alignof(value)

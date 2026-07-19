@@ -1,0 +1,13 @@
+func double(value) {
+    return value * 2
+}
+
+func increment(value) {
+    return value + 1
+}
+
+let forward = 3 |> double |> increment
+let backward = increment <| double <| 3
+
+print(forward)
+print(backward)

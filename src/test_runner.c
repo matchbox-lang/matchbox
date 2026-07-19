@@ -14,6 +14,7 @@
 typedef struct TestRun {
     TestOutput output;
     const char* executablePath;
+    bool excludeFuture;
     int passed;
     int failed;
     int found;
@@ -199,6 +200,12 @@ static void runDirectoryEntry(TestRun* run, const char* path, const char* name)
         return;
     }
 
+    if (run->excludeFuture && strcmp(path, TEST_DEFAULT_PATH) == 0 && strcmp(name, "future") == 0) {
+        freePath(child);
+
+        return;
+    }
+
     if (pathIsDirectory(child)) {
         runDirectoryTests(run, child);
         freePath(child);
@@ -260,10 +267,11 @@ static void runTestPath(TestRun* run, const char* path)
 void runTests(Options* options)
 {
     const char* path = TEST_DEFAULT_PATH;
-    TestRun run = {options->testOutput, PROGRAM_COMMAND, 0, 0, 0};
+    TestRun run = {options->testOutput, PROGRAM_COMMAND, true, 0, 0, 0};
 
     if (options->testPath) {
         path = options->testPath;
+        run.excludeFuture = false;
     }
 
     if (options->executablePath) {

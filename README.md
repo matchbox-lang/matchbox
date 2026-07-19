@@ -68,7 +68,7 @@ make
 Run a known-working example from the test suite:
 
 ```sh
-matchbox tests/functions/basic.mb
+matchbox tests/valid/functions/basic.mb
 ```
 
 Run tests from the executable:
@@ -77,9 +77,9 @@ Run tests from the executable:
 matchbox test
 ```
 
-The test command runs `.mb` files under `tests/` by default and shows failed results. Pass a file or directory to run a smaller set, such as `matchbox test tests/functions/basic.mb`. Use `-a` to show all results or `-p` to show only passed results. Some files in `tests/` document intended language behavior that may not be implemented yet.
+The test command runs `.mb` files under `tests/valid/` and `tests/invalid/` by default and shows failed results. Pass a file or directory to run a smaller set, such as `matchbox test tests/valid/functions/basic.mb`. Use `-a` to show all results or `-p` to show only passed results. Tests under `tests/future/` document intended language behavior that is not implemented yet and only run when that path is passed explicitly.
 
-Tests whose names end in `.fail.mb` are expected to fail. Use one invalid behavior per failure test so a successful compilation or execution is reported as a regression. Organize related tests in subdirectories and run a focused suite by passing its directory, such as `matchbox test tests/references`. Test directories and files use lowercase kebab-case names.
+Tests whose names end in `.fail.mb` are expected to fail. Use one invalid behavior per failure test so a successful compilation or execution is reported as a regression. Organize related tests in subdirectories and run a focused suite by passing its directory, such as `matchbox test tests/invalid/references`. Test directories and files use lowercase kebab-case names.
 
 ## License
 

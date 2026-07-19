@@ -1,4 +1,4 @@
-<h1>Blog Posts</h1>
+<h1>Blog</h1>
 
 @while true
     I'm running forever!

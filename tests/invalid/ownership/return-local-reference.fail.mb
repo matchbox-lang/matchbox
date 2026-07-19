@@ -1,5 +1,5 @@
-func localReference() -> &List<int> {
-    let values = List(1, 2, 3)
+func localReference() -> &int {
+    let value = 10
     
-    return &values
+    return &value
 }

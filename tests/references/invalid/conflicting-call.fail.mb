@@ -1,6 +1,6 @@
-func takeReferences(left: &int, right: ^int) {
-    print(left)
-    print(right)
+func takeReferences(a: &int, b: ^int) {
+    print(a)
+    print(b)
 }
 
 var value = 10

@@ -10,9 +10,9 @@ func takeExclusive(n: ^int) {
     print(n)
 }
 
-func takeReferences(left: &int, right: ^int) {
-    print(left)
-    print(right)
+func takeReferences(a: &int, b: ^int) {
+    print(a)
+    print(b)
 }
 
 var value = 10
@@ -30,6 +30,6 @@ var exclusive = ^exclusiveValue
 takeValue(exclusive)
 takeExclusive(exclusive)
 
-var left = 30
-var right = 40
-takeReferences(&left, ^right)
+var a = 30
+var b = 40
+takeReferences(&a, ^b)

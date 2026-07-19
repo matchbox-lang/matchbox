@@ -1,8 +1,9 @@
-var left = 2
-let right = 3
+var a = 2
+let b = 3
 
-left ?? right
-left ??= right
-left ?: right
-left.member
-left?.member
+a ?? b
+a ??= b
+a ?: b
+
+a.member
+a?.member

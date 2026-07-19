@@ -1,11 +1,11 @@
-let left = 2
-let right = 3
+let a = 2
+let b = 3
 
-left and right
-left or right
-not (left > right)
+a and b
+a or b
+not (a > b)
 
-left in 0..10
-left not in 0..10
-left is T
-left is not T
+a in 0..10
+a not in 0..10
+a is T
+a is not T

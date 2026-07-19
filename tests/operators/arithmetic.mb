@@ -1,20 +1,20 @@
-var left = 2
-let right = 3
+var a = 2
+let b = 3
 
-left + right
-left - right
-left * right
-left / right
-left // right
-left % right
-left ** right
+a + b
+a - b
+a * b
+a / b
+a // b
+a % b
+a ** b
 
-left += right
-left -= right
-left *= right
-left /= right
-left //= right
-left %= right
-left **= right
+a += b
+a -= b
+a *= b
+a /= b
+a //= b
+a %= b
+a **= b
 
--left
+-a

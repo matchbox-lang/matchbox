@@ -175,6 +175,11 @@ bool isAssignmentToken(TokenType type)
         case TOKEN_FLOOR_EQUAL:
         case TOKEN_PERCENT_EQUAL:
         case TOKEN_POWER_EQUAL:
+        case TOKEN_AND_EQUAL:
+        case TOKEN_OR_EQUAL:
+        case TOKEN_CIRCUMFLEX_EQUAL:
+        case TOKEN_LSHIFT_EQUAL:
+        case TOKEN_RSHIFT_EQUAL:
             return true;
         default:
             return false;

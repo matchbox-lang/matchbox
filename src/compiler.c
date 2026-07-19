@@ -814,6 +814,16 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
             return compileCompoundAssignment(compiler, ast, OP_REM);
         case TOKEN_POWER_EQUAL:
             return compileCompoundAssignment(compiler, ast, OP_POW);
+        case TOKEN_AND_EQUAL:
+            return compileCompoundAssignment(compiler, ast, OP_BAND);
+        case TOKEN_OR_EQUAL:
+            return compileCompoundAssignment(compiler, ast, OP_BOR);
+        case TOKEN_CIRCUMFLEX_EQUAL:
+            return compileCompoundAssignment(compiler, ast, OP_BXOR);
+        case TOKEN_LSHIFT_EQUAL:
+            return compileCompoundAssignment(compiler, ast, OP_LSL);
+        case TOKEN_RSHIFT_EQUAL:
+            return compileCompoundAssignment(compiler, ast, OP_LSR);
         case TOKEN_EQUAL:
             return compileSimpleAssignment(compiler, ast);
         default:

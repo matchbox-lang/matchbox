@@ -1,0 +1,43 @@
+func readList(values: &List<int>) {
+    print(values.count())
+}
+
+func appendList(values: ^List<int>) {
+    values.add(4)
+}
+
+func returnReference(values: &List<int>) -> &List<int> {
+    return values
+}
+
+func sharedReference() {
+    var values = List(1, 2, 3)
+    let reference = &values
+    print(reference.count())
+    values.add(4)
+}
+
+func exclusiveReference() {
+    let values = List(1, 2, 3)
+    appendList(^values)
+    print(values.count())
+}
+
+func sharedTaskReference() {
+    let values = List(1, 2, 3)
+    let task = spawn readList(&values)
+    print(values.count())
+    await task
+}
+
+func exclusiveTaskReference() {
+    let values = List(1, 2, 3)
+    let task = spawn appendList(^values)
+    await task
+    values.add(5)
+}
+
+sharedReference()
+exclusiveReference()
+sharedTaskReference()
+exclusiveTaskReference()

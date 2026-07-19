@@ -1,0 +1,7 @@
+func consume(values: List<int>) {
+    print(values.count())
+}
+
+let values = List(1, 2, 3)
+consume(values)
+print(values.count())

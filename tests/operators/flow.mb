@@ -1,0 +1,7 @@
+let left = 2
+let right = 3
+
+left -> right
+
+|>
+<|

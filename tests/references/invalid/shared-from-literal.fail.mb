@@ -1,0 +1,5 @@
+func takeShared(n: &int) {
+    print(n)
+}
+
+takeShared(&10)

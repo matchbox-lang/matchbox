@@ -1,0 +1,6 @@
+func takeExclusive(n: ^int) {
+    print(n)
+}
+
+let value = 10
+takeExclusive(^value)

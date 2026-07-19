@@ -1,0 +1,10 @@
+var count = 0
+
+func writeCount() {
+    count += 1
+}
+
+let first = spawn writeCount()
+let second = spawn writeCount()
+await first
+await second

@@ -1,0 +1,20 @@
+let global = 20
+
+func testLocal(value: int) {
+    print(value)
+    print(global)
+
+    let local = 200
+    print(local)
+
+    func inner(value: int) {
+        print(value)
+        print(global)
+    }
+
+    inner(300)
+    print(value)
+    print(local)
+}
+
+testLocal(100)

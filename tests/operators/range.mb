@@ -1,0 +1,6 @@
+let start = 2
+let stop = 3
+
+start..stop
+start..^3
+...[1, 2, 3]

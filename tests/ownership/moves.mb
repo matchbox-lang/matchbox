@@ -1,0 +1,41 @@
+func consume(values: List<int>) {
+    print(values.count())
+}
+
+func consumeInt(value: int) {
+    print(value)
+}
+
+func moveIntoCall() {
+    let values = List(1, 2, 3)
+    consume(values)
+}
+
+func moveIntoTask() {
+    let values = List(1, 2, 3)
+    let task = spawn consume(values)
+    await task
+}
+
+func copyIntoCall() {
+    let value = 42
+    consumeInt(value)
+    print(value)
+}
+
+func appendAndReturn(values: List<int>) -> List<int> {
+    values.add(4)
+    return values
+}
+
+func returnOwnership() {
+    let values = List(1, 2, 3)
+    let task = spawn appendAndReturn(values)
+    let updated = await task
+    print(updated.count())
+}
+
+moveIntoCall()
+moveIntoTask()
+copyIntoCall()
+returnOwnership()

@@ -1,0 +1,7 @@
+func takeReferences(left: &int, right: ^int) {
+    print(left)
+    print(right)
+}
+
+var value = 10
+takeReferences(&value, ^value)

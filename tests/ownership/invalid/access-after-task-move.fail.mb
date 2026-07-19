@@ -1,0 +1,8 @@
+func consume(values: List<int>) {
+    print(values.count())
+}
+
+let values = List(1, 2, 3)
+let task = spawn consume(values)
+print(values.count())
+await task

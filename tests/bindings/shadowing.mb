@@ -1,0 +1,22 @@
+var value = 10
+
+func testShadowing() {
+    print(value)
+
+    var value = 400
+    print(value)
+    value = 450
+    print(value)
+
+    func inner() {
+        print(value)
+        value = 25
+        print(value)
+    }
+
+    inner()
+    print(value)
+}
+
+testShadowing()
+print(value)

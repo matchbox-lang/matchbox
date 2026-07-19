@@ -1,0 +1,22 @@
+var value = 10
+
+var copiedInferType = value
+var copied: int = value
+var inferredShared = &value
+var explicitShared: &int = &value
+var assignedShared: &int
+assignedShared = &value
+
+print(copiedInferType)
+print(copied)
+print(inferredShared)
+print(explicitShared)
+print(assignedShared)
+
+var exclusiveValue = 20
+var inferredExclusive = ^exclusiveValue
+var explicitExclusive: ^int = inferredExclusive
+var assignedExclusive: ^int
+assignedExclusive = explicitExclusive
+
+print(assignedExclusive)

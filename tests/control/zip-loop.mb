@@ -1,0 +1,3 @@
+for left, right in zip(points, coordinates) {
+    print(left, right)
+}

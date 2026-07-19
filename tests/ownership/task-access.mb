@@ -1,0 +1,57 @@
+var count = 0
+var users = List("Alice", "Bob")
+
+func readCount() {
+    print(count)
+}
+
+func writeCount() {
+    count += 1
+}
+
+func writeUsers() {
+    users.add("Charlie")
+}
+
+func updateCount() {
+    writeCount()
+}
+
+func sharedTasks() {
+    let first = spawn readCount()
+    let second = spawn readCount()
+    await first
+    await second
+}
+
+func sharedThenExclusive() {
+    let task = spawn readCount()
+    await task
+    writeCount()
+}
+
+func sequentialExclusiveAccess() {
+    let first = spawn writeCount()
+    await first
+    let second = spawn writeCount()
+    await second
+}
+
+func independentAccess() {
+    let first = spawn writeCount()
+    let second = spawn writeUsers()
+    await first
+    await second
+}
+
+func propagatedAccess() {
+    let task = spawn updateCount()
+    await task
+    readCount()
+}
+
+sharedTasks()
+sharedThenExclusive()
+sequentialExclusiveAccess()
+independentAccess()
+propagatedAccess()

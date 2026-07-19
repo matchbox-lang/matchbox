@@ -1,0 +1,25 @@
+var value = 0
+
+if value < 5 {
+    print("value is less than 5")
+} else if value > 5 {
+    print("value is greater than 5")
+} else {
+    print("value is 5")
+}
+
+let description = if value < 5 {
+    "value is less than 5"
+} else if value > 5 {
+    "value is greater than 5"
+} else {
+    "value is 5"
+}
+
+print(description)
+
+unless value == 0 {
+    print("value is not 0")
+} else {
+    print("value is 0")
+}

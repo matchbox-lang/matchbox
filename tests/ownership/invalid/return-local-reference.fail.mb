@@ -1,0 +1,4 @@
+func localReference() -> &List<int> {
+    let values = List(1, 2, 3)
+    return &values
+}

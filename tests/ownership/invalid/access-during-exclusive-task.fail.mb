@@ -1,0 +1,8 @@
+func append(values: ^List<int>) {
+    values.add(4)
+}
+
+let values = List(1, 2, 3)
+let task = spawn append(^values)
+print(values.count())
+await task

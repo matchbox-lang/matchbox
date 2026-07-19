@@ -1,0 +1,15 @@
+func returnShared(n: &int) -> &int {
+    return n
+}
+
+func returnExclusive(n: ^int) -> ^int {
+    return n
+}
+
+var sharedValue = 10
+var returnedShared: &int = returnShared(&sharedValue)
+print(returnedShared)
+
+var exclusiveValue = 20
+var returnedExclusive: ^int = returnExclusive(^exclusiveValue)
+print(returnedExclusive)

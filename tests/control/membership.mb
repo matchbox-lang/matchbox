@@ -1,0 +1,5 @@
+let values = [1, 2, 3]
+
+if 2 in values {
+    print("2 is in values")
+}

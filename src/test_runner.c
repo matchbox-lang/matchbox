@@ -103,7 +103,7 @@ static void discardProcessOutput(FILE* stream)
     }
 }
 
-static bool runTestCommand(const char* command, const char* filename)
+static bool runTestCommand(const char* command, const char* filename, bool expectsFailure)
 {
     FILE* pipe = popen(command, "r");
     int status;
@@ -117,7 +117,7 @@ static bool runTestCommand(const char* command, const char* filename)
     discardProcessOutput(pipe);
     status = pclose(pipe);
 
-    return status == 0;
+    return expectsFailure ? status != 0 : status == 0;
 }
 
 static bool shouldPrintTestResult(TestOutput output, bool passedTest)
@@ -149,7 +149,8 @@ static bool runTestFile(const char* executablePath, const char* filename, TestOu
     char* quotedExecutablePath;
     char* quotedFilename;
     char* command = createTestCommand(executablePath, filename, &quotedExecutablePath, &quotedFilename);
-    bool passedTest = runTestCommand(command, filename);
+    bool expectsFailure = pathHasExtension(filename, ".fail.mb");
+    bool passedTest = runTestCommand(command, filename, expectsFailure);
 
     freeTestCommand(command, quotedExecutablePath, quotedFilename);
     printTestResult(output, passedTest, filename);

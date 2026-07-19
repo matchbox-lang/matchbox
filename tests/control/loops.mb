@@ -1,0 +1,24 @@
+var index = 0
+let values = [1, 2, 3]
+
+while index < 5 {
+    index += 1
+}
+
+for value in values {
+    print(value)
+} else {
+    print("values is empty")
+}
+
+for value in values where @ > 1 {
+    print(value)
+}
+
+for value in 0..10 {
+    print(value)
+}
+
+for value in range(10, 0, -1) {
+    print(value)
+}

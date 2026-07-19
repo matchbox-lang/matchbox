@@ -1,0 +1,36 @@
+class Resource {
+    name: string
+
+    func drop() {
+        print("Dropped ", name)
+    }
+}
+
+func consumeResource(resource: Resource) {
+}
+
+func destructionOnReturn(condition: bool) {
+    let resource = Resource("return")
+
+    if condition {
+        return
+    }
+}
+
+func destructionOnThrow() {
+    try {
+        let resource = Resource("throw")
+        throw "Failure"
+    } catch {
+        print("Caught failure")
+    }
+}
+
+func destructionAfterMove() {
+    let resource = Resource("move")
+    consumeResource(resource)
+}
+
+destructionOnReturn(false)
+destructionOnThrow()
+destructionAfterMove()

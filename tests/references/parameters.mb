@@ -1,0 +1,35 @@
+func takeValue(n: int) {
+    print(n)
+}
+
+func takeShared(n: &int) {
+    print(n)
+}
+
+func takeExclusive(n: ^int) {
+    print(n)
+}
+
+func takeReferences(left: &int, right: ^int) {
+    print(left)
+    print(right)
+}
+
+var value = 10
+var shared = &value
+
+takeValue(value)
+takeShared(value)
+takeShared(&value)
+takeValue(shared)
+takeShared(shared)
+
+var exclusiveValue = 20
+var exclusive = ^exclusiveValue
+
+takeValue(exclusive)
+takeExclusive(exclusive)
+
+var left = 30
+var right = 40
+takeReferences(&left, ^right)

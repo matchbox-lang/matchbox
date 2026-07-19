@@ -1,0 +1,5 @@
+let value = 2
+
+sizeof(value)
+alignof(value)
+typeof(value)

@@ -1,0 +1,27 @@
+struct CopyPoint {
+    x: int
+    y: int
+}
+
+struct Batch {
+    values: List<int>
+}
+
+func consumePoint(point: CopyPoint) {
+    print(point.x, point.y)
+}
+
+func consumeBatch(batch: Batch) {
+    print(batch.values.count())
+}
+
+func readBatch(batch: &Batch) {
+    print(batch.values.count())
+}
+
+let point = CopyPoint(1, 2)
+consumePoint(point)
+print(point.x)
+
+let batch = Batch(List(1, 2, 3))
+consumeBatch(batch)

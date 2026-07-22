@@ -1,0 +1,3 @@
+var value = 10
+var exclusive = ^value
+var shared: &int = exclusive

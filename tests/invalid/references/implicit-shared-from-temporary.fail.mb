@@ -1,0 +1,7 @@
+func takeShared(n: &int) {
+    print(n)
+}
+
+var value = 10
+
+takeShared(value + 1)

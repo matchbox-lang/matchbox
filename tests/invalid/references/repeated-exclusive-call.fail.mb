@@ -1,0 +1,8 @@
+func takeExclusive(a: ^int, b: ^int) {
+    print(a)
+    print(b)
+}
+
+var value = 10
+
+takeExclusive(value, value)

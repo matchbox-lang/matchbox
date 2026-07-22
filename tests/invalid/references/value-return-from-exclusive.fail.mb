@@ -1,0 +1,5 @@
+var value = 10
+
+func returnValue() -> int {
+    return ^value
+}

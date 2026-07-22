@@ -1,0 +1,5 @@
+var value = 10
+let shared = &value
+
+print(value)
+print(shared)

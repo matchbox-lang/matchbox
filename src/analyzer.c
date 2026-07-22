@@ -438,6 +438,10 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
             origin = getReferenceOriginOrSelf(arg->variable.symbol);
         }
 
+        if (!origin && (type == REFERENCE_SHARED || isLiteral(arg))) {
+            semanticError("Reference access requires a binding near ", token);
+        }
+
         validateEffectAccess(origin, type, token);
     }
 }
@@ -493,20 +497,45 @@ static void validateNodeEffects(ASTNode* ast)
     }
 }
 
-static bool referenceAccessConflicts(ASTNode* leftOrigin, ReferenceType leftType, ASTNode* right)
+static ReferenceType getArgumentReferenceType(ASTNode* argument, ASTNode* parameter)
 {
-    ASTNode* rightOrigin = referenceOriginFromExpression(right);
-    ReferenceType rightType = getReferenceType(right);
+    ReferenceType type = getReferenceType(argument);
+
+    if (type != REFERENCE_NONE) {
+        return type;
+    }
+
+    return getReferenceType(parameter);
+}
+
+static ASTNode* getArgumentReferenceOrigin(ASTNode* argument)
+{
+    ASTNode* origin = referenceOriginFromExpression(argument);
+
+    if (origin || !isVariable(argument)) {
+        return origin;
+    }
+
+    return getReferenceOriginOrSelf(argument->variable.symbol);
+}
+
+static bool referenceAccessConflicts(ASTNode* leftOrigin, ReferenceType leftType,
+    ASTNode* right, ASTNode* rightParameter)
+{
+    ASTNode* rightOrigin = getArgumentReferenceOrigin(right);
+    ReferenceType rightType = getArgumentReferenceType(right, rightParameter);
 
     return leftOrigin == rightOrigin
         && (leftType == REFERENCE_EXCLUSIVE || rightType == REFERENCE_EXCLUSIVE);
 }
 
-static void validateArgumentAccess(Vector* arguments, size_t position, Token token)
+static void validateArgumentAccess(Vector* arguments, Vector* parameters,
+    size_t position, Token token)
 {
     ASTNode* left = getVectorAt(arguments, position);
-    ASTNode* leftOrigin = referenceOriginFromExpression(left);
-    ReferenceType leftType = getReferenceType(left);
+    ASTNode* leftParameter = getVectorAt(parameters, position);
+    ASTNode* leftOrigin = getArgumentReferenceOrigin(left);
+    ReferenceType leftType = getArgumentReferenceType(left, leftParameter);
 
     if (!leftOrigin || leftType == REFERENCE_NONE) {
         return;
@@ -516,8 +545,9 @@ static void validateArgumentAccess(Vector* arguments, size_t position, Token tok
 
     for (size_t i = position + 1; i < count; i++) {
         ASTNode* right = getVectorAt(arguments, i);
+        ASTNode* rightParameter = getVectorAt(parameters, i);
 
-        if (!referenceAccessConflicts(leftOrigin, leftType, right)) {
+        if (!referenceAccessConflicts(leftOrigin, leftType, right, rightParameter)) {
             continue;
         }
 
@@ -525,13 +555,14 @@ static void validateArgumentAccess(Vector* arguments, size_t position, Token tok
     }
 }
 
-static void validateArgumentAccesses(ASTNode* ast)
+static void validateArgumentAccesses(ASTNode* caller, ASTNode* callee)
 {
-    Vector* arguments = &ast->functionCall.args;
+    Vector* arguments = &caller->functionCall.args;
+    Vector* parameters = &callee->functionDefinition.params;
     size_t count = countVector(arguments);
 
     for (size_t i = 0; i < count; i++) {
-        validateArgumentAccess(arguments, i, ast->functionCall.token);
+        validateArgumentAccess(arguments, parameters, i, caller->functionCall.token);
     }
 }
 
@@ -573,7 +604,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     ast->functionCall.symbol = symbol;
     validateFunctionCall(ast, symbol, ast->functionCall.token);
     validateCallArgumentAccess(ast, symbol, ast->functionCall.token);
-    validateArgumentAccesses(ast);
+    validateArgumentAccesses(ast, symbol);
     validateEffectsInVector(&symbol->functionDefinition.body->compound.statements);
     ast->functionCall.referenceOrigin = getCallReferenceOrigin(ast, symbol);
 }

@@ -173,6 +173,7 @@ ReferenceType getReferenceType(const ASTNode* ast);
 bool isExpressionStatement(const ASTNode* ast);
 bool isFunctionCall(const ASTNode* ast);
 bool isFunctionDefinition(const ASTNode* ast);
+bool isLiteral(const ASTNode* ast);
 bool isParameter(const ASTNode* ast);
 bool isPrefix(const ASTNode* ast);
 bool isPrefixOperand(const ASTNode* ast);

@@ -1,0 +1,6 @@
+func localReference() -> &int {
+    let value = 10
+    let reference = &value
+
+    return reference
+}

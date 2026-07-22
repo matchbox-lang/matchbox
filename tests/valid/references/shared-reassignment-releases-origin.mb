@@ -1,0 +1,9 @@
+var first = 10
+var second = 20
+var shared = &first
+
+shared = &second
+first = 11
+
+print(first)
+print(shared)

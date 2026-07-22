@@ -1,0 +1,3 @@
+func returnShared() -> &int {
+    return 10
+}

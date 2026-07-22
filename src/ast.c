@@ -262,6 +262,24 @@ bool isFunctionDefinition(const ASTNode* ast)
     return ast && ast->type == AST_FUNCTION_DEFINITION;
 }
 
+bool isLiteral(const ASTNode* ast)
+{
+    if (!ast) {
+        return false;
+    }
+
+    switch (ast->type) {
+        case AST_BOOLEAN:
+        case AST_CHARACTER:
+        case AST_FLOAT:
+        case AST_INTEGER:
+        case AST_STRING:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool isParameter(const ASTNode* ast)
 {
     return ast && ast->type == AST_PARAMETER;

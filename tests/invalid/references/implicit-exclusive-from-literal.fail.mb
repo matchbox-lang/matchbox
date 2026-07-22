@@ -1,0 +1,5 @@
+func takeExclusive(n: ^int) {
+    print(n)
+}
+
+takeExclusive(10)

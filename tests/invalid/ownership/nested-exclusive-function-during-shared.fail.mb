@@ -1,0 +1,14 @@
+var value = 10
+
+func writeValue() {
+    value = 20
+}
+
+func callWriteValue() {
+    writeValue()
+}
+
+let shared = &value
+
+callWriteValue()
+print(shared)

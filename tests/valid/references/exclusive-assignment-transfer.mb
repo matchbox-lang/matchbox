@@ -1,0 +1,7 @@
+var value = 10
+var source = ^value
+var destination: ^int
+
+destination = source
+
+print(destination)

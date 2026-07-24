@@ -30,15 +30,17 @@ size_t countCodeObject(CodeObject* code)
 
 void reserveCodeObject(CodeObject* code, size_t capacity)
 {
-    if (capacity > code->capacity) {
-        uint8_t* data = realloc(code->data, sizeof(uint8_t) * capacity);
-        if (!data) {
-            outOfMemoryError();
-        }
-
-        code->data = data;
-        code->capacity = capacity;
+    if (capacity <= code->capacity) {
+        return;
     }
+
+    uint8_t* data = realloc(code->data, sizeof(uint8_t) * capacity);
+    if (!data) {
+        outOfMemoryError();
+    }
+
+    code->data = data;
+    code->capacity = capacity;
 }
 
 void resizeCodeObject(CodeObject* code, size_t size)

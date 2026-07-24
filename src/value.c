@@ -23,15 +23,17 @@ size_t countValueArray(ValueArray* array)
 
 void reserveValueArray(ValueArray* array, size_t capacity)
 {
-    if (capacity > array->capacity) {
-        Value* data = realloc(array->data, sizeof(Value) * capacity);
-        if (!data) {
-            outOfMemoryError();
-        }
-
-        array->data = data;
-        array->capacity = capacity;
+    if (capacity <= array->capacity) {
+        return;
     }
+
+    Value* data = realloc(array->data, sizeof(Value) * capacity);
+    if (!data) {
+        outOfMemoryError();
+    }
+
+    array->data = data;
+    array->capacity = capacity;
 }
 
 void resizeValueArray(ValueArray* array, size_t size)

@@ -2,6 +2,12 @@ func takeExclusive(n: ^int) {
     print(n)
 }
 
+func takeExclusivePair(a: ^int, b: ^int) {
+    print(a)
+    print(b)
+}
+
 var value = 10
 
 takeExclusive(value + 1)
+takeExclusivePair(value + 2, value + 3)

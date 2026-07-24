@@ -2,6 +2,7 @@
 /.vscode/
 /build/
 /object/
+/AGENTS.md
 *.exe
 *.mbc
 *.o

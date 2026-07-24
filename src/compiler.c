@@ -840,25 +840,97 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
     return compileExpression(compiler, ast, false);
 }
 
-static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
+static bool requiresReservedArgument(Vector* args, Vector* params, size_t position)
+{
+    if (!params) {
+        return false;
+    }
+
+    ASTNode* argument = getVectorAt(args, position);
+    ASTNode* parameter = getVectorAt(params, position);
+
+    return getReferenceType(parameter) != REFERENCE_NONE
+        && getReferenceType(argument) == REFERENCE_NONE
+        && argument->type != AST_VARIABLE;
+}
+
+static bool requiresReservedArguments(Vector* args, Vector* params)
 {
     size_t count = countVector(args);
 
     for (size_t i = 0; i < count; i++) {
-        int argumentRegister = compiler->registerCount;
-        ASTNode* param = NULL;
-
-        if (params) {
-            param = getVectorAt(params, i);
+        if (requiresReservedArgument(args, params, i)) {
+            return true;
         }
+    }
 
-        bool reference = param && getReferenceType(param) != REFERENCE_NONE;
-        Operand argument = compileReferenceAwareExpression(compiler, args->data[i], reference);
+    return false;
+}
 
-        if (!argument.temporary) {
-            allocateRegister(compiler);
-            emitMov(compiler, argumentRegister, argument.reg);
-        }
+static void reserveArgumentRegisters(Compiler* compiler, size_t count, bool reserved)
+{
+    for (size_t i = 0; reserved && i < count; i++) {
+        allocateRegister(compiler);
+    }
+}
+
+static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vector* params,
+    size_t position)
+{
+    ASTNode* parameter = NULL;
+
+    if (params) {
+        parameter = getVectorAt(params, position);
+    }
+
+    bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
+
+    Operand expression = compileReferenceAwareExpression(
+        compiler, args->data[position], reference);
+
+    return expression;
+}
+
+static void storeArgument(Compiler* compiler, Operand argument,int destination, bool reserved)
+{
+    if (reserved) {
+        emitMov(compiler, destination, argument.reg);
+
+        return;
+    }
+
+    if (argument.temporary) {
+        return;
+    }
+
+    allocateRegister(compiler);
+    emitMov(compiler, destination, argument.reg);
+}
+
+static void compileArgument(Compiler* compiler, Vector* args, Vector* params, size_t position,
+    int firstRegister, bool reserved)
+{
+    int destination = compiler->registerCount;
+
+    if (reserved) {
+        destination = firstRegister + position;
+    }
+
+    Operand argument = compileArgumentExpression(compiler, args, params, position);
+
+    storeArgument(compiler, argument, destination, reserved);
+}
+
+static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
+{
+    size_t count = countVector(args);
+    bool reserved = requiresReservedArguments(args, params);
+    int firstRegister = compiler->registerCount;
+
+    reserveArgumentRegisters(compiler, count, reserved);
+
+    for (size_t i = 0; i < count; i++) {
+        compileArgument(compiler, args, params, i, firstRegister, reserved);
     }
 }
 
@@ -959,6 +1031,7 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
     CallArea call = openCallArea(compiler);
 
     compileArguments(compiler, args, params);
+    
     return closeCallArea(compiler, function, functionPosition, call, discard);
 }
 
@@ -1005,6 +1078,16 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
 
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
 {
+    if (getReferenceType(ast) == REFERENCE_NONE && ast->type != AST_VARIABLE) {
+        Operand value = compileExpression(compiler, ast, false);
+        int valueRegister = allocateRegister(compiler);
+
+        emitMov(compiler, valueRegister, value.reg);
+        emitInstruction(compiler, OP_REFL, value.reg, valueRegister, 0);
+
+        return value;
+    }
+
     if (ast->type == AST_PREFIX) {
         return referenceVariable(compiler, ast->prefix.expr->variable.symbol);
     }

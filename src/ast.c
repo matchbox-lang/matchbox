@@ -325,8 +325,7 @@ bool isVariableDefinition(const ASTNode* ast)
 
 bool isVariableType(const ASTNode* ast)
 {
-    return ast &&
-        (ast->type == AST_PARAMETER || ast->type == AST_VARIABLE_DEFINITION);
+    return ast && (ast->type == AST_PARAMETER || ast->type == AST_VARIABLE_DEFINITION);
 }
 
 bool isNone(const ASTNode* ast)

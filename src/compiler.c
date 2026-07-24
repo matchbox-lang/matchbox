@@ -550,7 +550,7 @@ static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
     PreviousInstruction previous;
 
     if (!value.temporary
-        || position > UINT8_MAX
+        || position > (int)UINT8_MAX
         || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }

@@ -37,7 +37,7 @@ void disassembleModule(ModuleObject* module)
     size_t functionCount = countVector(&module->functions);
     FunctionObject* function;
 
-    for (int i = 0; i < functionCount; i++) {
+    for (size_t i = 0; i < functionCount; i++) {
         function = getVectorAt(&module->functions, i);
 
         if (function->type == FUNCTION_BUILTIN) {

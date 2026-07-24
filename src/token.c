@@ -2,17 +2,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-void printToken(Token* token)
-{
-    printf("Token\n");
-    printf("{\n");
-    printf("\ttype: %d\n", token->type);
-    printf("\tvalue: ");
-    printf("%.*s\n", token->length, token->chars);
-    printf("\tline: %i:%i\n", token->line, token->column);
-    printf("}\n");
-}
-
 void printTokenValue(Token token)
 {
     if (token.type == TOKEN_EOF || token.length == 0) {

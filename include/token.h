@@ -149,7 +149,6 @@ typedef struct Token
     int column;
 } Token;
 
-void printToken(Token* token);
 void printTokenValue(Token token);
 const char* getTokenTypeName(TokenType type);
 bool isAssignmentToken(TokenType type);

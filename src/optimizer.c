@@ -5,6 +5,28 @@
 
 static void optimizeNode(ASTNode* ast);
 
+static bool foldDivision(int left, int right, int* value)
+{
+    if (!right) {
+        return false;
+    }
+
+    *value = left / right;
+
+    return true;
+}
+
+static bool foldRemainder(int left, int right, int* value)
+{
+    if (!right) {
+        return false;
+    }
+
+    *value = left % right;
+    
+    return true;
+}
+
 static bool foldBinaryValue(ASTNode* ast, int* value)
 {
     int left = ast->binary.leftExpr->integerLiteral.value;
@@ -21,17 +43,9 @@ static bool foldBinaryValue(ASTNode* ast, int* value)
             *value = left * right;
             return true;
         case TOKEN_SLASH:
-            if (!right) {
-                return false;
-            }
-            *value = left / right;
-            return true;
+            return foldDivision(left, right, value);
         case TOKEN_PERCENT:
-            if (!right) {
-                return false;
-            }
-            *value = left % right;
-            return true;
+            return foldRemainder(left, right, value);
         case TOKEN_POWER:
             *value = (int)pow(left, right);
             return true;

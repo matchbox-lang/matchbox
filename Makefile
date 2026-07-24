@@ -24,7 +24,7 @@ RELEASE_DEPS := $(RELEASE_OBJECTS:.o=.d)
 RELEASE_CFLAGS := $(CFLAGS) -O2 -ffunction-sections -fdata-sections -flto
 RELEASE_LDFLAGS := $(LDFLAGS) -flto -Wl,--gc-sections -s
 
-all: release
+all: debug
 
 debug: $(DEBUG_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(LDFLAGS) $^ -o $(EXE) $(LDLIBS)

@@ -1,4 +1,6 @@
-let value: int = 10
+let value: i32 = 10
+var single: f32
+var doublePrecision: f64
 
 func printValue() -> void {
     print(value)

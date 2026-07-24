@@ -1,4 +1,4 @@
-func append(values: ^List<int>) {
+func append(values: ^List<i32>) {
     values.add(4)
 }
 

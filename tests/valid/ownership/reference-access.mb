@@ -1,12 +1,12 @@
-func read(value: &int) {
+func read(value: &i32) {
     print(value)
 }
 
-func readExclusive(value: ^int) {
+func readExclusive(value: ^i32) {
     print(value)
 }
 
-func returnShared(value: &int) -> &int {
+func returnShared(value: &i32) -> &i32 {
     return value
 }
 

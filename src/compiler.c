@@ -41,6 +41,23 @@ typedef struct PreviousInstruction
     uint8_t c;
 } PreviousInstruction;
 
+typedef enum IntegerOperation
+{
+    INTEGER_ADD,
+    INTEGER_SUB,
+    INTEGER_MUL,
+    INTEGER_DIV,
+    INTEGER_REM,
+    INTEGER_POW,
+    INTEGER_BAND,
+    INTEGER_BOR,
+    INTEGER_BXOR,
+    INTEGER_BNOT,
+    INTEGER_LSL,
+    INTEGER_LSR,
+    INTEGER_NEG
+} IntegerOperation;
+
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
@@ -628,13 +645,27 @@ static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
 
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
-    if (isLargerThan16BitSigned(ast->integerLiteral.value)) {
-        size_t position = makeConstant(compiler, INT_VALUE(ast->integerLiteral.value));
+    uint64_t value = ast->integerLiteral.value;
+
+    if (value > INT16_MAX) {
+        Value constant = isSignedIntegerTypeToken(getTypeId(ast))
+            ? SIGNED_VALUE((int64_t)value)
+            : UNSIGNED_VALUE(value);
+        size_t position = makeConstant(compiler, constant);
 
         return makeOperand(emitLdc(compiler, position), true);
     }
 
-    return makeOperand(emitLdi(compiler, ast->integerLiteral.value), true);
+    return makeOperand(emitLdi(compiler, (int16_t)value), true);
+}
+
+static size_t getNodeSlotCount(ASTNode* ast)
+{
+    if (getReferenceType(ast) != REFERENCE_NONE) {
+        return 1;
+    }
+
+    return getTypeSlotCount(getTypeId(ast));
 }
 
 static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
@@ -649,8 +680,155 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
         || isCompilingTopLevel(compiler);
 }
 
-static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+static Opcode getWidthOpcode(
+    TokenType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
 {
+    switch (getIntegerTypeSize(type)) {
+        case 8:
+            return opcode64;
+        case 4:
+            return opcode32;
+        case 2:
+            return opcode16;
+        case 1:
+            return opcode8;
+        default:
+            return OP_HLT;
+    }
+}
+
+static Opcode getDivisionOpcode(TokenType type)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return getWidthOpcode(type, OP_IDIV_I64, OP_IDIV_I32, OP_IDIV_I16, OP_IDIV_I8);
+    }
+
+    return getWidthOpcode(type, OP_IDIV_U64, OP_IDIV_U32, OP_IDIV_U16, OP_IDIV_U8);
+}
+
+static Opcode getRemainderOpcode(TokenType type)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return getWidthOpcode(type, OP_REM_I64, OP_REM_I32, OP_REM_I16, OP_REM_I8);
+    }
+
+    return getWidthOpcode(type, OP_REM_U64, OP_REM_U32, OP_REM_U16, OP_REM_U8);
+}
+
+static Opcode getRightShiftOpcode(TokenType type)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return getWidthOpcode(type, OP_ASR_I64, OP_ASR_I32, OP_ASR_I16, OP_ASR_I8);
+    }
+
+    return getWidthOpcode(type, OP_LSR_I64, OP_LSR_I32, OP_LSR_I16, OP_LSR_I8);
+}
+
+static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
+{
+    switch (operation) {
+        case INTEGER_ADD:
+            return getWidthOpcode(type, OP_ADD_I64, OP_ADD_I32, OP_ADD_I16, OP_ADD_I8);
+        case INTEGER_SUB:
+            return getWidthOpcode(type, OP_SUB_I64, OP_SUB_I32, OP_SUB_I16, OP_SUB_I8);
+        case INTEGER_MUL:
+            return getWidthOpcode(type, OP_MUL_I64, OP_MUL_I32, OP_MUL_I16, OP_MUL_I8);
+        case INTEGER_DIV:
+            return getDivisionOpcode(type);
+        case INTEGER_REM:
+            return getRemainderOpcode(type);
+        case INTEGER_POW:
+            return OP_POW;
+        case INTEGER_BAND:
+            return getWidthOpcode(type, OP_BAND_I64, OP_BAND_I32, OP_BAND_I16, OP_BAND_I8);
+        case INTEGER_BOR:
+            return getWidthOpcode(type, OP_BOR_I64, OP_BOR_I32, OP_BOR_I16, OP_BOR_I8);
+        case INTEGER_BXOR:
+            return getWidthOpcode(type, OP_BXOR_I64, OP_BXOR_I32, OP_BXOR_I16, OP_BXOR_I8);
+        case INTEGER_BNOT:
+            return getWidthOpcode(type, OP_BNOT_I64, OP_BNOT_I32, OP_BNOT_I16, OP_BNOT_I8);
+        case INTEGER_LSL:
+            return getWidthOpcode(type, OP_LSL_I64, OP_LSL_I32, OP_LSL_I16, OP_LSL_I8);
+        case INTEGER_LSR:
+            return getRightShiftOpcode(type);
+        case INTEGER_NEG:
+            return OP_NEG;
+    }
+
+    return OP_HLT;
+}
+
+static Opcode getIntegerImmediateOpcode(TokenType type, IntegerOperation operation)
+{
+    switch (operation) {
+        case INTEGER_ADD:
+            return getWidthOpcode(type, OP_ADDI_I64, OP_ADDI_I32, OP_ADDI_I16, OP_ADDI_I8);
+        case INTEGER_SUB:
+            return getWidthOpcode(type, OP_SUBI_I64, OP_SUBI_I32, OP_SUBI_I16, OP_SUBI_I8);
+        case INTEGER_BAND:
+            return getWidthOpcode(type, OP_BANDI_I64, OP_BANDI_I32, OP_BANDI_I16, OP_BANDI_I8);
+        case INTEGER_BOR:
+            return getWidthOpcode(type, OP_BORI_I64, OP_BORI_I32, OP_BORI_I16, OP_BORI_I8);
+        case INTEGER_BXOR:
+            return getWidthOpcode(type, OP_BXORI_I64, OP_BXORI_I32, OP_BXORI_I16, OP_BXORI_I8);
+        case INTEGER_LSL:
+            return getWidthOpcode(type, OP_LSLI_I64, OP_LSLI_I32, OP_LSLI_I16, OP_LSLI_I8);
+        case INTEGER_LSR:
+            if (isSignedIntegerTypeToken(type)) {
+                return getWidthOpcode(type, OP_ASRI_I64, OP_ASRI_I32, OP_ASRI_I16, OP_ASRI_I8);
+            }
+
+            return getWidthOpcode(type, OP_LSRI_I64, OP_LSRI_I32, OP_LSRI_I16, OP_LSRI_I8);
+        default:
+            return OP_HLT;
+    }
+}
+
+static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediate)
+{
+    if (operation == INTEGER_ADD || operation == INTEGER_SUB) {
+        return !isLargerThan8BitSigned(immediate);
+    }
+
+    return immediate >= 0 && immediate <= (int16_t)UINT8_MAX;
+}
+
+static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
+    TokenType type, Operand left, Operand right, Operand* result)
+{
+    PreviousInstruction previous;
+
+    if (!right.temporary || !getPreviousInstruction(compiler, &previous)
+        || previous.opcode != OP_LDI || previous.a != right.reg) {
+        return false;
+    }
+
+    int16_t immediate = (int16_t)(previous.b << 8 | previous.c);
+    Opcode opcode = getIntegerImmediateOpcode(type, operation);
+
+    if (opcode == OP_HLT || !isImmediateOperandValid(operation, immediate)) {
+        return false;
+    }
+
+    resizeCodeObject(previous.code, previous.start);
+    releaseOperand(compiler, right);
+
+    int dst = left.temporary ? left.reg : allocateRegister(compiler);
+    emitInstruction(compiler, opcode, dst, left.reg, immediate);
+    *result = makeOperand(dst, true);
+
+    return true;
+}
+
+static Operand emitBinaryOperands(
+    Compiler* compiler, IntegerOperation operation, TokenType type, Operand left, Operand right)
+{
+    Operand immediateResult;
+
+    if (emitBinaryImmediate(compiler, operation, type, left, right, &immediateResult)) {
+        return immediateResult;
+    }
+
     int dst;
 
     if (left.temporary) {
@@ -662,13 +840,14 @@ static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode, Operand lef
         dst = allocateRegister(compiler);
     }
 
-    emitInstruction(compiler, opcode, dst, left.reg, right.reg);
+    emitInstruction(compiler, getIntegerOpcode(type, operation), dst, left.reg, right.reg);
     
     return makeOperand(dst, true);
 }
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
+    TokenType type = getTypeId(ast->binary.leftExpr);
     Operand left = compileExpression(compiler, ast->binary.leftExpr, false);
 
     if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
@@ -679,28 +858,28 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 
     switch (ast->binary.operator.type) {
         case TOKEN_PLUS:
-            return emitBinaryOperands(compiler, OP_ADD, left, right);
+            return emitBinaryOperands(compiler, INTEGER_ADD, type, left, right);
         case TOKEN_MINUS:
-            return emitBinaryOperands(compiler, OP_SUB, left, right);
+            return emitBinaryOperands(compiler, INTEGER_SUB, type, left, right);
         case TOKEN_STAR:
-            return emitBinaryOperands(compiler, OP_MUL, left, right);
+            return emitBinaryOperands(compiler, INTEGER_MUL, type, left, right);
         case TOKEN_SLASH:
         case TOKEN_FLOOR:
-            return emitBinaryOperands(compiler, OP_DIV, left, right);
+            return emitBinaryOperands(compiler, INTEGER_DIV, type, left, right);
         case TOKEN_PERCENT:
-            return emitBinaryOperands(compiler, OP_REM, left, right);
+            return emitBinaryOperands(compiler, INTEGER_REM, type, left, right);
         case TOKEN_POWER:
-            return emitBinaryOperands(compiler, OP_POW, left, right);
+            return emitBinaryOperands(compiler, INTEGER_POW, type, left, right);
         case TOKEN_AMPERSAND:
-            return emitBinaryOperands(compiler, OP_BAND, left, right);
+            return emitBinaryOperands(compiler, INTEGER_BAND, type, left, right);
         case TOKEN_PIPE:
-            return emitBinaryOperands(compiler, OP_BOR, left, right);
+            return emitBinaryOperands(compiler, INTEGER_BOR, type, left, right);
         case TOKEN_CIRCUMFLEX:
-            return emitBinaryOperands(compiler, OP_BXOR, left, right);
+            return emitBinaryOperands(compiler, INTEGER_BXOR, type, left, right);
         case TOKEN_LSHIFT:
-            return emitBinaryOperands(compiler, OP_LSL, left, right);
+            return emitBinaryOperands(compiler, INTEGER_LSL, type, left, right);
         case TOKEN_RSHIFT:
-            return emitBinaryOperands(compiler, OP_LSR, left, right);
+            return emitBinaryOperands(compiler, INTEGER_LSR, type, left, right);
         default:
             return noOperand();
     }
@@ -732,9 +911,11 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
         case TOKEN_NOT:
             return emitUnaryOperand(compiler, OP_NOT, operand);
         case TOKEN_TILDE:
-            return emitUnaryOperand(compiler, OP_BNOT, operand);
+            return emitUnaryOperand(
+                compiler, getIntegerOpcode(getTypeId(ast), INTEGER_BNOT), operand);
         case TOKEN_MINUS:
-            return emitUnaryOperand(compiler, OP_NEG, operand);
+            return emitUnaryOperand(
+                compiler, getIntegerOpcode(getTypeId(ast), INTEGER_NEG), operand);
         default:
             return noOperand();
     }
@@ -766,8 +947,11 @@ static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand va
     releaseOperand(compiler, reference);
 }
 
-static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode opcode)
+static void compileCompoundAssignment(
+    Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
+    TokenType type = getTypeId(ast->assignment.symbol);
+
     Operand left = loadVariable(compiler, ast->assignment.symbol);
 
     if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
@@ -779,7 +963,7 @@ static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode o
     }
 
     Operand right = compileExpression(compiler, ast->assignment.expr, false);
-    Operand result = emitBinaryOperands(compiler, opcode, left, right);
+    Operand result = emitBinaryOperands(compiler, operation, type, left, right);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, result);
 }
@@ -802,28 +986,28 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->assignment.operator.type) {
         case TOKEN_PLUS_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_ADD);
+            return compileCompoundAssignment(compiler, ast, INTEGER_ADD);
         case TOKEN_MINUS_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_SUB);
+            return compileCompoundAssignment(compiler, ast, INTEGER_SUB);
         case TOKEN_STAR_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_MUL);
+            return compileCompoundAssignment(compiler, ast, INTEGER_MUL);
         case TOKEN_FLOOR_EQUAL:
         case TOKEN_SLASH_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_DIV);
+            return compileCompoundAssignment(compiler, ast, INTEGER_DIV);
         case TOKEN_PERCENT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_REM);
+            return compileCompoundAssignment(compiler, ast, INTEGER_REM);
         case TOKEN_POWER_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_POW);
+            return compileCompoundAssignment(compiler, ast, INTEGER_POW);
         case TOKEN_AND_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_BAND);
+            return compileCompoundAssignment(compiler, ast, INTEGER_BAND);
         case TOKEN_OR_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_BOR);
+            return compileCompoundAssignment(compiler, ast, INTEGER_BOR);
         case TOKEN_CIRCUMFLEX_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_BXOR);
+            return compileCompoundAssignment(compiler, ast, INTEGER_BXOR);
         case TOKEN_LSHIFT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_LSL);
+            return compileCompoundAssignment(compiler, ast, INTEGER_LSL);
         case TOKEN_RSHIFT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_LSR);
+            return compileCompoundAssignment(compiler, ast, INTEGER_LSR);
         case TOKEN_EQUAL:
             return compileSimpleAssignment(compiler, ast);
         default:
@@ -908,29 +1092,42 @@ static void storeArgument(Compiler* compiler, Operand argument,int destination, 
 }
 
 static void compileArgument(Compiler* compiler, Vector* args, Vector* params, size_t position,
-    int firstRegister, bool reserved)
+    int firstRegister, size_t destinationOffset, bool reserved)
 {
     int destination = compiler->registerCount;
 
     if (reserved) {
-        destination = firstRegister + position;
+        destination = firstRegister + destinationOffset;
     }
 
     Operand argument = compileArgumentExpression(compiler, args, params, position);
 
     storeArgument(compiler, argument, destination, reserved);
+
+    size_t slots = getNodeSlotCount(getVectorAt(args, position));
+
+    for (size_t i = 1; !reserved && i < slots; i++) {
+        allocateRegister(compiler);
+    }
 }
 
 static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
 {
     size_t count = countVector(args);
+    size_t slotCount = 0;
     bool reserved = requiresReservedArguments(args, params);
     int firstRegister = compiler->registerCount;
 
-    reserveArgumentRegisters(compiler, count, reserved);
-
     for (size_t i = 0; i < count; i++) {
-        compileArgument(compiler, args, params, i, firstRegister, reserved);
+        slotCount += getNodeSlotCount(getVectorAt(args, i));
+    }
+
+    reserveArgumentRegisters(compiler, slotCount, reserved);
+
+    for (size_t i = 0, offset = 0; i < count; i++) {
+        ASTNode* argument = getVectorAt(args, i);
+        compileArgument(compiler, args, params, i, firstRegister, offset, reserved);
+        offset += getNodeSlotCount(argument);
     }
 }
 
@@ -964,8 +1161,13 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
 {
     ASTNode* body = ast->functionDefinition.body;
     FunctionObject* function = createFunctionObject();
-    function->paramCount = countVector(&ast->functionDefinition.params);
-    function->returnCount = 1;
+    function->paramCount = 0;
+
+    for (size_t i = 0; i < countVector(&ast->functionDefinition.params); i++) {
+        function->paramCount += getNodeSlotCount(
+            getVectorAt(&ast->functionDefinition.params, i));
+    }
+    function->returnCount = getTypeSlotCount(ast->functionDefinition.typeId);
 
     if (ast->functionDefinition.typeId == TOKEN_VOID) {
         function->returnCount = 0;
@@ -1171,6 +1373,10 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
         int reg = allocateRegister(compiler);
 
         emitMov(compiler, reg, value.reg);
+    }
+
+    for (size_t i = 1; i < getNodeSlotCount(ast); i++) {
+        allocateRegister(compiler);
     }
 }
 

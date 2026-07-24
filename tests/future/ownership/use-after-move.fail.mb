@@ -1,4 +1,4 @@
-func consume(values: List<int>) {
+func consume(values: List<i32>) {
     print(values.count())
 }
 

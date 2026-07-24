@@ -25,23 +25,22 @@ static const Keyword keywords[] = {
     {"const",       5, TOKEN_CONST},
     {"continue",    8, TOKEN_CONTINUE},
     {"defer",       5, TOKEN_DEFER},
-    {"double",      6, TOKEN_DOUBLE},
     {"else",        4, TOKEN_ELSE},
     {"end",         3, TOKEN_END},
     {"enum",        4, TOKEN_ENUM},
     {"false",       5, TOKEN_FALSE},
     {"finally",     7, TOKEN_FINALLY},
-    {"float",       5, TOKEN_FLOAT},
+    {"f32",         3, TOKEN_F32},
+    {"f64",         3, TOKEN_F64},
     {"for",         3, TOKEN_FOR},
     {"func",        4, TOKEN_FUNC},
     {"get",         3, TOKEN_GET},
     {"if",          2, TOKEN_IF},
     {"in",          2, TOKEN_IN},
-    {"int",         3, TOKEN_INT},
-    {"int8",        4, TOKEN_INT8},
-    {"int16",       5, TOKEN_INT16},
-    {"int32",       5, TOKEN_INT32},
-    {"int64",       5, TOKEN_INT64},
+    {"i8",          2, TOKEN_I8},
+    {"i16",         3, TOKEN_I16},
+    {"i32",         3, TOKEN_I32},
+    {"i64",         3, TOKEN_I64},
     {"internal",    8, TOKEN_INTERNAL},
     {"is",          2, TOKEN_IS},
     {"let",         3, TOKEN_LET},
@@ -64,11 +63,10 @@ static const Keyword keywords[] = {
     {"try",         3, TOKEN_TRY},
     {"type",        4, TOKEN_TYPE},
     {"typeof",      6, TOKEN_TYPEOF},
-    {"uint",        4, TOKEN_UINT},
-    {"uint8",       5, TOKEN_UINT8},
-    {"uint16",      6, TOKEN_UINT16},
-    {"uint32",      6, TOKEN_UINT32},
-    {"uint64",      6, TOKEN_UINT64},
+    {"u8",          2, TOKEN_U8},
+    {"u16",         3, TOKEN_U16},
+    {"u32",         3, TOKEN_U32},
+    {"u64",         3, TOKEN_U64},
     {"use",         3, TOKEN_USE},
     {"var",         3, TOKEN_VAR},
     {"void",        4, TOKEN_VOID},
@@ -408,7 +406,7 @@ static Token scanFloatLiteral(Lexer* lexer)
 
     validateNumberEnd(lexer);
 
-    return makeToken(lexer, TOKEN_FLOAT_LITERAL);
+    return makeToken(lexer, TOKEN_F32_LITERAL);
 }
 
 static Token scanIntegerLiteral(Lexer* lexer)

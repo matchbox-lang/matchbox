@@ -1,4 +1,4 @@
-func takeExclusive(a: ^int, b: ^int) {
+func takeExclusive(a: ^i32, b: ^i32) {
     print(a)
     print(b)
 }

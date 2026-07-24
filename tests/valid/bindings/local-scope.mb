@@ -1,13 +1,13 @@
 let global = 20
 
-func testLocal(value: int) {
+func testLocal(value: i32) {
     print(value)
     print(global)
 
     let local = 200
     print(local)
 
-    func inner(value: int) {
+    func inner(value: i32) {
         print(value)
         print(global)
     }

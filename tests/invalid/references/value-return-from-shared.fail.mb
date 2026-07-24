@@ -1,5 +1,5 @@
 var value = 10
 
-func returnValue() -> int {
+func returnValue() -> i32 {
     return &value
 }

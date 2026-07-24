@@ -5,6 +5,7 @@
 #include "token.h"
 #include "vector.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct ASTNode ASTNode;
 typedef struct StringObject StringObject;
@@ -26,7 +27,7 @@ typedef enum ASTNodeType
     AST_BOOLEAN,
     AST_CHARACTER,
     AST_COMPOUND,
-    AST_FLOAT,
+    AST_F32,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
@@ -107,8 +108,9 @@ typedef struct ASTNode
         } functionDefinition;
 
         struct {
-            int value;
+            uint64_t value;
             Token token;
+            TokenType typeId;
         } integerLiteral;
 
         struct {

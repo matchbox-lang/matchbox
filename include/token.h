@@ -48,18 +48,16 @@ typedef enum TokenType
     TOKEN_FINALLY,
     TOKEN_THROW,
     TOKEN_VOID,
-    TOKEN_INT,
-    TOKEN_UINT,
-    TOKEN_INT8,
-    TOKEN_INT16,
-    TOKEN_INT32,
-    TOKEN_INT64,
-    TOKEN_UINT8,
-    TOKEN_UINT16,
-    TOKEN_UINT32,
-    TOKEN_UINT64,
-    TOKEN_FLOAT,
-    TOKEN_DOUBLE,
+    TOKEN_I8,
+    TOKEN_I16,
+    TOKEN_I32,
+    TOKEN_I64,
+    TOKEN_U8,
+    TOKEN_U16,
+    TOKEN_U32,
+    TOKEN_U64,
+    TOKEN_F32,
+    TOKEN_F64,
     TOKEN_CHAR,
     TOKEN_STRING,
     TOKEN_BOOL,
@@ -129,7 +127,7 @@ typedef enum TokenType
     TOKEN_SEMICOLON,
     TOKEN_COMMA,
     TOKEN_INTEGER_LITERAL,
-    TOKEN_FLOAT_LITERAL,
+    TOKEN_F32_LITERAL,
     TOKEN_OCTAL_LITERAL,
     TOKEN_HEXADECIMAL_LITERAL,
     TOKEN_BINARY_LITERAL,
@@ -153,6 +151,10 @@ void printTokenValue(Token token);
 const char* getTokenTypeName(TokenType type);
 bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
+bool isIntegerTypeToken(TokenType type);
+bool isSignedIntegerTypeToken(TokenType type);
+size_t getIntegerTypeSize(TokenType type);
+size_t getTypeSlotCount(TokenType type);
 bool isComparisonToken(TokenType type);
 bool isEqualityToken(TokenType type);
 bool isBoolOperatorToken(TokenType type);

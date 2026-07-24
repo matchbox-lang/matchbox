@@ -1,1 +1,1 @@
-func duplicate(value: int, value: int) {}
+func duplicate(value: i32, value: i32) {}

@@ -144,8 +144,8 @@ TokenType getTypeId(const ASTNode* ast)
             return ast->builtinCall.builtin->typeId;
         case AST_CHARACTER:
             return TOKEN_CHAR;
-        case AST_FLOAT:
-            return TOKEN_FLOAT;
+        case AST_F32:
+            return TOKEN_F32;
         case AST_FUNCTION_CALL:
             return getTypeId(ast->functionCall.symbol);
         case AST_FUNCTION_DEFINITION:
@@ -159,7 +159,7 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_PREFIX:
             return getTypeId(ast->prefix.expr);
         case AST_INTEGER:
-            return TOKEN_INT;
+            return ast->integerLiteral.typeId;
         case AST_STRING:
             return TOKEN_STRING;
         default:
@@ -240,7 +240,7 @@ bool isExpressionStatement(const ASTNode* ast)
         case AST_BOOLEAN:
         case AST_BUILTIN_CALL:
         case AST_CHARACTER:
-        case AST_FLOAT:
+        case AST_F32:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
         case AST_PREFIX:
@@ -271,7 +271,7 @@ bool isLiteral(const ASTNode* ast)
     switch (ast->type) {
         case AST_BOOLEAN:
         case AST_CHARACTER:
-        case AST_FLOAT:
+        case AST_F32:
         case AST_INTEGER:
         case AST_STRING:
             return true;
@@ -302,7 +302,7 @@ bool isPrefixOperand(const ASTNode* ast)
         case AST_BOOLEAN:
         case AST_BUILTIN_CALL:
         case AST_CHARACTER:
-        case AST_FLOAT:
+        case AST_F32:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
         case AST_STRING:

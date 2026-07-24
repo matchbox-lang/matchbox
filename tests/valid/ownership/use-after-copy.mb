@@ -1,4 +1,4 @@
-func consume(value: int) {
+func consume(value: i32) {
     print(value)
 }
 

@@ -41,7 +41,7 @@ void resizeValueArray(ValueArray* array, size_t size)
     reserveValueArray(array, size);
 
     for (size_t i = array->count; i < size; i++) {
-        array->data[i] = INT_VALUE(0);
+        array->data[i] = SIGNED_VALUE(0);
     }
 
     array->count = size;

@@ -1,3 +1,3 @@
-func returnShared(value: ^int) -> &int {
+func returnShared(value: ^i32) -> &i32 {
     return value
 }

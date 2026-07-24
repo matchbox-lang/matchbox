@@ -1,3 +1,3 @@
 var value = 10
 var shared = &value
-var exclusive: ^int = shared
+var exclusive: ^i32 = shared

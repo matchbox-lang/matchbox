@@ -1,5 +1,5 @@
 var value = 10
 let first = ^value
-let second: ^int = first
+let second: ^i32 = first
 
 print(first)

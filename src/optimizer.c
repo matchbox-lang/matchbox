@@ -72,6 +72,11 @@ static void foldBinary(ASTNode* ast)
         return;
     }
 
+    if (getTypeId(ast->binary.leftExpr) != TOKEN_I32
+        || getTypeId(ast->binary.rightExpr) != TOKEN_I32) {
+        return;
+    }
+
     int value;
     Token token = ast->binary.operator;
     
@@ -85,6 +90,7 @@ static void foldBinary(ASTNode* ast)
     ast->type = AST_INTEGER;
     ast->integerLiteral.value = value;
     ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = TOKEN_I32;
 }
 
 static void optimizeNodes(Vector* nodes)

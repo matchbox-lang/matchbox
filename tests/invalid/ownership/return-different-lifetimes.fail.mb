@@ -1,4 +1,4 @@
-func selectReference(first: &int, second: &int) -> &int {
+func selectReference(first: &i32, second: &i32) -> &i32 {
     return first
     return second
 }

@@ -2,11 +2,12 @@
 #define CONVERSION_H
 
 #include <stddef.h>
+#include <stdint.h>
 
-float integerLiteralToValue(char* str, size_t length);
-int binaryLiteralToValue(char* str, size_t length);
-int hexadecimalLiteralToValue(char* str, size_t length);
-int octalLiteralToValue(char* str, size_t length);
-int floatLiteralToValue(char* str, size_t length);
+uint64_t integerLiteralToValue(char* str, size_t length);
+uint64_t binaryLiteralToValue(char* str, size_t length);
+uint64_t hexadecimalLiteralToValue(char* str, size_t length);
+uint64_t octalLiteralToValue(char* str, size_t length);
+float floatLiteralToValue(char* str, size_t length);
 
 #endif

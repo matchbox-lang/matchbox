@@ -27,6 +27,19 @@ void freeScope(Scope* scope)
     free(scope);
 }
 
+static size_t getSymbolSlotCount(ASTNode* symbol)
+{
+    if (!isVariableType(symbol)) {
+        return 0;
+    }
+
+    if (getReferenceType(symbol) != REFERENCE_NONE) {
+        return 1;
+    }
+
+    return getTypeSlotCount(getTypeId(symbol));
+}
+
 size_t getLocalCount(Scope* scope)
 {
     return scope->localCount;
@@ -53,7 +66,7 @@ ASTNode* setLocalSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
 
 ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
 {
-    scope->localCount++;
+    scope->localCount += getSymbolSlotCount(symbol);
     
     return setLocalSymbol(scope, id, symbol);
 }

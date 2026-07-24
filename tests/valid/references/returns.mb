@@ -1,17 +1,17 @@
-func returnShared(n: &int) -> &int {
+func returnShared(n: &i32) -> &i32 {
     return n
 }
 
-func returnExclusive(n: ^int) -> ^int {
+func returnExclusive(n: ^i32) -> ^i32 {
     return n
 }
 
 var sharedValue = 10
-var returnedShared: &int = returnShared(&sharedValue)
+var returnedShared: &i32 = returnShared(&sharedValue)
 
 print(returnedShared)
 
 var exclusiveValue = 20
-var returnedExclusive: ^int = returnExclusive(^exclusiveValue)
+var returnedExclusive: ^i32 = returnExclusive(^exclusiveValue)
 
 print(returnedExclusive)

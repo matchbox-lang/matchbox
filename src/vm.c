@@ -54,7 +54,7 @@ static void run(VM* vm)
                 vm->fp[a] = vm->fp[b];
                 break;
             case OP_LDI:
-                vm->fp[a] = INT_VALUE((int16_t)OPERAND_BC(inst));
+                vm->fp[a] = SIGNED_VALUE((int16_t)OPERAND_BC(inst));
                 break;
             case OP_LDC:
                 vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
@@ -77,63 +77,301 @@ static void run(VM* vm)
             case OP_STR:
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
-            case OP_ADD:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) + AS_INT(vm->fp[c]));
+            case OP_ADD_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) + AS_U64(vm->fp[c]));
                 break;
-            case OP_SUB:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) - AS_INT(vm->fp[c]));
+            case OP_ADDI_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) + (int8_t)c);
                 break;
-            case OP_MUL:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) * AS_INT(vm->fp[c]));
+            case OP_ADD_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) + AS_U32(vm->fp[c]));
                 break;
-            case OP_DIV:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) / AS_INT(vm->fp[c]));
+            case OP_ADDI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) + (int8_t)c);
                 break;
-            case OP_REM:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) % AS_INT(vm->fp[c]));
+            case OP_ADD_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) + AS_U16(vm->fp[c]));
+                break;
+            case OP_ADDI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) + (int8_t)c);
+                break;
+            case OP_ADD_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) + AS_U8(vm->fp[c]));
+                break;
+            case OP_ADDI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) + (int8_t)c);
+                break;
+            case OP_SUB_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) - AS_U64(vm->fp[c]));
+                break;
+            case OP_SUBI_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) - (int8_t)c);
+                break;
+            case OP_SUB_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) - AS_U32(vm->fp[c]));
+                break;
+            case OP_SUBI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) - (int8_t)c);
+                break;
+            case OP_SUB_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) - AS_U16(vm->fp[c]));
+                break;
+            case OP_SUBI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) - (int8_t)c);
+                break;
+            case OP_SUB_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) - AS_U8(vm->fp[c]));
+                break;
+            case OP_SUBI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) - (int8_t)c);
+                break;
+            case OP_MUL_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) * AS_U64(vm->fp[c]));
+                break;
+            case OP_MUL_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) * AS_U32(vm->fp[c]));
+                break;
+            case OP_MUL_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) * AS_U16(vm->fp[c]));
+                break;
+            case OP_MUL_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) * AS_U8(vm->fp[c]));
+                break;
+            case OP_IDIV_I64:
+                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) / AS_I64(vm->fp[c]));
+                break;
+            case OP_IDIV_I32:
+                vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) / AS_I32(vm->fp[c]));
+                break;
+            case OP_IDIV_I16:
+                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) / AS_I16(vm->fp[c]));
+                break;
+            case OP_IDIV_I8:
+                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) / AS_I8(vm->fp[c]));
+                break;
+            case OP_IDIV_U64:
+                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) / AS_U64(vm->fp[c]));
+                break;
+            case OP_IDIV_U32:
+                vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) / AS_U32(vm->fp[c]));
+                break;
+            case OP_IDIV_U16:
+                vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) / AS_U16(vm->fp[c]));
+                break;
+            case OP_IDIV_U8:
+                vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) / AS_U8(vm->fp[c]));
+                break;
+            case OP_REM_I64:
+                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) % AS_I64(vm->fp[c]));
+                break;
+            case OP_REM_I32:
+                vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) % AS_I32(vm->fp[c]));
+                break;
+            case OP_REM_I16:
+                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) % AS_I16(vm->fp[c]));
+                break;
+            case OP_REM_I8:
+                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) % AS_I8(vm->fp[c]));
+                break;
+            case OP_REM_U64:
+                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) % AS_U64(vm->fp[c]));
+                break;
+            case OP_REM_U32:
+                vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) % AS_U32(vm->fp[c]));
+                break;
+            case OP_REM_U16:
+                vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) % AS_U16(vm->fp[c]));
+                break;
+            case OP_REM_U8:
+                vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) % AS_U8(vm->fp[c]));
                 break;
             case OP_POW:
-                vm->fp[a] = INT_VALUE(pow(AS_INT(vm->fp[b]), AS_INT(vm->fp[c])));
+                vm->fp[a] = I64_VALUE(pow(AS_I64(vm->fp[b]), AS_I64(vm->fp[c])));
                 break;
-            case OP_BAND:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) & AS_INT(vm->fp[c]));
+            case OP_BAND_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) & AS_U64(vm->fp[c]));
                 break;
-            case OP_BOR:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) | AS_INT(vm->fp[c]));
+            case OP_BANDI_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) & c);
                 break;
-            case OP_BXOR:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) ^ AS_INT(vm->fp[c]));
+            case OP_BAND_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) & AS_U32(vm->fp[c]));
                 break;
-            case OP_BNOT:
-                vm->fp[a] = INT_VALUE(~AS_INT(vm->fp[b]));
+            case OP_BANDI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) & c);
                 break;
-            case OP_LSL:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) << AS_INT(vm->fp[c]));
+            case OP_BAND_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) & AS_U16(vm->fp[c]));
                 break;
-            case OP_LSR:
-                vm->fp[a] = INT_VALUE(AS_INT(vm->fp[b]) >> AS_INT(vm->fp[c]));
+            case OP_BANDI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) & c);
                 break;
-            case OP_ASR:
-                vm->fp[a] = INT_VALUE(~(~AS_INT(vm->fp[b]) >> AS_INT(vm->fp[c])));
+            case OP_BAND_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) & AS_U8(vm->fp[c]));
+                break;
+            case OP_BANDI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) & c);
+                break;
+            case OP_BOR_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) | AS_U64(vm->fp[c]));
+                break;
+            case OP_BORI_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) | c);
+                break;
+            case OP_BOR_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) | AS_U32(vm->fp[c]));
+                break;
+            case OP_BORI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) | c);
+                break;
+            case OP_BOR_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) | AS_U16(vm->fp[c]));
+                break;
+            case OP_BORI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) | c);
+                break;
+            case OP_BOR_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) | AS_U8(vm->fp[c]));
+                break;
+            case OP_BORI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) | c);
+                break;
+            case OP_BXOR_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) ^ AS_U64(vm->fp[c]));
+                break;
+            case OP_BXORI_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) ^ c);
+                break;
+            case OP_BXOR_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) ^ AS_U32(vm->fp[c]));
+                break;
+            case OP_BXORI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) ^ c);
+                break;
+            case OP_BXOR_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) ^ AS_U16(vm->fp[c]));
+                break;
+            case OP_BXORI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) ^ c);
+                break;
+            case OP_BXOR_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) ^ AS_U8(vm->fp[c]));
+                break;
+            case OP_BXORI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) ^ c);
+                break;
+            case OP_BNOT_I64:
+                vm->fp[a] = I64_VALUE(~AS_U64(vm->fp[b]));
+                break;
+            case OP_BNOT_I32:
+                vm->fp[a] = I32_VALUE(~AS_U32(vm->fp[b]));
+                break;
+            case OP_BNOT_I16:
+                vm->fp[a] = I16_VALUE(~AS_U16(vm->fp[b]));
+                break;
+            case OP_BNOT_I8:
+                vm->fp[a] = I8_VALUE(~AS_U8(vm->fp[b]));
+                break;
+            case OP_LSL_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) << AS_U64(vm->fp[c]));
+                break;
+            case OP_LSLI_I64:
+                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) << c);
+                break;
+            case OP_LSL_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) << AS_U32(vm->fp[c]));
+                break;
+            case OP_LSLI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) << c);
+                break;
+            case OP_LSL_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) << AS_U16(vm->fp[c]));
+                break;
+            case OP_LSLI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) << c);
+                break;
+            case OP_LSL_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) << AS_U8(vm->fp[c]));
+                break;
+            case OP_LSLI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) << c);
+                break;
+            case OP_LSR_I64:
+                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) >> AS_U64(vm->fp[c]));
+                break;
+            case OP_LSRI_I64:
+                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) >> c);
+                break;
+            case OP_LSR_I32:
+                vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) >> AS_U32(vm->fp[c]));
+                break;
+            case OP_LSRI_I32:
+                vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) >> c);
+                break;
+            case OP_LSR_I16:
+                vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) >> AS_U16(vm->fp[c]));
+                break;
+            case OP_LSRI_I16:
+                vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) >> c);
+                break;
+            case OP_LSR_I8:
+                vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) >> AS_U8(vm->fp[c]));
+                break;
+            case OP_LSRI_I8:
+                vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) >> c);
+                break;
+            case OP_ASR_I64:
+                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) >> AS_I64(vm->fp[c]));
+                break;
+            case OP_ASRI_I64:
+                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) >> c);
+                break;
+            case OP_ASR_I32:
+                vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) >> AS_I32(vm->fp[c]));
+                break;
+            case OP_ASRI_I32:
+                vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) >> c);
+                break;
+            case OP_ASR_I16:
+                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) >> AS_I16(vm->fp[c]));
+                break;
+            case OP_ASRI_I16:
+                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) >> c);
+                break;
+            case OP_ASR_I8:
+                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) >> AS_I8(vm->fp[c]));
+                break;
+            case OP_ASRI_I8:
+                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) >> c);
                 break;
             case OP_NOT:
-                vm->fp[a] = INT_VALUE(!AS_INT(vm->fp[b]));
+                vm->fp[a] = SIGNED_VALUE(!AS_SIGNED(vm->fp[b]));
                 break;
             case OP_NEG:
-                vm->fp[a] = INT_VALUE(-AS_INT(vm->fp[b]));
+                vm->fp[a] = SIGNED_VALUE(-AS_SIGNED(vm->fp[b]));
                 break;
             case OP_BEQ:
-                if (AS_INT(vm->fp[a]) == AS_INT(vm->fp[b])) {
+                if (AS_UNSIGNED(vm->fp[a]) == AS_UNSIGNED(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_BLT:
-                if (AS_INT(vm->fp[a]) < AS_INT(vm->fp[b])) {
+            case OP_BLT_INT:
+                if (AS_SIGNED(vm->fp[a]) < AS_SIGNED(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_BLE:
-                if (AS_INT(vm->fp[a]) <= AS_INT(vm->fp[b])) {
+            case OP_BLT_UINT:
+                if (AS_UNSIGNED(vm->fp[a]) < AS_UNSIGNED(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BLE_INT:
+                if (AS_SIGNED(vm->fp[a]) <= AS_SIGNED(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BLE_UINT:
+                if (AS_UNSIGNED(vm->fp[a]) <= AS_UNSIGNED(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
@@ -176,8 +414,8 @@ static void run(VM* vm)
                 break;
             }
             case OP_LDI2:
-                vm->fp[a] = INT_VALUE((int8_t)b);
-                vm->fp[a + 1] = INT_VALUE((int8_t)c);
+                vm->fp[a] = SIGNED_VALUE((int8_t)b);
+                vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
             case OP_LDG2:
                 vm->fp[a] = vm->gp[b];
@@ -188,18 +426,18 @@ static void run(VM* vm)
                 vm->fp[a + 1] = vm->fp[c];
                 break;
             case OP_LDI_LDG:
-                vm->fp[a] = INT_VALUE((int8_t)b);
+                vm->fp[a] = SIGNED_VALUE((int8_t)b);
                 vm->fp[a + 1] = vm->gp[c];
                 break;
             case OP_LDG_LDI:
                 vm->fp[a] = vm->gp[b];
-                vm->fp[a + 1] = INT_VALUE((int8_t)c);
+                vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
             case OP_LDI_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
                 int16_t imm = LOAD_CALL_SIGNED_OPERAND(operands);
 
-                vm->fp[a] = INT_VALUE(imm);
+                vm->fp[a] = SIGNED_VALUE(imm);
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
@@ -225,7 +463,7 @@ static void run(VM* vm)
                 goto call;
             }
             case OP_LDI_STG:
-                vm->fp[a] = INT_VALUE((int8_t)b);
+                vm->fp[a] = SIGNED_VALUE((int8_t)b);
                 vm->gp[c] = vm->fp[a];
                 break;
             default:

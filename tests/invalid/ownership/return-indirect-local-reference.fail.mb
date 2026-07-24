@@ -1,4 +1,4 @@
-func localReference() -> &int {
+func localReference() -> &i32 {
     let value = 10
     let reference = &value
 

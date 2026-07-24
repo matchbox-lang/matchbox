@@ -1,15 +1,15 @@
-let x: int8 = 100
+let x: i8 = 100
 let y = 10.5
 
-let i: int = x # Implicit OK
+let i: i32 = x # Implicit OK
 
-let i: int = y # Implicit Error
+let i: i32 = y # Implicit Error
 
-let i = int(y) # Explicit OK
+let i = i32(y) # Explicit OK
 
 let i = char(y) # Explicit Error
 
-let i: int64 = int(y) # Explicit OK > Implicit OK
+let i: i64 = i32(y) # Explicit OK > Implicit OK
 
 let s: string = 'c' # Implicit OK
 

@@ -1,4 +1,4 @@
-func int.shout() {
+func i32.shout() {
     print("Hello!")
 }
 
@@ -15,4 +15,4 @@ func shout[T: Foo](n: T) {
 }
 
 shout(25)
-shout[int](25)
+shout[i32](25)

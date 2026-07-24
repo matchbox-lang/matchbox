@@ -334,39 +334,74 @@ static void runTestPath(TestRun* run, const char* path)
     runTestFilePath(run, path);
 }
 
+static const char* configureTestRun(TestRun* run, const Options* options)
+{
+    if (options->executablePath) {
+        run->executablePath = options->executablePath;
+    }
+
+    if (!options->testPath) {
+        return TEST_DEFAULT_PATH;
+    }
+
+    run->excludeFuture = false;
+
+    return options->testPath;
+}
+
+static int countTests(const TestRun* run, const char* path)
+{
+    if (pathIsDirectory(path)) {
+        return countDirectoryTests(run, path);
+    }
+
+    return 1;
+}
+
+static bool validateTestCount(const char* path, int testCount)
+{
+    if (testCount < 0) {
+        return false;
+    }
+
+    if (testCount > 0) {
+        return true;
+    }
+
+    testsNotFoundError(path);
+
+    return false;
+}
+
+static void printTestStart(int testCount)
+{
+    printf("Running %d %s...\n", testCount, testCount == 1 ? "test" : "tests");
+    fflush(stdout);
+}
+
+static void printTestSummary(const TestRun* run)
+{
+    printf("%d %s passed, ", run->passed, run->passed == 1 ? "test" : "tests");
+    printf("%d %s failed.\n", run->failed, run->failed == 1 ? "test" : "tests");
+}
+
 void runTests(Options* options)
 {
-    const char* path = TEST_DEFAULT_PATH;
     TestRun run = {options->testOutput, PROGRAM_COMMAND, true, 0, 0, 0};
+    const char* path = configureTestRun(&run, options);
     int testCount;
-
-    if (options->testPath) {
-        path = options->testPath;
-        run.excludeFuture = false;
-    }
-
-    if (options->executablePath) {
-        run.executablePath = options->executablePath;
-    }
 
     if (!validateTestPath(path)) {
         return;
     }
 
-    testCount = pathIsDirectory(path) ? countDirectoryTests(&run, path) : 1;
+    testCount = countTests(&run, path);
 
-    if (testCount < 0) {
+    if (!validateTestCount(path, testCount)) {
         return;
     }
 
-    if (testCount == 0) {
-        testsNotFoundError(path);
-
-        return;
-    }
-
-    printf("Running %d %s...\n", testCount, testCount == 1 ? "test" : "tests");
-    fflush(stdout);
+    printTestStart(testCount);
     runTestPath(&run, path);
 
     if (run.found == 0) {
@@ -375,6 +410,5 @@ void runTests(Options* options)
         return;
     }
 
-    printf("%d test(s) passed, ", run.passed);
-    printf("%d test(s) failed.\n", run.failed);
+    printTestSummary(&run);
 }

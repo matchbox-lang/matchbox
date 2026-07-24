@@ -26,6 +26,7 @@ typedef struct TestRun {
 #endif
 
 static void runDirectoryTests(TestRun* run, const char* path);
+static int countDirectoryTests(const TestRun* run, const char* path);
 
 static void expectedFileError(const char* path)
 {
@@ -76,7 +77,8 @@ static void freeTestCommand(char* command, char* quotedExecutablePath, char* quo
     free(quotedExecutablePath);
 }
 
-static char* createTestCommand(const char* executablePath, const char* filename, char** quotedExecutablePath, char** quotedFilename)
+static char* createTestCommand(const char* executablePath, const char* filename,
+    char** quotedExecutablePath, char** quotedFilename)
 {
     size_t commandLength;
     char* command;
@@ -192,6 +194,74 @@ static char* getDirectoryEntryPath(const char* path, const char* name)
     return joinPath(path, name);
 }
 
+static bool shouldExcludeDirectory(const TestRun* run, const char* path, const char* name)
+{
+    return run->excludeFuture && strcmp(path, TEST_DEFAULT_PATH) == 0 && strcmp(name, "future") == 0;
+}
+
+static int countDirectoryEntryTests(const TestRun* run, const char* path, const char* name)
+{
+    char* child = getDirectoryEntryPath(path, name);
+    int count;
+
+    if (!child) {
+        return 0;
+    }
+
+    if (shouldExcludeDirectory(run, path, name)) {
+        freePath(child);
+
+        return 0;
+    }
+
+    if (!pathIsDirectory(child)) {
+        count = pathHasExtension(child, ".mb") ? 1 : 0;
+        freePath(child);
+
+        return count;
+    }
+
+    count = countDirectoryTests(run, child);
+    freePath(child);
+
+    return count;
+}
+
+static int countDirectoryEntries(const TestRun* run, DIR* directory, const char* path)
+{
+    struct dirent* entry;
+    int count = 0;
+
+    while ((entry = readdir(directory))) {
+        int entryCount = countDirectoryEntryTests(run, path, entry->d_name);
+
+        if (entryCount < 0) {
+            return -1;
+        }
+
+        count += entryCount;
+    }
+
+    return count;
+}
+
+static int countDirectoryTests(const TestRun* run, const char* path)
+{
+    DIR* directory = opendir(path);
+    int count;
+
+    if (!directory) {
+        testDirectoryError(path);
+
+        return -1;
+    }
+
+    count = countDirectoryEntries(run, directory, path);
+    closedir(directory);
+
+    return count;
+}
+
 static void runDirectoryEntry(TestRun* run, const char* path, const char* name)
 {
     char* child = getDirectoryEntryPath(path, name);
@@ -200,7 +270,7 @@ static void runDirectoryEntry(TestRun* run, const char* path, const char* name)
         return;
     }
 
-    if (run->excludeFuture && strcmp(path, TEST_DEFAULT_PATH) == 0 && strcmp(name, "future") == 0) {
+    if (shouldExcludeDirectory(run, path, name)) {
         freePath(child);
 
         return;
@@ -268,6 +338,7 @@ void runTests(Options* options)
 {
     const char* path = TEST_DEFAULT_PATH;
     TestRun run = {options->testOutput, PROGRAM_COMMAND, true, 0, 0, 0};
+    int testCount;
 
     if (options->testPath) {
         path = options->testPath;
@@ -282,6 +353,20 @@ void runTests(Options* options)
         return;
     }
 
+    testCount = pathIsDirectory(path) ? countDirectoryTests(&run, path) : 1;
+
+    if (testCount < 0) {
+        return;
+    }
+
+    if (testCount == 0) {
+        testsNotFoundError(path);
+
+        return;
+    }
+
+    printf("Running %d %s...\n", testCount, testCount == 1 ? "test" : "tests");
+    fflush(stdout);
     runTestPath(&run, path);
 
     if (run.found == 0) {

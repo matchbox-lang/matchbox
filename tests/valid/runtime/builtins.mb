@@ -1,5 +1,7 @@
-let x = max(4, 8)
-let y = min(4, 8)
+let a = max(4, 8)
+let b = min(4, 8)
+let c = pow(2, 8)
 
-print(x)
-print(y)
+print(a)
+print(b)
+print(c)

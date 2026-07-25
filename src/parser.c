@@ -95,7 +95,7 @@ static bool isEndOfFile(Parser* parser)
 static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = integerLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = integerLiteralToValue(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
     
@@ -107,7 +107,7 @@ static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
 static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = binaryLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = binaryLiteralToValue(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
 
@@ -119,7 +119,7 @@ static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
 static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = hexadecimalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = hexadecimalLiteralToValue(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
 
@@ -131,7 +131,7 @@ static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
 static ASTNode* parseOctalLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = octalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = octalLiteralToValue(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
 

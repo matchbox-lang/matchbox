@@ -24,6 +24,42 @@ static void semanticError(char* message, Token token)
     exit(1);
 }
 
+static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
+{
+    fprintf(stderr, "Error: Integer literal is too large for type %s", getTokenTypeName(type));
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralRequiresTypeError(Token token)
+{
+    fprintf(stderr, "Error: Integer literal requires an explicit type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void negativeUnsignedIntegerError(Token token)
+{
+    fprintf(stderr, "Error: Negative integer literal cannot have an unsigned type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void redefinitionError(char* kind, Token token)
+{
+    fprintf(stderr, "Error: %s ", kind);
+    printTokenValue(token);
+    fprintf(stderr, " is already defined on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void returnOutsideFunctionError(Token token)
+{
+    fprintf(stderr, "Error: Return statement is only valid inside a function");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static ASTNode* getIntegerLiteral(ASTNode* expression, bool* negative)
 {
     *negative = false;
@@ -68,8 +104,12 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
         return false;
     }
 
+    if (negative && isIntegerTypeToken(type) && !isSignedIntegerTypeToken(type)) {
+        negativeUnsignedIntegerError(literal->integerLiteral.token);
+    }
+
     if (!integerLiteralFitsType(literal->integerLiteral.value, negative, type)) {
-        semanticError("Integer literal does not fit type near ", literal->integerLiteral.token);
+        integerLiteralTooLargeForTypeError(literal->integerLiteral.token, type);
     }
 
     literal->integerLiteral.typeId = type;
@@ -329,7 +369,7 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 static ASTNode* getReferenceVariable(ASTNode* ast)
 {
     if (!isVariable(ast->prefix.expr)) {
-        semanticError("References require a binding near ", ast->prefix.operator);
+        semanticError("References require a binding for ", ast->prefix.operator);
     }
 
     return ast->prefix.expr;
@@ -386,7 +426,7 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->parameter.id)) {
-        semanticError("Redefinition of ", ast->parameter.token);
+        redefinitionError("Parameter", ast->parameter.token);
     }
 
     ast->parameter.scope = analyzer->currentScope;
@@ -510,7 +550,7 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
         }
 
         if (!origin && (type == REFERENCE_SHARED || isLiteral(arg))) {
-            semanticError("Reference access requires a binding near ", token);
+            semanticError("Reference access requires a binding for ", token);
         }
 
         validateEffectAccess(origin, type, token);
@@ -753,7 +793,7 @@ static void resolveFunctionReturnValueType(ASTNode* ast)
 static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->functionDefinition.id)) {
-        semanticError("Redefinition of ", ast->functionDefinition.token);
+        redefinitionError("Function", ast->functionDefinition.token);
     }
 
     Scope* parent = analyzer->currentScope;
@@ -917,8 +957,7 @@ static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
 
     if (declaredType == TOKEN_UNKNOWN) {
         if (expressionType == TOKEN_UNKNOWN) {
-            semanticError("Integer literal requires an explicit type near ",
-                ast->variableDefinition.token);
+            integerLiteralRequiresTypeError(ast->variableDefinition.token);
         }
 
         ast->variableDefinition.typeId = expressionType;
@@ -962,7 +1001,7 @@ static void trackVariableReference(ASTNode* ast)
 static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->variableDefinition.id)) {
-        semanticError("Redefinition of ", ast->variableDefinition.token);
+        redefinitionError("Variable", ast->variableDefinition.token);
     }
 
     initializeVariableDefinition(analyzer, ast);
@@ -997,7 +1036,7 @@ static ReferenceType getExpectedReturnReferenceType(Analyzer* analyzer)
 static void validateReturnScope(Analyzer* analyzer, ASTNode* ast)
 {
     if (analyzer->currentScope->level < 2) {
-        semanticError("Expected return inside a function but found ", ast->returnStatement.token);
+        returnOutsideFunctionError(ast->returnStatement.token);
     }
 }
 

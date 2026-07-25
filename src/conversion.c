@@ -4,17 +4,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static uint64_t literalToValue(char* str, size_t length, int base)
+static void integerExceedsMaximumSizeError(Token token)
 {
-    char* tmp = strndup(str, length);
+    fprintf(stderr, "Error: Integer exceeds the maximum supported size");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static uint64_t parseIntegerLiteral(Token token, size_t offset, int base)
+{
+    size_t length = token.length - offset;
+    char* tmp = strndup(token.chars + offset, length);
     stripUnderscores(tmp, &length);
     errno = 0;
     uint64_t value = strtoull(tmp, NULL, base);
 
     if (errno == ERANGE) {
-        fprintf(stderr, "Error: Integer literal exceeds the u64 range\n");
-        free(tmp);
-        exit(1);
+        integerExceedsMaximumSizeError(token);
     }
 
     free(tmp);
@@ -22,31 +28,32 @@ static uint64_t literalToValue(char* str, size_t length, int base)
     return value;
 }
 
-uint64_t integerLiteralToValue(char* str, size_t length)
+uint64_t integerLiteralToValue(Token token)
 {
-    return literalToValue(str, length, 10);
+    return parseIntegerLiteral(token, 0, 10);
 }
 
-uint64_t binaryLiteralToValue(char* str, size_t length)
+uint64_t binaryLiteralToValue(Token token)
 {
-    return literalToValue(str + 2, length - 2, 2);
+    return parseIntegerLiteral(token, 2, 2);
 }
 
-uint64_t hexadecimalLiteralToValue(char* str, size_t length)
+uint64_t hexadecimalLiteralToValue(Token token)
 {
-    return literalToValue(str + 2, length - 2, 16);
+    return parseIntegerLiteral(token, 2, 16);
 }
 
-uint64_t octalLiteralToValue(char* str, size_t length)
+uint64_t octalLiteralToValue(Token token)
 {
-    return literalToValue(str + 2, length - 2, 8);
+    return parseIntegerLiteral(token, 2, 8);
 }
 
-float floatLiteralToValue(char* str, size_t length)
+double floatLiteralToValue(char* str, size_t length)
 {
     char* tmp = strndup(str, length);
     stripUnderscores(tmp, &length);
-    float value = strtod(tmp, NULL);
+    double value = strtod(tmp, NULL);
+
     free(tmp);
 
     return value;

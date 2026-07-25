@@ -82,7 +82,7 @@ typedef struct ASTNode
         } compound;
 
         struct {
-            float value;
+            double value;
             Token token;
             TokenType typeId;
         } floatLiteral;

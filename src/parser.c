@@ -89,7 +89,8 @@ static ReferenceType parseReferenceType(Parser* parser)
 
 static bool isEndOfFile(Parser* parser)
 {
-    return parser->currentToken.type == TOKEN_EOF;
+    return parser->currentToken.type == TOKEN_INCOMPLETE_INPUT
+        || parser->currentToken.type == TOKEN_EOF;
 }
 
 static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
@@ -202,6 +203,7 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseGroupExpression(parser);
         case TOKEN_IDENTIFIER:
             return parseIdentifier(parser);
+        case TOKEN_INCOMPLETE_INPUT:
         case TOKEN_EOF:
             return NULL;
         default:
@@ -818,7 +820,7 @@ static bool parseStatements(Parser* parser, Vector* nodes, TokenType type)
 {
     Token token = parser->currentToken;
 
-    while (token.type != type) {
+    while (token.type != type && token.type != TOKEN_INCOMPLETE_INPUT) {
         ASTNode* stmt = parseStatement(parser);
         if (!stmt) {
             return false;
@@ -860,5 +862,5 @@ bool parse(Parser* parser, char* source)
     initLexer(&parser->lexer, source);
     advance(parser);
 
-    return parseTopLevelStatements(parser);
+    return parseTopLevelStatements(parser) && parser->currentToken.type != TOKEN_INCOMPLETE_INPUT;
 }

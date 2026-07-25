@@ -4,7 +4,7 @@
 
 void printTokenValue(Token token)
 {
-    if (token.type == TOKEN_EOF || token.length == 0) {
+    if (token.type == TOKEN_INCOMPLETE_INPUT || token.type == TOKEN_EOF || token.length == 0) {
         fprintf(stderr, "end of input");
         
         return;
@@ -144,6 +144,7 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_CHARACTER_LITERAL:   return "character literal";
         case TOKEN_STRING_LITERAL:      return "string literal";
         case TOKEN_IDENTIFIER:          return "identifier";
+        case TOKEN_INCOMPLETE_INPUT:    return "incomplete input";
         case TOKEN_EOF:                 return "end of input";
         case TOKEN_UNKNOWN:             return "unknown token";
     }

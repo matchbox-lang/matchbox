@@ -75,13 +75,6 @@ static const Keyword keywords[] = {
     {"yield",       5, TOKEN_YIELD}
 };
 
-static void unterminatedCommentError(const Lexer* lexer)
-{
-    fprintf(stderr, "Error: Unterminated comment");
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
-    exit(1);
-}
-
 static void unterminatedLiteralError(const Lexer* lexer, char c)
 {
     fprintf(stderr, "Error: Missing terminating %c character", c);
@@ -304,7 +297,7 @@ static void skipCommentSingle(Lexer* lexer)
     }
 }
 
-static void skipCommentMulti(Lexer* lexer)
+static bool skipCommentMulti(Lexer* lexer)
 {
     advance(lexer);
     advance(lexer);
@@ -313,16 +306,16 @@ static void skipCommentMulti(Lexer* lexer)
         if (peek(lexer) == '#' && next(lexer) == '#') {
             advance(lexer);
             advance(lexer);
-            return;
+            return true;
         }
         
         advance(lexer);
     }
 
-    unterminatedCommentError(lexer);
+    return false;
 }
 
-static void skipComment(Lexer* lexer)
+static bool skipComment(Lexer* lexer)
 {
     lexer->start.chars = lexer->current.chars;
     lexer->start.line = lexer->current.line;
@@ -333,14 +326,18 @@ static void skipComment(Lexer* lexer)
     }
 
     skipCommentSingle(lexer);
+
+    return true;
 }
 
-static void skipWhitespace(Lexer* lexer)
+static bool skipWhitespace(Lexer* lexer)
 {
     while (1) {
         switch (peek(lexer)) {
             case '#':
-                skipComment(lexer);
+                if (!skipComment(lexer)) {
+                    return false;
+                }
                 break;
             case ' ':
             case '\t':
@@ -351,7 +348,7 @@ static void skipWhitespace(Lexer* lexer)
                 advance(lexer);
                 break;
             default:
-                return;
+                return true;
         }
     }
 }
@@ -570,7 +567,9 @@ void initLexer(Lexer* lexer, char* source)
 
 Token scanToken(Lexer* lexer)
 {
-    skipWhitespace(lexer);
+    if (!skipWhitespace(lexer)) {
+        return makeToken(lexer, TOKEN_INCOMPLETE_INPUT);
+    }
 
     lexer->start.chars = lexer->current.chars;
     lexer->start.line = lexer->current.line;

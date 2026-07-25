@@ -153,6 +153,7 @@ bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
 bool isIntegerTypeToken(TokenType type);
 bool isSignedIntegerTypeToken(TokenType type);
+bool canImplicitlyWidenInteger(TokenType source, TokenType destination);
 size_t getIntegerTypeSize(TokenType type);
 size_t getTypeSlotCount(TokenType type);
 bool isComparisonToken(TokenType type);

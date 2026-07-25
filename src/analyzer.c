@@ -451,7 +451,11 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
         ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
         applyIntegerLiteralType(arg, builtin->params[i]);
 
-        if (getTypeId(arg) != builtin->params[i]) {
+        TokenType argumentType = getTypeId(arg);
+        TokenType parameterType = builtin->params[i];
+
+        if (argumentType != parameterType
+            && !canImplicitlyWidenInteger(argumentType, parameterType)) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -503,7 +507,14 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
             || argumentType == parameterType
             || (argumentType == REFERENCE_EXCLUSIVE && parameterType == REFERENCE_SHARED);
 
-        if (getTypeId(arg) != param->parameter.typeId || !compatibleReference) {
+        TokenType argumentValueType = getTypeId(arg);
+        TokenType parameterValueType = param->parameter.typeId;
+        bool compatibleValue = argumentValueType == parameterValueType
+            || (argumentType == REFERENCE_NONE
+                && parameterType == REFERENCE_NONE
+                && canImplicitlyWidenInteger(argumentValueType, parameterValueType));
+
+        if (!compatibleValue || !compatibleReference) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -737,7 +748,12 @@ static TokenType getFunctionReturnValueType(Vector* statements)
 
 static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
 {
-    if (ast->functionDefinition.typeId != type) {
+    TokenType returnType = ast->functionDefinition.typeId;
+
+    bool valueReturn = ast->functionDefinition.returnReferenceType == REFERENCE_NONE;
+
+    if (returnType != type
+        && (!valueReturn || !canImplicitlyWidenInteger(type, returnType))) {
         semanticError("Invalid return type for function ", ast->functionDefinition.token);
     }
 }
@@ -852,9 +868,14 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
 static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
 {
     ASTNode* expression = ast->assignment.expr;
+    TokenType expressionType = getTypeId(expression);
+    TokenType bindingType = getTypeId(symbol);
+    bool compatibleValue = bindingType == expressionType
+        || (getReferenceType(symbol) == REFERENCE_NONE
+            && getReferenceType(expression) == REFERENCE_NONE
+            && canImplicitlyWidenInteger(expressionType, bindingType));
 
-    if (getTypeId(symbol) != getTypeId(expression)
-        || getReferenceType(symbol) != getReferenceType(expression)) {
+    if (!compatibleValue || getReferenceType(symbol) != getReferenceType(expression)) {
         semanticError("Assignment type does not match binding ", ast->assignment.token);
     }
 }
@@ -962,7 +983,10 @@ static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
 
         ast->variableDefinition.typeId = expressionType;
         ast->variableDefinition.referenceType = expressionReferenceType;
-    } else if (declaredType != expressionType
+    } else if ((declaredType != expressionType
+        && (declaredReferenceType != REFERENCE_NONE
+            || expressionReferenceType != REFERENCE_NONE
+            || !canImplicitlyWidenInteger(expressionType, declaredType)))
         || declaredReferenceType != expressionReferenceType) {
         semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
     }

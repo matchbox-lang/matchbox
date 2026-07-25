@@ -188,6 +188,19 @@ bool isSignedIntegerTypeToken(TokenType type)
     return type >= TOKEN_I8 && type <= TOKEN_I64;
 }
 
+bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
+{
+    if (!isIntegerTypeToken(source) || !isIntegerTypeToken(destination)) {
+        return false;
+    }
+
+    if (isSignedIntegerTypeToken(source) != isSignedIntegerTypeToken(destination)) {
+        return false;
+    }
+
+    return getIntegerTypeSize(source) < getIntegerTypeSize(destination);
+}
+
 size_t getIntegerTypeSize(TokenType type)
 {
     switch (type) {

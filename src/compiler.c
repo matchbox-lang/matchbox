@@ -60,6 +60,8 @@ typedef enum IntegerOperation
 
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
+static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
+    TokenType destination, bool reference);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
@@ -1063,7 +1065,7 @@ static void compileCompoundAssignment(
         left = materializeOperand(compiler, left);
     }
 
-    Operand right = compileExpression(compiler, ast->assignment.expr, false);
+    Operand right = compileConvertedExpression(compiler, ast->assignment.expr, type, false);
     Operand result = emitBinaryOperands(compiler, operation, type, left, right);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, result);
@@ -1078,7 +1080,8 @@ static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
         return;
     }
 
-    Operand value = compileExpression(compiler, ast->assignment.expr, false);
+    Operand value = compileConvertedExpression(
+        compiler, ast->assignment.expr, getTypeId(ast->assignment.symbol), false);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, value);
 }
@@ -1123,6 +1126,45 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
     }
 
     return compileExpression(compiler, ast, false);
+}
+
+static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
+    TokenType source, TokenType destination)
+{
+    if (!canImplicitlyWidenInteger(source, destination)
+        || getTypeSlotCount(destination) == operand.slots) {
+        return operand;
+    }
+
+    int destinationRegister = operand.reg;
+
+    if (!operand.temporary) {
+        destinationRegister = allocateRegister(compiler);
+        emitMov(compiler, destinationRegister, operand.reg);
+    }
+
+    int highRegister = allocateRegister(compiler);
+
+    if (isSignedIntegerTypeToken(source)) {
+        emitInstruction(compiler, OP_ASRI_I32, highRegister, destinationRegister, 31);
+
+        return makeWideOperand(destinationRegister, true);
+    }
+
+    emitInstruction(compiler, OP_LDI, highRegister, 0, 0);
+    return makeWideOperand(destinationRegister, true);
+}
+
+static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
+    TokenType destination, bool reference)
+{
+    Operand operand = compileReferenceAwareExpression(compiler, ast, reference);
+
+    if (reference) {
+        return operand;
+    }
+
+    return widenIntegerOperand(compiler, operand, getTypeId(ast), destination);
 }
 
 static bool requiresReservedArgument(Vector* args, Vector* params, size_t position)
@@ -1170,8 +1212,9 @@ static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vecto
 
     bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
 
-    Operand expression = compileReferenceAwareExpression(
-        compiler, args->data[position], reference);
+    ASTNode* argument = args->data[position];
+    TokenType destination = parameter ? getTypeId(parameter) : getTypeId(argument);
+    Operand expression = compileConvertedExpression(compiler, argument, destination, reference);
 
     return expression;
 }
@@ -1212,15 +1255,17 @@ static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
     int firstRegister = compiler->registerCount;
 
     for (size_t i = 0; i < count; i++) {
-        slotCount += getNodeSlotCount(getVectorAt(args, i));
+        ASTNode* node = params ? getVectorAt(params, i) : getVectorAt(args, i);
+        slotCount += getNodeSlotCount(node);
     }
 
     reserveArgumentRegisters(compiler, slotCount, reserved);
 
     for (size_t i = 0, offset = 0; i < count; i++) {
         ASTNode* argument = getVectorAt(args, i);
+        ASTNode* layout = params ? getVectorAt(params, i) : argument;
         compileArgument(compiler, args, params, i, firstRegister, offset, reserved);
-        offset += getNodeSlotCount(argument);
+        offset += getNodeSlotCount(layout);
     }
 }
 
@@ -1463,7 +1508,15 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
     }
 
     bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
-    Operand value = compileReferenceAwareExpression(compiler, ast->returnStatement.expr, reference);
+    TokenType expressionType = getTypeId(ast->returnStatement.expr);
+    TokenType returnType = expressionType;
+
+    if (compiler->function->returnCount == 2) {
+        returnType = isSignedIntegerTypeToken(expressionType) ? TOKEN_I64 : TOKEN_U64;
+    }
+
+    Operand value = compileConvertedExpression(
+        compiler, ast->returnStatement.expr, returnType, reference);
 
     emitRetv(compiler, value);
     releaseOperand(compiler, value);
@@ -1490,7 +1543,8 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
         value = compileZeroValue(compiler, slots);
     } else {
         bool reference = getReferenceType(ast) != REFERENCE_NONE;
-        value = compileReferenceAwareExpression(compiler, ast->variableDefinition.expr, reference);
+        value = compileConvertedExpression(
+            compiler, ast->variableDefinition.expr, getTypeId(ast), reference);
     }
 
     if (!value.temporary) {

@@ -48,9 +48,10 @@ uint64_t octalLiteralToValue(Token token)
     return parseIntegerLiteral(token, 2, 8);
 }
 
-double floatLiteralToValue(char* str, size_t length)
+double floatLiteralToValue(Token token)
 {
-    char* tmp = strndup(str, length);
+    size_t length = token.length;
+    char* tmp = strndup(token.chars, length);
     stripUnderscores(tmp, &length);
     double value = strtod(tmp, NULL);
 

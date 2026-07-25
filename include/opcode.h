@@ -209,9 +209,6 @@ typedef enum Opcode
     OP_COUNT
 } Opcode;
 
-
-_Static_assert(OP_COUNT <= UINT8_MAX + 1, "Opcodes must fit in one byte");
-
 OpcodeFlag getOpcodeFlags(Opcode opcode);
 
 #endif

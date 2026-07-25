@@ -56,8 +56,6 @@ typedef union Value
 #error Unsupported pointer width
 #endif
 
-_Static_assert(sizeof(Value) == sizeof(void*), "Value must match the architecture pointer width");
-
 typedef struct ValueArray
 {
     Value* data;

@@ -49,6 +49,12 @@ typedef enum Opcode
     OP_REFG,
     OP_LDR,
     OP_STR,
+    OP_MOV_I64,
+    OP_LDC_I64,
+    OP_LDG_I64,
+    OP_STG_I64,
+    OP_LDR_I64,
+    OP_STR_I64,
 
     // Addition
     OP_ADD_I64,
@@ -168,6 +174,7 @@ typedef enum Opcode
     // Unary
     OP_NOT,
     OP_NEG,
+    OP_NEG_I64,
 
     // Branching
     OP_BEQ,
@@ -180,6 +187,7 @@ typedef enum Opcode
     // Functions
     OP_CALL,
     OP_RET,
+    OP_RET_I64,
     OP_RETV,
 
     // Repeated instructions

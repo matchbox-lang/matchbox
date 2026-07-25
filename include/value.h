@@ -15,11 +15,9 @@
 #define I8_VALUE(value) SIGNED_VALUE((int8_t)(value))
 #define I16_VALUE(value) SIGNED_VALUE((int16_t)(value))
 #define I32_VALUE(value) SIGNED_VALUE((int32_t)(value))
-#define I64_VALUE(value) SIGNED_VALUE((int64_t)(value))
 #define U8_VALUE(value) UNSIGNED_VALUE((uint8_t)(value))
 #define U16_VALUE(value) UNSIGNED_VALUE((uint16_t)(value))
 #define U32_VALUE(value) UNSIGNED_VALUE((uint32_t)(value))
-#define U64_VALUE(value) UNSIGNED_VALUE((uint64_t)(value))
 
 #define AS_BOOL(value) ((value).boolValue)
 #define AS_SIGNED(value) ((value).signedValue)
@@ -31,11 +29,9 @@
 #define AS_I8(value) ((int8_t)AS_SIGNED(value))
 #define AS_I16(value) ((int16_t)AS_SIGNED(value))
 #define AS_I32(value) ((int32_t)AS_SIGNED(value))
-#define AS_I64(value) ((int64_t)AS_SIGNED(value))
 #define AS_U8(value) ((uint8_t)AS_UNSIGNED(value))
 #define AS_U16(value) ((uint16_t)AS_UNSIGNED(value))
 #define AS_U32(value) ((uint32_t)AS_UNSIGNED(value))
-#define AS_U64(value) ((uint64_t)AS_UNSIGNED(value))
 
 #if UINTPTR_MAX == UINT32_MAX
 typedef union Value

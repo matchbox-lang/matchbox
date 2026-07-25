@@ -22,6 +22,11 @@ func preservePositions(first: i64, second: i32, third: u64) -> i32 {
     return second
 }
 
-let preserved = preservePositions(signed64, inferred, unsigned64)
+func preserveWide(value: u64) -> u64 {
+    return value
+}
+
+let returned64 = preserveWide(unsigned64)
+let preserved = preservePositions(signed64, inferred, returned64)
 
 print(preserved)

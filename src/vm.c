@@ -5,6 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if UINTPTR_MAX == UINT32_MAX
+#define VM_WIDE_INSTRUCTIONS "vm/wide_32.inc"
+#elif UINTPTR_MAX == UINT64_MAX
+#define VM_WIDE_INSTRUCTIONS "vm/wide_64.inc"
+#else
+#error Unsupported pointer width
+#endif
+
 static void stackOverflowError(void)
 {
     fprintf(stderr, "Error: Stack overflow\n");
@@ -77,12 +85,7 @@ static void run(VM* vm)
             case OP_STR:
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
-            case OP_ADD_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) + AS_U64(vm->fp[c]));
-                break;
-            case OP_ADDI_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) + (int8_t)c);
-                break;
+#include VM_WIDE_INSTRUCTIONS
             case OP_ADD_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) + AS_U32(vm->fp[c]));
                 break;
@@ -100,12 +103,6 @@ static void run(VM* vm)
                 break;
             case OP_ADDI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) + (int8_t)c);
-                break;
-            case OP_SUB_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) - AS_U64(vm->fp[c]));
-                break;
-            case OP_SUBI_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) - (int8_t)c);
                 break;
             case OP_SUB_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) - AS_U32(vm->fp[c]));
@@ -125,9 +122,6 @@ static void run(VM* vm)
             case OP_SUBI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) - (int8_t)c);
                 break;
-            case OP_MUL_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) * AS_U64(vm->fp[c]));
-                break;
             case OP_MUL_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) * AS_U32(vm->fp[c]));
                 break;
@@ -136,9 +130,6 @@ static void run(VM* vm)
                 break;
             case OP_MUL_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) * AS_U8(vm->fp[c]));
-                break;
-            case OP_IDIV_I64:
-                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) / AS_I64(vm->fp[c]));
                 break;
             case OP_IDIV_I32:
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) / AS_I32(vm->fp[c]));
@@ -149,9 +140,6 @@ static void run(VM* vm)
             case OP_IDIV_I8:
                 vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) / AS_I8(vm->fp[c]));
                 break;
-            case OP_IDIV_U64:
-                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) / AS_U64(vm->fp[c]));
-                break;
             case OP_IDIV_U32:
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) / AS_U32(vm->fp[c]));
                 break;
@@ -161,9 +149,6 @@ static void run(VM* vm)
             case OP_IDIV_U8:
                 vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) / AS_U8(vm->fp[c]));
                 break;
-            case OP_REM_I64:
-                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) % AS_I64(vm->fp[c]));
-                break;
             case OP_REM_I32:
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) % AS_I32(vm->fp[c]));
                 break;
@@ -172,9 +157,6 @@ static void run(VM* vm)
                 break;
             case OP_REM_I8:
                 vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) % AS_I8(vm->fp[c]));
-                break;
-            case OP_REM_U64:
-                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) % AS_U64(vm->fp[c]));
                 break;
             case OP_REM_U32:
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) % AS_U32(vm->fp[c]));
@@ -186,13 +168,7 @@ static void run(VM* vm)
                 vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) % AS_U8(vm->fp[c]));
                 break;
             case OP_POW:
-                vm->fp[a] = I64_VALUE(pow(AS_I64(vm->fp[b]), AS_I64(vm->fp[c])));
-                break;
-            case OP_BAND_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) & AS_U64(vm->fp[c]));
-                break;
-            case OP_BANDI_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) & c);
+                vm->fp[a] = SIGNED_VALUE(pow(AS_SIGNED(vm->fp[b]), AS_SIGNED(vm->fp[c])));
                 break;
             case OP_BAND_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) & AS_U32(vm->fp[c]));
@@ -212,12 +188,6 @@ static void run(VM* vm)
             case OP_BANDI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) & c);
                 break;
-            case OP_BOR_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) | AS_U64(vm->fp[c]));
-                break;
-            case OP_BORI_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) | c);
-                break;
             case OP_BOR_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) | AS_U32(vm->fp[c]));
                 break;
@@ -235,12 +205,6 @@ static void run(VM* vm)
                 break;
             case OP_BORI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) | c);
-                break;
-            case OP_BXOR_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) ^ AS_U64(vm->fp[c]));
-                break;
-            case OP_BXORI_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) ^ c);
                 break;
             case OP_BXOR_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) ^ AS_U32(vm->fp[c]));
@@ -260,9 +224,6 @@ static void run(VM* vm)
             case OP_BXORI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) ^ c);
                 break;
-            case OP_BNOT_I64:
-                vm->fp[a] = I64_VALUE(~AS_U64(vm->fp[b]));
-                break;
             case OP_BNOT_I32:
                 vm->fp[a] = I32_VALUE(~AS_U32(vm->fp[b]));
                 break;
@@ -271,12 +232,6 @@ static void run(VM* vm)
                 break;
             case OP_BNOT_I8:
                 vm->fp[a] = I8_VALUE(~AS_U8(vm->fp[b]));
-                break;
-            case OP_LSL_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) << AS_U64(vm->fp[c]));
-                break;
-            case OP_LSLI_I64:
-                vm->fp[a] = I64_VALUE(AS_U64(vm->fp[b]) << c);
                 break;
             case OP_LSL_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) << AS_U32(vm->fp[c]));
@@ -296,12 +251,6 @@ static void run(VM* vm)
             case OP_LSLI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) << c);
                 break;
-            case OP_LSR_I64:
-                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) >> AS_U64(vm->fp[c]));
-                break;
-            case OP_LSRI_I64:
-                vm->fp[a] = U64_VALUE(AS_U64(vm->fp[b]) >> c);
-                break;
             case OP_LSR_I32:
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) >> AS_U32(vm->fp[c]));
                 break;
@@ -319,12 +268,6 @@ static void run(VM* vm)
                 break;
             case OP_LSRI_I8:
                 vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) >> c);
-                break;
-            case OP_ASR_I64:
-                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) >> AS_I64(vm->fp[c]));
-                break;
-            case OP_ASRI_I64:
-                vm->fp[a] = I64_VALUE(AS_I64(vm->fp[b]) >> c);
                 break;
             case OP_ASR_I32:
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) >> AS_I32(vm->fp[c]));

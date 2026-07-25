@@ -23,6 +23,7 @@ typedef struct Operand
 {
     int reg;
     bool temporary;
+    size_t slots;
 } Operand;
 
 typedef struct CallArea
@@ -62,6 +63,7 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
+static size_t getNodeSlotCount(ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -100,6 +102,17 @@ static int allocateRegister(Compiler* compiler)
 static int releaseRegister(Compiler* compiler)
 {
     return --compiler->registerCount;
+}
+
+static int allocateRegisters(Compiler* compiler, size_t count)
+{
+    int first = compiler->registerCount;
+
+    for (size_t i = 0; i < count; i++) {
+        allocateRegister(compiler);
+    }
+
+    return first;
 }
 
 static void write8(Compiler* compiler, uint8_t n)
@@ -170,9 +183,30 @@ static void emitMov(Compiler* compiler, int dst, int src)
     emitInstruction(compiler, OP_MOV, dst, src, 0);
 }
 
+static void emitOperandMov(Compiler* compiler, int dst, Operand operand)
+{
+    if (operand.slots != 2) {
+        emitMov(compiler, dst, operand.reg);
+        return;
+    }
+
+    if (dst == operand.reg) {
+        return;
+    }
+
+    emitInstruction(compiler, OP_MOV_I64, dst, operand.reg, 0);
+}
+
 static Operand makeOperand(int reg, bool temporary)
 {
-    Operand operand = {reg, temporary};
+    Operand operand = {reg, temporary, 1};
+
+    return operand;
+}
+
+static Operand makeWideOperand(int reg, bool temporary)
+{
+    Operand operand = {reg, temporary, 2};
 
     return operand;
 }
@@ -184,7 +218,7 @@ static Operand noOperand(void)
 
 static void releaseOperand(Compiler* compiler, Operand operand)
 {
-    if (operand.temporary) {
+    for (size_t i = 0; operand.temporary && i < operand.slots; i++) {
         releaseRegister(compiler);
     }
 }
@@ -195,11 +229,10 @@ static Operand materializeOperand(Compiler* compiler, Operand operand)
         return operand;
     }
 
-    int reg = allocateRegister(compiler);
-
-    emitMov(compiler, reg, operand.reg);
+    int reg = allocateRegisters(compiler, operand.slots);
+    emitOperandMov(compiler, reg, operand);
     
-    return makeOperand(reg, true);
+    return operand.slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
 }
 
 static int emitLdc(Compiler* compiler, uint16_t imm)
@@ -207,6 +240,15 @@ static int emitLdc(Compiler* compiler, uint16_t imm)
     int reg = allocateRegister(compiler);
 
     emitInstruction(compiler, OP_LDC, reg, imm >> 8, imm);
+
+    return reg;
+}
+
+static int emitLdcI64(Compiler* compiler, uint16_t position)
+{
+    int reg = allocateRegisters(compiler, 2);
+
+    emitInstruction(compiler, OP_LDC_I64, reg, position >> 8, position);
 
     return reg;
 }
@@ -414,9 +456,11 @@ static void emitRet(Compiler* compiler)
     emitInstruction(compiler, OP_RET, 0, 0, 0);
 }
 
-static void emitRetv(Compiler* compiler, int src)
+static void emitRetv(Compiler* compiler, Operand operand)
 {
-    emitInstruction(compiler, OP_RETV, src, 0, 0);
+    Opcode opcode = operand.slots == 2 ? OP_RET_I64 : OP_RETV;
+
+    emitInstruction(compiler, opcode, operand.reg, 0, 0);
 }
 
 static int getCallAreaCount(FunctionObject* function)
@@ -427,6 +471,21 @@ static int getCallAreaCount(FunctionObject* function)
 static size_t makeConstant(Compiler* compiler, Value value)
 {
     return pushValue(&compiler->module->constants, value) - 1;
+}
+
+static size_t makeI64Constant(Compiler* compiler, uint64_t value)
+{
+    size_t position = countValueArray(&compiler->module->constants);
+
+#if UINTPTR_MAX == UINT32_MAX
+    pushValue(&compiler->module->constants, U32_VALUE(value));
+    pushValue(&compiler->module->constants, U32_VALUE(value >> 32));
+#else
+    pushValue(&compiler->module->constants, UNSIGNED_VALUE(value));
+    pushValue(&compiler->module->constants, UNSIGNED_VALUE(0));
+#endif
+
+    return position;
 }
 
 static CallArea openCallArea(Compiler* compiler)
@@ -457,14 +516,16 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     emitCallInstruction(compiler, (uint8_t)call.frameRegister, functionPosition);
 
     if (!discard && function->returnCount) {
-        compiler->registerCount = call.resultRegister + 1;
+        compiler->registerCount = call.resultRegister + function->returnCount;
         
-        return makeOperand(call.resultRegister, true);
-    } else {
-        compiler->registerCount = call.resultRegister;
-
-        return noOperand();
+        return function->returnCount == 2
+            ? makeWideOperand(call.resultRegister, true)
+            : makeOperand(call.resultRegister, true);
     }
+
+    compiler->registerCount = call.resultRegister;
+
+    return noOperand();
 }
 
 static int getLocalPosition(Compiler* compiler, ASTNode* ast)
@@ -503,9 +564,17 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
 static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = ast->variableDefinition.position;
+    bool wide = getNodeSlotCount(ast) == 2;
 
     if (isCompilingTopLevel(compiler)) {
-        return makeOperand(position, false);
+        return wide ? makeWideOperand(position, false) : makeOperand(position, false);
+    }
+
+    if (wide) {
+        int reg = allocateRegisters(compiler, 2);
+        emitInstruction(compiler, OP_LDG_I64, reg, position >> 8, position);
+
+        return makeWideOperand(reg, true);
     }
 
     return loadGlobalWithStoreForwarding(compiler, position);
@@ -515,7 +584,9 @@ static Operand loadLocalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = getLocalPosition(compiler, ast);
 
-    return makeOperand(position, false);
+    return getNodeSlotCount(ast) == 2
+        ? makeWideOperand(position, false)
+        : makeOperand(position, false);
 }
 
 static Operand loadVariable(Compiler* compiler, ASTNode* ast)
@@ -547,19 +618,25 @@ static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
     return makeOperand(reg, true);
 }
 
-static Operand dereferenceOperand(Compiler* compiler, Operand operand)
+static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t slots)
 {
-    if (operand.temporary) {
-        emitInstruction(compiler, OP_LDR, operand.reg, operand.reg, 0);
+    Opcode opcode = slots == 2 ? OP_LDR_I64 : OP_LDR;
 
-        return operand;
+    if (!operand.temporary) {
+        int reg = allocateRegisters(compiler, slots);
+
+        emitInstruction(compiler, opcode, reg, operand.reg, 0);
+
+        return slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
     }
 
-    int reg = allocateRegister(compiler);
+    if (slots == 2) {
+        allocateRegister(compiler);
+    }
 
-    emitInstruction(compiler, OP_LDR, reg, operand.reg, 0);
+    emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
 
-    return makeOperand(reg, true);
+    return slots == 2 ? makeWideOperand(operand.reg, true) : operand;
 }
 
 static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
@@ -594,6 +671,12 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = ast->variableDefinition.position;
 
+    if (value.slots == 2) {
+        emitInstruction(compiler, OP_STG_I64, value.reg, position >> 8, position);
+
+        return;
+    }
+
     if (fuseLdiStore(compiler, value, position)) {
         return;
     }
@@ -627,9 +710,11 @@ static void storeLocalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = getLocalPosition(compiler, ast);
 
-    if (!retargetTemporary(compiler, value, position)) {
-        emitMov(compiler, position, value.reg);
+    if (retargetTemporary(compiler, value, position)) {
+        return;
     }
+
+    emitOperandMov(compiler, position, value);
 }
 
 static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
@@ -643,9 +728,20 @@ static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
     releaseOperand(compiler, value);
 }
 
+static Operand compileWideNumber(Compiler* compiler, uint64_t value)
+{
+    size_t position = makeI64Constant(compiler, value);
+
+    return makeWideOperand(emitLdcI64(compiler, position), true);
+}
+
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     uint64_t value = ast->integerLiteral.value;
+
+    if (getNodeSlotCount(ast) == 2) {
+        return compileWideNumber(compiler, value);
+    }
 
     if (value > INT16_MAX) {
         Value constant = isSignedIntegerTypeToken(getTypeId(ast))
@@ -752,7 +848,7 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
         case INTEGER_LSR:
             return getRightShiftOpcode(type);
         case INTEGER_NEG:
-            return OP_NEG;
+            return getIntegerTypeSize(type) == 8 ? OP_NEG_I64 : OP_NEG;
     }
 
     return OP_HLT;
@@ -799,7 +895,8 @@ static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
     PreviousInstruction previous;
 
     if (!right.temporary || !getPreviousInstruction(compiler, &previous)
-        || previous.opcode != OP_LDI || previous.a != right.reg) {
+        || previous.opcode != OP_LDI
+        || previous.a != right.reg) {
         return false;
     }
 
@@ -813,9 +910,9 @@ static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
     resizeCodeObject(previous.code, previous.start);
     releaseOperand(compiler, right);
 
-    int dst = left.temporary ? left.reg : allocateRegister(compiler);
+    int dst = left.temporary ? left.reg : allocateRegisters(compiler, left.slots);
     emitInstruction(compiler, opcode, dst, left.reg, immediate);
-    *result = makeOperand(dst, true);
+    *result = left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 
     return true;
 }
@@ -837,12 +934,12 @@ static Operand emitBinaryOperands(
     } else if (right.temporary) {
         dst = right.reg;
     } else {
-        dst = allocateRegister(compiler);
+        dst = allocateRegisters(compiler, left.slots);
     }
 
     emitInstruction(compiler, getIntegerOpcode(type, operation), dst, left.reg, right.reg);
     
-    return makeOperand(dst, true);
+    return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
@@ -893,16 +990,17 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
         return operand;
     }
 
-    int dst = allocateRegister(compiler);
+    int dst = allocateRegisters(compiler, operand.slots);
     emitInstruction(compiler, opcode, dst, operand.reg, 0);
 
-    return makeOperand(dst, true);
+    return operand.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
 static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 {
     if (getReferenceType(ast) != REFERENCE_NONE) {
-        return dereferenceOperand(compiler, compileReferenceExpression(compiler, ast));
+        return dereferenceOperand(
+            compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getTypeId(ast)));
     }
 
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
@@ -929,7 +1027,7 @@ static Operand compileVariable(Compiler* compiler, ASTNode* ast)
         return value;
     }
 
-    return dereferenceOperand(compiler, value);
+    return dereferenceOperand(compiler, value, getTypeSlotCount(getTypeId(ast)));
 }
 
 static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand value)
@@ -941,8 +1039,9 @@ static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand va
     }
 
     Operand reference = loadVariable(compiler, symbol);
+    Opcode opcode = value.slots == 2 ? OP_STR_I64 : OP_STR;
 
-    emitInstruction(compiler, OP_STR, value.reg, reference.reg, 0);
+    emitInstruction(compiler, opcode, value.reg, reference.reg, 0);
     releaseOperand(compiler, value);
     releaseOperand(compiler, reference);
 }
@@ -955,7 +1054,8 @@ static void compileCompoundAssignment(
     Operand left = loadVariable(compiler, ast->assignment.symbol);
 
     if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
-        left = dereferenceOperand(compiler, left);
+        left = dereferenceOperand(
+            compiler, left, getTypeSlotCount(getTypeId(ast->assignment.symbol)));
     }
 
     if (!left.temporary && !isDirectVariable(compiler, ast->assignment.expr)) {
@@ -1077,18 +1177,15 @@ static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vecto
 
 static void storeArgument(Compiler* compiler, Operand argument,int destination, bool reserved)
 {
-    if (reserved) {
-        emitMov(compiler, destination, argument.reg);
-
+    if (!reserved && argument.temporary) {
         return;
     }
 
-    if (argument.temporary) {
-        return;
+    if (!reserved) {
+        allocateRegisters(compiler, argument.slots);
     }
 
-    allocateRegister(compiler);
-    emitMov(compiler, destination, argument.reg);
+    emitOperandMov(compiler, destination, argument);
 }
 
 static void compileArgument(Compiler* compiler, Vector* args, Vector* params, size_t position,
@@ -1104,11 +1201,6 @@ static void compileArgument(Compiler* compiler, Vector* args, Vector* params, si
 
     storeArgument(compiler, argument, destination, reserved);
 
-    size_t slots = getNodeSlotCount(getVectorAt(args, position));
-
-    for (size_t i = 1; !reserved && i < slots; i++) {
-        allocateRegister(compiler);
-    }
 }
 
 static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
@@ -1250,8 +1342,8 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
     CallArea call = openCallArea(compiler);
     int callArgumentRegister = compiler->registerCount;
 
-    allocateRegister(compiler);
-    emitMov(compiler, callArgumentRegister, argument.reg);
+    allocateRegisters(compiler, argument.slots);
+    emitOperandMov(compiler, callArgumentRegister, argument);
     closeCallArea(compiler, function, functionPosition, call, discard);
     releaseOperand(compiler, argument);
 }
@@ -1275,7 +1367,7 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
         return result;
     }
 
-    return dereferenceOperand(compiler, result);
+    return dereferenceOperand(compiler, result, getTypeSlotCount(getTypeId(ast)));
 }
 
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
@@ -1353,30 +1445,38 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
     bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
     Operand value = compileReferenceAwareExpression(compiler, ast->returnStatement.expr, reference);
 
-    emitRetv(compiler, value.reg);
+    emitRetv(compiler, value);
     releaseOperand(compiler, value);
     compiler->registerCount = compiler->frameBaseCount;
+}
+
+static Operand compileZeroValue(Compiler* compiler, size_t slots)
+{
+    if (slots == 2) {
+        size_t position = makeI64Constant(compiler, 0);
+
+        return makeWideOperand(emitLdcI64(compiler, position), true);
+    }
+
+    return makeOperand(emitLdi(compiler, 0), true);
 }
 
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
     Operand value;
+    size_t slots = getNodeSlotCount(ast);
 
     if (isNone(ast->variableDefinition.expr)) {
-        value = makeOperand(emitLdi(compiler, 0), true);
+        value = compileZeroValue(compiler, slots);
     } else {
         bool reference = getReferenceType(ast) != REFERENCE_NONE;
         value = compileReferenceAwareExpression(compiler, ast->variableDefinition.expr, reference);
     }
 
     if (!value.temporary) {
-        int reg = allocateRegister(compiler);
+        int reg = allocateRegisters(compiler, slots);
 
-        emitMov(compiler, reg, value.reg);
-    }
-
-    for (size_t i = 1; i < getNodeSlotCount(ast); i++) {
-        allocateRegister(compiler);
+        emitOperandMov(compiler, reg, value);
     }
 }
 

@@ -160,6 +160,12 @@ static void printInstruction(uint8_t c)
         case OP_REFG:           printOpcodeRegisterUint16("REFG"); break;
         case OP_LDR:            printOpcodeRegisters2("LDR"); break;
         case OP_STR:            printOpcodeRegisters2("STR"); break;
+        case OP_MOV_I64:        printOpcodeRegisters2("MOV_I64"); break;
+        case OP_LDC_I64:        printOpcodeRegisterUint16("LDC_I64"); break;
+        case OP_LDG_I64:        printOpcodeRegisterUint16("LDG_I64"); break;
+        case OP_STG_I64:        printOpcodeRegisterUint16("STG_I64"); break;
+        case OP_LDR_I64:        printOpcodeRegisters2("LDR_I64"); break;
+        case OP_STR_I64:        printOpcodeRegisters2("STR_I64"); break;
         case OP_ADD_I64:      printOpcodeRegisters3("ADD_I64"); break;
         case OP_ADD_I32:      printOpcodeRegisters3("ADD_I32"); break;
         case OP_ADD_I16:      printOpcodeRegisters3("ADD_I16"); break;
@@ -251,6 +257,7 @@ static void printInstruction(uint8_t c)
         case OP_ASRI_I8:      printOpcodeRegisters2Int8("ASRI_I8"); break;
         case OP_NOT:            printOpcodeRegisters2("NOT"); break;
         case OP_NEG:            printOpcodeRegisters2("NEG"); break;
+        case OP_NEG_I64:        printOpcodeRegisters2("NEG_I64"); break;
         case OP_BEQ:            printOpcodeBranch("BEQ"); break;
         case OP_BLT_INT:        printOpcodeBranch("BLT_INT"); break;
         case OP_BLT_UINT:       printOpcodeBranch("BLT_UINT"); break;
@@ -259,6 +266,7 @@ static void printInstruction(uint8_t c)
         case OP_JMP:            printOpcodeInt24("JMP"); break;
         case OP_CALL:           printOpcodeRegisterUint16("CALL"); break;
         case OP_RET:            printOpcode("RET"); break;
+        case OP_RET_I64:        printOpcodeRegister("RET_I64"); break;
         case OP_RETV:           printOpcodeRegister("RETV"); break;
         case OP_CALL2:          printOpcodeRegisterUint8Uint8("CALL2"); break;
         case OP_LDI2:           printOpcodeRegisterInt8Int8("LDI2"); break;

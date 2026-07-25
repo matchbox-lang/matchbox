@@ -40,6 +40,7 @@ static void writeI64(Value* frame, int64_t value)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits = (uint64_t)value;
+    
     frame[-2] = U32_VALUE(bits);
     frame[-1] = U32_VALUE(bits >> 32);
 #else

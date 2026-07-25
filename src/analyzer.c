@@ -765,7 +765,7 @@ static TokenType getFunctionReturnValueType(Vector* statements)
 
 static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
 {
-    TokenType returnType = ast->functionDefinition.typeId;
+    TokenType returnType = ast->functionDefinition.returnTypeId;
 
     bool valueReturn = ast->functionDefinition.returnReferenceType == REFERENCE_NONE;
 
@@ -792,7 +792,7 @@ static void setParameterPositions(ASTNode* ast)
 static void applyFunctionReturnLiteralType(ASTNode* ast)
 {
     if (!ast->functionDefinition.hasExplicitReturnType
-        || !isIntegerTypeToken(ast->functionDefinition.typeId)) {
+        || !isIntegerTypeToken(ast->functionDefinition.returnTypeId)) {
         return;
     }
 
@@ -804,7 +804,7 @@ static void applyFunctionReturnLiteralType(ASTNode* ast)
 
         if (statement->type == AST_RETURN) {
             applyIntegerLiteralType(
-                statement->returnStatement.expr, ast->functionDefinition.typeId);
+                statement->returnStatement.expr, ast->functionDefinition.returnTypeId);
         }
     }
 }
@@ -820,7 +820,7 @@ static void resolveFunctionReturnValueType(ASTNode* ast)
         return;
     }
 
-    ast->functionDefinition.typeId = type;
+    ast->functionDefinition.returnTypeId = type;
 }
 
 static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)

@@ -14,7 +14,7 @@ typedef struct Builtin
     FunctionEntry entry;
     int paramCount;
     TokenType params[BUILTIN_PARAMS_MAX];
-    TokenType typeId;
+    TokenType returnTypeId;
 } Builtin;
 
 extern Builtin builtins[BUILTINS_MAX];

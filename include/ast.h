@@ -101,7 +101,7 @@ typedef struct ASTNode
             Token token;
             Vector params;
             bool hasExplicitReturnType;
-            TokenType typeId;
+            TokenType returnTypeId;
             ReferenceType returnReferenceType;
             ASTNode* returnReferenceOrigin;
             ASTNode* body;

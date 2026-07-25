@@ -141,7 +141,7 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_BOOLEAN:
             return TOKEN_BOOL;
         case AST_BUILTIN_CALL:
-            return ast->builtinCall.builtin->typeId;
+            return ast->builtinCall.builtin->returnTypeId;
         case AST_CHARACTER:
             return TOKEN_CHAR;
         case AST_FLOAT:
@@ -149,7 +149,7 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_FUNCTION_CALL:
             return getTypeId(ast->functionCall.symbol);
         case AST_FUNCTION_DEFINITION:
-            return ast->functionDefinition.typeId;
+            return ast->functionDefinition.returnTypeId;
         case AST_PARAMETER:
             return ast->parameter.typeId;
         case AST_VARIABLE:

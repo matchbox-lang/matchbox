@@ -1284,13 +1284,13 @@ static FunctionObject* createBuiltinFunctionObject(Builtin* builtin)
     function->type = FUNCTION_BUILTIN;
     function->entry = builtin->entry;
     function->paramCount = 0;
-    function->returnCount = getTypeSlotCount(builtin->typeId);
+    function->returnCount = getTypeSlotCount(builtin->returnTypeId);
 
     for (int i = 0; i < builtin->paramCount; i++) {
         function->paramCount += getTypeSlotCount(builtin->params[i]);
     }
 
-    if (builtin->typeId == TOKEN_VOID) {
+    if (builtin->returnTypeId == TOKEN_VOID) {
         function->returnCount = 0;
     }
 
@@ -1309,9 +1309,9 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
         function->paramCount += getNodeSlotCount(
             getVectorAt(&ast->functionDefinition.params, i));
     }
-    function->returnCount = getTypeSlotCount(ast->functionDefinition.typeId);
+    function->returnCount = getTypeSlotCount(ast->functionDefinition.returnTypeId);
 
-    if (ast->functionDefinition.typeId == TOKEN_VOID) {
+    if (ast->functionDefinition.returnTypeId == TOKEN_VOID) {
         function->returnCount = 0;
     }
 

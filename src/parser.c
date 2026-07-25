@@ -588,7 +588,7 @@ static ASTNode* createFunctionDefinitionNode(Token token, StringObject* id)
     ast->functionDefinition.scope = NULL;
     ast->functionDefinition.id = id;
     ast->functionDefinition.token = token;
-    ast->functionDefinition.typeId = TOKEN_I32;
+    ast->functionDefinition.returnTypeId = TOKEN_I32;
     ast->functionDefinition.returnReferenceType = REFERENCE_NONE;
     ast->functionDefinition.returnReferenceOrigin = NULL;
     ast->functionDefinition.hasExplicitReturnType = false;
@@ -605,7 +605,7 @@ static void parseFunctionReturnType(Parser* parser, ASTNode* ast)
 
     consume(parser, TOKEN_ARROW);
     ast->functionDefinition.returnReferenceType = parseReferenceType(parser);
-    ast->functionDefinition.typeId = parser->currentToken.type;
+    ast->functionDefinition.returnTypeId = parser->currentToken.type;
     consumeType(parser);
     ast->functionDefinition.hasExplicitReturnType = true;
 }

@@ -1,11 +1,19 @@
 let signed8: i8 = -128
 let signed16: i16 = -32768
 let signed32: i32 = -2147483648
-let signed64: i64 = -123456789012345
-let maximum64: i64 = 9223372036854775807
+let signed64: i64 = -9223372036854775808
 
 print(signed8)
 print(signed16)
 print(signed32)
 print(signed64)
-print(maximum64)
+
+let unsigned8: u8 = 255
+let unsigned16: u16 = 65535
+let unsigned32: u32 = 4294967295
+let unsigned64: u64 = 18446744073709551615
+
+print(unsigned8)
+print(unsigned16)
+print(unsigned32)
+print(unsigned64)

@@ -12,6 +12,8 @@ Builtin builtins[BUILTINS_MAX] = {
     {"exit",        builtinExit,        0,  {},                                 TOKEN_VOID},
     {"print",       builtinPrintI32,    1,  {TOKEN_I32},                        TOKEN_VOID},
     {"print",       builtinPrintI64,    1,  {TOKEN_I64},                        TOKEN_VOID},
+    {"print",       builtinPrintU32,    1,  {TOKEN_U32},                        TOKEN_VOID},
+    {"print",       builtinPrintU64,    1,  {TOKEN_U64},                        TOKEN_VOID},
     {"clamp",       builtinClamp,       3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
     {"clamp",       builtinClampI64,    3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
     {"abs",         builtinAbs,         1,  {TOKEN_I32},                        TOKEN_I32},
@@ -33,6 +35,15 @@ static int64_t readI64(Value* frame, size_t position)
     return (int64_t)bits;
 #else
     return AS_SIGNED(frame[position]);
+#endif
+}
+
+static uint64_t readU64(Value* frame, size_t position)
+{
+#if UINTPTR_MAX == UINT32_MAX
+    return AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
+#else
+    return AS_UNSIGNED(frame[position]);
 #endif
 }
 
@@ -120,6 +131,26 @@ void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame)
     int64_t n = readI64(frame, 0);
 
     printf("%" PRId64 "\n", n);
+}
+
+void builtinPrintU32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    uint32_t n = AS_U32(frame[0]);
+
+    printf("%" PRIu32 "\n", n);
+}
+
+void builtinPrintU64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    uint64_t n = readU64(frame, 0);
+
+    printf("%" PRIu64 "\n", n);
 }
 
 void builtinClamp(VM* vm, FunctionObject* function, Value* frame)

@@ -67,7 +67,6 @@ typedef struct ASTNode
         } booleanLiteral;
 
         struct {
-            BuiltinId id;
             Vector args;
             Builtin* builtin;
         } builtinCall;

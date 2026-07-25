@@ -1,6 +1,7 @@
 #include "builtin.h"
 #include "token.h"
 #include "value.h"
+#include <inttypes.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,22 +9,55 @@
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {
-    {"exit",        BUILTIN_EXIT,       builtinExit,       0, {},                                  TOKEN_VOID},
-    {"print",       BUILTIN_PRINT,      builtinPrint,      1, {TOKEN_I32},                         TOKEN_VOID},
-    {"clamp",       BUILTIN_CLAMP,      builtinClamp,      3, {TOKEN_I32, TOKEN_I32, TOKEN_I32},   TOKEN_I32},
-    {"abs",         BUILTIN_ABS,        builtinAbs,        1, {TOKEN_I32},                         TOKEN_I32},
-    {"min",         BUILTIN_MIN,        builtinMin,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
-    {"max",         BUILTIN_MAX,        builtinMax,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
-    {"pow",         BUILTIN_POW,        builtinPow,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
-    {"byteorder",   BUILTIN_BYTEORDER,  builtinByteorder,  0, {},                                  TOKEN_I32}
+    {"exit",        builtinExit,       0, {},                                  TOKEN_VOID},
+    {"print",       builtinPrintI32,   1, {TOKEN_I32},                         TOKEN_VOID},
+    {"print",       builtinPrintI64,   1, {TOKEN_I64},                         TOKEN_VOID},
+    {"clamp",       builtinClamp,      3, {TOKEN_I32, TOKEN_I32, TOKEN_I32},   TOKEN_I32},
+    {"abs",         builtinAbs,        1, {TOKEN_I32},                         TOKEN_I32},
+    {"min",         builtinMin,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
+    {"max",         builtinMax,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
+    {"pow",         builtinPow,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
+    {"byteorder",   builtinByteorder,  0, {},                                  TOKEN_I32}
 };
 
-Builtin* getBuiltinByName(const char* name)
+static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)
+{
+    TokenType argumentType = argumentTypes[position];
+    TokenType parameterType = builtin->params[position];
+
+    return argumentType == TOKEN_UNKNOWN
+        || argumentType == parameterType
+        || canImplicitlyWidenInteger(argumentType, parameterType);
+}
+
+static bool builtinMatches(Builtin* builtin, TokenType* argumentTypes, size_t argumentCount)
+{
+    if ((size_t)builtin->paramCount != argumentCount) {
+        return false;
+    }
+
+    for (size_t i = 0; i < argumentCount; i++) {
+        if (!builtinArgumentMatches(builtin, argumentTypes, i)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool builtinCallMatches(
+    Builtin* builtin, const char* name, TokenType* argumentTypes, size_t argumentCount)
+{
+    return strcmp(name, builtin->name) == 0
+        && builtinMatches(builtin, argumentTypes, argumentCount);
+}
+
+Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount)
 {
     for (int i = 0; i < BUILTINS_MAX; i++) {
         Builtin* builtin = &builtins[i];
 
-        if (strcmp(name, builtin->name) == 0) {
+        if (builtinCallMatches(builtin, name, argumentTypes, argumentCount)) {
             return builtin;
         }
     }
@@ -40,14 +74,29 @@ void builtinExit(VM* vm, FunctionObject* function, Value* frame)
     exit(0);
 }
 
-void builtinPrint(VM* vm, FunctionObject* function, Value* frame)
+void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
 
-    int32_t n = AS_SIGNED(frame[0]);
+    int32_t n = AS_I32(frame[0]);
     
-    printf("%d\n", n);
+    printf("%" PRId32 "\n", n);
+}
+
+void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+#if UINTPTR_MAX == UINT32_MAX
+    uint64_t bits = AS_U32(frame[0]) | ((uint64_t)AS_U32(frame[1]) << 32);
+    int64_t n = (int64_t)bits;
+#else
+    int64_t n = AS_SIGNED(frame[0]);
+#endif
+
+    printf("%" PRId64 "\n", n);
 }
 
 void builtinClamp(VM* vm, FunctionObject* function, Value* frame)

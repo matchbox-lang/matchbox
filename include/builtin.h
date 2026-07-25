@@ -5,35 +5,24 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 8
-
-typedef enum BuiltinId
-{
-    BUILTIN_EXIT,
-    BUILTIN_PRINT,
-    BUILTIN_CLAMP,
-    BUILTIN_ABS,
-    BUILTIN_MIN,
-    BUILTIN_MAX,
-    BUILTIN_POW,
-    BUILTIN_BYTEORDER
-} BuiltinId;
+#define BUILTINS_MAX 9
+#define BUILTIN_PARAMS_MAX 4
 
 typedef struct Builtin
 {
     const char* name;
-    BuiltinId id;
     FunctionEntry entry;
     int paramCount;
-    TokenType params[4];
+    TokenType params[BUILTIN_PARAMS_MAX];
     TokenType typeId;
 } Builtin;
 
 extern Builtin builtins[BUILTINS_MAX];
 
-Builtin* getBuiltinByName(const char* name);
+Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
-void builtinPrint(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbs(VM* vm, FunctionObject* function, Value* frame);
 void builtinMin(VM* vm, FunctionObject* function, Value* frame);

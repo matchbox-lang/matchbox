@@ -468,14 +468,31 @@ static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
     freeStringObject(ast->functionCall.id);
 
     ast->type = AST_BUILTIN_CALL;
-    ast->builtinCall.id = builtin->id;
     ast->builtinCall.builtin = builtin;
     ast->builtinCall.args = args;
 }
 
+static Builtin* resolveBuiltinCall(ASTNode* ast)
+{
+    size_t count = countVector(&ast->functionCall.args);
+    if (count > BUILTIN_PARAMS_MAX) {
+        return NULL;
+    }
+
+    TokenType argumentTypes[BUILTIN_PARAMS_MAX];
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* argument = getVectorAt(&ast->functionCall.args, i);
+
+        argumentTypes[i] = getTypeId(argument);
+    }
+
+    return resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
+}
+
 static void analyzeBuiltinCall(ASTNode* ast)
 {
-    Builtin* builtin = getBuiltinByName(ast->functionCall.id->chars);
+    Builtin* builtin = resolveBuiltinCall(ast);
     if (!builtin) {
         symbolError("undefined", ast->functionCall.token);
     }

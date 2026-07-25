@@ -1278,15 +1278,19 @@ static uint16_t makeFunctionPosition(size_t position)
     return (uint16_t)position;
 }
 
-static FunctionObject* createBuiltinFunctionObject(BuiltinId id)
+static FunctionObject* createBuiltinFunctionObject(Builtin* builtin)
 {
     FunctionObject* function = createFunctionObject();
     function->type = FUNCTION_BUILTIN;
-    function->entry = builtins[id].entry;
-    function->paramCount = builtins[id].paramCount;
+    function->entry = builtin->entry;
+    function->paramCount = 0;
     function->returnCount = 1;
 
-    if (builtins[id].typeId == TOKEN_VOID) {
+    for (int i = 0; i < builtin->paramCount; i++) {
+        function->paramCount += getTypeSlotCount(builtin->params[i]);
+    }
+
+    if (builtin->typeId == TOKEN_VOID) {
         function->returnCount = 0;
     }
 
@@ -1318,20 +1322,20 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     return function;
 }
 
-static uint16_t getBuiltinFunctionPosition(Compiler* compiler, BuiltinId id)
+static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
 {
     size_t functionCount = countVector(&compiler->module->functions);
 
     for (size_t i = 0; i < functionCount; i++) {
         FunctionObject* function = getVectorAt(&compiler->module->functions, i);
 
-        if (function->type == FUNCTION_BUILTIN && function->entry == builtins[id].entry) {
+        if (function->type == FUNCTION_BUILTIN && function->entry == builtin->entry) {
             return makeFunctionPosition(i);
         }
     }
 
     uint16_t position = makeFunctionPosition(functionCount);
-    FunctionObject* function = createBuiltinFunctionObject(id);
+    FunctionObject* function = createBuiltinFunctionObject(builtin);
 
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, NULL);
@@ -1379,7 +1383,9 @@ static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode
 {
     void* items[] = {leftExpression, rightExpression};
     Vector args = {.data = items, .capacity = 2, .count = 2};
-    uint16_t position = getBuiltinFunctionPosition(compiler, BUILTIN_POW);
+    TokenType argumentTypes[] = {TOKEN_I32, TOKEN_I32};
+    Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
+    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return compileCall(compiler, function, position, &args, NULL, false);
@@ -1415,7 +1421,7 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
 
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.id);
+    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
@@ -1633,17 +1639,16 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
-    bool display = isLast
-        && isExpressionStatement(ast)
-        && getTypeId(ast) != TOKEN_VOID;
-        
+    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
     Operand value = compileStatement(compiler, ast, !display);
 
     if (!display) {
         return;
     }
 
-    uint16_t position = getBuiltinFunctionPosition(compiler, BUILTIN_PRINT);
+    TokenType argumentType = getTypeId(ast);
+    Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
+    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     compileCallWithArgument(compiler, function, position, value, true);

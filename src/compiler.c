@@ -23,6 +23,7 @@ typedef struct Operand
 {
     int reg;
     bool temporary;
+    size_t slots;
 } Operand;
 
 typedef struct CallArea
@@ -41,10 +42,31 @@ typedef struct PreviousInstruction
     uint8_t c;
 } PreviousInstruction;
 
+typedef enum IntegerOperation
+{
+    INTEGER_ADD,
+    INTEGER_SUB,
+    INTEGER_MUL,
+    INTEGER_DIV,
+    INTEGER_REM,
+    INTEGER_BAND,
+    INTEGER_BOR,
+    INTEGER_BXOR,
+    INTEGER_BNOT,
+    INTEGER_LSL,
+    INTEGER_LSR,
+    INTEGER_NEG
+} IntegerOperation;
+
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
+static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
+    TokenType destination, bool reference);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
+static size_t getNodeSlotCount(ASTNode* ast);
+static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
+static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -83,6 +105,17 @@ static int allocateRegister(Compiler* compiler)
 static int releaseRegister(Compiler* compiler)
 {
     return --compiler->registerCount;
+}
+
+static int allocateRegisters(Compiler* compiler, size_t count)
+{
+    int first = compiler->registerCount;
+
+    for (size_t i = 0; i < count; i++) {
+        allocateRegister(compiler);
+    }
+
+    return first;
 }
 
 static void write8(Compiler* compiler, uint8_t n)
@@ -153,9 +186,30 @@ static void emitMov(Compiler* compiler, int dst, int src)
     emitInstruction(compiler, OP_MOV, dst, src, 0);
 }
 
+static void emitOperandMov(Compiler* compiler, int dst, Operand operand)
+{
+    if (operand.slots != 2) {
+        emitMov(compiler, dst, operand.reg);
+        return;
+    }
+
+    if (dst == operand.reg) {
+        return;
+    }
+
+    emitInstruction(compiler, OP_MOV_I64, dst, operand.reg, 0);
+}
+
 static Operand makeOperand(int reg, bool temporary)
 {
-    Operand operand = {reg, temporary};
+    Operand operand = {reg, temporary, 1};
+
+    return operand;
+}
+
+static Operand makeWideOperand(int reg, bool temporary)
+{
+    Operand operand = {reg, temporary, 2};
 
     return operand;
 }
@@ -167,7 +221,7 @@ static Operand noOperand(void)
 
 static void releaseOperand(Compiler* compiler, Operand operand)
 {
-    if (operand.temporary) {
+    for (size_t i = 0; operand.temporary && i < operand.slots; i++) {
         releaseRegister(compiler);
     }
 }
@@ -178,11 +232,10 @@ static Operand materializeOperand(Compiler* compiler, Operand operand)
         return operand;
     }
 
-    int reg = allocateRegister(compiler);
-
-    emitMov(compiler, reg, operand.reg);
+    int reg = allocateRegisters(compiler, operand.slots);
+    emitOperandMov(compiler, reg, operand);
     
-    return makeOperand(reg, true);
+    return operand.slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
 }
 
 static int emitLdc(Compiler* compiler, uint16_t imm)
@@ -190,6 +243,15 @@ static int emitLdc(Compiler* compiler, uint16_t imm)
     int reg = allocateRegister(compiler);
 
     emitInstruction(compiler, OP_LDC, reg, imm >> 8, imm);
+
+    return reg;
+}
+
+static int emitLdcI64(Compiler* compiler, uint16_t position)
+{
+    int reg = allocateRegisters(compiler, 2);
+
+    emitInstruction(compiler, OP_LDC_I64, reg, position >> 8, position);
 
     return reg;
 }
@@ -397,9 +459,11 @@ static void emitRet(Compiler* compiler)
     emitInstruction(compiler, OP_RET, 0, 0, 0);
 }
 
-static void emitRetv(Compiler* compiler, int src)
+static void emitRetv(Compiler* compiler, Operand operand)
 {
-    emitInstruction(compiler, OP_RETV, src, 0, 0);
+    Opcode opcode = operand.slots == 2 ? OP_RET_I64 : OP_RETV;
+
+    emitInstruction(compiler, opcode, operand.reg, 0, 0);
 }
 
 static int getCallAreaCount(FunctionObject* function)
@@ -410,6 +474,21 @@ static int getCallAreaCount(FunctionObject* function)
 static size_t makeConstant(Compiler* compiler, Value value)
 {
     return pushValue(&compiler->module->constants, value) - 1;
+}
+
+static size_t makeI64Constant(Compiler* compiler, uint64_t value)
+{
+    size_t position = countValueArray(&compiler->module->constants);
+
+#if UINTPTR_MAX == UINT32_MAX
+    pushValue(&compiler->module->constants, U32_VALUE(value));
+    pushValue(&compiler->module->constants, U32_VALUE(value >> 32));
+#else
+    pushValue(&compiler->module->constants, UNSIGNED_VALUE(value));
+    pushValue(&compiler->module->constants, UNSIGNED_VALUE(0));
+#endif
+
+    return position;
 }
 
 static CallArea openCallArea(Compiler* compiler)
@@ -440,14 +519,16 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     emitCallInstruction(compiler, (uint8_t)call.frameRegister, functionPosition);
 
     if (!discard && function->returnCount) {
-        compiler->registerCount = call.resultRegister + 1;
+        compiler->registerCount = call.resultRegister + function->returnCount;
         
-        return makeOperand(call.resultRegister, true);
-    } else {
-        compiler->registerCount = call.resultRegister;
-
-        return noOperand();
+        return function->returnCount == 2
+            ? makeWideOperand(call.resultRegister, true)
+            : makeOperand(call.resultRegister, true);
     }
+
+    compiler->registerCount = call.resultRegister;
+
+    return noOperand();
 }
 
 static int getLocalPosition(Compiler* compiler, ASTNode* ast)
@@ -486,9 +567,17 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
 static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = ast->variableDefinition.position;
+    bool wide = getNodeSlotCount(ast) == 2;
 
     if (isCompilingTopLevel(compiler)) {
-        return makeOperand(position, false);
+        return wide ? makeWideOperand(position, false) : makeOperand(position, false);
+    }
+
+    if (wide) {
+        int reg = allocateRegisters(compiler, 2);
+        emitInstruction(compiler, OP_LDG_I64, reg, position >> 8, position);
+
+        return makeWideOperand(reg, true);
     }
 
     return loadGlobalWithStoreForwarding(compiler, position);
@@ -498,7 +587,9 @@ static Operand loadLocalVariable(Compiler* compiler, ASTNode* ast)
 {
     int position = getLocalPosition(compiler, ast);
 
-    return makeOperand(position, false);
+    return getNodeSlotCount(ast) == 2
+        ? makeWideOperand(position, false)
+        : makeOperand(position, false);
 }
 
 static Operand loadVariable(Compiler* compiler, ASTNode* ast)
@@ -530,19 +621,25 @@ static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
     return makeOperand(reg, true);
 }
 
-static Operand dereferenceOperand(Compiler* compiler, Operand operand)
+static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t slots)
 {
-    if (operand.temporary) {
-        emitInstruction(compiler, OP_LDR, operand.reg, operand.reg, 0);
+    Opcode opcode = slots == 2 ? OP_LDR_I64 : OP_LDR;
 
-        return operand;
+    if (!operand.temporary) {
+        int reg = allocateRegisters(compiler, slots);
+
+        emitInstruction(compiler, opcode, reg, operand.reg, 0);
+
+        return slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
     }
 
-    int reg = allocateRegister(compiler);
+    if (slots == 2) {
+        allocateRegister(compiler);
+    }
 
-    emitInstruction(compiler, OP_LDR, reg, operand.reg, 0);
+    emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
 
-    return makeOperand(reg, true);
+    return slots == 2 ? makeWideOperand(operand.reg, true) : operand;
 }
 
 static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
@@ -577,6 +674,12 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = ast->variableDefinition.position;
 
+    if (value.slots == 2) {
+        emitInstruction(compiler, OP_STG_I64, value.reg, position >> 8, position);
+
+        return;
+    }
+
     if (fuseLdiStore(compiler, value, position)) {
         return;
     }
@@ -610,9 +713,11 @@ static void storeLocalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = getLocalPosition(compiler, ast);
 
-    if (!retargetTemporary(compiler, value, position)) {
-        emitMov(compiler, position, value.reg);
+    if (retargetTemporary(compiler, value, position)) {
+        return;
     }
+
+    emitOperandMov(compiler, position, value);
 }
 
 static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
@@ -626,15 +731,40 @@ static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
     releaseOperand(compiler, value);
 }
 
+static Operand compileWideNumber(Compiler* compiler, uint64_t value)
+{
+    size_t position = makeI64Constant(compiler, value);
+
+    return makeWideOperand(emitLdcI64(compiler, position), true);
+}
+
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
-    if (isLargerThan16BitSigned(ast->integerLiteral.value)) {
-        size_t position = makeConstant(compiler, INT_VALUE(ast->integerLiteral.value));
+    uint64_t value = ast->integerLiteral.value;
+
+    if (getNodeSlotCount(ast) == 2) {
+        return compileWideNumber(compiler, value);
+    }
+
+    if (value > INT16_MAX) {
+        Value constant = isSignedIntegerTypeToken(getTypeId(ast))
+            ? SIGNED_VALUE((int64_t)value)
+            : UNSIGNED_VALUE(value);
+        size_t position = makeConstant(compiler, constant);
 
         return makeOperand(emitLdc(compiler, position), true);
     }
 
-    return makeOperand(emitLdi(compiler, ast->integerLiteral.value), true);
+    return makeOperand(emitLdi(compiler, (int16_t)value), true);
+}
+
+static size_t getNodeSlotCount(ASTNode* ast)
+{
+    if (getReferenceType(ast) != REFERENCE_NONE) {
+        return 1;
+    }
+
+    return getTypeSlotCount(getTypeId(ast));
 }
 
 static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
@@ -649,8 +779,154 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
         || isCompilingTopLevel(compiler);
 }
 
-static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+static Opcode getWidthOpcode(
+    TokenType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
 {
+    switch (getIntegerTypeSize(type)) {
+        case 8:
+            return opcode64;
+        case 4:
+            return opcode32;
+        case 2:
+            return opcode16;
+        case 1:
+            return opcode8;
+        default:
+            return OP_HLT;
+    }
+}
+
+static Opcode getDivisionOpcode(TokenType type)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return getWidthOpcode(type, OP_IDIV_I64, OP_IDIV_I32, OP_IDIV_I16, OP_IDIV_I8);
+    }
+
+    return getWidthOpcode(type, OP_IDIV_U64, OP_IDIV_U32, OP_IDIV_U16, OP_IDIV_U8);
+}
+
+static Opcode getRemainderOpcode(TokenType type)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return getWidthOpcode(type, OP_REM_I64, OP_REM_I32, OP_REM_I16, OP_REM_I8);
+    }
+
+    return getWidthOpcode(type, OP_REM_U64, OP_REM_U32, OP_REM_U16, OP_REM_U8);
+}
+
+static Opcode getRightShiftOpcode(TokenType type)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return getWidthOpcode(type, OP_ASR_I64, OP_ASR_I32, OP_ASR_I16, OP_ASR_I8);
+    }
+
+    return getWidthOpcode(type, OP_LSR_I64, OP_LSR_I32, OP_LSR_I16, OP_LSR_I8);
+}
+
+static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
+{
+    switch (operation) {
+        case INTEGER_ADD:
+            return getWidthOpcode(type, OP_ADD_I64, OP_ADD_I32, OP_ADD_I16, OP_ADD_I8);
+        case INTEGER_SUB:
+            return getWidthOpcode(type, OP_SUB_I64, OP_SUB_I32, OP_SUB_I16, OP_SUB_I8);
+        case INTEGER_MUL:
+            return getWidthOpcode(type, OP_MUL_I64, OP_MUL_I32, OP_MUL_I16, OP_MUL_I8);
+        case INTEGER_DIV:
+            return getDivisionOpcode(type);
+        case INTEGER_REM:
+            return getRemainderOpcode(type);
+        case INTEGER_BAND:
+            return getWidthOpcode(type, OP_BAND_I64, OP_BAND_I32, OP_BAND_I16, OP_BAND_I8);
+        case INTEGER_BOR:
+            return getWidthOpcode(type, OP_BOR_I64, OP_BOR_I32, OP_BOR_I16, OP_BOR_I8);
+        case INTEGER_BXOR:
+            return getWidthOpcode(type, OP_BXOR_I64, OP_BXOR_I32, OP_BXOR_I16, OP_BXOR_I8);
+        case INTEGER_BNOT:
+            return getWidthOpcode(type, OP_BNOT_I64, OP_BNOT_I32, OP_BNOT_I16, OP_BNOT_I8);
+        case INTEGER_LSL:
+            return getWidthOpcode(type, OP_LSL_I64, OP_LSL_I32, OP_LSL_I16, OP_LSL_I8);
+        case INTEGER_LSR:
+            return getRightShiftOpcode(type);
+        case INTEGER_NEG:
+            return getIntegerTypeSize(type) == 8 ? OP_NEG_I64 : OP_NEG;
+    }
+
+    return OP_HLT;
+}
+
+static Opcode getIntegerImmediateOpcode(TokenType type, IntegerOperation operation)
+{
+    switch (operation) {
+        case INTEGER_ADD:
+            return getWidthOpcode(type, OP_ADDI_I64, OP_ADDI_I32, OP_ADDI_I16, OP_ADDI_I8);
+        case INTEGER_SUB:
+            return getWidthOpcode(type, OP_SUBI_I64, OP_SUBI_I32, OP_SUBI_I16, OP_SUBI_I8);
+        case INTEGER_BAND:
+            return getWidthOpcode(type, OP_BANDI_I64, OP_BANDI_I32, OP_BANDI_I16, OP_BANDI_I8);
+        case INTEGER_BOR:
+            return getWidthOpcode(type, OP_BORI_I64, OP_BORI_I32, OP_BORI_I16, OP_BORI_I8);
+        case INTEGER_BXOR:
+            return getWidthOpcode(type, OP_BXORI_I64, OP_BXORI_I32, OP_BXORI_I16, OP_BXORI_I8);
+        case INTEGER_LSL:
+            return getWidthOpcode(type, OP_LSLI_I64, OP_LSLI_I32, OP_LSLI_I16, OP_LSLI_I8);
+        case INTEGER_LSR:
+            if (isSignedIntegerTypeToken(type)) {
+                return getWidthOpcode(type, OP_ASRI_I64, OP_ASRI_I32, OP_ASRI_I16, OP_ASRI_I8);
+            }
+
+            return getWidthOpcode(type, OP_LSRI_I64, OP_LSRI_I32, OP_LSRI_I16, OP_LSRI_I8);
+        default:
+            return OP_HLT;
+    }
+}
+
+static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediate)
+{
+    if (operation == INTEGER_ADD || operation == INTEGER_SUB) {
+        return !isLargerThan8BitSigned(immediate);
+    }
+
+    return immediate >= 0 && immediate <= (int16_t)UINT8_MAX;
+}
+
+static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
+    TokenType type, Operand left, Operand right, Operand* result)
+{
+    PreviousInstruction previous;
+
+    if (!right.temporary || !getPreviousInstruction(compiler, &previous)
+        || previous.opcode != OP_LDI
+        || previous.a != right.reg) {
+        return false;
+    }
+
+    int16_t immediate = (int16_t)(previous.b << 8 | previous.c);
+    Opcode opcode = getIntegerImmediateOpcode(type, operation);
+
+    if (opcode == OP_HLT || !isImmediateOperandValid(operation, immediate)) {
+        return false;
+    }
+
+    resizeCodeObject(previous.code, previous.start);
+    releaseOperand(compiler, right);
+
+    int dst = left.temporary ? left.reg : allocateRegisters(compiler, left.slots);
+    emitInstruction(compiler, opcode, dst, left.reg, immediate);
+    *result = left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
+
+    return true;
+}
+
+static Operand emitBinaryOperands(
+    Compiler* compiler, IntegerOperation operation, TokenType type, Operand left, Operand right)
+{
+    Operand immediateResult;
+
+    if (emitBinaryImmediate(compiler, operation, type, left, right, &immediateResult)) {
+        return immediateResult;
+    }
+
     int dst;
 
     if (left.temporary) {
@@ -659,16 +935,21 @@ static Operand emitBinaryOperands(Compiler* compiler, Opcode opcode, Operand lef
     } else if (right.temporary) {
         dst = right.reg;
     } else {
-        dst = allocateRegister(compiler);
+        dst = allocateRegisters(compiler, left.slots);
     }
 
-    emitInstruction(compiler, opcode, dst, left.reg, right.reg);
+    emitInstruction(compiler, getIntegerOpcode(type, operation), dst, left.reg, right.reg);
     
-    return makeOperand(dst, true);
+    return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->binary.operator.type == TOKEN_POWER) {
+        return compilePower(compiler, ast->binary.leftExpr, ast->binary.rightExpr);
+    }
+
+    TokenType type = getTypeId(ast->binary.leftExpr);
     Operand left = compileExpression(compiler, ast->binary.leftExpr, false);
 
     if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
@@ -679,28 +960,26 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 
     switch (ast->binary.operator.type) {
         case TOKEN_PLUS:
-            return emitBinaryOperands(compiler, OP_ADD, left, right);
+            return emitBinaryOperands(compiler, INTEGER_ADD, type, left, right);
         case TOKEN_MINUS:
-            return emitBinaryOperands(compiler, OP_SUB, left, right);
+            return emitBinaryOperands(compiler, INTEGER_SUB, type, left, right);
         case TOKEN_STAR:
-            return emitBinaryOperands(compiler, OP_MUL, left, right);
+            return emitBinaryOperands(compiler, INTEGER_MUL, type, left, right);
         case TOKEN_SLASH:
         case TOKEN_FLOOR:
-            return emitBinaryOperands(compiler, OP_DIV, left, right);
+            return emitBinaryOperands(compiler, INTEGER_DIV, type, left, right);
         case TOKEN_PERCENT:
-            return emitBinaryOperands(compiler, OP_REM, left, right);
-        case TOKEN_POWER:
-            return emitBinaryOperands(compiler, OP_POW, left, right);
+            return emitBinaryOperands(compiler, INTEGER_REM, type, left, right);
         case TOKEN_AMPERSAND:
-            return emitBinaryOperands(compiler, OP_BAND, left, right);
+            return emitBinaryOperands(compiler, INTEGER_BAND, type, left, right);
         case TOKEN_PIPE:
-            return emitBinaryOperands(compiler, OP_BOR, left, right);
+            return emitBinaryOperands(compiler, INTEGER_BOR, type, left, right);
         case TOKEN_CIRCUMFLEX:
-            return emitBinaryOperands(compiler, OP_BXOR, left, right);
+            return emitBinaryOperands(compiler, INTEGER_BXOR, type, left, right);
         case TOKEN_LSHIFT:
-            return emitBinaryOperands(compiler, OP_LSL, left, right);
+            return emitBinaryOperands(compiler, INTEGER_LSL, type, left, right);
         case TOKEN_RSHIFT:
-            return emitBinaryOperands(compiler, OP_LSR, left, right);
+            return emitBinaryOperands(compiler, INTEGER_LSR, type, left, right);
         default:
             return noOperand();
     }
@@ -714,16 +993,17 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
         return operand;
     }
 
-    int dst = allocateRegister(compiler);
+    int dst = allocateRegisters(compiler, operand.slots);
     emitInstruction(compiler, opcode, dst, operand.reg, 0);
 
-    return makeOperand(dst, true);
+    return operand.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
 static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 {
     if (getReferenceType(ast) != REFERENCE_NONE) {
-        return dereferenceOperand(compiler, compileReferenceExpression(compiler, ast));
+        return dereferenceOperand(
+            compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getTypeId(ast)));
     }
 
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
@@ -732,9 +1012,11 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
         case TOKEN_NOT:
             return emitUnaryOperand(compiler, OP_NOT, operand);
         case TOKEN_TILDE:
-            return emitUnaryOperand(compiler, OP_BNOT, operand);
+            return emitUnaryOperand(
+                compiler, getIntegerOpcode(getTypeId(ast), INTEGER_BNOT), operand);
         case TOKEN_MINUS:
-            return emitUnaryOperand(compiler, OP_NEG, operand);
+            return emitUnaryOperand(
+                compiler, getIntegerOpcode(getTypeId(ast), INTEGER_NEG), operand);
         default:
             return noOperand();
     }
@@ -748,7 +1030,7 @@ static Operand compileVariable(Compiler* compiler, ASTNode* ast)
         return value;
     }
 
-    return dereferenceOperand(compiler, value);
+    return dereferenceOperand(compiler, value, getTypeSlotCount(getTypeId(ast)));
 }
 
 static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand value)
@@ -760,26 +1042,31 @@ static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand va
     }
 
     Operand reference = loadVariable(compiler, symbol);
+    Opcode opcode = value.slots == 2 ? OP_STR_I64 : OP_STR;
 
-    emitInstruction(compiler, OP_STR, value.reg, reference.reg, 0);
+    emitInstruction(compiler, opcode, value.reg, reference.reg, 0);
     releaseOperand(compiler, value);
     releaseOperand(compiler, reference);
 }
 
-static void compileCompoundAssignment(Compiler* compiler, ASTNode* ast, Opcode opcode)
+static void compileCompoundAssignment(
+    Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
+    TokenType type = getTypeId(ast->assignment.symbol);
+
     Operand left = loadVariable(compiler, ast->assignment.symbol);
 
     if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
-        left = dereferenceOperand(compiler, left);
+        left = dereferenceOperand(
+            compiler, left, getTypeSlotCount(getTypeId(ast->assignment.symbol)));
     }
 
     if (!left.temporary && !isDirectVariable(compiler, ast->assignment.expr)) {
         left = materializeOperand(compiler, left);
     }
 
-    Operand right = compileExpression(compiler, ast->assignment.expr, false);
-    Operand result = emitBinaryOperands(compiler, opcode, left, right);
+    Operand right = compileConvertedExpression(compiler, ast->assignment.expr, type, false);
+    Operand result = emitBinaryOperands(compiler, operation, type, left, right);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, result);
 }
@@ -793,7 +1080,8 @@ static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
         return;
     }
 
-    Operand value = compileExpression(compiler, ast->assignment.expr, false);
+    Operand value = compileConvertedExpression(
+        compiler, ast->assignment.expr, getTypeId(ast->assignment.symbol), false);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, value);
 }
@@ -802,28 +1090,28 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->assignment.operator.type) {
         case TOKEN_PLUS_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_ADD);
+            return compileCompoundAssignment(compiler, ast, INTEGER_ADD);
         case TOKEN_MINUS_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_SUB);
+            return compileCompoundAssignment(compiler, ast, INTEGER_SUB);
         case TOKEN_STAR_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_MUL);
+            return compileCompoundAssignment(compiler, ast, INTEGER_MUL);
         case TOKEN_FLOOR_EQUAL:
         case TOKEN_SLASH_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_DIV);
+            return compileCompoundAssignment(compiler, ast, INTEGER_DIV);
         case TOKEN_PERCENT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_REM);
+            return compileCompoundAssignment(compiler, ast, INTEGER_REM);
         case TOKEN_POWER_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_POW);
+            return compilePowerAssignment(compiler, ast);
         case TOKEN_AND_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_BAND);
+            return compileCompoundAssignment(compiler, ast, INTEGER_BAND);
         case TOKEN_OR_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_BOR);
+            return compileCompoundAssignment(compiler, ast, INTEGER_BOR);
         case TOKEN_CIRCUMFLEX_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_BXOR);
+            return compileCompoundAssignment(compiler, ast, INTEGER_BXOR);
         case TOKEN_LSHIFT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_LSL);
+            return compileCompoundAssignment(compiler, ast, INTEGER_LSL);
         case TOKEN_RSHIFT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, OP_LSR);
+            return compileCompoundAssignment(compiler, ast, INTEGER_LSR);
         case TOKEN_EQUAL:
             return compileSimpleAssignment(compiler, ast);
         default:
@@ -838,6 +1126,45 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
     }
 
     return compileExpression(compiler, ast, false);
+}
+
+static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
+    TokenType source, TokenType destination)
+{
+    if (!canImplicitlyWidenInteger(source, destination)
+        || getTypeSlotCount(destination) == operand.slots) {
+        return operand;
+    }
+
+    int destinationRegister = operand.reg;
+
+    if (!operand.temporary) {
+        destinationRegister = allocateRegister(compiler);
+        emitMov(compiler, destinationRegister, operand.reg);
+    }
+
+    int highRegister = allocateRegister(compiler);
+
+    if (isSignedIntegerTypeToken(source)) {
+        emitInstruction(compiler, OP_ASRI_I32, highRegister, destinationRegister, 31);
+
+        return makeWideOperand(destinationRegister, true);
+    }
+
+    emitInstruction(compiler, OP_LDI, highRegister, 0, 0);
+    return makeWideOperand(destinationRegister, true);
+}
+
+static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
+    TokenType destination, bool reference)
+{
+    Operand operand = compileReferenceAwareExpression(compiler, ast, reference);
+
+    if (reference) {
+        return operand;
+    }
+
+    return widenIntegerOperand(compiler, operand, getTypeId(ast), destination);
 }
 
 static bool requiresReservedArgument(Vector* args, Vector* params, size_t position)
@@ -885,52 +1212,60 @@ static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vecto
 
     bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
 
-    Operand expression = compileReferenceAwareExpression(
-        compiler, args->data[position], reference);
+    ASTNode* argument = args->data[position];
+    TokenType destination = parameter ? getTypeId(parameter) : getTypeId(argument);
+    Operand expression = compileConvertedExpression(compiler, argument, destination, reference);
 
     return expression;
 }
 
 static void storeArgument(Compiler* compiler, Operand argument,int destination, bool reserved)
 {
-    if (reserved) {
-        emitMov(compiler, destination, argument.reg);
-
+    if (!reserved && argument.temporary) {
         return;
     }
 
-    if (argument.temporary) {
-        return;
+    if (!reserved) {
+        allocateRegisters(compiler, argument.slots);
     }
 
-    allocateRegister(compiler);
-    emitMov(compiler, destination, argument.reg);
+    emitOperandMov(compiler, destination, argument);
 }
 
 static void compileArgument(Compiler* compiler, Vector* args, Vector* params, size_t position,
-    int firstRegister, bool reserved)
+    int firstRegister, size_t destinationOffset, bool reserved)
 {
     int destination = compiler->registerCount;
 
     if (reserved) {
-        destination = firstRegister + position;
+        destination = firstRegister + destinationOffset;
     }
 
     Operand argument = compileArgumentExpression(compiler, args, params, position);
 
     storeArgument(compiler, argument, destination, reserved);
+
 }
 
 static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
 {
     size_t count = countVector(args);
+    size_t slotCount = 0;
     bool reserved = requiresReservedArguments(args, params);
     int firstRegister = compiler->registerCount;
 
-    reserveArgumentRegisters(compiler, count, reserved);
-
     for (size_t i = 0; i < count; i++) {
-        compileArgument(compiler, args, params, i, firstRegister, reserved);
+        ASTNode* node = params ? getVectorAt(params, i) : getVectorAt(args, i);
+        slotCount += getNodeSlotCount(node);
+    }
+
+    reserveArgumentRegisters(compiler, slotCount, reserved);
+
+    for (size_t i = 0, offset = 0; i < count; i++) {
+        ASTNode* argument = getVectorAt(args, i);
+        ASTNode* layout = params ? getVectorAt(params, i) : argument;
+        compileArgument(compiler, args, params, i, firstRegister, offset, reserved);
+        offset += getNodeSlotCount(layout);
     }
 }
 
@@ -943,15 +1278,19 @@ static uint16_t makeFunctionPosition(size_t position)
     return (uint16_t)position;
 }
 
-static FunctionObject* createBuiltinFunctionObject(BuiltinId id)
+static FunctionObject* createBuiltinFunctionObject(Builtin* builtin)
 {
     FunctionObject* function = createFunctionObject();
     function->type = FUNCTION_BUILTIN;
-    function->entry = builtins[id].entry;
-    function->paramCount = builtins[id].paramCount;
-    function->returnCount = 1;
+    function->entry = builtin->entry;
+    function->paramCount = 0;
+    function->returnCount = getTypeSlotCount(builtin->returnTypeId);
 
-    if (builtins[id].typeId == TOKEN_VOID) {
+    for (int i = 0; i < builtin->paramCount; i++) {
+        function->paramCount += getTypeSlotCount(builtin->params[i]);
+    }
+
+    if (builtin->returnTypeId == TOKEN_VOID) {
         function->returnCount = 0;
     }
 
@@ -964,10 +1303,15 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
 {
     ASTNode* body = ast->functionDefinition.body;
     FunctionObject* function = createFunctionObject();
-    function->paramCount = countVector(&ast->functionDefinition.params);
-    function->returnCount = 1;
+    function->paramCount = 0;
 
-    if (ast->functionDefinition.typeId == TOKEN_VOID) {
+    for (size_t i = 0; i < countVector(&ast->functionDefinition.params); i++) {
+        function->paramCount += getNodeSlotCount(
+            getVectorAt(&ast->functionDefinition.params, i));
+    }
+    function->returnCount = getTypeSlotCount(ast->functionDefinition.returnTypeId);
+
+    if (ast->functionDefinition.returnTypeId == TOKEN_VOID) {
         function->returnCount = 0;
     }
 
@@ -978,20 +1322,20 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     return function;
 }
 
-static uint16_t getBuiltinFunctionPosition(Compiler* compiler, BuiltinId id)
+static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
 {
     size_t functionCount = countVector(&compiler->module->functions);
 
     for (size_t i = 0; i < functionCount; i++) {
         FunctionObject* function = getVectorAt(&compiler->module->functions, i);
 
-        if (function->type == FUNCTION_BUILTIN && function->entry == builtins[id].entry) {
+        if (function->type == FUNCTION_BUILTIN && function->entry == builtin->entry) {
             return makeFunctionPosition(i);
         }
     }
 
     uint16_t position = makeFunctionPosition(functionCount);
-    FunctionObject* function = createBuiltinFunctionObject(id);
+    FunctionObject* function = createBuiltinFunctionObject(builtin);
 
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, NULL);
@@ -1035,6 +1379,27 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
     return closeCallArea(compiler, function, functionPosition, call, discard);
 }
 
+static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression)
+{
+    void* items[] = {leftExpression, rightExpression};
+    Vector args = {.data = items, .capacity = 2, .count = 2};
+    TokenType argumentTypes[] = {TOKEN_I32, TOKEN_I32};
+    Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
+    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+
+    return compileCall(compiler, function, position, &args, NULL, false);
+}
+
+static void compilePowerAssignment(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode left = {.type = AST_VARIABLE};
+    left.variable.symbol = ast->assignment.symbol;
+
+    Operand result = compilePower(compiler, &left, ast->assignment.expr);
+    storeAssignmentValue(compiler, ast->assignment.symbol, result);
+}
+
 static void compileCallWithArgument(Compiler* compiler, FunctionObject* function,
     uint16_t functionPosition, Operand argument, bool discard)
 {
@@ -1048,15 +1413,15 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
     CallArea call = openCallArea(compiler);
     int callArgumentRegister = compiler->registerCount;
 
-    allocateRegister(compiler);
-    emitMov(compiler, callArgumentRegister, argument.reg);
+    allocateRegisters(compiler, argument.slots);
+    emitOperandMov(compiler, callArgumentRegister, argument);
     closeCallArea(compiler, function, functionPosition, call, discard);
     releaseOperand(compiler, argument);
 }
 
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.id);
+    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
@@ -1073,7 +1438,7 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
         return result;
     }
 
-    return dereferenceOperand(compiler, result);
+    return dereferenceOperand(compiler, result, getTypeSlotCount(getTypeId(ast)));
 }
 
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
@@ -1149,28 +1514,49 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
     }
 
     bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
-    Operand value = compileReferenceAwareExpression(compiler, ast->returnStatement.expr, reference);
+    TokenType expressionType = getTypeId(ast->returnStatement.expr);
+    TokenType returnType = expressionType;
 
-    emitRetv(compiler, value.reg);
+    if (compiler->function->returnCount == 2) {
+        returnType = isSignedIntegerTypeToken(expressionType) ? TOKEN_I64 : TOKEN_U64;
+    }
+
+    Operand value = compileConvertedExpression(
+        compiler, ast->returnStatement.expr, returnType, reference);
+
+    emitRetv(compiler, value);
     releaseOperand(compiler, value);
     compiler->registerCount = compiler->frameBaseCount;
+}
+
+static Operand compileZeroValue(Compiler* compiler, size_t slots)
+{
+    if (slots == 2) {
+        size_t position = makeI64Constant(compiler, 0);
+
+        return makeWideOperand(emitLdcI64(compiler, position), true);
+    }
+
+    return makeOperand(emitLdi(compiler, 0), true);
 }
 
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
     Operand value;
+    size_t slots = getNodeSlotCount(ast);
 
     if (isNone(ast->variableDefinition.expr)) {
-        value = makeOperand(emitLdi(compiler, 0), true);
+        value = compileZeroValue(compiler, slots);
     } else {
         bool reference = getReferenceType(ast) != REFERENCE_NONE;
-        value = compileReferenceAwareExpression(compiler, ast->variableDefinition.expr, reference);
+        value = compileConvertedExpression(
+            compiler, ast->variableDefinition.expr, getTypeId(ast), reference);
     }
 
     if (!value.temporary) {
-        int reg = allocateRegister(compiler);
+        int reg = allocateRegisters(compiler, slots);
 
-        emitMov(compiler, reg, value.reg);
+        emitOperandMov(compiler, reg, value);
     }
 }
 
@@ -1253,17 +1639,16 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
-    bool display = isLast
-        && isExpressionStatement(ast)
-        && getTypeId(ast) != TOKEN_VOID;
-        
+    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
     Operand value = compileStatement(compiler, ast, !display);
 
     if (!display) {
         return;
     }
 
-    uint16_t position = getBuiltinFunctionPosition(compiler, BUILTIN_PRINT);
+    TokenType argumentType = getTypeId(ast);
+    Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
+    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     compileCallWithArgument(compiler, function, position, value, true);

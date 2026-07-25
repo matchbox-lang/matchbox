@@ -1,16 +1,16 @@
-func takeValue(n: int) {
+func takeValue(n: i32) {
     print(n)
 }
 
-func takeShared(n: &int) {
+func takeShared(n: &i32) {
     print(n)
 }
 
-func takeExclusive(n: ^int) {
+func takeExclusive(n: ^i32) {
     print(n)
 }
 
-func takeReferences(a: &int, b: ^int) {
+func takeReferences(a: &i32, b: ^i32) {
     print(a)
     print(b)
 }

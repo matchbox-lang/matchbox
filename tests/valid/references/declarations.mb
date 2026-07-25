@@ -1,9 +1,9 @@
 var value = 10
 var copiedInferType = value
-var copied: int = value
+var copied: i32 = value
 var inferredShared = &value
-var explicitShared: &int = &value
-var assignedShared: &int
+var explicitShared: &i32 = &value
+var assignedShared: &i32
 
 assignedShared = &value
 
@@ -15,8 +15,8 @@ print(assignedShared)
 
 var exclusiveValue = 20
 var inferredExclusive = ^exclusiveValue
-var explicitExclusive: ^int = inferredExclusive
-var assignedExclusive: ^int
+var explicitExclusive: ^i32 = inferredExclusive
+var assignedExclusive: ^i32
 
 assignedExclusive = explicitExclusive
 

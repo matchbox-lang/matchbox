@@ -1,8 +1,8 @@
-func takeExclusive(n: ^int) {
+func takeExclusive(n: ^i32) {
     print(n)
 }
 
-func takeExclusivePair(a: ^int, b: ^int) {
+func takeExclusivePair(a: ^i32, b: ^i32) {
     print(a)
     print(b)
 }

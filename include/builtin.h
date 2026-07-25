@@ -5,38 +5,36 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 7
-
-typedef enum BuiltinId
-{
-    BUILTIN_EXIT,
-    BUILTIN_PRINT,
-    BUILTIN_CLAMP,
-    BUILTIN_ABS,
-    BUILTIN_MIN,
-    BUILTIN_MAX,
-    BUILTIN_BYTEORDER
-} BuiltinId;
+#define BUILTINS_MAX 16
+#define BUILTIN_PARAMS_MAX 4
 
 typedef struct Builtin
 {
     const char* name;
-    BuiltinId id;
     FunctionEntry entry;
     int paramCount;
-    TokenType params[4];
-    TokenType typeId;
+    TokenType params[BUILTIN_PARAMS_MAX];
+    TokenType returnTypeId;
 } Builtin;
 
 extern Builtin builtins[BUILTINS_MAX];
 
-Builtin* getBuiltinByName(const char* name);
+Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
-void builtinPrint(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintU32(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintU64(VM* vm, FunctionObject* function, Value* frame);
 void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
+void builtinClampI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbs(VM* vm, FunctionObject* function, Value* frame);
+void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinMin(VM* vm, FunctionObject* function, Value* frame);
+void builtinMinI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinMax(VM* vm, FunctionObject* function, Value* frame);
+void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame);
+void builtinPow(VM* vm, FunctionObject* function, Value* frame);
+void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

@@ -1,6 +1,6 @@
 var value = 10
 var source = &value
-var destination: &int
+var destination: &i32
 
 destination = source
 

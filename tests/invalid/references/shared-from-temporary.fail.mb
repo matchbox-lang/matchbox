@@ -1,4 +1,4 @@
-func takeShared(n: &int) {
+func takeShared(n: &i32) {
     print(n)
 }
 

@@ -2,8 +2,8 @@ enum Events {
     PageLoad
     KeyPress(char)
     Paste(String)
-    Resize(int, int)
-    Status(int)
+    Resize(i32, i32)
+    Status(i32)
 }
 
 let event = Events.Status(200)

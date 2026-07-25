@@ -1,8 +1,8 @@
 class Point {
-    x: int
-    y: int
+    x: i32
+    y: i32
 
-    func init(x: int) {
+    func init(x: i32) {
         self(x, x)
     }
 

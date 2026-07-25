@@ -1,0 +1,32 @@
+let inferred = 123
+let signed8: i8 = 127
+let signed16: i16 = 32767
+let signed32: i32 = 2147483647
+let signed64: i64 = 9223372036854775807
+let unsigned8: u8 = 255
+let unsigned16: u16 = 65535
+let unsigned32: u32 = 4294967295
+let unsigned64: u64 = 18446744073709551615
+
+let minimum8: i8 = -128
+let minimum16: i16 = -32768
+let minimum32: i32 = -2147483648
+let minimum64: i64 = -9223372036854775808
+
+let wrapped8: u8 = unsigned8 + 1
+let wrapped16: u16 = unsigned16 + 1
+let wrapped32: u32 = unsigned32 + 1
+let wrapped64: u64 = unsigned64 + 1
+
+func preservePositions(first: i64, second: i32, third: u64) -> i32 {
+    return second
+}
+
+func preserveWide(value: u64) -> u64 {
+    return value
+}
+
+let returned64 = preserveWide(unsigned64)
+let preserved = preservePositions(signed64, inferred, returned64)
+
+print(preserved)

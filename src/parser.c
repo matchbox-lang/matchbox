@@ -95,8 +95,9 @@ static bool isEndOfFile(Parser* parser)
 static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = integerLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = integerLiteralToValue(token);
     ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
     
     consume(parser, token.type);
 
@@ -106,8 +107,9 @@ static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
 static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = binaryLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = binaryLiteralToValue(token);
     ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
 
     consume(parser, token.type);
 
@@ -117,8 +119,9 @@ static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
 static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = hexadecimalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = hexadecimalLiteralToValue(token);
     ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
 
     consume(parser, token.type);
 
@@ -128,8 +131,9 @@ static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
 static ASTNode* parseOctalLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = octalLiteralToValue(token.chars, token.length);
+    ast->integerLiteral.value = octalLiteralToValue(token);
     ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
 
     consume(parser, token.type);
 
@@ -477,7 +481,7 @@ static ASTNode* createParameterNode(Token token, StringObject* id)
     ast->parameter.scope = NULL;
     ast->parameter.id = id;
     ast->parameter.token = token;
-    ast->parameter.typeId = TOKEN_INT;
+    ast->parameter.typeId = TOKEN_I32;
     ast->parameter.referenceType = REFERENCE_NONE;
 
     return ast;
@@ -584,7 +588,7 @@ static ASTNode* createFunctionDefinitionNode(Token token, StringObject* id)
     ast->functionDefinition.scope = NULL;
     ast->functionDefinition.id = id;
     ast->functionDefinition.token = token;
-    ast->functionDefinition.typeId = TOKEN_INT;
+    ast->functionDefinition.returnTypeId = TOKEN_I32;
     ast->functionDefinition.returnReferenceType = REFERENCE_NONE;
     ast->functionDefinition.returnReferenceOrigin = NULL;
     ast->functionDefinition.hasExplicitReturnType = false;
@@ -601,7 +605,7 @@ static void parseFunctionReturnType(Parser* parser, ASTNode* ast)
 
     consume(parser, TOKEN_ARROW);
     ast->functionDefinition.returnReferenceType = parseReferenceType(parser);
-    ast->functionDefinition.typeId = parser->currentToken.type;
+    ast->functionDefinition.returnTypeId = parser->currentToken.type;
     consumeType(parser);
     ast->functionDefinition.hasExplicitReturnType = true;
 }
@@ -733,7 +737,7 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
         ast->variableDefinition.expr = createASTNode(AST_NONE);
 
         if (ast->variableDefinition.typeId == TOKEN_UNKNOWN) {
-            ast->variableDefinition.typeId = TOKEN_INT;
+            ast->variableDefinition.typeId = TOKEN_I32;
         }
 
         return true;

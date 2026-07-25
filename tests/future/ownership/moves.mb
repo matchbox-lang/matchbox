@@ -1,4 +1,4 @@
-func consume(values: List<int>) {
+func consume(values: List<i32>) {
     print(values.count())
 }
 
@@ -15,7 +15,7 @@ func moveIntoTask() {
     await task
 }
 
-func appendAndReturn(values: List<int>) -> List<int> {
+func appendAndReturn(values: List<i32>) -> List<i32> {
     values.add(4)
 
     return values

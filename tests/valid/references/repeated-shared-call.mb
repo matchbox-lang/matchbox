@@ -1,4 +1,4 @@
-func takeShared(a: &int, b: &int) {
+func takeShared(a: &i32, b: &i32) {
     print(a)
     print(b)
 }

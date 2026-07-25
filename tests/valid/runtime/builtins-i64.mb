@@ -1,0 +1,18 @@
+let large: i64 = 5000000000
+let low: i64 = 4000000000
+let high: i64 = 6000000000
+let negative: i64 = -5000000000
+let base: i64 = 10
+let exponent: i64 = 10
+
+let clamped = clamp(large, low, high)
+let absolute = abs(negative)
+let minimum = min(large, low)
+let maximum = max(large, high)
+let power = pow(base, exponent)
+
+print(clamped)
+print(absolute)
+print(minimum)
+print(maximum)
+print(power)

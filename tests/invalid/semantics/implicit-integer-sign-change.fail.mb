@@ -1,0 +1,2 @@
+let signed: i8 = 25
+let unsigned: u16 = signed

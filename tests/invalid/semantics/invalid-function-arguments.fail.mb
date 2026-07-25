@@ -1,4 +1,4 @@
-func identity(value: int) -> int {
+func identity(value: i32) -> i32 {
     return value
 }
 

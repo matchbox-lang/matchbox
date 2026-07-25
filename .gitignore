@@ -1,7 +1,6 @@
 /.agents/
 /.vscode/
 /build/
-/object/
 /AGENTS.md
 *.exe
 *.mbc

@@ -1,4 +1,4 @@
-func sum(numbers: ...int) {
+func sum(numbers: ...i32) {
     var total = 0
 
     for n in numbers {

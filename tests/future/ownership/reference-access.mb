@@ -1,12 +1,12 @@
-func readList(values: &List<int>) {
+func readList(values: &List<i32>) {
     print(values.count())
 }
 
-func appendList(values: ^List<int>) {
+func appendList(values: ^List<i32>) {
     values.add(4)
 }
 
-func returnReference(values: &List<int>) -> &List<int> {
+func returnReference(values: &List<i32>) -> &List<i32> {
     return values
 }
 

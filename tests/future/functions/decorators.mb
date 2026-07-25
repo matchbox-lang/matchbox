@@ -1,4 +1,4 @@
-type Operation = (int) -> int
+type Operation = (i32) -> i32
 
 func fn(op: Operation, n) {
     let result = op(n)

@@ -1,0 +1,2 @@
+let wide: i32 = 25
+let narrow: i8 = wide

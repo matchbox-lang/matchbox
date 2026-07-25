@@ -1,13 +1,13 @@
-type int_t = int
+type int = i32
 
-type Operation = (int) -> int
+type Operation = (i32) -> i32
 
 type Operation[T, R] = (T) -> R
 
-type Pair = (int, int)
+type Pair = (i32, i32)
 
-type Point = {x: int, y: int}
+type Point = {x: i32, y: i32}
 
-type Number = int|float
+type Number = i32|f32
 
 type Numbers = Set[Number]

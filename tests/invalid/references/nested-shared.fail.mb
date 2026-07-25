@@ -1,1 +1,1 @@
-var value: &&int
+var value: &&i32

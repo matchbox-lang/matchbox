@@ -1,0 +1,24 @@
+let signed8: i8 = -25
+let signed16: i16 = signed8
+let signed32: i32 = signed16
+let signed64: i64 = signed32
+
+let unsigned8: u8 = 25
+let unsigned16: u16 = unsigned8
+let unsigned32: u32 = unsigned16
+let unsigned64: u64 = unsigned32
+
+func widenArgument(value: i64) -> i64 {
+    return value
+}
+
+func widenReturn(value: i8) -> i64 {
+    return value
+}
+
+var assigned: i64
+assigned = signed8
+
+print(signed32)
+widenArgument(signed8)
+widenReturn(signed8)

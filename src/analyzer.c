@@ -4,6 +4,8 @@
 #include "string_object.h"
 #include "token.h"
 #include "vector.h"
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +22,99 @@ static void semanticError(char* message, Token token)
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
+}
+
+static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
+{
+    fprintf(stderr, "Error: Integer literal is too large for type %s", getTokenTypeName(type));
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralRequiresTypeError(Token token)
+{
+    fprintf(stderr, "Error: Integer literal requires an explicit type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void negativeUnsignedIntegerError(Token token)
+{
+    fprintf(stderr, "Error: Negative integer literal cannot have an unsigned type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void redefinitionError(char* kind, Token token)
+{
+    fprintf(stderr, "Error: %s ", kind);
+    printTokenValue(token);
+    fprintf(stderr, " is already defined on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void returnOutsideFunctionError(Token token)
+{
+    fprintf(stderr, "Error: Return statement is only valid inside a function");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static ASTNode* getIntegerLiteral(ASTNode* expression, bool* negative)
+{
+    *negative = false;
+
+    if (expression->type == AST_INTEGER) {
+        return expression;
+    }
+
+    if (expression->type != AST_PREFIX || expression->prefix.operator.type != TOKEN_MINUS
+        || expression->prefix.expr->type != AST_INTEGER) {
+        return NULL;
+    }
+
+    *negative = true;
+
+    return expression->prefix.expr;
+}
+
+static bool integerLiteralFitsType(uint64_t value, bool negative, TokenType type)
+{
+    size_t bits = getIntegerTypeSize(type) * CHAR_BIT;
+
+    if (!bits || (!isSignedIntegerTypeToken(type) && negative)) {
+        return false;
+    }
+
+    if (!isSignedIntegerTypeToken(type)) {
+        return bits == 64 || value <= (UINT64_C(1) << bits) - 1;
+    }
+
+    uint64_t limit = UINT64_C(1) << (bits - 1);
+
+    return negative ? value <= limit : value < limit;
+}
+
+static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
+{
+    bool negative;
+    ASTNode* literal = getIntegerLiteral(expression, &negative);
+
+    if (!literal) {
+        return false;
+    }
+
+    if (negative && isIntegerTypeToken(type) && !isSignedIntegerTypeToken(type)) {
+        negativeUnsignedIntegerError(literal->integerLiteral.token);
+    }
+
+    if (!integerLiteralFitsType(literal->integerLiteral.value, negative, type)) {
+        integerLiteralTooLargeForTypeError(literal->integerLiteral.token, type);
+    }
+
+    literal->integerLiteral.typeId = type;
+
+    return true;
 }
 
 static void symbolError(char* message, Token token)
@@ -221,7 +316,21 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
 
+    if (isIntegerTypeToken(leftType)) {
+        applyIntegerLiteralType(ast->binary.rightExpr, leftType);
+        rightType = getTypeId(ast->binary.rightExpr);
+    }
+
+    if (isIntegerTypeToken(rightType)) {
+        applyIntegerLiteralType(ast->binary.leftExpr, rightType);
+        leftType = getTypeId(ast->binary.leftExpr);
+    }
+
     if (leftType != rightType) {
+        semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
+    if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
@@ -260,7 +369,7 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 static ASTNode* getReferenceVariable(ASTNode* ast)
 {
     if (!isVariable(ast->prefix.expr)) {
-        semanticError("References require a binding near ", ast->prefix.operator);
+        semanticError("References require a binding for ", ast->prefix.operator);
     }
 
     return ast->prefix.expr;
@@ -317,7 +426,7 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->parameter.id)) {
-        semanticError("Redefinition of ", ast->parameter.token);
+        redefinitionError("Parameter", ast->parameter.token);
     }
 
     ast->parameter.scope = analyzer->currentScope;
@@ -340,8 +449,13 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
+        applyIntegerLiteralType(arg, builtin->params[i]);
 
-        if (getTypeId(arg) != builtin->params[i]) {
+        TokenType argumentType = getTypeId(arg);
+        TokenType parameterType = builtin->params[i];
+
+        if (argumentType != parameterType
+            && !canImplicitlyWidenInteger(argumentType, parameterType)) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -354,14 +468,31 @@ static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
     freeStringObject(ast->functionCall.id);
 
     ast->type = AST_BUILTIN_CALL;
-    ast->builtinCall.id = builtin->id;
     ast->builtinCall.builtin = builtin;
     ast->builtinCall.args = args;
 }
 
+static Builtin* resolveBuiltinCall(ASTNode* ast)
+{
+    size_t count = countVector(&ast->functionCall.args);
+    if (count > BUILTIN_PARAMS_MAX) {
+        return NULL;
+    }
+
+    TokenType argumentTypes[BUILTIN_PARAMS_MAX];
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* argument = getVectorAt(&ast->functionCall.args, i);
+
+        argumentTypes[i] = getTypeId(argument);
+    }
+
+    return resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
+}
+
 static void analyzeBuiltinCall(ASTNode* ast)
 {
-    Builtin* builtin = getBuiltinByName(ast->functionCall.id->chars);
+    Builtin* builtin = resolveBuiltinCall(ast);
     if (!builtin) {
         symbolError("undefined", ast->functionCall.token);
     }
@@ -382,6 +513,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
         ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
+        applyIntegerLiteralType(arg, param->parameter.typeId);
 
         ReferenceType argumentType = getReferenceType(arg);
         ReferenceType parameterType = getReferenceType(param);
@@ -392,7 +524,14 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
             || argumentType == parameterType
             || (argumentType == REFERENCE_EXCLUSIVE && parameterType == REFERENCE_SHARED);
 
-        if (getTypeId(arg) != param->parameter.typeId || !compatibleReference) {
+        TokenType argumentValueType = getTypeId(arg);
+        TokenType parameterValueType = param->parameter.typeId;
+        bool compatibleValue = argumentValueType == parameterValueType
+            || (argumentType == REFERENCE_NONE
+                && parameterType == REFERENCE_NONE
+                && canImplicitlyWidenInteger(argumentValueType, parameterValueType));
+
+        if (!compatibleValue || !compatibleReference) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -439,7 +578,7 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
         }
 
         if (!origin && (type == REFERENCE_SHARED || isLiteral(arg))) {
-            semanticError("Reference access requires a binding near ", token);
+            semanticError("Reference access requires a binding for ", token);
         }
 
         validateEffectAccess(origin, type, token);
@@ -626,7 +765,12 @@ static TokenType getFunctionReturnValueType(Vector* statements)
 
 static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
 {
-    if (ast->functionDefinition.typeId != type) {
+    TokenType returnType = ast->functionDefinition.returnTypeId;
+
+    bool valueReturn = ast->functionDefinition.returnReferenceType == REFERENCE_NONE;
+
+    if (returnType != type
+        && (!valueReturn || !canImplicitlyWidenInteger(type, returnType))) {
         semanticError("Invalid return type for function ", ast->functionDefinition.token);
     }
 }
@@ -634,15 +778,40 @@ static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
 static void setParameterPositions(ASTNode* ast)
 {
     size_t count = countVector(&ast->functionDefinition.params);
+    size_t position = 0;
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* param = getVectorAt(&ast->functionDefinition.params, i);
-        param->parameter.position = i;
+        param->parameter.position = position;
+        position += getReferenceType(param) == REFERENCE_NONE
+            ? getTypeSlotCount(getTypeId(param))
+            : 1;
+    }
+}
+
+static void applyFunctionReturnLiteralType(ASTNode* ast)
+{
+    if (!ast->functionDefinition.hasExplicitReturnType
+        || !isIntegerTypeToken(ast->functionDefinition.returnTypeId)) {
+        return;
+    }
+
+    Vector* statements = &ast->functionDefinition.body->compound.statements;
+    size_t count = countVector(statements);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* statement = getVectorAt(statements, i);
+
+        if (statement->type == AST_RETURN) {
+            applyIntegerLiteralType(
+                statement->returnStatement.expr, ast->functionDefinition.returnTypeId);
+        }
     }
 }
 
 static void resolveFunctionReturnValueType(ASTNode* ast)
 {
+    applyFunctionReturnLiteralType(ast);
     TokenType type = getFunctionReturnValueType(
         &ast->functionDefinition.body->compound.statements);
 
@@ -651,13 +820,13 @@ static void resolveFunctionReturnValueType(ASTNode* ast)
         return;
     }
 
-    ast->functionDefinition.typeId = type;
+    ast->functionDefinition.returnTypeId = type;
 }
 
 static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->functionDefinition.id)) {
-        semanticError("Redefinition of ", ast->functionDefinition.token);
+        redefinitionError("Function", ast->functionDefinition.token);
     }
 
     Scope* parent = analyzer->currentScope;
@@ -716,9 +885,14 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
 static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
 {
     ASTNode* expression = ast->assignment.expr;
+    TokenType expressionType = getTypeId(expression);
+    TokenType bindingType = getTypeId(symbol);
+    bool compatibleValue = bindingType == expressionType
+        || (getReferenceType(symbol) == REFERENCE_NONE
+            && getReferenceType(expression) == REFERENCE_NONE
+            && canImplicitlyWidenInteger(expressionType, bindingType));
 
-    if (getTypeId(symbol) != getTypeId(expression)
-        || getReferenceType(symbol) != getReferenceType(expression)) {
+    if (!compatibleValue || getReferenceType(symbol) != getReferenceType(expression)) {
         semanticError("Assignment type does not match binding ", ast->assignment.token);
     }
 }
@@ -751,8 +925,17 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     bool initializesBinding = !isInitialized(symbol);
     validateAssignmentTarget(analyzer, ast, symbol);
 
+    if (isIntegerTypeToken(getTypeId(symbol))) {
+        applyIntegerLiteralType(ast->assignment.expr, getTypeId(symbol));
+    }
+
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);
+
+    if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getTypeId(symbol) != TOKEN_I32) {
+        semanticError("Invalid operands to assignment ", ast->assignment.operator);
+    }
+
     ast->assignment.scope = analyzer->currentScope;
     ast->assignment.symbol = symbol;
 
@@ -802,14 +985,25 @@ static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
+    if (declaredType != TOKEN_UNKNOWN && isIntegerTypeToken(declaredType)) {
+        applyIntegerLiteralType(expression, declaredType);
+    }
+
     analyzeNode(analyzer, expression);
     TokenType expressionType = getTypeId(expression);
     ReferenceType expressionReferenceType = getReferenceType(expression);
 
     if (declaredType == TOKEN_UNKNOWN) {
+        if (expressionType == TOKEN_UNKNOWN) {
+            integerLiteralRequiresTypeError(ast->variableDefinition.token);
+        }
+
         ast->variableDefinition.typeId = expressionType;
         ast->variableDefinition.referenceType = expressionReferenceType;
-    } else if (declaredType != expressionType
+    } else if ((declaredType != expressionType
+        && (declaredReferenceType != REFERENCE_NONE
+            || expressionReferenceType != REFERENCE_NONE
+            || !canImplicitlyWidenInteger(expressionType, declaredType)))
         || declaredReferenceType != expressionReferenceType) {
         semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
     }
@@ -848,7 +1042,7 @@ static void trackVariableReference(ASTNode* ast)
 static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 {
     if (getLocalSymbol(analyzer->currentScope, ast->variableDefinition.id)) {
-        semanticError("Redefinition of ", ast->variableDefinition.token);
+        redefinitionError("Variable", ast->variableDefinition.token);
     }
 
     initializeVariableDefinition(analyzer, ast);
@@ -883,7 +1077,7 @@ static ReferenceType getExpectedReturnReferenceType(Analyzer* analyzer)
 static void validateReturnScope(Analyzer* analyzer, ASTNode* ast)
 {
     if (analyzer->currentScope->level < 2) {
-        semanticError("Expected return inside a function but found ", ast->returnStatement.token);
+        returnOutsideFunctionError(ast->returnStatement.token);
     }
 }
 

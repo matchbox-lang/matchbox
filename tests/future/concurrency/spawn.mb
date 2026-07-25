@@ -1,4 +1,4 @@
-func hello(seconds: int) {
+func hello(seconds: i32) {
     print("Hello")
     await timer(seconds)
     print(" World!")

@@ -1,10 +1,10 @@
 struct Point {
-    x: int
-    y: int
+    x: i32
+    y: i32
 }
 
 struct Batch {
-    values: List<int>
+    values: List<i32>
 }
 
 func consumePoint(point: Point) {

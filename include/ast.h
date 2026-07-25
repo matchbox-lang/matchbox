@@ -5,6 +5,7 @@
 #include "token.h"
 #include "vector.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct ASTNode ASTNode;
 typedef struct StringObject StringObject;
@@ -66,7 +67,6 @@ typedef struct ASTNode
         } booleanLiteral;
 
         struct {
-            BuiltinId id;
             Vector args;
             Builtin* builtin;
         } builtinCall;
@@ -81,8 +81,9 @@ typedef struct ASTNode
         } compound;
 
         struct {
-            float value;
+            double value;
             Token token;
+            TokenType typeId;
         } floatLiteral;
 
         struct {
@@ -100,15 +101,16 @@ typedef struct ASTNode
             Token token;
             Vector params;
             bool hasExplicitReturnType;
-            TokenType typeId;
+            TokenType returnTypeId;
             ReferenceType returnReferenceType;
             ASTNode* returnReferenceOrigin;
             ASTNode* body;
         } functionDefinition;
 
         struct {
-            int value;
+            uint64_t value;
             Token token;
+            TokenType typeId;
         } integerLiteral;
 
         struct {

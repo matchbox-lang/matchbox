@@ -58,18 +58,16 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_FINALLY:             return "finally";
         case TOKEN_THROW:               return "throw";
         case TOKEN_VOID:                return "void";
-        case TOKEN_INT:                 return "int";
-        case TOKEN_UINT:                return "uint";
-        case TOKEN_INT8:                return "int8";
-        case TOKEN_INT16:               return "int16";
-        case TOKEN_INT32:               return "int32";
-        case TOKEN_INT64:               return "int64";
-        case TOKEN_UINT8:               return "uint8";
-        case TOKEN_UINT16:              return "uint16";
-        case TOKEN_UINT32:              return "uint32";
-        case TOKEN_UINT64:              return "uint64";
-        case TOKEN_FLOAT:               return "float";
-        case TOKEN_DOUBLE:              return "double";
+        case TOKEN_I8:                  return "i8";
+        case TOKEN_I16:                 return "i16";
+        case TOKEN_I32:                 return "i32";
+        case TOKEN_I64:                 return "i64";
+        case TOKEN_U8:                  return "u8";
+        case TOKEN_U16:                 return "u16";
+        case TOKEN_U32:                 return "u32";
+        case TOKEN_U64:                 return "u64";
+        case TOKEN_F32:                 return "f32";
+        case TOKEN_F64:                 return "f64";
         case TOKEN_CHAR:                return "char";
         case TOKEN_STRING:              return "string";
         case TOKEN_BOOL:                return "bool";
@@ -139,7 +137,7 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_SEMICOLON:           return ";";
         case TOKEN_COMMA:               return ",";
         case TOKEN_INTEGER_LITERAL:     return "integer literal";
-        case TOKEN_FLOAT_LITERAL:       return "float literal";
+        case TOKEN_F32_LITERAL:         return "f32 literal";
         case TOKEN_OCTAL_LITERAL:       return "octal literal";
         case TOKEN_HEXADECIMAL_LITERAL: return "hexadecimal literal";
         case TOKEN_BINARY_LITERAL:      return "binary literal";
@@ -177,7 +175,55 @@ bool isAssignmentToken(TokenType type)
 
 bool isTypeToken(TokenType type)
 {
-    return type == TOKEN_INT || type == TOKEN_VOID;
+    return isIntegerTypeToken(type) || type == TOKEN_VOID;
+}
+
+bool isIntegerTypeToken(TokenType type)
+{
+    return type >= TOKEN_I8 && type <= TOKEN_U64;
+}
+
+bool isSignedIntegerTypeToken(TokenType type)
+{
+    return type >= TOKEN_I8 && type <= TOKEN_I64;
+}
+
+bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
+{
+    if (!isIntegerTypeToken(source) || !isIntegerTypeToken(destination)) {
+        return false;
+    }
+
+    if (isSignedIntegerTypeToken(source) != isSignedIntegerTypeToken(destination)) {
+        return false;
+    }
+
+    return getIntegerTypeSize(source) < getIntegerTypeSize(destination);
+}
+
+size_t getIntegerTypeSize(TokenType type)
+{
+    switch (type) {
+        case TOKEN_I8:
+        case TOKEN_U8:
+            return 1;
+        case TOKEN_I16:
+        case TOKEN_U16:
+            return 2;
+        case TOKEN_I32:
+        case TOKEN_U32:
+            return 4;
+        case TOKEN_I64:
+        case TOKEN_U64:
+            return 8;
+        default:
+            return 0;
+    }
+}
+
+size_t getTypeSlotCount(TokenType type)
+{
+    return type == TOKEN_I64 || type == TOKEN_U64 || type == TOKEN_F64 ? 2 : 1;
 }
 
 bool isComparisonToken(TokenType type)

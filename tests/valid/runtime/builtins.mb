@@ -1,5 +1,4 @@
-let x = max(4, 8)
-let y = min(4, 8)
+let order = byteorder()
 
-print(x)
-print(y)
+print(order)
+exit()

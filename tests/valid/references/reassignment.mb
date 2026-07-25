@@ -1,13 +1,13 @@
 var first = 10
 var second = 20
-var shared: &int = &first
+var shared: &i32 = &first
 
 shared = &second
 print(shared)
 
 var third = 30
 var fourth = 40
-var exclusive: ^int = ^third
+var exclusive: ^i32 = ^third
 
 exclusive = ^fourth
 print(exclusive)

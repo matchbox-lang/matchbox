@@ -27,7 +27,7 @@ typedef enum ASTNodeType
     AST_BOOLEAN,
     AST_CHARACTER,
     AST_COMPOUND,
-    AST_F32,
+    AST_FLOAT,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
@@ -84,6 +84,7 @@ typedef struct ASTNode
         struct {
             float value;
             Token token;
+            TokenType typeId;
         } floatLiteral;
 
         struct {

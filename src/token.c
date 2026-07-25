@@ -175,8 +175,7 @@ bool isAssignmentToken(TokenType type)
 
 bool isTypeToken(TokenType type)
 {
-    return isIntegerTypeToken(type) || type == TOKEN_F32 || type == TOKEN_F64
-        || type == TOKEN_VOID;
+    return isIntegerTypeToken(type) || type == TOKEN_VOID;
 }
 
 bool isIntegerTypeToken(TokenType type)

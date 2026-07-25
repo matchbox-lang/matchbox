@@ -49,6 +49,8 @@ typedef enum Opcode
     OP_REFG,
     OP_LDR,
     OP_STR,
+
+    // 64-bit data movement
     OP_MOV_I64,
     OP_LDC_I64,
     OP_LDG_I64,
@@ -101,9 +103,6 @@ typedef enum Opcode
     OP_REM_U16,
     OP_REM_I8,
     OP_REM_U8,
-
-    // Exponentiation
-    OP_POW,
 
     // Bitwise AND
     OP_BAND_I64,

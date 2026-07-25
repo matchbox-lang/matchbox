@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 7
+#define BUILTINS_MAX 8
 
 typedef enum BuiltinId
 {
@@ -15,6 +15,7 @@ typedef enum BuiltinId
     BUILTIN_ABS,
     BUILTIN_MIN,
     BUILTIN_MAX,
+    BUILTIN_POW,
     BUILTIN_BYTEORDER
 } BuiltinId;
 
@@ -37,6 +38,7 @@ void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbs(VM* vm, FunctionObject* function, Value* frame);
 void builtinMin(VM* vm, FunctionObject* function, Value* frame);
 void builtinMax(VM* vm, FunctionObject* function, Value* frame);
+void builtinPow(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

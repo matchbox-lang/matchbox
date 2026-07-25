@@ -202,7 +202,6 @@ static void printInstruction(uint8_t c)
         case OP_REM_U16:     printOpcodeRegisters3("REM_U16"); break;
         case OP_REM_I8:       printOpcodeRegisters3("REM_I8"); break;
         case OP_REM_U8:      printOpcodeRegisters3("REM_U8"); break;
-        case OP_POW:            printOpcodeRegisters3("POW"); break;
         case OP_BAND_I64:     printOpcodeRegisters3("BAND_I64"); break;
         case OP_BAND_I32:     printOpcodeRegisters3("BAND_I32"); break;
         case OP_BAND_I16:     printOpcodeRegisters3("BAND_I16"); break;

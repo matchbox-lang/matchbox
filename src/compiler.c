@@ -49,7 +49,6 @@ typedef enum IntegerOperation
     INTEGER_MUL,
     INTEGER_DIV,
     INTEGER_REM,
-    INTEGER_POW,
     INTEGER_BAND,
     INTEGER_BOR,
     INTEGER_BXOR,
@@ -64,6 +63,8 @@ static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
+static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
+static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -833,8 +834,6 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
             return getDivisionOpcode(type);
         case INTEGER_REM:
             return getRemainderOpcode(type);
-        case INTEGER_POW:
-            return OP_POW;
         case INTEGER_BAND:
             return getWidthOpcode(type, OP_BAND_I64, OP_BAND_I32, OP_BAND_I16, OP_BAND_I8);
         case INTEGER_BOR:
@@ -944,6 +943,10 @@ static Operand emitBinaryOperands(
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->binary.operator.type == TOKEN_POWER) {
+        return compilePower(compiler, ast->binary.leftExpr, ast->binary.rightExpr);
+    }
+
     TokenType type = getTypeId(ast->binary.leftExpr);
     Operand left = compileExpression(compiler, ast->binary.leftExpr, false);
 
@@ -965,8 +968,6 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
             return emitBinaryOperands(compiler, INTEGER_DIV, type, left, right);
         case TOKEN_PERCENT:
             return emitBinaryOperands(compiler, INTEGER_REM, type, left, right);
-        case TOKEN_POWER:
-            return emitBinaryOperands(compiler, INTEGER_POW, type, left, right);
         case TOKEN_AMPERSAND:
             return emitBinaryOperands(compiler, INTEGER_BAND, type, left, right);
         case TOKEN_PIPE:
@@ -1097,7 +1098,7 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
         case TOKEN_PERCENT_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_REM);
         case TOKEN_POWER_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_POW);
+            return compilePowerAssignment(compiler, ast);
         case TOKEN_AND_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_BAND);
         case TOKEN_OR_EQUAL:
@@ -1327,6 +1328,25 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
     compileArguments(compiler, args, params);
     
     return closeCallArea(compiler, function, functionPosition, call, discard);
+}
+
+static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression)
+{
+    void* items[] = {leftExpression, rightExpression};
+    Vector args = {.data = items, .capacity = 2, .count = 2};
+    uint16_t position = getBuiltinFunctionPosition(compiler, BUILTIN_POW);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+
+    return compileCall(compiler, function, position, &args, NULL, false);
+}
+
+static void compilePowerAssignment(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode left = {.type = AST_VARIABLE};
+    left.variable.symbol = ast->assignment.symbol;
+
+    Operand result = compilePower(compiler, &left, ast->assignment.expr);
+    storeAssignmentValue(compiler, ast->assignment.symbol, result);
 }
 
 static void compileCallWithArgument(Compiler* compiler, FunctionObject* function,

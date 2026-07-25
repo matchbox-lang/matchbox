@@ -48,7 +48,6 @@ static const OpcodeFlag opcodeFlags[OP_COUNT] = {
     [OP_REM_U16] = OP_FLAG_WRITES_A,
     [OP_REM_I8] = OP_FLAG_WRITES_A,
     [OP_REM_U8] = OP_FLAG_WRITES_A,
-    [OP_POW] = OP_FLAG_WRITES_A,
     [OP_BAND_I64] = OP_FLAG_WRITES_A,
     [OP_BANDI_I64] = OP_FLAG_WRITES_A,
     [OP_BAND_I32] = OP_FLAG_WRITES_A,

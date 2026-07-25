@@ -1,7 +1,6 @@
 #include "vm.h"
 #include "function_object.h"
 #include "opcode.h"
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -166,9 +165,6 @@ static void run(VM* vm)
                 break;
             case OP_REM_U8:
                 vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) % AS_U8(vm->fp[c]));
-                break;
-            case OP_POW:
-                vm->fp[a] = SIGNED_VALUE(pow(AS_SIGNED(vm->fp[b]), AS_SIGNED(vm->fp[c])));
                 break;
             case OP_BAND_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) & AS_U32(vm->fp[c]));

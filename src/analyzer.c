@@ -290,6 +290,10 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
+    if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
+        semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
     ast->binary.typeId = leftType;
 
     if (isBoolOperatorToken(ast->binary.operator.type)) {
@@ -849,6 +853,11 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);
+
+    if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getTypeId(symbol) != TOKEN_I32) {
+        semanticError("Invalid operands to assignment ", ast->assignment.operator);
+    }
+
     ast->assignment.scope = analyzer->currentScope;
     ast->assignment.symbol = symbol;
 

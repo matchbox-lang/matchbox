@@ -1,6 +1,7 @@
 #include "builtin.h"
 #include "token.h"
 #include "value.h"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@ Builtin builtins[BUILTINS_MAX] = {
     {"abs",         BUILTIN_ABS,        builtinAbs,        1, {TOKEN_I32},                         TOKEN_I32},
     {"min",         BUILTIN_MIN,        builtinMin,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
     {"max",         BUILTIN_MAX,        builtinMax,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
+    {"pow",         BUILTIN_POW,        builtinPow,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
     {"byteorder",   BUILTIN_BYTEORDER,  builtinByteorder,  0, {},                                  TOKEN_I32}
 };
 
@@ -98,6 +100,18 @@ void builtinMax(VM* vm, FunctionObject* function, Value* frame)
     int32_t b = AS_SIGNED(frame[1]);
     int32_t x = a > b ? a : b;
     
+    frame[-2] = SIGNED_VALUE(x);
+}
+
+void builtinPow(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int32_t a = AS_SIGNED(frame[0]);
+    int32_t b = AS_SIGNED(frame[1]);
+    int32_t x = pow(a, b);
+
     frame[-2] = SIGNED_VALUE(x);
 }
 

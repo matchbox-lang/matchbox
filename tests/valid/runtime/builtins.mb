@@ -1,7 +1,4 @@
-let a = max(4, 8)
-let b = min(4, 8)
-let c = pow(2, 8)
+let order = byteorder()
 
-print(a)
-print(b)
-print(c)
+print(order)
+exit()

@@ -9,16 +9,43 @@
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {
-    {"exit",        builtinExit,       0, {},                                  TOKEN_VOID},
-    {"print",       builtinPrintI32,   1, {TOKEN_I32},                         TOKEN_VOID},
-    {"print",       builtinPrintI64,   1, {TOKEN_I64},                         TOKEN_VOID},
-    {"clamp",       builtinClamp,      3, {TOKEN_I32, TOKEN_I32, TOKEN_I32},   TOKEN_I32},
-    {"abs",         builtinAbs,        1, {TOKEN_I32},                         TOKEN_I32},
-    {"min",         builtinMin,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
-    {"max",         builtinMax,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
-    {"pow",         builtinPow,        2, {TOKEN_I32, TOKEN_I32},              TOKEN_I32},
-    {"byteorder",   builtinByteorder,  0, {},                                  TOKEN_I32}
+    {"exit",        builtinExit,        0,  {},                                 TOKEN_VOID},
+    {"print",       builtinPrintI32,    1,  {TOKEN_I32},                        TOKEN_VOID},
+    {"print",       builtinPrintI64,    1,  {TOKEN_I64},                        TOKEN_VOID},
+    {"clamp",       builtinClamp,       3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
+    {"clamp",       builtinClampI64,    3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
+    {"abs",         builtinAbs,         1,  {TOKEN_I32},                        TOKEN_I32},
+    {"abs",         builtinAbsI64,      1,  {TOKEN_I64},                        TOKEN_I64},
+    {"min",         builtinMin,         2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"min",         builtinMinI64,      2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"max",         builtinMax,         2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"max",         builtinMaxI64,      2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"pow",         builtinPow,         2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"pow",         builtinPowI64,      2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"byteorder",   builtinByteorder,   0,  {},                                 TOKEN_I32}
 };
+
+static int64_t readI64(Value* frame, size_t position)
+{
+#if UINTPTR_MAX == UINT32_MAX
+    uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
+
+    return (int64_t)bits;
+#else
+    return AS_SIGNED(frame[position]);
+#endif
+}
+
+static void writeI64(Value* frame, int64_t value)
+{
+#if UINTPTR_MAX == UINT32_MAX
+    uint64_t bits = (uint64_t)value;
+    frame[-2] = U32_VALUE(bits);
+    frame[-1] = U32_VALUE(bits >> 32);
+#else
+    frame[-2] = SIGNED_VALUE(value);
+#endif
+}
 
 static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)
 {
@@ -89,12 +116,7 @@ void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame)
     (void)vm;
     (void)function;
 
-#if UINTPTR_MAX == UINT32_MAX
-    uint64_t bits = AS_U32(frame[0]) | ((uint64_t)AS_U32(frame[1]) << 32);
-    int64_t n = (int64_t)bits;
-#else
-    int64_t n = AS_SIGNED(frame[0]);
-#endif
+    int64_t n = readI64(frame, 0);
 
     printf("%" PRId64 "\n", n);
 }
@@ -128,6 +150,35 @@ void builtinAbs(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(x);
 }
 
+void builtinClampI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int64_t num = readI64(frame, 0);
+    int64_t min = readI64(frame, 2);
+    int64_t max = readI64(frame, 4);
+
+    if (num < min) {
+        num = min;
+    } else if (num > max) {
+        num = max;
+    }
+
+    writeI64(frame, num);
+}
+
+void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int64_t n = readI64(frame, 0);
+    int64_t x = n < 0 ? -n : n;
+
+    writeI64(frame, x);
+}
+
 void builtinMin(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
@@ -138,6 +189,18 @@ void builtinMin(VM* vm, FunctionObject* function, Value* frame)
     int32_t x = a < b ? a : b;
     
     frame[-2] = SIGNED_VALUE(x);
+}
+
+void builtinMinI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int64_t a = readI64(frame, 0);
+    int64_t b = readI64(frame, 2);
+    int64_t x = a < b ? a : b;
+
+    writeI64(frame, x);
 }
 
 void builtinMax(VM* vm, FunctionObject* function, Value* frame)
@@ -152,6 +215,18 @@ void builtinMax(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(x);
 }
 
+void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int64_t a = readI64(frame, 0);
+    int64_t b = readI64(frame, 2);
+    int64_t x = a > b ? a : b;
+
+    writeI64(frame, x);
+}
+
 void builtinPow(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
@@ -162,6 +237,18 @@ void builtinPow(VM* vm, FunctionObject* function, Value* frame)
     int32_t x = pow(a, b);
 
     frame[-2] = SIGNED_VALUE(x);
+}
+
+void builtinPowI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int64_t a = readI64(frame, 0);
+    int64_t b = readI64(frame, 2);
+    int64_t x = pow(a, b);
+
+    writeI64(frame, x);
 }
 
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)

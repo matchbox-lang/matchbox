@@ -1284,7 +1284,7 @@ static FunctionObject* createBuiltinFunctionObject(Builtin* builtin)
     function->type = FUNCTION_BUILTIN;
     function->entry = builtin->entry;
     function->paramCount = 0;
-    function->returnCount = 1;
+    function->returnCount = getTypeSlotCount(builtin->typeId);
 
     for (int i = 0; i < builtin->paramCount; i++) {
         function->paramCount += getTypeSlotCount(builtin->params[i]);

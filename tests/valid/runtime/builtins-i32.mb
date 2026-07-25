@@ -1,0 +1,11 @@
+let a = clamp(12, 4, 8)
+let b = abs(-8)
+let c = max(4, 8)
+let d = min(4, 8)
+let e = pow(2, 8)
+
+print(a)
+print(b)
+print(c)
+print(d)
+print(e)

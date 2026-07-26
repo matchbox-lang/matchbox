@@ -80,9 +80,13 @@ typedef enum Opcode
 
     // Multiplication
     OP_MUL_I64,
+    OP_MULI_I64,
     OP_MUL_I32,
+    OP_MULI_I32,
     OP_MUL_I16,
+    OP_MULI_I16,
     OP_MUL_I8,
+    OP_MULI_I8,
 
     // Integer division
     OP_IDIV_I64,

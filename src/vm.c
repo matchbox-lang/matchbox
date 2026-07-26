@@ -124,11 +124,20 @@ static void run(VM* vm)
             case OP_MUL_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) * AS_U32(vm->fp[c]));
                 break;
+            case OP_MULI_I32:
+                vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) * (int8_t)c);
+                break;
             case OP_MUL_I16:
                 vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) * AS_U16(vm->fp[c]));
                 break;
+            case OP_MULI_I16:
+                vm->fp[a] = I16_VALUE(AS_U16(vm->fp[b]) * (int8_t)c);
+                break;
             case OP_MUL_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) * AS_U8(vm->fp[c]));
+                break;
+            case OP_MULI_I8:
+                vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) * (int8_t)c);
                 break;
             case OP_IDIV_I32:
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) / AS_I32(vm->fp[c]));

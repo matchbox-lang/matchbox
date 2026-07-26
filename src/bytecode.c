@@ -183,9 +183,13 @@ static void printInstruction(uint8_t c)
         case OP_SUBI_I16:       printOpcodeRegisters2Int8("SUBI_I16"); break;
         case OP_SUBI_I8:        printOpcodeRegisters2Int8("SUBI_I8"); break;
         case OP_MUL_I64:        printOpcodeRegisters3("MUL_I64"); break;
+        case OP_MULI_I64:       printOpcodeRegisters2Int8("MULI_I64"); break;
         case OP_MUL_I32:        printOpcodeRegisters3("MUL_I32"); break;
+        case OP_MULI_I32:       printOpcodeRegisters2Int8("MULI_I32"); break;
         case OP_MUL_I16:        printOpcodeRegisters3("MUL_I16"); break;
+        case OP_MULI_I16:       printOpcodeRegisters2Int8("MULI_I16"); break;
         case OP_MUL_I8:         printOpcodeRegisters3("MUL_I8"); break;
+        case OP_MULI_I8:        printOpcodeRegisters2Int8("MULI_I8"); break;
         case OP_IDIV_I64:       printOpcodeRegisters3("IDIV_I64"); break;
         case OP_IDIV_U64:       printOpcodeRegisters3("IDIV_U64"); break;
         case OP_IDIV_I32:       printOpcodeRegisters3("IDIV_I32"); break;

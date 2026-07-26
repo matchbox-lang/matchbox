@@ -10,3 +10,13 @@ a % b
 a ** b
 
 -a
+
+let signed8: i8 = 4
+let signed16: i16 = 4
+let signed32: i32 = 4
+let signed64: i64 = 4
+
+signed8 * 3
+signed16 * 3
+signed32 * 3
+signed64 * 3

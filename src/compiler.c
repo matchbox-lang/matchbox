@@ -869,6 +869,8 @@ static Opcode getIntegerImmediateOpcode(TokenType type, IntegerOperation operati
             return getWidthOpcode(type, OP_ADDI_I64, OP_ADDI_I32, OP_ADDI_I16, OP_ADDI_I8);
         case INTEGER_SUB:
             return getWidthOpcode(type, OP_SUBI_I64, OP_SUBI_I32, OP_SUBI_I16, OP_SUBI_I8);
+        case INTEGER_MUL:
+            return getWidthOpcode(type, OP_MULI_I64, OP_MULI_I32, OP_MULI_I16, OP_MULI_I8);
         case INTEGER_BAND:
             return getWidthOpcode(type, OP_BANDI_I64, OP_BANDI_I32, OP_BANDI_I16, OP_BANDI_I8);
         case INTEGER_BOR:
@@ -890,7 +892,7 @@ static Opcode getIntegerImmediateOpcode(TokenType type, IntegerOperation operati
 
 static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediate)
 {
-    if (operation == INTEGER_ADD || operation == INTEGER_SUB) {
+    if (operation == INTEGER_ADD || operation == INTEGER_SUB || operation == INTEGER_MUL) {
         return !isLargerThan8BitSigned(immediate);
     }
 

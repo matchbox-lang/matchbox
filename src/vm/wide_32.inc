@@ -48,6 +48,10 @@ case OP_MUL_I64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) * READ_U64(vm->fp, c));
     break;
 }
+case OP_MULI_I64: {
+    WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) * (int8_t)c);
+    break;
+}
 case OP_IDIV_I64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) / READ_U64(vm->fp, c));
     break;

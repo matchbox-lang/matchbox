@@ -128,5 +128,6 @@ OpcodeFlag getOpcodeFlags(Opcode opcode)
     if ((unsigned)opcode >= OP_COUNT) {
         return OP_FLAG_NONE;
     }
+    
     return opcodeFlags[opcode];
 }

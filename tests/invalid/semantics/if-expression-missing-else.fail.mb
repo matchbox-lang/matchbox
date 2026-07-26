@@ -1,0 +1,3 @@
+let value = if true {
+    1
+}

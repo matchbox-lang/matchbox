@@ -27,6 +27,7 @@ typedef enum ASTNodeType
     AST_BOOLEAN,
     AST_CHARACTER,
     AST_COMPOUND,
+    AST_CONDITIONAL,
     AST_FLOAT,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
@@ -79,6 +80,15 @@ typedef struct ASTNode
             Scope* scope;
             Vector statements;
         } compound;
+
+        struct {
+            Token token;
+            ASTNode* condition;
+            ASTNode* thenBranch;
+            ASTNode* elseBranch;
+            TokenType typeId;
+            bool expression;
+        } conditional;
 
         struct {
             double value;
@@ -175,7 +185,6 @@ ReferenceType getReferenceType(const ASTNode* ast);
 bool isExpressionStatement(const ASTNode* ast);
 bool isFunctionCall(const ASTNode* ast);
 bool isFunctionDefinition(const ASTNode* ast);
-bool isLiteral(const ASTNode* ast);
 bool isParameter(const ASTNode* ast);
 bool isPrefix(const ASTNode* ast);
 bool isPrefixOperand(const ASTNode* ast);

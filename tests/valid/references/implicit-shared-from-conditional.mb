@@ -1,0 +1,9 @@
+func takeShared(value: &i32) {
+    print(value)
+}
+
+takeShared(if true {
+    1
+} else {
+    2
+})

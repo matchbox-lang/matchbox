@@ -13,6 +13,7 @@ static ASTNode* parseExpression(Parser* parser);
 static ASTNode* parseIdentifier(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
 static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
+static ASTNode* parseConditional(Parser* parser);
 
 static void expectedExpressionError(Token token)
 {
@@ -191,6 +192,17 @@ static ASTNode* createVariableNode(Token token)
 static ASTNode* parsePrimary(Parser* parser)
 {
     switch (parser->currentToken.type) {
+        case TOKEN_TRUE:
+        case TOKEN_FALSE: {
+            ASTNode* ast = createASTNode(AST_BOOLEAN);
+            ast->booleanLiteral.value = parser->currentToken.type == TOKEN_TRUE;
+            ast->booleanLiteral.token = parser->currentToken;
+            consume(parser, parser->currentToken.type);
+
+            return ast;
+        }
+        case TOKEN_IF:
+            return parseConditional(parser);
         case TOKEN_INTEGER_LITERAL:
             return parseIntegerLiteral(parser, parser->currentToken);
         case TOKEN_BINARY_LITERAL:
@@ -209,6 +221,86 @@ static ASTNode* parsePrimary(Parser* parser)
         default:
             expectedExpressionError(parser->currentToken);
             return NULL;
+    }
+}
+
+static ASTNode* parseConditionalBranch(Parser* parser)
+{
+    consume(parser, TOKEN_LBRACE);
+    ASTNode* branch = createASTNode(AST_COMPOUND);
+    branch->compound.scope = NULL;
+
+    if (!parseBlocklevelStatements(parser, &branch->compound.statements)) {
+        freeASTNode(branch);
+
+        return NULL;
+    }
+
+    consume(parser, TOKEN_RBRACE);
+
+    return branch;
+}
+
+static ASTNode* parseConditionalElse(Parser* parser)
+{
+    if (parser->currentToken.type != TOKEN_ELSE) {
+        return NULL;
+    }
+
+    consume(parser, TOKEN_ELSE);
+    if (parser->currentToken.type == TOKEN_IF) {
+        return parseConditional(parser);
+    }
+
+    return parseConditionalBranch(parser);
+}
+
+static ASTNode* createConditionalNode(
+    Token token, ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch)
+{
+    ASTNode* ast = createASTNode(AST_CONDITIONAL);
+    ast->conditional.token = token;
+    ast->conditional.condition = condition;
+    ast->conditional.thenBranch = thenBranch;
+    ast->conditional.elseBranch = elseBranch;
+    ast->conditional.typeId = TOKEN_VOID;
+    ast->conditional.expression = true;
+
+    return ast;
+}
+
+static ASTNode* parseConditional(Parser* parser)
+{
+    Token token = parser->currentToken;
+    consume(parser, TOKEN_IF);
+
+    ASTNode* condition = parseExpression(parser);
+    if (!condition) {
+        return NULL;
+    }
+
+    ASTNode* thenBranch = parseConditionalBranch(parser);
+    if (!thenBranch) {
+        freeASTNode(condition);
+
+        return NULL;
+    }
+
+    return createConditionalNode(
+        token,
+        condition,
+        thenBranch,
+        parseConditionalElse(parser)
+    );
+}
+
+static void markConditionalStatement(ASTNode* ast)
+{
+    ast->conditional.expression = false;
+
+    ASTNode* elseBranch = ast->conditional.elseBranch;
+    if (elseBranch && elseBranch->type == AST_CONDITIONAL) {
+        markConditionalStatement(elseBranch);
     }
 }
 
@@ -811,6 +903,12 @@ static ASTNode* parseStatement(Parser* parser)
             return parseVariableDefinition(parser);
         case TOKEN_RETURN:
             return parseReturnStatement(parser);
+        case TOKEN_IF: {
+            ASTNode* ast = parseConditional(parser);
+            markConditionalStatement(ast);
+
+            return ast;
+        }
         default:
             return parseExpression(parser);
     }

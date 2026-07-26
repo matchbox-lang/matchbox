@@ -283,14 +283,53 @@ static void run(VM* vm)
             case OP_ASRI_I8:
                 vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) >> c);
                 break;
+            case OP_AND:
+                vm->fp[a] = BOOL_VALUE(AS_BOOL(vm->fp[b]) && AS_BOOL(vm->fp[c]));
+                break;
+            case OP_OR:
+                vm->fp[a] = BOOL_VALUE(AS_BOOL(vm->fp[b]) || AS_BOOL(vm->fp[c]));
+                break;
             case OP_NOT:
                 vm->fp[a] = SIGNED_VALUE(!AS_SIGNED(vm->fp[b]));
                 break;
             case OP_NEG:
                 vm->fp[a] = SIGNED_VALUE(-AS_SIGNED(vm->fp[b]));
                 break;
+            case OP_EQ:
+                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) == AS_UNSIGNED(vm->fp[c]));
+                break;
+            case OP_NE:
+                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) != AS_UNSIGNED(vm->fp[c]));
+                break;
+            case OP_LT_INT:
+                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) < AS_SIGNED(vm->fp[c]));
+                break;
+            case OP_LT_UINT:
+                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) < AS_UNSIGNED(vm->fp[c]));
+                break;
+            case OP_LE_INT:
+                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) <= AS_SIGNED(vm->fp[c]));
+                break;
+            case OP_LE_UINT:
+                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) <= AS_UNSIGNED(vm->fp[c]));
+                break;
+            case OP_BZ:
+                if (!AS_BOOL(vm->fp[a])) {
+                    vm->ip += (int16_t)OPERAND_BC(inst);
+                }
+                break;
+            case OP_BNZ:
+                if (AS_BOOL(vm->fp[a])) {
+                    vm->ip += (int16_t)OPERAND_BC(inst);
+                }
+                break;
             case OP_BEQ:
                 if (AS_UNSIGNED(vm->fp[a]) == AS_UNSIGNED(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BNE:
+                if (AS_UNSIGNED(vm->fp[a]) != AS_UNSIGNED(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;

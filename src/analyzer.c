@@ -24,6 +24,13 @@ static void semanticError(char* message, Token token)
     exit(1);
 }
 
+static void semanticErrorAt(char* message, Token token)
+{
+    fprintf(stderr, "Error: %s", message);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
 {
     fprintf(stderr, "Error: Integer literal is too large for type %s", getTokenTypeName(type));
@@ -219,6 +226,19 @@ static bool nodesUseId(Vector* nodes, StringObject* id)
     return false;
 }
 
+static bool conditionalBranchUsesId(ASTNode* branch, StringObject* id)
+{
+    if (!branch) {
+        return false;
+    }
+
+    if (branch->type == AST_CONDITIONAL) {
+        return nodeUsesId(branch, id);
+    }
+
+    return nodesUseId(&branch->compound.statements, id);
+}
+
 static bool nodeUsesId(ASTNode* ast, StringObject* id)
 {
     if (!ast) {
@@ -235,6 +255,10 @@ static bool nodeUsesId(ASTNode* ast, StringObject* id)
                 || nodeUsesId(ast->binary.rightExpr, id);
         case AST_BUILTIN_CALL:
             return nodesUseId(&ast->builtinCall.args, id);
+        case AST_CONDITIONAL:
+            return nodeUsesId(ast->conditional.condition, id)
+                || conditionalBranchUsesId(ast->conditional.thenBranch, id)
+                || conditionalBranchUsesId(ast->conditional.elseBranch, id);
         case AST_FUNCTION_CALL:
             return nodesUseId(&ast->functionCall.args, id);
         case AST_FUNCTION_DEFINITION:
@@ -308,6 +332,69 @@ static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
     analyzeNodes(analyzer, nodes, 0);
 }
 
+static TokenType analyzeConditionalBranch(Analyzer* analyzer, ASTNode* branch)
+{
+    Scope* previousScope = analyzer->currentScope;
+    branch->compound.scope = createScope(previousScope);
+    analyzer->currentScope = branch->compound.scope;
+    analyzeExpressionNodes(analyzer, &branch->compound.statements);
+    analyzer->currentScope = previousScope;
+
+    size_t count = countVector(&branch->compound.statements);
+    if (!count) {
+        return TOKEN_VOID;
+    }
+
+    return getTypeId(getVectorAt(&branch->compound.statements, count - 1));
+}
+
+static TokenType analyzeElseBranch(Analyzer* analyzer, ASTNode* branch)
+{
+    if (!branch) {
+        return TOKEN_VOID;
+    }
+
+    if (branch->type == AST_CONDITIONAL) {
+        analyzeNode(analyzer, branch);
+
+        return getTypeId(branch);
+    }
+
+    return analyzeConditionalBranch(analyzer, branch);
+}
+
+static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
+{
+    analyzeNode(analyzer, ast->conditional.condition);
+
+    if (getTypeId(ast->conditional.condition) != TOKEN_BOOL) {
+        semanticErrorAt("If condition must have type bool", ast->conditional.token);
+    }
+
+    TokenType thenType = analyzeConditionalBranch(analyzer, ast->conditional.thenBranch);
+    TokenType elseType = analyzeElseBranch(analyzer, ast->conditional.elseBranch);
+
+    if (!ast->conditional.expression) {
+        ast->conditional.typeId = TOKEN_VOID;
+
+        return;
+    }
+
+    if (!ast->conditional.elseBranch) {
+        semanticError("If expression requires an else branch ", ast->conditional.token);
+    }
+
+    if (thenType == TOKEN_VOID || elseType == TOKEN_VOID) {
+        semanticError("If expression branch must produce a value ", ast->conditional.token);
+    }
+
+    if (thenType != elseType) {
+        semanticError("If expression branches have incompatible types ", ast->conditional.token);
+    }
+
+    ast->conditional.typeId = thenType;
+}
+
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -328,6 +415,14 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 
     if (leftType != rightType) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
+    if (isLogicalToken(ast->binary.operator.type) && leftType != TOKEN_BOOL) {
+        semanticError("Logical operators require bool operands ", ast->binary.operator);
+    }
+
+    if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType)) {
+        semanticError("Comparison operators require integer operands ", ast->binary.operator);
     }
 
     if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
@@ -553,6 +648,11 @@ static void validateEffectAccess(ASTNode* origin, ReferenceType type, Token toke
     }
 }
 
+static bool referenceArgumentRequiresBinding(ReferenceType type)
+{
+    return type == REFERENCE_EXCLUSIVE;
+}
+
 static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = countVector(&caller->functionCall.args);
@@ -577,7 +677,7 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
             origin = getReferenceOriginOrSelf(arg->variable.symbol);
         }
 
-        if (!origin && (type == REFERENCE_SHARED || isLiteral(arg))) {
+        if (!origin && referenceArgumentRequiresBinding(type)) {
             semanticError("Reference access requires a binding for ", token);
         }
 
@@ -592,6 +692,21 @@ static void validateEffectsInVector(Vector* nodes)
     for (size_t i = 0; i < count; i++) {
         validateNodeEffects(getVectorAt(nodes, i));
     }
+}
+
+static void validateConditionalBranchEffects(ASTNode* branch)
+{
+    if (!branch) {
+        return;
+    }
+
+    if (branch->type == AST_CONDITIONAL) {
+        validateNodeEffects(branch);
+
+        return;
+    }
+
+    validateEffectsInVector(&branch->compound.statements);
 }
 
 static void validateNodeEffects(ASTNode* ast)
@@ -609,6 +724,11 @@ static void validateNodeEffects(ASTNode* ast)
             break;
         case AST_BUILTIN_CALL:
             validateEffectsInVector(&ast->builtinCall.args);
+            break;
+        case AST_CONDITIONAL:
+            validateNodeEffects(ast->conditional.condition);
+            validateConditionalBranchEffects(ast->conditional.thenBranch);
+            validateConditionalBranchEffects(ast->conditional.elseBranch);
             break;
         case AST_FUNCTION_CALL:
             validateEffectsInVector(&ast->functionCall.args);
@@ -1133,6 +1253,10 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     }
 
     analyzeNode(analyzer, ast->prefix.expr);
+
+    if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {
+        semanticError("Logical not requires a bool operand ", ast->prefix.operator);
+    }
 }
 
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
@@ -1144,6 +1268,8 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
             analyzeBinary(analyzer, ast); break;
         case AST_BUILTIN_CALL:
             analyzeExpressionNodes(analyzer, &ast->builtinCall.args); break;
+        case AST_CONDITIONAL:
+            analyzeConditional(analyzer, ast); break;
         case AST_FUNCTION_CALL:
             analyzeFunctionCall(analyzer, ast); break;
         case AST_FUNCTION_DEFINITION:

@@ -102,6 +102,21 @@ static void optimizeNodes(Vector* nodes)
     }
 }
 
+static void optimizeConditionalBranch(ASTNode* branch)
+{
+    if (!branch) {
+        return;
+    }
+
+    if (branch->type == AST_CONDITIONAL) {
+        optimizeNode(branch);
+
+        return;
+    }
+
+    optimizeNodes(&branch->compound.statements);
+}
+
 static void optimizeNode(ASTNode* ast)
 {
     switch (ast->type) {
@@ -115,6 +130,11 @@ static void optimizeNode(ASTNode* ast)
             break;
         case AST_BUILTIN_CALL:
             optimizeNodes(&ast->builtinCall.args);
+            break;
+        case AST_CONDITIONAL:
+            optimizeNode(ast->conditional.condition);
+            optimizeConditionalBranch(ast->conditional.thenBranch);
+            optimizeConditionalBranch(ast->conditional.elseBranch);
             break;
         case AST_FUNCTION_CALL:
             optimizeNodes(&ast->functionCall.args);

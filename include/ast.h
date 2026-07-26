@@ -27,6 +27,7 @@ typedef enum ASTNodeType
     AST_BOOLEAN,
     AST_CHARACTER,
     AST_COMPOUND,
+    AST_CONDITIONAL,
     AST_FLOAT,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
@@ -79,6 +80,15 @@ typedef struct ASTNode
             Scope* scope;
             Vector statements;
         } compound;
+
+        struct {
+            Token token;
+            ASTNode* condition;
+            ASTNode* thenBranch;
+            ASTNode* elseBranch;
+            TokenType typeId;
+            bool expression;
+        } conditional;
 
         struct {
             double value;

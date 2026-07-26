@@ -59,6 +59,7 @@ typedef enum IntegerOperation
 } IntegerOperation;
 
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
+static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
     TokenType destination, bool reference);
@@ -67,6 +68,7 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
+static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 
 static void functionPositionOverflowError()
 {
@@ -758,6 +760,11 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
     return makeOperand(emitLdi(compiler, (int16_t)value), true);
 }
 
+static Operand compileBoolean(Compiler* compiler, ASTNode* ast)
+{
+    return makeOperand(emitLdi(compiler, ast->booleanLiteral.value), true);
+}
+
 static size_t getNodeSlotCount(ASTNode* ast)
 {
     if (getReferenceType(ast) != REFERENCE_NONE) {
@@ -943,6 +950,45 @@ static Operand emitBinaryOperands(
     return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
+static Operand emitComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+{
+    if (left.temporary) {
+        releaseOperand(compiler, right);
+        emitInstruction(compiler, opcode, left.reg, left.reg, right.reg);
+
+        return makeOperand(left.reg, true);
+    }
+
+    int destination = right.temporary ? right.reg : allocateRegister(compiler);
+    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
+
+    return makeOperand(destination, true);
+}
+
+static Operand emitReversedComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+{
+    if (left.temporary) {
+        releaseOperand(compiler, right);
+        emitInstruction(compiler, opcode, left.reg, right.reg, left.reg);
+
+        return makeOperand(left.reg, true);
+    }
+
+    int destination = right.temporary ? right.reg : allocateRegister(compiler);
+    emitInstruction(compiler, opcode, destination, right.reg, left.reg);
+
+    return makeOperand(destination, true);
+}
+
+static Opcode getComparisonOpcode(TokenType type, bool orEqual)
+{
+    if (isSignedIntegerTypeToken(type)) {
+        return orEqual ? OP_LE_INT : OP_LT_INT;
+    }
+
+    return orEqual ? OP_LE_UINT : OP_LT_UINT;
+}
+
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
     if (ast->binary.operator.type == TOKEN_POWER) {
@@ -959,6 +1005,22 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
     Operand right = compileExpression(compiler, ast->binary.rightExpr, false);
 
     switch (ast->binary.operator.type) {
+        case TOKEN_EQUAL_EQUAL:
+            return emitComparison(compiler, OP_EQ, left, right);
+        case TOKEN_NOT_EQUAL:
+            return emitComparison(compiler, OP_NE, left, right);
+        case TOKEN_LESS:
+            return emitComparison(compiler, getComparisonOpcode(type, false), left, right);
+        case TOKEN_LESS_EQUAL:
+            return emitComparison(compiler, getComparisonOpcode(type, true), left, right);
+        case TOKEN_GREATER:
+            return emitReversedComparison(compiler, getComparisonOpcode(type, false), left, right);
+        case TOKEN_GREATER_EQUAL:
+            return emitReversedComparison(compiler, getComparisonOpcode(type, true), left, right);
+        case TOKEN_AND:
+            return emitComparison(compiler, OP_AND, left, right);
+        case TOKEN_OR:
+            return emitComparison(compiler, OP_OR, left, right);
         case TOKEN_PLUS:
             return emitBinaryOperands(compiler, INTEGER_ADD, type, left, right);
         case TOKEN_MINUS:
@@ -1560,6 +1622,109 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
     }
 }
 
+static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
+{
+    size_t position = countCodeObject(currentCodeObject(compiler));
+    emitInstruction(compiler, opcode, conditionRegister, 0, 0);
+
+    return position;
+}
+
+static void patchJump(Compiler* compiler, size_t position)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    int offset = (int)(countCodeObject(code) - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
+
+    if ((Opcode)code->data[position] == OP_BZ) {
+        setByteAt(code, position + 2, offset >> 8);
+        setByteAt(code, position + 3, offset);
+
+        return;
+    }
+
+    setByteAt(code, position + 1, offset >> 16);
+    setByteAt(code, position + 2, offset >> 8);
+    setByteAt(code, position + 3, offset);
+}
+
+static void storeConditionalValue(
+    Compiler* compiler, TokenType type, int destination, Operand value)
+{
+    if (type == TOKEN_VOID) {
+        return;
+    }
+
+    emitOperandMov(compiler, destination, value);
+}
+
+static Operand compileConditionalBranch(
+    Compiler* compiler, ASTNode* branch, TokenType type, int destination)
+{
+    if (branch->type == AST_CONDITIONAL) {
+        Operand value = compileExpression(compiler, branch, false);
+        storeConditionalValue(compiler, type, destination, value);
+
+        return value;
+    }
+
+    size_t count = countVector(&branch->compound.statements);
+    
+    for (size_t i = 0; i < count; i++) {
+        bool discard = type == TOKEN_VOID || i + 1 < count;
+        Operand value = compileStatement(compiler, getVectorAt(&branch->compound.statements, i), discard);
+
+        if (!discard) {
+            emitOperandMov(compiler, destination, value);
+
+            return value;
+        }
+    }
+
+    return noOperand();
+}
+
+static Operand compileConditional(Compiler* compiler, ASTNode* ast)
+{
+    Operand condition = compileExpression(compiler, ast->conditional.condition, false);
+    size_t elseJump = emitJump(compiler, OP_BZ, condition.reg);
+    
+    releaseOperand(compiler, condition);
+
+    int destination = -1;
+    
+    TokenType type = getTypeId(ast);
+    if (type != TOKEN_VOID) {
+        destination = allocateRegisters(compiler, getTypeSlotCount(type));
+    }
+
+    int branchRegisterCount = compiler->registerCount;
+
+    compileConditionalBranch(compiler, ast->conditional.thenBranch, type, destination);
+    compiler->registerCount = branchRegisterCount;
+
+    if (!ast->conditional.elseBranch) {
+        patchJump(compiler, elseJump);
+
+        return noOperand();
+    }
+
+    size_t endJump = emitJump(compiler, OP_JMP, 0);
+    patchJump(compiler, elseJump);
+    compileConditionalBranch(compiler, ast->conditional.elseBranch, type, destination);
+    compiler->registerCount = branchRegisterCount;
+    patchJump(compiler, endJump);
+
+    if (type == TOKEN_VOID) {
+        return noOperand();
+    }
+
+    if (getTypeSlotCount(type) == 2) {
+        return makeWideOperand(destination, true);
+    }
+
+    return makeOperand(destination, true);
+}
+
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
 {
     Operand result;
@@ -1568,8 +1733,14 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
         case AST_BINARY:
             result = compileBinary(compiler, ast);
             break;
+        case AST_BOOLEAN:
+            result = compileBoolean(compiler, ast);
+            break;
         case AST_BUILTIN_CALL:
             return compileBuiltinCall(compiler, ast, discard);
+        case AST_CONDITIONAL:
+            result = compileConditional(compiler, ast);
+            break;
         case AST_FUNCTION_CALL:
             return compileFunctionCall(compiler, ast, discard);
         case AST_INTEGER:

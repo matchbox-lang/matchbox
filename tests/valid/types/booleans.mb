@@ -1,0 +1,17 @@
+let yes: bool = true
+let no = false
+let equal = yes == not no
+let different = yes != no
+let combined = equal and different or false
+
+print(yes)
+print(no)
+print(combined)
+
+let selected = if combined {
+    true
+} else {
+    false
+}
+
+print(selected)

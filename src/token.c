@@ -176,7 +176,7 @@ bool isAssignmentToken(TokenType type)
 
 bool isTypeToken(TokenType type)
 {
-    return isIntegerTypeToken(type) || type == TOKEN_VOID;
+    return isIntegerTypeToken(type) || type == TOKEN_BOOL || type == TOKEN_VOID;
 }
 
 bool isIntegerTypeToken(TokenType type)
@@ -254,9 +254,14 @@ bool isEqualityToken(TokenType type)
     }
 }
 
+bool isLogicalToken(TokenType type)
+{
+    return type == TOKEN_AND || type == TOKEN_OR;
+}
+
 bool isBoolOperatorToken(TokenType type)
 {
-    return isComparisonToken(type) || isEqualityToken(type);
+    return isComparisonToken(type) || isEqualityToken(type) || isLogicalToken(type);
 }
 
 bool isShiftToken(TokenType type)

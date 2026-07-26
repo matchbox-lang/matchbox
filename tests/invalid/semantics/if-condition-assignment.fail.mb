@@ -1,0 +1,5 @@
+var value = 10
+
+if (value = 20) {
+    print(true)
+}

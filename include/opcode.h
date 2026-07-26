@@ -170,13 +170,28 @@ typedef enum Opcode
     OP_ASR_I8,
     OP_ASRI_I8,
 
-    // Unary
+    // Logical
+    OP_AND,
+    OP_OR,
     OP_NOT,
+
+    // Negation
     OP_NEG,
     OP_NEG_I64,
 
+    // Comparisons
+    OP_EQ,
+    OP_NE,
+    OP_LT_INT,
+    OP_LT_UINT,
+    OP_LE_INT,
+    OP_LE_UINT,
+
     // Branching
+    OP_BZ,
+    OP_BNZ,
     OP_BEQ,
+    OP_BNE,
     OP_BLT_INT,
     OP_BLT_UINT,
     OP_BLE_INT,

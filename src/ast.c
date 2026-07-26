@@ -71,6 +71,11 @@ void freeASTNode(ASTNode* ast)
             freeScope(ast->compound.scope);
             freeASTNodeVector(&ast->compound.statements);
             break;
+        case AST_CONDITIONAL:
+            freeASTNode(ast->conditional.condition);
+            freeASTNode(ast->conditional.thenBranch);
+            freeASTNode(ast->conditional.elseBranch);
+            break;
         case AST_FUNCTION_CALL:
             freeStringObject(ast->functionCall.id);
             freeASTNodeVector(&ast->functionCall.args);
@@ -138,6 +143,8 @@ TokenType getTypeId(const ASTNode* ast)
     switch (ast->type) {
         case AST_BINARY:
             return ast->binary.typeId;
+        case AST_CONDITIONAL:
+            return ast->conditional.typeId;
         case AST_BOOLEAN:
             return TOKEN_BOOL;
         case AST_BUILTIN_CALL:
@@ -240,6 +247,7 @@ bool isExpressionStatement(const ASTNode* ast)
         case AST_BOOLEAN:
         case AST_BUILTIN_CALL:
         case AST_CHARACTER:
+        case AST_CONDITIONAL:
         case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
@@ -271,6 +279,7 @@ bool isLiteral(const ASTNode* ast)
     switch (ast->type) {
         case AST_BOOLEAN:
         case AST_CHARACTER:
+        case AST_CONDITIONAL:
         case AST_FLOAT:
         case AST_INTEGER:
         case AST_STRING:

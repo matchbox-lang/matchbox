@@ -159,6 +159,7 @@ size_t getIntegerTypeSize(TokenType type);
 size_t getTypeSlotCount(TokenType type);
 bool isComparisonToken(TokenType type);
 bool isEqualityToken(TokenType type);
+bool isLogicalToken(TokenType type);
 bool isBoolOperatorToken(TokenType type);
 bool isShiftToken(TokenType type);
 bool isTermToken(TokenType type);

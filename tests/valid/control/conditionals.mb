@@ -1,0 +1,32 @@
+let score = 82
+
+if score >= 90 {
+    print(4)
+} else if score >= 80 {
+    print(3)
+} else if score >= 70 {
+    print(2)
+} else {
+    print(1)
+}
+
+let x = 10
+let y = 20
+
+if x < y {
+    if y < 100 {
+        print(1)
+    }
+}
+
+var grade = if score >= 90 {
+    4
+} else if score >= 80 {
+    3
+} else if score >= 70 {
+    2
+} else {
+    1
+}
+
+print(grade)

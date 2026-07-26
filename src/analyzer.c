@@ -648,6 +648,11 @@ static void validateEffectAccess(ASTNode* origin, ReferenceType type, Token toke
     }
 }
 
+static bool referenceArgumentRequiresBinding(ReferenceType type)
+{
+    return type == REFERENCE_EXCLUSIVE;
+}
+
 static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = countVector(&caller->functionCall.args);
@@ -672,7 +677,7 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
             origin = getReferenceOriginOrSelf(arg->variable.symbol);
         }
 
-        if (!origin && (type == REFERENCE_SHARED || isLiteral(arg))) {
+        if (!origin && referenceArgumentRequiresBinding(type)) {
             semanticError("Reference access requires a binding for ", token);
         }
 

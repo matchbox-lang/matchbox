@@ -1,0 +1,9 @@
+func takeExclusive(value: ^i32) {
+    print(value)
+}
+
+takeExclusive(if true {
+    1
+} else {
+    2
+})

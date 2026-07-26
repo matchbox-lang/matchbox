@@ -15,3 +15,11 @@ let selected = if combined {
 }
 
 print(selected)
+
+let inverted = not if combined {
+    true
+} else {
+    false
+}
+
+print(inverted)

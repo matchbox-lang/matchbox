@@ -17,9 +17,12 @@ match {
 }
 
 let result = match {
-    value < 5 => "value is less than 5"
-    value > 5 => "value is greater than 5"
-    default => "value is 5"
+    case value < 5:
+        "value is less than 5"
+    case value > 5:
+        "value is greater than 5"
+    default:
+        "value is 5"
 }
 
 print(result)

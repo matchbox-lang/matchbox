@@ -3,7 +3,7 @@ var value = 0
 match value {
     case 10:
         print("value is equal to 10")
-    else:
+    default:
         print("value is not 10")
 }
 
@@ -12,17 +12,14 @@ match {
         print("value is less than 5")
     case value > 5:
         print("value is greater than 5")
-    else:
+    default:
         print("value is 5")
 }
 
 let result = match {
-    case value < 5:
-        "value is less than 5"
-    case value > 5:
-        "value is greater than 5"
-    else:
-        "value is 5"
+    value < 5 => "value is less than 5"
+    value > 5 => "value is greater than 5"
+    default => "value is 5"
 }
 
 print(result)

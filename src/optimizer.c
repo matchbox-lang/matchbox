@@ -2,35 +2,45 @@
 #include "token.h"
 #include "vector.h"
 #include <math.h>
+#include <stdint.h>
 
 static void optimizeNode(ASTNode* ast);
 
-static bool foldDivision(int left, int right, int* value)
+static int64_t signedI32Value(uint32_t value)
+{
+    if (value <= INT32_MAX) {
+        return value;
+    }
+
+    return (int64_t)value - (UINT64_C(1) << 32);
+}
+
+static bool foldDivision(uint32_t left, uint32_t right, uint64_t* value)
 {
     if (!right) {
         return false;
     }
 
-    *value = left / right;
+    *value = (uint32_t)(signedI32Value(left) / signedI32Value(right));
 
     return true;
 }
 
-static bool foldRemainder(int left, int right, int* value)
+static bool foldRemainder(uint32_t left, uint32_t right, uint64_t* value)
 {
     if (!right) {
         return false;
     }
 
-    *value = left % right;
+    *value = (uint32_t)(signedI32Value(left) % signedI32Value(right));
     
     return true;
 }
 
-static bool foldBinaryValue(ASTNode* ast, int* value)
+static bool foldBinaryValue(ASTNode* ast, uint64_t* value)
 {
-    int left = ast->binary.leftExpr->integerLiteral.value;
-    int right = ast->binary.rightExpr->integerLiteral.value;
+    uint32_t left = (uint32_t)ast->binary.leftExpr->integerLiteral.value;
+    uint32_t right = (uint32_t)ast->binary.rightExpr->integerLiteral.value;
 
     switch (ast->binary.operator.type) {
         case TOKEN_PLUS:
@@ -77,7 +87,7 @@ static void foldBinary(ASTNode* ast)
         return;
     }
 
-    int value;
+    uint64_t value;
     Token token = ast->binary.operator;
     
     if (!foldBinaryValue(ast, &value)) {

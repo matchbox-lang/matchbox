@@ -20,3 +20,7 @@ signed8 * 3
 signed16 * 3
 signed32 * 3
 signed64 * 3
+
+print(2147483647 + 1)
+print(0 - 2147483647 - 2)
+print(65536 * 65536)

@@ -16,11 +16,30 @@ static void validateNodeEffects(ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
 static void transferExclusiveReference(ASTNode* expression);
 
+typedef struct OwnershipState
+{
+    ASTNode* symbol;
+    ASTNode* referenceOrigin;
+    size_t sharedAccessCount;
+    bool exclusiveAccessActive;
+    bool initialized;
+    bool moved;
+    bool referenceAccessActive;
+} OwnershipState;
+
 static void semanticError(char* message, Token token)
 {
     fprintf(stderr, "Error: %s", message);
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void bindingAccessError(char* message, Token token, char* detail)
+{
+    fprintf(stderr, "Error: %s", message);
+    printTokenValue(token);
+    fprintf(stderr, "%s on line %d:%d\n", detail, token.line, token.column);
     exit(1);
 }
 
@@ -191,6 +210,17 @@ static void setMoved(ASTNode* symbol)
     symbol->variableDefinition.moved = true;
 }
 
+static void setMovedState(ASTNode* symbol, bool moved)
+{
+    if (isParameter(symbol)) {
+        symbol->parameter.moved = moved;
+
+        return;
+    }
+
+    symbol->variableDefinition.moved = moved;
+}
+
 static ASTNode* getReferenceOriginOrSelf(ASTNode* symbol)
 {
     ASTNode* origin = getReferenceOrigin(symbol);
@@ -322,6 +352,8 @@ static void analyzeNodes(Analyzer* analyzer, Vector* nodes, size_t start)
     size_t count = countVector(nodes);
 
     for (size_t i = start; i < count; i++) {
+        analyzer->currentNodes = nodes;
+        analyzer->nextNode = i + 1;
         analyzeNode(analyzer, getVectorAt(nodes, i));
         releaseInactiveReferenceAccess(nodes, i + 1);
     }
@@ -363,16 +395,238 @@ static TokenType analyzeElseBranch(Analyzer* analyzer, ASTNode* branch)
     return analyzeConditionalBranch(analyzer, branch);
 }
 
+static void captureSymbolOwnership(Vector* states, ASTNode* symbol)
+{
+    if (!isVariableType(symbol)) {
+        return;
+    }
+
+    OwnershipState* state = malloc(sizeof(OwnershipState));
+    state->symbol = symbol;
+    state->referenceOrigin = getReferenceOrigin(symbol);
+    state->sharedAccessCount = *getSharedAccessCount(symbol);
+    state->exclusiveAccessActive = hasExclusiveAccess(symbol);
+    state->initialized = isInitialized(symbol);
+    state->moved = isMoved(symbol);
+    state->referenceAccessActive = isVariableDefinition(symbol) && symbol->variableDefinition.referenceAccessActive;
+
+    pushVectorItem(states, state);
+}
+
+static void captureScopeOwnership(Vector* states, Scope* scope)
+{
+    for (size_t i = 0; i < scope->symbols.capacity; i++) {
+        TableItem* item = scope->symbols.data[i];
+
+        while (item) {
+            captureSymbolOwnership(states, item->value);
+            item = item->next;
+        }
+    }
+}
+
+static void captureOwnershipState(Vector* states, Scope* scope)
+{
+    initVector(states);
+
+    while (scope) {
+        captureScopeOwnership(states, scope);
+        scope = scope->parent;
+    }
+}
+
+static void copyOwnershipState(Vector* destination, Vector* source)
+{
+    initVector(destination);
+
+    for (size_t i = 0; i < countVector(source); i++) {
+        OwnershipState* sourceState = getVectorAt(source, i);
+        OwnershipState* destinationState = malloc(sizeof(OwnershipState));
+
+        *destinationState = *sourceState;
+        pushVectorItem(destination, destinationState);
+    }
+}
+
+static void applyOwnershipState(OwnershipState* state)
+{
+    ASTNode* symbol = state->symbol;
+
+    *getSharedAccessCount(symbol) = state->sharedAccessCount;
+    setExclusiveAccess(symbol, state->exclusiveAccessActive);
+    setMovedState(symbol, state->moved);
+
+    if (!isVariableDefinition(symbol)) {
+        return;
+    }
+
+    symbol->variableDefinition.referenceOrigin = state->referenceOrigin;
+    symbol->variableDefinition.initialized = state->initialized;
+    symbol->variableDefinition.referenceAccessActive = state->referenceAccessActive;
+}
+
+static void applyOwnershipStates(Vector* states)
+{
+    for (size_t i = 0; i < countVector(states); i++) {
+        applyOwnershipState(getVectorAt(states, i));
+    }
+}
+
+static void updateOwnershipStates(Vector* states)
+{
+    for (size_t i = 0; i < countVector(states); i++) {
+        OwnershipState* state = getVectorAt(states, i);
+        ASTNode* symbol = state->symbol;
+
+        state->referenceOrigin = getReferenceOrigin(symbol);
+        state->sharedAccessCount = *getSharedAccessCount(symbol);
+        state->exclusiveAccessActive = hasExclusiveAccess(symbol);
+        state->initialized = isInitialized(symbol);
+        state->moved = isMoved(symbol);
+        state->referenceAccessActive = isVariableDefinition(symbol)
+            && symbol->variableDefinition.referenceAccessActive;
+    }
+}
+
+static void freeOwnershipStates(Vector* states)
+{
+    for (size_t i = 0; i < countVector(states); i++) {
+        free(getVectorAt(states, i));
+    }
+
+    freeVector(states);
+}
+
+static bool branchUsesReference(ASTNode* branch, StringObject* id)
+{
+    if (!branch) {
+        return false;
+    }
+
+    return conditionalBranchUsesId(branch, id);
+}
+
+static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
+{
+    if (!analyzer->currentNodes) {
+        return false;
+    }
+
+    return nodesUseIdAfter(analyzer->currentNodes, analyzer->nextNode, id);
+}
+
+static void releaseReferencesDeadOnBranch(Analyzer* analyzer, Vector* states, ASTNode* branch)
+{
+    for (size_t i = 0; i < countVector(states); i++) {
+        OwnershipState* state = getVectorAt(states, i);
+        ASTNode* symbol = state->symbol;
+
+        if (!isVariableDefinition(symbol) || !symbol->variableDefinition.referenceAccessActive) {
+            continue;
+        }
+
+        StringObject* id = symbol->variableDefinition.id;
+        if (branchUsesReference(branch, id) || continuationUsesReference(analyzer, id)) {
+            continue;
+        }
+
+        releaseReferenceAccess(symbol);
+    }
+}
+
+static void analyzeOwnershipBranch(
+    Analyzer* analyzer,
+    Vector* states,
+    ASTNode* branch,
+    TokenType* type)
+{
+    applyOwnershipStates(states);
+    releaseReferencesDeadOnBranch(analyzer, states, branch);
+    *type = analyzeElseBranch(analyzer, branch);
+    updateOwnershipStates(states);
+}
+
+static ASTNode* mergedReferenceOrigin(OwnershipState* thenState, OwnershipState* elseState)
+{
+    if (thenState->referenceOrigin == elseState->referenceOrigin) {
+        return thenState->referenceOrigin;
+    }
+
+    if (thenState->referenceAccessActive || elseState->referenceAccessActive) {
+        semanticError(
+            "Reference binding cannot have different origins across branches ",
+            thenState->symbol->variableDefinition.token
+        );
+    }
+
+    return NULL;
+}
+
+static size_t maxSize(size_t left, size_t right)
+{
+    if (left > right) {
+        return left;
+    }
+
+    return right;
+}
+
+static void mergeOwnershipState(OwnershipState* thenState, OwnershipState* elseState)
+{
+    OwnershipState merged = *thenState;
+    merged.referenceOrigin = mergedReferenceOrigin(thenState, elseState);
+    merged.sharedAccessCount = maxSize(thenState->sharedAccessCount, elseState->sharedAccessCount);
+    merged.exclusiveAccessActive = thenState->exclusiveAccessActive || elseState->exclusiveAccessActive;
+    merged.initialized = thenState->initialized && elseState->initialized;
+    merged.moved = thenState->moved || elseState->moved;
+    merged.referenceAccessActive = thenState->referenceAccessActive || elseState->referenceAccessActive;
+
+    applyOwnershipState(&merged);
+}
+
+static void mergeOwnershipStates(Vector* thenStates, Vector* elseStates)
+{
+    size_t count = countVector(thenStates);
+
+    for (size_t i = 0; i < count; i++) {
+        mergeOwnershipState(getVectorAt(thenStates, i), getVectorAt(elseStates, i));
+    }
+}
+
 static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
 {
+    Vector* continuationNodes = analyzer->currentNodes;
+    size_t continuationStart = analyzer->nextNode;
+
     analyzeNode(analyzer, ast->conditional.condition);
 
     if (getTypeId(ast->conditional.condition) != TOKEN_BOOL) {
         semanticErrorAt("If condition must have type bool", ast->conditional.token);
     }
 
+    Vector thenStates;
+    Vector elseStates;
+
+    captureOwnershipState(&thenStates, analyzer->currentScope);
+    copyOwnershipState(&elseStates, &thenStates);
+
+    analyzer->currentNodes = continuationNodes;
+    analyzer->nextNode = continuationStart;
+    releaseReferencesDeadOnBranch(analyzer, &thenStates, ast->conditional.thenBranch);
+    
     TokenType thenType = analyzeConditionalBranch(analyzer, ast->conditional.thenBranch);
-    TokenType elseType = analyzeElseBranch(analyzer, ast->conditional.elseBranch);
+    
+    updateOwnershipStates(&thenStates);
+
+    analyzer->currentNodes = continuationNodes;
+    analyzer->nextNode = continuationStart;
+
+    TokenType elseType;
+
+    analyzeOwnershipBranch(analyzer, &elseStates, ast->conditional.elseBranch, &elseType);
+    mergeOwnershipStates(&thenStates, &elseStates);
+    freeOwnershipStates(&thenStates);
+    freeOwnershipStates(&elseStates);
 
     if (!ast->conditional.expression) {
         ast->conditional.typeId = TOKEN_VOID;
@@ -454,7 +708,7 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 
     if (getReferenceType(symbol) == REFERENCE_NONE
         && hasExclusiveAccess(symbol)) {
-        semanticError("Cannot read binding while exclusive access is active ", ast->variable.token);
+        bindingAccessError("Cannot read binding ", ast->variable.token, " while exclusive access is active");
     }
 
     ast->variable.scope = analyzer->currentScope;
@@ -499,12 +753,12 @@ static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* sy
     }
 
     if (requested == REFERENCE_SHARED && hasExclusiveAccess(symbol)) {
-        semanticError("Cannot share binding while exclusive access is active ", variable->variable.token);
+        bindingAccessError("Cannot share binding ", variable->variable.token, " while exclusive access is active");
     }
 
     if (requested == REFERENCE_EXCLUSIVE
         && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
-        semanticError("Cannot take exclusive access while another access is active ", variable->variable.token);
+        bindingAccessError("Cannot take exclusive access to binding ", variable->variable.token, " while another access is active");
     }
 }
 
@@ -639,12 +893,12 @@ static void validateEffectAccess(ASTNode* origin, ReferenceType type, Token toke
     }
 
     if (type == REFERENCE_SHARED && hasExclusiveAccess(origin)) {
-        semanticError("Function requires shared access while exclusive access is active ", token);
+        bindingAccessError("Function requires shared access to binding ", token, " while exclusive access is active");
     }
 
     if (type == REFERENCE_EXCLUSIVE
         && (hasExclusiveAccess(origin) || *getSharedAccessCount(origin))) {
-        semanticError("Function requires exclusive access while another access is active ", token);
+        bindingAccessError("Function requires exclusive access to binding ", token, " while another access is active");
     }
 }
 
@@ -993,7 +1247,7 @@ static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* 
 
     if (getReferenceType(symbol) == REFERENCE_NONE
         && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
-        semanticError("Cannot mutate binding while shared access is active ", token);
+        bindingAccessError("Cannot mutate binding ", token, " while shared access is active");
     }
 
     if (getReferenceType(symbol) == REFERENCE_NONE && isVariableDefinition(symbol)
@@ -1293,6 +1547,8 @@ void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
     analyzer->topLevel = ast;
     analyzer->function = NULL;
     analyzer->currentScope = ast->compound.scope;
+    analyzer->currentNodes = NULL;
+    analyzer->nextNode = 0;
 }
 
 bool analyze(Analyzer* analyzer, size_t start)

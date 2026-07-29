@@ -1,0 +1,11 @@
+var number = 25
+var shared = &number
+
+if (true) {
+    print(shared)
+} else {
+    var exclusive = ^number
+    print(exclusive)
+}
+
+print(number)

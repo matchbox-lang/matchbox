@@ -1,0 +1,11 @@
+var first = 10
+var second = 20
+var shared = &first
+
+if true {
+    shared = &first
+} else {
+    shared = &second
+}
+
+print(shared)

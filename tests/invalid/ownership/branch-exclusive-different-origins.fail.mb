@@ -1,0 +1,11 @@
+var first = 10
+var second = 20
+var exclusive = ^first
+
+if true {
+    exclusive = ^first
+} else {
+    exclusive = ^second
+}
+
+print(exclusive)

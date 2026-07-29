@@ -9,6 +9,8 @@ typedef struct Analyzer
     ASTNode* topLevel;
     ASTNode* function;
     Scope* currentScope;
+    Vector* currentNodes;
+    size_t nextNode;
 } Analyzer;
 
 void initAnalyzer(Analyzer* analyzer, ASTNode* ast);

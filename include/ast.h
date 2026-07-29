@@ -115,6 +115,7 @@ typedef struct ASTNode
             ReferenceType returnReferenceType;
             ASTNode* returnReferenceOrigin;
             ASTNode* body;
+            size_t callCount;
         } functionDefinition;
 
         struct {

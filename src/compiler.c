@@ -70,6 +70,9 @@ static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
 static void removeDiscardedExpressionReads(ASTNode* ast);
+static void removeDiscardedStatementReads(ASTNode* ast);
+static void markCalledFunctions(ASTNode* ast);
+static void resetFunctionCallCounts(ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -1540,6 +1543,10 @@ static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
 {
+    if (!ast->functionDefinition.callCount) {
+        return;
+    }
+
     int previousFrameBaseCount = compiler->frameBaseCount;
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
@@ -1807,8 +1814,6 @@ static void removeDiscardedExpressionReads(ASTNode* ast)
     }
 }
 
-static void removeDiscardedStatementReads(ASTNode* ast);
-
 static void removeDiscardedStatementVectorReads(Vector* nodes)
 {
     size_t count = countVector(nodes);
@@ -1841,6 +1846,125 @@ static void removeDiscardedReads(Vector* nodes, size_t start)
 
     for (size_t i = start; i < count; i++) {
         removeDiscardedStatementReads(getVectorAt(nodes, i));
+    }
+}
+
+static void markCalledFunctionsInVector(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        markCalledFunctions(getVectorAt(nodes, i));
+    }
+}
+
+static void markCalledFunction(ASTNode* ast)
+{
+    ASTNode* function = ast->functionCall.symbol;
+
+    markCalledFunctionsInVector(&ast->functionCall.args);
+
+    if (!function) {
+        return;
+    }
+
+    function->functionDefinition.callCount++;
+
+    if (function->functionDefinition.callCount > 1) {
+        return;
+    }
+
+    markCalledFunctions(function->functionDefinition.body);
+}
+
+static void markCalledFunctions(ASTNode* ast)
+{
+    if (!ast) {
+        return;
+    }
+
+    switch (ast->type) {
+        case AST_ASSIGNMENT:
+            markCalledFunctions(ast->assignment.expr);
+            break;
+        case AST_BINARY:
+            markCalledFunctions(ast->binary.leftExpr);
+            markCalledFunctions(ast->binary.rightExpr);
+            break;
+        case AST_BUILTIN_CALL:
+            markCalledFunctionsInVector(&ast->builtinCall.args);
+            break;
+        case AST_COMPOUND:
+            markCalledFunctionsInVector(&ast->compound.statements);
+            break;
+        case AST_CONDITIONAL:
+            markCalledFunctions(ast->conditional.condition);
+            markCalledFunctions(ast->conditional.thenBranch);
+            markCalledFunctions(ast->conditional.elseBranch);
+            break;
+        case AST_FUNCTION_CALL:
+            markCalledFunction(ast);
+            break;
+        case AST_PREFIX:
+            markCalledFunctions(ast->prefix.expr);
+            break;
+        case AST_RETURN:
+            markCalledFunctions(ast->returnStatement.expr);
+            break;
+        case AST_VARIABLE_DEFINITION:
+            markCalledFunctions(ast->variableDefinition.expr);
+            break;
+        default:
+            break;
+    }
+}
+
+static void resetFunctionCallCountsInVector(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        resetFunctionCallCounts(getVectorAt(nodes, i));
+    }
+}
+
+static void resetFunctionCallCounts(ASTNode* ast)
+{
+    if (!ast) {
+        return;
+    }
+
+    if (ast->type == AST_FUNCTION_DEFINITION) {
+        ast->functionDefinition.callCount = 0;
+        resetFunctionCallCounts(ast->functionDefinition.body);
+
+        return;
+    }
+
+    if (ast->type == AST_COMPOUND) {
+        resetFunctionCallCountsInVector(&ast->compound.statements);
+
+        return;
+    }
+
+    if (ast->type == AST_CONDITIONAL) {
+        resetFunctionCallCounts(ast->conditional.thenBranch);
+        resetFunctionCallCounts(ast->conditional.elseBranch);
+    }
+}
+
+static void eliminateDeadFunctions(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    resetFunctionCallCountsInVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* ast = getVectorAt(nodes, i);
+
+        if (ast->type != AST_FUNCTION_DEFINITION) {
+            markCalledFunctions(ast);
+        }
     }
 }
 
@@ -2006,6 +2130,7 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
 
     if (compileStatements == compileTopLevelStatements) {
         removeDiscardedReads(&compiler->ast->compound.statements, start);
+        eliminateDeadFunctions(&compiler->ast->compound.statements);
     }
 
     clearCodeObject(currentCodeObject(compiler));

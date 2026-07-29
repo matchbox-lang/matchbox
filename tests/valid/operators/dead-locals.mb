@@ -1,0 +1,12 @@
+var a = 2
+let b = 3
+
+a + b
+
+func effect() -> i32 {
+    print(1)
+
+    return 4
+}
+
+let unused = effect()

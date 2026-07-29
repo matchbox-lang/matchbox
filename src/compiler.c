@@ -61,8 +61,7 @@ typedef enum IntegerOperation
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
-static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
-    TokenType destination, bool reference);
+static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast, TokenType destination, bool reference);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
@@ -70,6 +69,7 @@ static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
+static void removeDiscardedExpressionReads(ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -1614,6 +1614,12 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
     Operand value;
     size_t slots = getNodeSlotCount(ast);
 
+    if (ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount) {
+        compileExpression(compiler, ast->variableDefinition.expr, true);
+
+        return;
+    }
+
     if (isNone(ast->variableDefinition.expr)) {
         value = compileZeroValue(compiler, slots);
     } else {
@@ -1753,6 +1759,88 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
             return true;
         default:
             return false;
+    }
+}
+
+static bool hasNoValueReads(ASTNode* ast)
+{
+    return ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
+}
+
+static void removeUnreadInitializerReads(ASTNode* ast)
+{
+    if (!hasNoValueReads(ast) || ast->variableDefinition.discardedReadsAnalyzed) {
+        return;
+    }
+
+    ast->variableDefinition.discardedReadsAnalyzed = true;
+    removeDiscardedExpressionReads(ast->variableDefinition.expr);
+}
+
+static void removeDiscardedVariableRead(ASTNode* ast)
+{
+    ASTNode* symbol = ast->variable.symbol;
+
+    if (!isVariableDefinition(symbol)) {
+        return;
+    }
+
+    symbol->variableDefinition.discardedReadCount++;
+    removeUnreadInitializerReads(symbol);
+}
+
+static void removeDiscardedExpressionReads(ASTNode* ast)
+{
+    switch (ast->type) {
+        case AST_VARIABLE:
+            removeDiscardedVariableRead(ast);
+            break;
+        case AST_BINARY:
+            removeDiscardedExpressionReads(ast->binary.leftExpr);
+            removeDiscardedExpressionReads(ast->binary.rightExpr);
+            break;
+        case AST_PREFIX:
+            removeDiscardedExpressionReads(ast->prefix.expr);
+            break;
+        default:
+            break;
+    }
+}
+
+static void removeDiscardedStatementReads(ASTNode* ast);
+
+static void removeDiscardedStatementVectorReads(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        removeDiscardedStatementReads(getVectorAt(nodes, i));
+    }
+}
+
+static void removeDiscardedStatementReads(ASTNode* ast)
+{
+    if (ast->type == AST_FUNCTION_DEFINITION) {
+        removeDiscardedStatementVectorReads(&ast->functionDefinition.body->compound.statements);
+
+        return;
+    }
+
+    if (ast->type == AST_VARIABLE_DEFINITION) {
+        removeUnreadInitializerReads(ast);
+
+        return;
+    }
+
+    removeDiscardedExpressionReads(ast);
+}
+
+static void removeDiscardedReads(Vector* nodes, size_t start)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = start; i < count; i++) {
+        removeDiscardedStatementReads(getVectorAt(nodes, i));
     }
 }
 
@@ -1915,6 +2003,11 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
 
     analyze(&compiler->analyzer, start);
     optimize(compiler->ast, start);
+
+    if (compileStatements == compileTopLevelStatements) {
+        removeDiscardedReads(&compiler->ast->compound.statements, start);
+    }
+
     clearCodeObject(currentCodeObject(compiler));
     compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);

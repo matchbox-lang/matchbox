@@ -170,6 +170,9 @@ typedef struct ASTNode
             bool exclusiveAccessActive;
             bool moved;
             bool referenceAccessActive;
+            size_t readCount;
+            size_t discardedReadCount;
+            bool discardedReadsAnalyzed;
             int position;
             ASTNode* expr;
         } variableDefinition;

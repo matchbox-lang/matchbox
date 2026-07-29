@@ -690,6 +690,15 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
+static void trackVariableRead(ASTNode* symbol)
+{
+    if (!isVariableDefinition(symbol)) {
+        return;
+    }
+
+    symbol->variableDefinition.readCount++;
+}
+
 static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findSymbol(analyzer, ast->variable.id);
@@ -713,6 +722,7 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 
     ast->variable.scope = analyzer->currentScope;
     ast->variable.symbol = symbol;
+    trackVariableRead(symbol);
 }
 
 static ASTNode* getReferenceVariable(ASTNode* ast)
@@ -770,6 +780,7 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 
     variable->variable.scope = analyzer->currentScope;
     variable->variable.symbol = symbol;
+    trackVariableRead(symbol);
 }
 
 static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
@@ -1301,6 +1312,8 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
     bool initializesBinding = !isInitialized(symbol);
     validateAssignmentTarget(analyzer, ast, symbol);
+
+    trackVariableRead(symbol);
 
     if (isIntegerTypeToken(getTypeId(symbol))) {
         applyIntegerLiteralType(ast->assignment.expr, getTypeId(symbol));

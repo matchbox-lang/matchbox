@@ -1206,6 +1206,9 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     Scope* parent = analyzer->currentScope;
     ASTNode* previousFunction = analyzer->function;
     Scope* scope = createScope(parent);
+    scope->frameScope = scope;
+    scope->localOffset = 0;
+    scope->maxLocalCount = 0;
     ast->functionDefinition.scope = scope;
     ast->functionDefinition.body->compound.scope = scope;
     analyzer->currentScope = scope;
@@ -1345,7 +1348,7 @@ static void activateReferenceAccess(ASTNode* ast)
 static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 {
     ast->variableDefinition.scope = analyzer->currentScope;
-    ast->variableDefinition.position = getLocalCount(analyzer->currentScope);
+    ast->variableDefinition.position = getNextLocalPosition(analyzer->currentScope);
     ast->variableDefinition.initialized = false;
 }
 

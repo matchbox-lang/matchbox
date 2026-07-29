@@ -1,0 +1,11 @@
+var number = 25
+var exclusive = ^number
+
+if true {
+    var moved = exclusive
+    print(moved)
+} else {
+    print(exclusive)
+}
+
+print(exclusive)

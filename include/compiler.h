@@ -20,6 +20,7 @@ typedef struct Compiler
     size_t statementIndex;
     int registerCount;
     int frameBaseCount;
+    int localPositionOffset;
 } Compiler;
 
 void initCompiler(Compiler* compiler, ModuleObject* module);

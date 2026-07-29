@@ -1,0 +1,44 @@
+var first = 10
+var second = 20
+
+if true {
+    var thenValue = 30
+    print(thenValue)
+} else {
+    var unusedElseValue = 40
+    print(unusedElseValue)
+}
+
+if false {
+    var unusedThenValue = 50
+    print(unusedThenValue)
+} else {
+    var elseValue = 60
+    print(elseValue)
+}
+
+print(first)
+print(second)
+
+func printFunctionBranch() {
+    var beforeBranch = 70
+
+    if true {
+        var branchValue = 80
+        print(branchValue)
+    }
+
+    print(beforeBranch)
+}
+
+printFunctionBranch()
+
+var conditionalValue = if true {
+    var branchExpressionValue = 90
+    branchExpressionValue
+} else {
+    var unusedBranchExpressionValue = 100
+    unusedBranchExpressionValue
+}
+
+print(conditionalValue)

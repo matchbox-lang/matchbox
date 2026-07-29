@@ -1,0 +1,11 @@
+var number = 25
+var shared = &number
+
+if true {
+    var copied: &i32 = shared
+    print(copied)
+} else {
+    print(shared)
+}
+
+print(shared)

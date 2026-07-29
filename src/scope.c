@@ -5,11 +5,32 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+static Scope* getFrameScope(Scope* scope, Scope* parent)
+{
+    if (parent) {
+        return parent->frameScope;
+    }
+
+    return scope;
+}
+
+static size_t getLocalOffset(Scope* parent)
+{
+    if (!parent) {
+        return 0;
+    }
+
+    return parent->localOffset + parent->localCount;
+}
+
 Scope* createScope(Scope* parent)
 {
     Scope* scope = malloc(sizeof(Scope));
     scope->parent = parent;
+    scope->frameScope = getFrameScope(scope, parent);
+    scope->localOffset = getLocalOffset(parent);
     scope->localCount = 0;
+    scope->maxLocalCount = scope->localOffset;
     scope->level = getScopeLevel(parent) + 1;
 
     initTable(&scope->symbols, 32);
@@ -40,9 +61,14 @@ static size_t getSymbolSlotCount(ASTNode* symbol)
     return getTypeSlotCount(getTypeId(symbol));
 }
 
-size_t getLocalCount(Scope* scope)
+size_t getMaxLocalCount(Scope* scope)
 {
-    return scope->localCount;
+    return scope->frameScope->maxLocalCount;
+}
+
+size_t getNextLocalPosition(Scope* scope)
+{
+    return scope->localOffset + scope->localCount;
 }
 
 size_t getScopeLevel(Scope* scope)
@@ -67,6 +93,11 @@ ASTNode* setLocalSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
 ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
 {
     scope->localCount += getSymbolSlotCount(symbol);
+    size_t localExtent = getNextLocalPosition(scope);
+
+    if (localExtent > scope->frameScope->maxLocalCount) {
+        scope->frameScope->maxLocalCount = localExtent;
+    }
     
     return setLocalSymbol(scope, id, symbol);
 }

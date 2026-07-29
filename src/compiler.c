@@ -539,7 +539,8 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
         return ast->parameter.position;
     }
     
-    return compiler->frameBaseCount + ast->variableDefinition.position;
+    return compiler->frameBaseCount + compiler->localPositionOffset
+        + ast->variableDefinition.position;
 }
 
 static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
@@ -1379,7 +1380,7 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
         function->returnCount = 0;
     }
 
-    function->localCount = body->compound.scope->localCount;
+    function->localCount = getMaxLocalCount(body->compound.scope);
     int base = getCallAreaCount(function);
     function->maxStackCount = base + 2;
 
@@ -1539,12 +1540,14 @@ static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
 {
     int previousFrameBaseCount = compiler->frameBaseCount;
+    int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
     FunctionObject* previousFunction = compiler->function;
     FunctionObject* function = createDefinedFunctionObject(ast);
     ASTNode* body = ast->functionDefinition.body;
     
     compiler->frameBaseCount = getCallAreaCount(function);
+    compiler->localPositionOffset = 0;
     compiler->registerCount = compiler->frameBaseCount;
     compiler->function = function;
     
@@ -1566,6 +1569,7 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     
     compiler->function = previousFunction;
     compiler->frameBaseCount = previousFrameBaseCount;
+    compiler->localPositionOffset = previousLocalPositionOffset;
     compiler->registerCount = previousRegisterCount;
 }
 
@@ -1687,6 +1691,7 @@ static Operand compileConditionalBranch(
 
 static Operand compileConditional(Compiler* compiler, ASTNode* ast)
 {
+    int previousLocalPositionOffset = compiler->localPositionOffset;
     Operand condition = compileExpression(compiler, ast->conditional.condition, false);
     size_t elseJump = emitJump(compiler, OP_BZ, condition.reg);
     
@@ -1696,7 +1701,9 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
     
     TokenType type = getTypeId(ast);
     if (type != TOKEN_VOID) {
-        destination = allocateRegisters(compiler, getTypeSlotCount(type));
+        size_t slots = getTypeSlotCount(type);
+        destination = allocateRegisters(compiler, slots);
+        compiler->localPositionOffset += slots;
     }
 
     int branchRegisterCount = compiler->registerCount;
@@ -1706,6 +1713,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
 
     if (!ast->conditional.elseBranch) {
         patchJump(compiler, elseJump);
+        compiler->localPositionOffset = previousLocalPositionOffset;
 
         return noOperand();
     }
@@ -1715,6 +1723,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
     compileConditionalBranch(compiler, ast->conditional.elseBranch, type, destination);
     compiler->registerCount = branchRegisterCount;
     patchJump(compiler, endJump);
+    compiler->localPositionOffset = previousLocalPositionOffset;
 
     if (type == TOKEN_VOID) {
         return noOperand();
@@ -1859,6 +1868,7 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
     compiler->statementIndex = 0;
     compiler->registerCount = 0;
     compiler->frameBaseCount = 0;
+    compiler->localPositionOffset = 0;
 }
 
 void freeCompiler(Compiler* compiler)

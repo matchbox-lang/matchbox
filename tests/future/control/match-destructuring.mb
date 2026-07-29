@@ -1,12 +1,8 @@
-let description = match (1, 2) {
-    case (0, 0)
-        "The point is at the origin, (0, 0)"
-    case (0, y)
-        "The point is at (0, {y})"
-    case (x, 0)
-        "The point is at ({x}, 0)"
-    case (x, y)
-        "The point is at ({x}, {y})"
+let position = match (1, 2) {
+    case (0, 0): "The point is at the origin, (0, 0)"
+    case (0, _): "The point is on the y-axis"
+    case (_, 0): "The point is on the x-axis"
+    case (x, y): "The point is at ({x}, {y})"
 }
 
-print(description)
+print(position)

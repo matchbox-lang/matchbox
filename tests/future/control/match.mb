@@ -1,28 +1,28 @@
 var value = 0
 
 match value {
-    case 10
+    case 10:
         print("value is equal to 10")
-    case _
+    default:
         print("value is not 10")
 }
 
 match {
-    case value < 5
+    case value < 5:
         print("value is less than 5")
-    case value > 5
+    case value > 5:
         print("value is greater than 5")
-    case _
+    default:
         print("value is 5")
 }
 
-let description = match {
-    case value < 5
+let result = match {
+    case value < 5:
         "value is less than 5"
-    case value > 5
+    case value > 5:
         "value is greater than 5"
-    case _
+    default:
         "value is 5"
 }
 
-print(description)
+print(result)

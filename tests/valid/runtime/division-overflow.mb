@@ -1,0 +1,9 @@
+let minimum32: i32 = -2147483648
+let minimum64: i64 = -9223372036854775808
+let minusOne32: i32 = -1
+let minusOne64: i64 = -1
+
+print(minimum32 / minusOne32)
+print(minimum32 % minusOne32)
+print(minimum64 / minusOne64)
+print(minimum64 % minusOne64)

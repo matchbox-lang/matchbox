@@ -18,6 +18,12 @@ static void stackOverflowError(void)
     exit(1);
 }
 
+static void divisionByZeroError(void)
+{
+    fprintf(stderr, "Error: Division by zero\n");
+    exit(1);
+}
+
 static void testFrameOverflow(VM* vm, Value* frame, int maxStackCount)
 {
     if (frame - vm->stack - 2 + maxStackCount > STACK_MAX) {
@@ -139,42 +145,112 @@ static void run(VM* vm)
             case OP_MULI_I8:
                 vm->fp[a] = I8_VALUE(AS_U8(vm->fp[b]) * (int8_t)c);
                 break;
-            case OP_IDIV_I32:
+            case OP_IDIV_I32: {
+                if (!AS_I32(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
+                if (AS_I32(vm->fp[b]) == INT32_MIN && AS_I32(vm->fp[c]) == -1) {
+                    vm->fp[a] = I32_VALUE(INT32_MIN);
+                    break;
+                }
+
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) / AS_I32(vm->fp[c]));
                 break;
-            case OP_IDIV_I16:
+            }
+            case OP_IDIV_I16: {
+                if (!AS_I16(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) / AS_I16(vm->fp[c]));
                 break;
-            case OP_IDIV_I8:
+            }
+            case OP_IDIV_I8: {
+                if (!AS_I8(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) / AS_I8(vm->fp[c]));
                 break;
-            case OP_IDIV_U32:
+            }
+            case OP_IDIV_U32: {
+                if (!AS_U32(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) / AS_U32(vm->fp[c]));
                 break;
-            case OP_IDIV_U16:
+            }
+            case OP_IDIV_U16: {
+                if (!AS_U16(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) / AS_U16(vm->fp[c]));
                 break;
-            case OP_IDIV_U8:
+            }
+            case OP_IDIV_U8: {
+                if (!AS_U8(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) / AS_U8(vm->fp[c]));
                 break;
-            case OP_REM_I32:
+            }
+            case OP_REM_I32: {
+                if (!AS_I32(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
+                if (AS_I32(vm->fp[b]) == INT32_MIN && AS_I32(vm->fp[c]) == -1) {
+                    vm->fp[a] = I32_VALUE(0);
+                    break;
+                }
+
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) % AS_I32(vm->fp[c]));
                 break;
-            case OP_REM_I16:
+            }
+            case OP_REM_I16: {
+                if (!AS_I16(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) % AS_I16(vm->fp[c]));
                 break;
-            case OP_REM_I8:
+            }
+            case OP_REM_I8: {
+                if (!AS_I8(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) % AS_I8(vm->fp[c]));
                 break;
-            case OP_REM_U32:
+            }
+            case OP_REM_U32: {
+                if (!AS_U32(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) % AS_U32(vm->fp[c]));
                 break;
-            case OP_REM_U16:
+            }
+            case OP_REM_U16: {
+                if (!AS_U16(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) % AS_U16(vm->fp[c]));
                 break;
-            case OP_REM_U8:
+            }
+            case OP_REM_U8: {
+                if (!AS_U8(vm->fp[c])) {
+                    divisionByZeroError();
+                }
+
                 vm->fp[a] = U8_VALUE(AS_U8(vm->fp[b]) % AS_U8(vm->fp[c]));
                 break;
+            }
             case OP_BAND_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) & AS_U32(vm->fp[c]));
                 break;
@@ -323,12 +399,12 @@ static void run(VM* vm)
                 vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) <= AS_UNSIGNED(vm->fp[c]));
                 break;
             case OP_BZ:
-                if (!AS_BOOL(vm->fp[a])) {
+                if (!AS_UNSIGNED(vm->fp[a])) {
                     vm->ip += (int16_t)OPERAND_BC(inst);
                 }
                 break;
             case OP_BNZ:
-                if (AS_BOOL(vm->fp[a])) {
+                if (AS_UNSIGNED(vm->fp[a])) {
                     vm->ip += (int16_t)OPERAND_BC(inst);
                 }
                 break;

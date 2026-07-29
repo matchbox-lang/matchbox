@@ -53,18 +53,44 @@ case OP_MULI_I64: {
     break;
 }
 case OP_IDIV_I64: {
-    WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) / READ_U64(vm->fp, c));
+    if (!READ_U64(vm->fp, c)) {
+        divisionByZeroError();
+    }
+
+    if (READ_U64(vm->fp, b) == (UINT64_C(1) << 63) && READ_U64(vm->fp, c) == UINT64_MAX) {
+        WRITE_U64(vm->fp, a, UINT64_C(1) << 63);
+        break;
+    }
+
+    WRITE_U64(vm->fp, a, (int64_t)READ_U64(vm->fp, b) / (int64_t)READ_U64(vm->fp, c));
     break;
 }
 case OP_IDIV_U64: {
+    if (!READ_U64(vm->fp, c)) {
+        divisionByZeroError();
+    }
+
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) / READ_U64(vm->fp, c));
     break;
 }
 case OP_REM_I64: {
-    WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) % READ_U64(vm->fp, c));
+    if (!READ_U64(vm->fp, c)) {
+        divisionByZeroError();
+    }
+
+    if (READ_U64(vm->fp, b) == (UINT64_C(1) << 63) && READ_U64(vm->fp, c) == UINT64_MAX) {
+        WRITE_U64(vm->fp, a, 0);
+        break;
+    }
+
+    WRITE_U64(vm->fp, a, (int64_t)READ_U64(vm->fp, b) % (int64_t)READ_U64(vm->fp, c));
     break;
 }
 case OP_REM_U64: {
+    if (!READ_U64(vm->fp, c)) {
+        divisionByZeroError();
+    }
+
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) % READ_U64(vm->fp, c));
     break;
 }

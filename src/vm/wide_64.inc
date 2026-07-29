@@ -34,18 +34,48 @@ case OP_MUL_I64:
 case OP_MULI_I64:
     vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue * (int8_t)c);
     break;
-case OP_IDIV_I64:
+case OP_IDIV_I64: {
+    if (!vm->fp[c].signedValue) {
+        divisionByZeroError();
+    }
+
+    if (vm->fp[b].signedValue == INT64_MIN && vm->fp[c].signedValue == -1) {
+        vm->fp[a] = SIGNED_VALUE(INT64_MIN);
+        break;
+    }
+
     vm->fp[a] = SIGNED_VALUE(vm->fp[b].signedValue / vm->fp[c].signedValue);
     break;
-case OP_IDIV_U64:
+}
+case OP_IDIV_U64: {
+    if (!vm->fp[c].unsignedValue) {
+        divisionByZeroError();
+    }
+
     vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue / vm->fp[c].unsignedValue);
     break;
-case OP_REM_I64:
+}
+case OP_REM_I64: {
+    if (!vm->fp[c].signedValue) {
+        divisionByZeroError();
+    }
+
+    if (vm->fp[b].signedValue == INT64_MIN && vm->fp[c].signedValue == -1) {
+        vm->fp[a] = SIGNED_VALUE(0);
+        break;
+    }
+
     vm->fp[a] = SIGNED_VALUE(vm->fp[b].signedValue % vm->fp[c].signedValue);
     break;
-case OP_REM_U64:
+}
+case OP_REM_U64: {
+    if (!vm->fp[c].unsignedValue) {
+        divisionByZeroError();
+    }
+
     vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue % vm->fp[c].unsignedValue);
     break;
+}
 case OP_BAND_I64:
     vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue & vm->fp[c].unsignedValue);
     break;

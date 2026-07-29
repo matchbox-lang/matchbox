@@ -69,7 +69,7 @@ static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
-static bool isDiscardableExpression(ASTNode* ast);
+static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -1737,48 +1737,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
     return makeOperand(destination, true);
 }
 
-static bool isDiscardableBinaryOperator(TokenType type)
-{
-    switch (type) {
-        case TOKEN_PLUS:
-        case TOKEN_MINUS:
-        case TOKEN_STAR:
-        case TOKEN_EQUAL_EQUAL:
-        case TOKEN_NOT_EQUAL:
-        case TOKEN_GREATER:
-        case TOKEN_GREATER_EQUAL:
-        case TOKEN_LESS:
-        case TOKEN_LESS_EQUAL:
-        case TOKEN_AND:
-        case TOKEN_OR:
-        case TOKEN_AMPERSAND:
-        case TOKEN_PIPE:
-        case TOKEN_CIRCUMFLEX:
-        case TOKEN_LSHIFT:
-        case TOKEN_RSHIFT:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool isDiscardablePrefix(ASTNode* ast)
-{
-    if (getReferenceType(ast) != REFERENCE_NONE) {
-        return false;
-    }
-
-    switch (ast->prefix.operator.type) {
-        case TOKEN_NOT:
-        case TOKEN_TILDE:
-        case TOKEN_MINUS:
-            return isDiscardableExpression(ast->prefix.expr);
-        default:
-            return false;
-    }
-}
-
-static bool isDiscardableExpression(ASTNode* ast)
+static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_BOOLEAN:
@@ -1786,11 +1745,12 @@ static bool isDiscardableExpression(ASTNode* ast)
         case AST_VARIABLE:
             return true;
         case AST_BINARY:
-            return isDiscardableBinaryOperator(ast->binary.operator.type)
-                && isDiscardableExpression(ast->binary.leftExpr)
-                && isDiscardableExpression(ast->binary.rightExpr);
+            compileExpression(compiler, ast->binary.leftExpr, true);
+            compileExpression(compiler, ast->binary.rightExpr, true);
+            return true;
         case AST_PREFIX:
-            return isDiscardablePrefix(ast);
+            compileExpression(compiler, ast->prefix.expr, true);
+            return true;
         default:
             return false;
     }
@@ -1798,7 +1758,7 @@ static bool isDiscardableExpression(ASTNode* ast)
 
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    if (discard && isDiscardableExpression(ast)) {
+    if (discard && compileDiscardedExpression(compiler, ast)) {
         return noOperand();
     }
 

@@ -1,0 +1,2 @@
+let value = 'a'
+let result = -value

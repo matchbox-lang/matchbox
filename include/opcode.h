@@ -180,8 +180,10 @@ typedef enum Opcode
     OP_NOT,
 
     // Negation
-    OP_NEG,
     OP_NEG_I64,
+    OP_NEG_I32,
+    OP_NEG_I16,
+    OP_NEG_I8,
 
     // Comparisons
     OP_EQ,

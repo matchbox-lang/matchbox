@@ -261,8 +261,10 @@ static void printInstruction(uint8_t c)
         case OP_AND:            printOpcodeRegisters3("AND"); break;
         case OP_OR:             printOpcodeRegisters3("OR"); break;
         case OP_NOT:            printOpcodeRegisters2("NOT"); break;
-        case OP_NEG:            printOpcodeRegisters2("NEG"); break;
         case OP_NEG_I64:        printOpcodeRegisters2("NEG_I64"); break;
+        case OP_NEG_I32:        printOpcodeRegisters2("NEG_I32"); break;
+        case OP_NEG_I16:        printOpcodeRegisters2("NEG_I16"); break;
+        case OP_NEG_I8:         printOpcodeRegisters2("NEG_I8"); break;
         case OP_EQ:             printOpcodeRegisters3("EQ"); break;
         case OP_NE:             printOpcodeRegisters3("NE"); break;
         case OP_LT_INT:         printOpcodeRegisters3("LT_INT"); break;

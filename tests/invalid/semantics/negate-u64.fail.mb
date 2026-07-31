@@ -1,0 +1,2 @@
+let value: u64 = 1
+let result = -value

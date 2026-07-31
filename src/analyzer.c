@@ -1527,6 +1527,11 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {
         semanticError("Logical not requires a bool operand ", ast->prefix.operator);
     }
+
+    if (ast->prefix.operator.type == TOKEN_MINUS
+        && !isSignedIntegerTypeToken(getTypeId(ast->prefix.expr))) {
+        semanticError("Negation requires a signed integer operand ", ast->prefix.operator);
+    }
 }
 
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast)

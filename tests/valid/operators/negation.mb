@@ -1,0 +1,20 @@
+func negate8(value: i8) -> i8 {
+    return -value
+}
+
+func negate16(value: i16) -> i16 {
+    return -value
+}
+
+func negate32(value: i32) -> i32 {
+    return -value
+}
+
+func negate64(value: i64) -> i64 {
+    return -value
+}
+
+print(negate8(4))
+print(negate16(4))
+print(negate32(4))
+print(negate64(4))

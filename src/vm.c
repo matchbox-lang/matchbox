@@ -377,8 +377,14 @@ static void run(VM* vm)
             case OP_NOT:
                 vm->fp[a] = SIGNED_VALUE(!AS_SIGNED(vm->fp[b]));
                 break;
-            case OP_NEG:
+            case OP_NEG_I32:
                 vm->fp[a] = SIGNED_VALUE(-AS_SIGNED(vm->fp[b]));
+                break;
+            case OP_NEG_I16:
+                vm->fp[a] = I16_VALUE(-AS_I16(vm->fp[b]));
+                break;
+            case OP_NEG_I8:
+                vm->fp[a] = I8_VALUE(-AS_I8(vm->fp[b]));
                 break;
             case OP_EQ:
                 vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) == AS_UNSIGNED(vm->fp[c]));

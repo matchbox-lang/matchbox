@@ -861,7 +861,7 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
         case INTEGER_LSR:
             return getRightShiftOpcode(type);
         case INTEGER_NEG:
-            return getIntegerTypeSize(type) == 8 ? OP_NEG_I64 : OP_NEG;
+            return getWidthOpcode(type, OP_NEG_I64, OP_NEG_I32, OP_NEG_I16, OP_NEG_I8);
     }
 
     return OP_HLT;

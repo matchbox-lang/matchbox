@@ -203,7 +203,7 @@ static void emitOperandMov(Compiler* compiler, int dst, Operand operand)
         return;
     }
 
-    emitInstruction(compiler, OP_MOV_I64, dst, operand.reg, 0);
+    emitInstruction(compiler, OP_MOV_64, dst, operand.reg, 0);
 }
 
 static Operand makeOperand(int reg, bool temporary)
@@ -257,7 +257,7 @@ static int emitLdcI64(Compiler* compiler, uint16_t position)
 {
     int reg = allocateRegisters(compiler, 2);
 
-    emitInstruction(compiler, OP_LDC_I64, reg, position >> 8, position);
+    emitInstruction(compiler, OP_LDC_64, reg, position >> 8, position);
 
     return reg;
 }
@@ -467,7 +467,7 @@ static void emitRet(Compiler* compiler)
 
 static void emitRetv(Compiler* compiler, Operand operand)
 {
-    Opcode opcode = operand.slots == 2 ? OP_RET_I64 : OP_RETV;
+    Opcode opcode = operand.slots == 2 ? OP_RET_64 : OP_RETV;
 
     emitInstruction(compiler, opcode, operand.reg, 0, 0);
 }
@@ -582,7 +582,7 @@ static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 
     if (wide) {
         int reg = allocateRegisters(compiler, 2);
-        emitInstruction(compiler, OP_LDG_I64, reg, position >> 8, position);
+        emitInstruction(compiler, OP_LDG_64, reg, position >> 8, position);
 
         return makeWideOperand(reg, true);
     }
@@ -630,7 +630,7 @@ static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
 
 static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t slots)
 {
-    Opcode opcode = slots == 2 ? OP_LDR_I64 : OP_LDR;
+    Opcode opcode = slots == 2 ? OP_LDR_64 : OP_LDR;
 
     if (!operand.temporary) {
         int reg = allocateRegisters(compiler, slots);
@@ -682,7 +682,7 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
     int position = ast->variableDefinition.position;
 
     if (value.slots == 2) {
-        emitInstruction(compiler, OP_STG_I64, value.reg, position >> 8, position);
+        emitInstruction(compiler, OP_STG_64, value.reg, position >> 8, position);
 
         return;
     }
@@ -1111,7 +1111,7 @@ static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand va
     }
 
     Operand reference = loadVariable(compiler, symbol);
-    Opcode opcode = value.slots == 2 ? OP_STR_I64 : OP_STR;
+    Opcode opcode = value.slots == 2 ? OP_STR_64 : OP_STR;
 
     emitInstruction(compiler, opcode, value.reg, reference.reg, 0);
     releaseOperand(compiler, value);

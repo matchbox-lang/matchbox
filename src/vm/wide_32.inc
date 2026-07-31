@@ -8,23 +8,23 @@
     (values)[(index) + 1].unsignedValue = wideValue >> 32; \
 }
 
-case OP_MOV_I64:
+case OP_MOV_64:
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b));
     break;
-case OP_LDC_I64:
+case OP_LDC_64:
     WRITE_U64(vm->fp, a, READ_U64(vm->module->constants.data, OPERAND_BC(inst)));
     break;
-case OP_LDG_I64:
+case OP_LDG_64:
     WRITE_U64(vm->fp, a, READ_U64(vm->gp, OPERAND_BC(inst)));
     break;
-case OP_STG_I64:
+case OP_STG_64:
     WRITE_U64(vm->gp, OPERAND_BC(inst), READ_U64(vm->fp, a));
     break;
-case OP_LDR_I64:
+case OP_LDR_64:
     vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);
     vm->fp[a + 1] = *((Value*)AS_POINTER(vm->fp[b]) + 1);
     break;
-case OP_STR_I64:
+case OP_STR_64:
     *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
     *((Value*)AS_POINTER(vm->fp[b]) + 1) = vm->fp[a + 1];
     break;
@@ -150,7 +150,7 @@ case OP_NEG_I64: {
     WRITE_U64(vm->fp, a, -READ_U64(vm->fp, b));
     break;
 }
-case OP_RET_I64: {
+case OP_RET_64: {
     Value* frame = vm->fp;
     Instruction* returnIp = AS_POINTER(frame[-2]);
     Value* returnFp = AS_POINTER(frame[-1]);

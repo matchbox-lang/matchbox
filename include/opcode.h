@@ -51,12 +51,12 @@ typedef enum Opcode
     OP_STR,
 
     // 64-bit data movement
-    OP_MOV_I64,
-    OP_LDC_I64,
-    OP_LDG_I64,
-    OP_STG_I64,
-    OP_LDR_I64,
-    OP_STR_I64,
+    OP_MOV_64,
+    OP_LDC_64,
+    OP_LDG_64,
+    OP_STG_64,
+    OP_LDR_64,
+    OP_STR_64,
 
     // Addition
     OP_ADD_I64,
@@ -205,7 +205,7 @@ typedef enum Opcode
     // Functions
     OP_CALL,
     OP_RET,
-    OP_RET_I64,
+    OP_RET_64,
     OP_RETV,
 
     // Repeated instructions

@@ -1,19 +1,19 @@
-case OP_MOV_I64:
+case OP_MOV_64:
     vm->fp[a] = vm->fp[b];
     break;
-case OP_LDC_I64:
+case OP_LDC_64:
     vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
     break;
-case OP_LDG_I64:
+case OP_LDG_64:
     vm->fp[a] = vm->gp[OPERAND_BC(inst)];
     break;
-case OP_STG_I64:
+case OP_STG_64:
     vm->gp[OPERAND_BC(inst)] = vm->fp[a];
     break;
-case OP_LDR_I64:
+case OP_LDR_64:
     vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);
     break;
-case OP_STR_I64:
+case OP_STR_64:
     *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
     break;
 case OP_ADD_I64:
@@ -118,7 +118,7 @@ case OP_ASRI_I64:
 case OP_NEG_I64:
     vm->fp[a] = SIGNED_VALUE(-vm->fp[b].signedValue);
     break;
-case OP_RET_I64: {
+case OP_RET_64: {
     Value* frame = vm->fp;
     Instruction* returnIp = AS_POINTER(frame[-2]);
     Value* returnFp = AS_POINTER(frame[-1]);

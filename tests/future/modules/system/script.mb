@@ -1,0 +1,5 @@
+# External namespace defined in host API .mbc file
+use game
+
+spawnEnemy()
+movePlayer(10, 20)

@@ -1,0 +1,5 @@
+# Defined in host API .mbc file
+use external game
+
+spawnEnemy()
+movePlayer(10, 20)

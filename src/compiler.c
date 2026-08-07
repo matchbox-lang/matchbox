@@ -1812,12 +1812,23 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
     return nextJump;
 }
 
+static void storeMatchBinding(Compiler* compiler, MatchArm* arm, Operand subject)
+{
+    if (!arm->binding) {
+        return;
+    }
+
+    int position = getLocalPosition(compiler, arm->binding);
+    emitOperandMov(compiler, position, subject);
+}
+
 static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
     int branchRegisterCount)
 {
     size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
     TokenType type = getTypeId(ast);
 
+    storeMatchBinding(compiler, arm, subject);
     compileConditionalBranch(compiler, arm->branch, type, destination);
     compiler->registerCount = branchRegisterCount;
 

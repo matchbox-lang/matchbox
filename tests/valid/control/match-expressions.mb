@@ -1,0 +1,32 @@
+let value = 2
+
+let defaultResult = match value {
+    case 0: 10
+    default: 20
+}
+
+let wildcardResult = match value {
+    case 0: 30
+    case _: 40
+}
+
+let captureResult = match value {
+    case 0: 50
+    case captured: 60 + captured
+}
+
+let explicitBooleanResult = match true {
+    case true: 70
+    case false: 80
+}
+
+let implicitBooleanResult = match {
+    case true: 90
+    case false: 100
+}
+
+print(defaultResult)
+print(wildcardResult)
+print(captureResult)
+print(explicitBooleanResult)
+print(implicitBooleanResult)

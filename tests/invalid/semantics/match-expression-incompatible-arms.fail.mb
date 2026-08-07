@@ -1,0 +1,4 @@
+let result = match true {
+    case true: 1
+    case false: false
+}

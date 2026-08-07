@@ -364,11 +364,18 @@ static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
     analyzeNodes(analyzer, nodes, 0);
 }
 
-static TokenType analyzeConditionalBranch(Analyzer* analyzer, ASTNode* branch)
+static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
 {
     Scope* previousScope = analyzer->currentScope;
     branch->compound.scope = createScope(previousScope);
     analyzer->currentScope = branch->compound.scope;
+
+    if (binding) {
+        binding->variableDefinition.scope = analyzer->currentScope;
+        binding->variableDefinition.position = getNextLocalPosition(analyzer->currentScope);
+        setLocalVariableSymbol(analyzer->currentScope, binding->variableDefinition.id, binding);
+    }
+
     analyzeExpressionNodes(analyzer, &branch->compound.statements);
     analyzer->currentScope = previousScope;
 
@@ -378,6 +385,11 @@ static TokenType analyzeConditionalBranch(Analyzer* analyzer, ASTNode* branch)
     }
 
     return getTypeId(getVectorAt(&branch->compound.statements, count - 1));
+}
+
+static TokenType analyzeConditionalBranch(Analyzer* analyzer, ASTNode* branch)
+{
+    return analyzeScopedBranch(analyzer, branch, NULL);
 }
 
 static TokenType analyzeElseBranch(Analyzer* analyzer, ASTNode* branch)
@@ -765,7 +777,12 @@ static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vec
 {
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
     analyzeMatchPattern(analyzer, ast, arm);
-    TokenType branchType = analyzeConditionalBranch(analyzer, arm->branch);
+
+    if (arm->binding) {
+        arm->binding->variableDefinition.typeId = getTypeId(ast->match.subject);
+    }
+
+    TokenType branchType = analyzeScopedBranch(analyzer, arm->branch, arm->binding);
     mergeMatchResult(ast, branchType, resultType);
 }
 

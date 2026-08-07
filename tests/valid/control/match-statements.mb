@@ -1,0 +1,27 @@
+let value = 2
+
+match value {
+    case captured:
+        print(captured)
+}
+
+match value {
+    case 1:
+        print(10)
+    case 2:
+        print(20)
+}
+
+match value {
+    case 1:
+        print(30)
+    default:
+        print(40)
+}
+
+match {
+    case value < 2:
+        print(50)
+    case value == 2:
+        print(60)
+}

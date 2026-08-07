@@ -17,6 +17,7 @@ static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
 static ASTNode* parseConditional(Parser* parser);
 static ASTNode* parseMatch(Parser* parser);
 static ASTNode* parseStatement(Parser* parser);
+static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
 
 static void expectedExpressionError(Token token)
 {
@@ -366,6 +367,18 @@ static bool isWildcardToken(Token token)
     return token.type == TOKEN_IDENTIFIER && token.length == 1 && token.chars[0] == '_';
 }
 
+static ASTNode* parseMatchBinding(Parser* parser)
+{
+    Token token = parser->currentToken;
+    StringObject* id = copyStringObject(token.chars, token.length);
+    ASTNode* binding = createVariableDefinitionNode(token, id, true);
+    binding->variableDefinition.initialized = true;
+
+    consume(parser, TOKEN_IDENTIFIER);
+
+    return binding;
+}
+
 static void parseMatchArm(Parser* parser, ASTNode* ast)
 {
     consume(parser, TOKEN_CASE);
@@ -377,6 +390,8 @@ static void parseMatchArm(Parser* parser, ASTNode* ast)
 
     if (isWildcardToken(parser->currentToken)) {
         consume(parser, TOKEN_IDENTIFIER);
+    } else if (ast->match.subject && parser->currentToken.type == TOKEN_IDENTIFIER) {
+        arm->binding = parseMatchBinding(parser);
     } else {
         arm->pattern = parseExpression(parser);
     }

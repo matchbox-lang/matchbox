@@ -1,0 +1,7 @@
+let value = 1
+
+match value {
+    case captured: print(captured)
+}
+
+print(captured)

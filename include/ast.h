@@ -15,6 +15,7 @@ typedef struct Builtin Builtin;
 typedef struct MatchArm
 {
     ASTNode* pattern;
+    ASTNode* binding;
     ASTNode* branch;
 } MatchArm;
 

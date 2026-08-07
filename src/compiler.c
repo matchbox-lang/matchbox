@@ -73,6 +73,7 @@ static void removeDiscardedExpressionReads(ASTNode* ast);
 static void removeDiscardedStatementReads(ASTNode* ast);
 static void markCalledFunctions(ASTNode* ast);
 static void resetFunctionCallCounts(ASTNode* ast);
+static bool isSimpleMatchValue(ASTNode* ast);
 
 static void functionPositionOverflowError()
 {
@@ -1654,9 +1655,16 @@ static void patchJump(Compiler* compiler, size_t position)
 {
     CodeObject* code = currentCodeObject(compiler);
     int offset = (int)(countCodeObject(code) - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
+    Opcode opcode = (Opcode)code->data[position];
 
-    if ((Opcode)code->data[position] == OP_BZ) {
+    if (opcode == OP_BZ || opcode == OP_BNZ) {
         setByteAt(code, position + 2, offset >> 8);
+        setByteAt(code, position + 3, offset);
+
+        return;
+    }
+
+    if (opcode == OP_BEQ || opcode == OP_BNE) {
         setByteAt(code, position + 3, offset);
 
         return;
@@ -1671,6 +1679,10 @@ static void storeConditionalValue(
     Compiler* compiler, TokenType type, int destination, Operand value)
 {
     if (type == TOKEN_VOID) {
+        return;
+    }
+
+    if (retargetTemporary(compiler, value, destination)) {
         return;
     }
 
@@ -1694,7 +1706,7 @@ static Operand compileConditionalBranch(
         Operand value = compileStatement(compiler, getVectorAt(&branch->compound.statements, i), discard);
 
         if (!discard) {
-            emitOperandMov(compiler, destination, value);
+            storeConditionalValue(compiler, type, destination, value);
 
             return value;
         }
@@ -1750,19 +1762,12 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
     return makeOperand(destination, true);
 }
 
-static Operand persistentMatchSubject(Compiler* compiler, ASTNode* subject)
+static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
 {
     Operand value = compileExpression(compiler, subject, false);
-    int destination = allocateRegisters(compiler, value.slots);
+    value.temporary = false;
 
-    emitOperandMov(compiler, destination, value);
-    releaseOperand(compiler, value);
-
-    if (value.slots == 2) {
-        return makeWideOperand(destination, false);
-    }
-
-    return makeOperand(destination, false);
+    return value;
 }
 
 static Operand compileMatchCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
@@ -1786,6 +1791,16 @@ static void patchMatchJumps(Compiler* compiler, Vector* jumps)
     }
 }
 
+static void emitMatchJoin(Compiler* compiler, Vector* jumps)
+{
+    if (!countVector(jumps)) {
+        return;
+    }
+
+    emitInstruction(compiler, OP_NOP, 0, 0, 0);
+    patchMatchJumps(compiler, jumps);
+}
+
 static int allocateMatchDestination(Compiler* compiler, TokenType type)
 {
     if (type == TOKEN_VOID) {
@@ -1799,40 +1814,101 @@ static int allocateMatchDestination(Compiler* compiler, TokenType type)
     return destination;
 }
 
+static bool areSimpleMatchValues(Vector* values)
+{
+    size_t count = countVector(values);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* value = getVectorAt(values, i);
+        if (!isSimpleMatchValue(value)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool isSimpleMatchValue(ASTNode* ast)
+{
+    switch (ast->type) {
+        case AST_BOOLEAN:
+        case AST_INTEGER:
+        case AST_VARIABLE:
+            return true;
+        case AST_BUILTIN_CALL:
+            return areSimpleMatchValues(&ast->builtinCall.args);
+        default:
+            return false;
+    }
+}
+
+static bool canUseDirectMatchBranch(MatchArm* arm)
+{
+    size_t count = countVector(&arm->branch->compound.statements);
+    if (count != 1) {
+        return false;
+    }
+
+    ASTNode* statement = getVectorAt(&arm->branch->compound.statements, 0);
+
+    return isSimpleMatchValue(statement);
+}
+
 static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
 {
     if (!arm->pattern) {
         return 0;
     }
 
-    Operand condition = compileMatchCondition(compiler, ast, arm, subject);
-    size_t nextJump = emitJump(compiler, OP_BZ, condition.reg);
-    releaseOperand(compiler, condition);
+    if (!ast->match.subject || !canUseDirectMatchBranch(arm)) {
+        Operand condition = compileMatchCondition(compiler, ast, arm, subject);
+        size_t nextJump = emitJump(compiler, OP_BZ, condition.reg);
+        releaseOperand(compiler, condition);
+
+        return nextJump;
+    }
+
+    Operand pattern = compileExpression(compiler, arm->pattern, false);
+    size_t nextJump = countCodeObject(currentCodeObject(compiler));
+    emitInstruction(compiler, OP_BNE, subject.reg, pattern.reg, 0);
+    releaseOperand(compiler, pattern);
 
     return nextJump;
 }
 
-static void storeMatchBinding(Compiler* compiler, MatchArm* arm, Operand subject)
+static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subject)
 {
-    if (!arm->binding) {
+    if (!binding) {
         return;
     }
 
-    int position = getLocalPosition(compiler, arm->binding);
+    int position = getLocalPosition(compiler, binding);
     emitOperandMov(compiler, position, subject);
+
+    TokenType bindingType = getTypeId(binding);
+    int bindingRegisterCount = position + getTypeSlotCount(bindingType);
+
+    if (compiler->registerCount < bindingRegisterCount) {
+        compiler->registerCount = bindingRegisterCount;
+    }
 }
 
 static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
-    int branchRegisterCount)
+    bool needsEndJump)
 {
+    int branchRegisterCount = compiler->registerCount;
     size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
     TokenType type = getTypeId(ast);
 
-    storeMatchBinding(compiler, arm, subject);
+    storeMatchBinding(compiler, arm->binding, subject);
     compileConditionalBranch(compiler, arm->branch, type, destination);
     compiler->registerCount = branchRegisterCount;
 
-    size_t endJump = emitJump(compiler, OP_JMP, 0);
+    size_t endJump = SIZE_MAX;
+
+    if (needsEndJump) {
+        endJump = emitJump(compiler, OP_JMP, 0);
+    }
 
     if (arm->pattern) {
         patchJump(compiler, nextJump);
@@ -1841,17 +1917,36 @@ static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, O
     return endJump;
 }
 
-static void compileMatchArms(Compiler* compiler, ASTNode* ast, Operand subject, int destination,
-    int branchRegisterCount, Vector* endJumps)
+static bool compileNextMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
+    bool hasFollowingArm, Vector* endJumps)
+{
+    bool unconditional = !arm->pattern;
+    bool needsEndJump = !unconditional && hasFollowingArm;
+    size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, needsEndJump);
+
+    if (endJump != SIZE_MAX) {
+        pushVectorItem(endJumps, (void*)(uintptr_t)endJump);
+    }
+
+    return unconditional;
+}
+
+static bool compileMatchArms(Compiler* compiler, ASTNode* ast, Operand subject, int destination, Vector* endJumps)
 {
     size_t count = countVector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, branchRegisterCount);
+        bool hasFollowingArm = i + 1 < count || ast->match.defaultBranch;
+        bool unconditional = compileNextMatchArm(compiler, ast, arm, subject, destination, hasFollowingArm,
+            endJumps);
 
-        pushVectorItem(endJumps, (void*)(uintptr_t)endJump);
+        if (unconditional) {
+            return true;
+        }
     }
+
+    return false;
 }
 
 static void compileMatchDefault(Compiler* compiler, ASTNode* ast, int destination, int branchRegisterCount)
@@ -1879,16 +1974,144 @@ static Operand matchResultOperand(TokenType type, int destination)
     return makeOperand(destination, true);
 }
 
+static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value)
+{
+    if (ast->type == AST_BOOLEAN) {
+        *value = ast->booleanLiteral.value;
+
+        return true;
+    }
+
+    if (ast->type == AST_INTEGER) {
+        *value = ast->integerLiteral.value;
+
+        return true;
+    }
+
+    return false;
+}
+
+static bool getLiteralMatchSubject(ASTNode* ast, uint64_t* value)
+{
+    if (!ast->match.subject) {
+        *value = true;
+
+        return true;
+    }
+
+    return getLiteralMatchValue(ast->match.subject, value);
+}
+
+typedef enum LiteralMatchArmResult
+{
+    LITERAL_MATCH_ARM_UNAVAILABLE,
+    LITERAL_MATCH_ARM_SKIPPED,
+    LITERAL_MATCH_ARM_SELECTED
+} LiteralMatchArmResult;
+
+static LiteralMatchArmResult selectLiteralMatchArm(
+    MatchArm* arm, uint64_t subjectValue, ASTNode** branch, ASTNode** binding)
+{
+    if (!arm->pattern) {
+        *branch = arm->branch;
+        *binding = arm->binding;
+
+        return LITERAL_MATCH_ARM_SELECTED;
+    }
+
+    uint64_t patternValue;
+    if (!getLiteralMatchValue(arm->pattern, &patternValue)) {
+        return LITERAL_MATCH_ARM_UNAVAILABLE;
+    }
+
+    if (subjectValue != patternValue) {
+        return LITERAL_MATCH_ARM_SKIPPED;
+    }
+
+    *branch = arm->branch;
+    *binding = NULL;
+
+    return LITERAL_MATCH_ARM_SELECTED;
+}
+
+static bool findLiteralMatchBranch(ASTNode* ast, ASTNode** branch, ASTNode** binding)
+{
+    uint64_t subjectValue;
+    if (!getLiteralMatchSubject(ast, &subjectValue)) {
+        return false;
+    }
+
+    size_t count = countVector(&ast->match.arms);
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        LiteralMatchArmResult result = selectLiteralMatchArm(arm, subjectValue, branch, binding);
+
+        switch (result) {
+            case LITERAL_MATCH_ARM_UNAVAILABLE:
+                return false;
+            case LITERAL_MATCH_ARM_SELECTED:
+                return true;
+            case LITERAL_MATCH_ARM_SKIPPED:
+                break;
+        }
+    }
+
+    *branch = ast->match.defaultBranch;
+    *binding = NULL;
+
+    return true;
+}
+
+static bool compileLiteralMatch(Compiler* compiler, ASTNode* ast, TokenType type, int destination)
+{
+    ASTNode* branch;
+    ASTNode* binding;
+    if (!findLiteralMatchBranch(ast, &branch, &binding)) {
+        return false;
+    }
+
+    if (!branch) {
+        return true;
+    }
+
+    if (binding) {
+        Operand subject = compileMatchSubject(compiler, ast->match.subject);
+        storeMatchBinding(compiler, binding, subject);
+    }
+
+    compileConditionalBranch(compiler, branch, type, destination);
+
+    return true;
+}
+
+static void restoreMatchCompilerState(Compiler* compiler, TokenType type, int previousLocalPositionOffset,
+    int previousRegisterCount)
+{
+    compiler->localPositionOffset = previousLocalPositionOffset;
+    compiler->registerCount = previousRegisterCount;
+
+    if (type != TOKEN_VOID) {
+        compiler->registerCount += getTypeSlotCount(type);
+    }
+}
+
 static Operand compileMatch(Compiler* compiler, ASTNode* ast)
 {
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
     TokenType type = getTypeId(ast);
     int destination = allocateMatchDestination(compiler, type);
+
+    if (compileLiteralMatch(compiler, ast, type, destination)) {
+        restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);
+
+        return matchResultOperand(type, destination);
+    }
+
     Operand subject = noOperand();
 
     if (ast->match.subject) {
-        subject = persistentMatchSubject(compiler, ast->match.subject);
+        subject = compileMatchSubject(compiler, ast->match.subject);
     }
 
     int branchRegisterCount = compiler->registerCount;
@@ -1896,17 +2119,16 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast)
     Vector endJumps;
     initVector(&endJumps);
 
-    compileMatchArms(compiler, ast, subject, destination, branchRegisterCount, &endJumps);
-    compileMatchDefault(compiler, ast, destination, branchRegisterCount);
-    patchMatchJumps(compiler, &endJumps);
+    bool unconditionalArm = compileMatchArms(compiler, ast, subject, destination, &endJumps);
+
+    if (!unconditionalArm) {
+        compileMatchDefault(compiler, ast, destination, branchRegisterCount);
+    }
+
+    emitMatchJoin(compiler, &endJumps);
     freeVector(&endJumps);
 
-    compiler->localPositionOffset = previousLocalPositionOffset;
-    compiler->registerCount = previousRegisterCount;
-
-    if (type != TOKEN_VOID) {
-        compiler->registerCount += getTypeSlotCount(type);
-    }
+    restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);
 
     return matchResultOperand(type, destination);
 }

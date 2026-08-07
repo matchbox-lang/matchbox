@@ -25,8 +25,15 @@ let implicitBooleanResult = match {
     case false: 100
 }
 
+let fixedResult = match 2 {
+    case 1: 110
+    case 2: 120
+    default: 130
+}
+
 print(defaultResult)
 print(wildcardResult)
 print(captureResult)
 print(explicitBooleanResult)
 print(implicitBooleanResult)
+print(fixedResult)

@@ -18,6 +18,7 @@ typedef struct Compiler
     FunctionObject* function;
     ASTNode* ast;
     size_t statementIndex;
+    size_t peepholeBarrier;
     int registerCount;
     int frameBaseCount;
     int localPositionOffset;

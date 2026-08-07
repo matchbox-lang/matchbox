@@ -153,6 +153,9 @@ static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* inst
     }
 
     size_t start = count - INSTRUCTION_SIZE;
+    if (start < compiler->peepholeBarrier) {
+        return false;
+    }
 
     instruction->code = code;
     instruction->start = start;
@@ -1551,6 +1554,7 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     int previousFrameBaseCount = compiler->frameBaseCount;
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
+    size_t previousPeepholeBarrier = compiler->peepholeBarrier;
     FunctionObject* previousFunction = compiler->function;
     FunctionObject* function = createDefinedFunctionObject(ast);
     ASTNode* body = ast->functionDefinition.body;
@@ -1559,6 +1563,7 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     compiler->localPositionOffset = 0;
     compiler->registerCount = compiler->frameBaseCount;
     compiler->function = function;
+    compiler->peepholeBarrier = 0;
 
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, ast);
@@ -1580,6 +1585,7 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     compiler->frameBaseCount = previousFrameBaseCount;
     compiler->localPositionOffset = previousLocalPositionOffset;
     compiler->registerCount = previousRegisterCount;
+    compiler->peepholeBarrier = previousPeepholeBarrier;
 }
 
 static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
@@ -1791,14 +1797,14 @@ static void patchMatchJumps(Compiler* compiler, Vector* jumps)
     }
 }
 
-static void emitMatchJoin(Compiler* compiler, Vector* jumps)
+static void markMatchJoin(Compiler* compiler, Vector* jumps)
 {
     if (!countVector(jumps)) {
         return;
     }
 
-    emitInstruction(compiler, OP_NOP, 0, 0, 0);
     patchMatchJumps(compiler, jumps);
+    compiler->peepholeBarrier = countCodeObject(currentCodeObject(compiler));
 }
 
 static int allocateMatchDestination(Compiler* compiler, TokenType type)
@@ -2125,7 +2131,7 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast)
         compileMatchDefault(compiler, ast, destination, branchRegisterCount);
     }
 
-    emitMatchJoin(compiler, &endJumps);
+    markMatchJoin(compiler, &endJumps);
     freeVector(&endJumps);
 
     restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);
@@ -2520,6 +2526,7 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
     compiler->function = getVectorAt(&module->functions, 0);
     compiler->ast = ast;
     compiler->statementIndex = 0;
+    compiler->peepholeBarrier = 0;
     compiler->registerCount = 0;
     compiler->frameBaseCount = 0;
     compiler->localPositionOffset = 0;
@@ -2552,6 +2559,7 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
     }
 
     clearCodeObject(currentCodeObject(compiler));
+    compiler->peepholeBarrier = 0;
     compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);
 

@@ -1,0 +1,33 @@
+let value = 2
+
+match value {
+    case 1:
+        print(10)
+    case 2:
+        print(20)
+    default:
+        print(30)
+}
+
+match {
+    case value < 2:
+        print(40)
+    case value == 2:
+        print(50)
+}
+
+let result = match value {
+    case 0: 100
+    case 1: 200
+    case 2: 300
+    case _: 400
+}
+
+print(result)
+
+let binaryResult = match {
+    case true: 1
+    case false: 0
+}
+
+print(binaryResult)

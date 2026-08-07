@@ -240,7 +240,7 @@ static Operand materializeOperand(Compiler* compiler, Operand operand)
 
     int reg = allocateRegisters(compiler, operand.slots);
     emitOperandMov(compiler, reg, operand);
-    
+
     return operand.slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
 }
 
@@ -526,7 +526,7 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
 
     if (!discard && function->returnCount) {
         compiler->registerCount = call.resultRegister + function->returnCount;
-        
+
         return function->returnCount == 2
             ? makeWideOperand(call.resultRegister, true)
             : makeOperand(call.resultRegister, true);
@@ -542,7 +542,7 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     if (isParameter(ast)) {
         return ast->parameter.position;
     }
-    
+
     return compiler->frameBaseCount + compiler->localPositionOffset
         + ast->variableDefinition.position;
 }
@@ -953,7 +953,7 @@ static Operand emitBinaryOperands(
     }
 
     emitInstruction(compiler, getIntegerOpcode(type, operation), dst, left.reg, right.reg);
-    
+
     return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
@@ -1415,7 +1415,7 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
 static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
 {
     size_t functionCount = countVector(&compiler->functionReferences);
-    
+
     for (size_t i = 0; i < functionCount; i++) {
         if (ast == compiler->functionReferences.data[i]) {
             return makeFunctionPosition(i);
@@ -1444,7 +1444,7 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function,
     CallArea call = openCallArea(compiler);
 
     compileArguments(compiler, args, params);
-    
+
     return closeCallArea(compiler, function, functionPosition, call, discard);
 }
 
@@ -1553,12 +1553,12 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     FunctionObject* previousFunction = compiler->function;
     FunctionObject* function = createDefinedFunctionObject(ast);
     ASTNode* body = ast->functionDefinition.body;
-    
+
     compiler->frameBaseCount = getCallAreaCount(function);
     compiler->localPositionOffset = 0;
     compiler->registerCount = compiler->frameBaseCount;
     compiler->function = function;
-    
+
     pushVectorItem(&compiler->module->functions, function);
     pushVectorItem(&compiler->functionReferences, ast);
     compileBlocklevelStatements(compiler, &body->compound.statements);
@@ -1574,7 +1574,7 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
         compiler->registerCount = compiler->frameBaseCount;
         emitRet(compiler);
     }
-    
+
     compiler->function = previousFunction;
     compiler->frameBaseCount = previousFrameBaseCount;
     compiler->localPositionOffset = previousLocalPositionOffset;
@@ -1585,7 +1585,7 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
 {
     if (isNone(ast->returnStatement.expr)) {
         compiler->registerCount = compiler->frameBaseCount;
-        
+
         return emitRet(compiler);
     }
 
@@ -1688,7 +1688,7 @@ static Operand compileConditionalBranch(
     }
 
     size_t count = countVector(&branch->compound.statements);
-    
+
     for (size_t i = 0; i < count; i++) {
         bool discard = type == TOKEN_VOID || i + 1 < count;
         Operand value = compileStatement(compiler, getVectorAt(&branch->compound.statements, i), discard);
@@ -1708,11 +1708,11 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
     int previousLocalPositionOffset = compiler->localPositionOffset;
     Operand condition = compileExpression(compiler, ast->conditional.condition, false);
     size_t elseJump = emitJump(compiler, OP_BZ, condition.reg);
-    
+
     releaseOperand(compiler, condition);
 
     int destination = -1;
-    
+
     TokenType type = getTypeId(ast);
     if (type != TOKEN_VOID) {
         size_t slots = getTypeSlotCount(type);
@@ -1748,6 +1748,156 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
     }
 
     return makeOperand(destination, true);
+}
+
+static Operand persistentMatchSubject(Compiler* compiler, ASTNode* subject)
+{
+    Operand value = compileExpression(compiler, subject, false);
+    int destination = allocateRegisters(compiler, value.slots);
+
+    emitOperandMov(compiler, destination, value);
+    releaseOperand(compiler, value);
+
+    if (value.slots == 2) {
+        return makeWideOperand(destination, false);
+    }
+
+    return makeOperand(destination, false);
+}
+
+static Operand compileMatchCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
+{
+    Operand pattern = compileExpression(compiler, arm->pattern, false);
+
+    if (!ast->match.subject) {
+        return pattern;
+    }
+
+    return emitComparison(compiler, OP_EQ, subject, pattern);
+}
+
+static void patchMatchJumps(Compiler* compiler, Vector* jumps)
+{
+    size_t count = countVector(jumps);
+
+    for (size_t i = 0; i < count; i++) {
+        void* jump = getVectorAt(jumps, i);
+        patchJump(compiler, (size_t)(uintptr_t)jump);
+    }
+}
+
+static int allocateMatchDestination(Compiler* compiler, TokenType type)
+{
+    if (type == TOKEN_VOID) {
+        return -1;
+    }
+
+    size_t slots = getTypeSlotCount(type);
+    int destination = allocateRegisters(compiler, slots);
+    compiler->localPositionOffset += slots;
+
+    return destination;
+}
+
+static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
+{
+    if (!arm->pattern) {
+        return 0;
+    }
+
+    Operand condition = compileMatchCondition(compiler, ast, arm, subject);
+    size_t nextJump = emitJump(compiler, OP_BZ, condition.reg);
+    releaseOperand(compiler, condition);
+
+    return nextJump;
+}
+
+static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
+    int branchRegisterCount)
+{
+    size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
+    TokenType type = getTypeId(ast);
+
+    compileConditionalBranch(compiler, arm->branch, type, destination);
+    compiler->registerCount = branchRegisterCount;
+
+    size_t endJump = emitJump(compiler, OP_JMP, 0);
+
+    if (arm->pattern) {
+        patchJump(compiler, nextJump);
+    }
+
+    return endJump;
+}
+
+static void compileMatchArms(Compiler* compiler, ASTNode* ast, Operand subject, int destination,
+    int branchRegisterCount, Vector* endJumps)
+{
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, branchRegisterCount);
+
+        pushVectorItem(endJumps, (void*)(uintptr_t)endJump);
+    }
+}
+
+static void compileMatchDefault(Compiler* compiler, ASTNode* ast, int destination, int branchRegisterCount)
+{
+    if (!ast->match.defaultBranch) {
+        return;
+    }
+
+    TokenType type = getTypeId(ast);
+
+    compileConditionalBranch(compiler, ast->match.defaultBranch, type, destination);
+    compiler->registerCount = branchRegisterCount;
+}
+
+static Operand matchResultOperand(TokenType type, int destination)
+{
+    if (type == TOKEN_VOID) {
+        return noOperand();
+    }
+
+    if (getTypeSlotCount(type) == 2) {
+        return makeWideOperand(destination, true);
+    }
+
+    return makeOperand(destination, true);
+}
+
+static Operand compileMatch(Compiler* compiler, ASTNode* ast)
+{
+    int previousLocalPositionOffset = compiler->localPositionOffset;
+    int previousRegisterCount = compiler->registerCount;
+    TokenType type = getTypeId(ast);
+    int destination = allocateMatchDestination(compiler, type);
+    Operand subject = noOperand();
+
+    if (ast->match.subject) {
+        subject = persistentMatchSubject(compiler, ast->match.subject);
+    }
+
+    int branchRegisterCount = compiler->registerCount;
+
+    Vector endJumps;
+    initVector(&endJumps);
+
+    compileMatchArms(compiler, ast, subject, destination, branchRegisterCount, &endJumps);
+    compileMatchDefault(compiler, ast, destination, branchRegisterCount);
+    patchMatchJumps(compiler, &endJumps);
+    freeVector(&endJumps);
+
+    compiler->localPositionOffset = previousLocalPositionOffset;
+    compiler->registerCount = previousRegisterCount;
+
+    if (type != TOKEN_VOID) {
+        compiler->registerCount += getTypeSlotCount(type);
+    }
+
+    return matchResultOperand(type, destination);
 }
 
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
@@ -1905,6 +2055,19 @@ static void markCalledFunctions(ASTNode* ast)
         case AST_FUNCTION_CALL:
             markCalledFunction(ast);
             break;
+        case AST_MATCH: {
+            markCalledFunctions(ast->match.subject);
+
+            size_t count = countVector(&ast->match.arms);
+            for (size_t i = 0; i < count; i++) {
+                MatchArm* arm = getVectorAt(&ast->match.arms, i);
+                markCalledFunctions(arm->pattern);
+                markCalledFunctions(arm->branch);
+            }
+            
+            markCalledFunctions(ast->match.defaultBranch);
+            break;
+        }
         case AST_PREFIX:
             markCalledFunctions(ast->prefix.expr);
             break;
@@ -1924,8 +2087,21 @@ static void resetFunctionCallCountsInVector(Vector* nodes)
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        resetFunctionCallCounts(getVectorAt(nodes, i));
+        ASTNode* node = getVectorAt(nodes, i);
+        resetFunctionCallCounts(node);
     }
+}
+
+static void resetMatchFunctionCallCounts(ASTNode* ast)
+{
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        resetFunctionCallCounts(arm->branch);
+    }
+
+    resetFunctionCallCounts(ast->match.defaultBranch);
 }
 
 static void resetFunctionCallCounts(ASTNode* ast)
@@ -1950,6 +2126,12 @@ static void resetFunctionCallCounts(ASTNode* ast)
     if (ast->type == AST_CONDITIONAL) {
         resetFunctionCallCounts(ast->conditional.thenBranch);
         resetFunctionCallCounts(ast->conditional.elseBranch);
+
+        return;
+    }
+
+    if (ast->type == AST_MATCH) {
+        resetMatchFunctionCallCounts(ast);
     }
 }
 
@@ -1987,6 +2169,9 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
             return compileBuiltinCall(compiler, ast, discard);
         case AST_CONDITIONAL:
             result = compileConditional(compiler, ast);
+            break;
+        case AST_MATCH:
+            result = compileMatch(compiler, ast);
             break;
         case AST_FUNCTION_CALL:
             return compileFunctionCall(compiler, ast, discard);

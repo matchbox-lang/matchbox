@@ -26,6 +26,8 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_FOR:                 return "for";
         case TOKEN_WHILE:               return "while";
         case TOKEN_MATCH:               return "match";
+        case TOKEN_CASE:                return "case";
+        case TOKEN_DEFAULT:             return "default";
         case TOKEN_BREAK:               return "break";
         case TOKEN_CONTINUE:            return "continue";
         case TOKEN_WHERE:               return "where";

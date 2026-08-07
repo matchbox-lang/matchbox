@@ -12,6 +12,12 @@ typedef struct StringObject StringObject;
 typedef struct Scope Scope;
 typedef struct Builtin Builtin;
 
+typedef struct MatchArm
+{
+    ASTNode* pattern;
+    ASTNode* branch;
+} MatchArm;
+
 typedef enum ReferenceType
 {
     REFERENCE_SHARED,
@@ -32,6 +38,7 @@ typedef enum ASTNodeType
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
     AST_INTEGER,
+    AST_MATCH,
     AST_PARAMETER,
     AST_PREFIX,
     AST_RETURN,
@@ -123,6 +130,15 @@ typedef struct ASTNode
             Token token;
             TokenType typeId;
         } integerLiteral;
+
+        struct {
+            Token token;
+            ASTNode* subject;
+            Vector arms;
+            ASTNode* defaultBranch;
+            TokenType typeId;
+            bool expression;
+        } match;
 
         struct {
             Scope* scope;

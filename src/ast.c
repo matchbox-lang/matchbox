@@ -32,6 +32,9 @@ ASTNode* createASTNode(ASTNodeType type)
         case AST_FUNCTION_DEFINITION:
             initVector(&ast->functionDefinition.params);
             break;
+        case AST_MATCH:
+            initVector(&ast->match.arms);
+            break;
         default:
             break;
     }
@@ -48,6 +51,21 @@ static void freeASTNodeVector(Vector* nodes)
     }
 
     freeVector(nodes);
+}
+
+static void freeMatchArms(Vector* arms)
+{
+    size_t count = countVector(arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(arms, i);
+
+        freeASTNode(arm->pattern);
+        freeASTNode(arm->branch);
+        free(arm);
+    }
+
+    freeVector(arms);
 }
 
 void freeASTNode(ASTNode* ast)
@@ -84,6 +102,11 @@ void freeASTNode(ASTNode* ast)
             freeStringObject(ast->functionDefinition.id);
             freeASTNodeVector(&ast->functionDefinition.params);
             freeASTNode(ast->functionDefinition.body);
+            break;
+        case AST_MATCH:
+            freeASTNode(ast->match.subject);
+            freeMatchArms(&ast->match.arms);
+            freeASTNode(ast->match.defaultBranch);
             break;
         case AST_PARAMETER:
             freeStringObject(ast->parameter.id);
@@ -167,6 +190,8 @@ TokenType getTypeId(const ASTNode* ast)
             return getTypeId(ast->prefix.expr);
         case AST_INTEGER:
             return ast->integerLiteral.typeId;
+        case AST_MATCH:
+            return ast->match.typeId;
         case AST_STRING:
             return TOKEN_STRING;
         default:
@@ -251,6 +276,7 @@ bool isExpressionStatement(const ASTNode* ast)
         case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
+        case AST_MATCH:
         case AST_PREFIX:
         case AST_STRING:
         case AST_VARIABLE:
@@ -296,6 +322,7 @@ bool isPrefixOperand(const ASTNode* ast)
         case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
+        case AST_MATCH:
         case AST_STRING:
         case AST_VARIABLE:
             return true;

@@ -613,9 +613,9 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     analyzer->currentNodes = continuationNodes;
     analyzer->nextNode = continuationStart;
     releaseReferencesDeadOnBranch(analyzer, &thenStates, ast->conditional.thenBranch);
-    
+
     TokenType thenType = analyzeConditionalBranch(analyzer, ast->conditional.thenBranch);
-    
+
     updateOwnershipStates(&thenStates);
 
     analyzer->currentNodes = continuationNodes;
@@ -647,6 +647,186 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     }
 
     ast->conditional.typeId = thenType;
+}
+
+static bool matchHasWildcard(ASTNode* ast)
+{
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        if (!arm->pattern) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue)
+{
+    if (!arm->pattern || arm->pattern->type != AST_BOOLEAN) {
+        return;
+    }
+
+    if (arm->pattern->booleanLiteral.value) {
+        *coversTrue = true;
+
+        return;
+    }
+
+    *coversFalse = true;
+}
+
+static bool matchHasBooleanSubject(ASTNode* ast)
+{
+    if (!ast->match.subject) {
+        return true;
+    }
+
+    return getTypeId(ast->match.subject) == TOKEN_BOOL;
+}
+
+static bool matchCoversBothBooleans(ASTNode* ast)
+{
+    if (!matchHasBooleanSubject(ast)) {
+        return false;
+    }
+
+    bool coversFalse = false;
+    bool coversTrue = false;
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        updateBooleanMatchCoverage(arm, &coversFalse, &coversTrue);
+    }
+
+    return coversFalse && coversTrue;
+}
+
+static bool matchIsExhaustive(ASTNode* ast)
+{
+    return ast->match.defaultBranch || matchHasWildcard(ast) || matchCoversBothBooleans(ast);
+}
+
+static void mergeMatchBranchType(ASTNode* ast, TokenType branchType, TokenType* resultType)
+{
+    if (branchType == TOKEN_VOID) {
+        semanticError("Match expression arm must produce a value ", ast->match.token);
+    }
+
+    if (*resultType == TOKEN_UNKNOWN) {
+        *resultType = branchType;
+
+        return;
+    }
+
+    if (*resultType != branchType) {
+        semanticError("Match expression arms have incompatible types ", ast->match.token);
+    }
+}
+
+static void analyzeMatchPattern(Analyzer* analyzer, ASTNode* ast, MatchArm* arm)
+{
+    if (!arm->pattern) {
+        return;
+    }
+
+    analyzeNode(analyzer, arm->pattern);
+    TokenType expected = ast->match.subject ? getTypeId(ast->match.subject) : TOKEN_BOOL;
+
+    if (isIntegerTypeToken(expected)) {
+        applyIntegerLiteralType(arm->pattern, expected);
+    }
+
+    if (getTypeId(arm->pattern) != expected) {
+        semanticError("Match pattern type does not match subject ", ast->match.token);
+    }
+}
+
+static void restoreMatchContinuation(Analyzer* analyzer, Vector* continuationNodes, size_t continuationStart)
+{
+    analyzer->currentNodes = continuationNodes;
+    analyzer->nextNode = continuationStart;
+}
+
+static void mergeMatchResult(ASTNode* ast, TokenType branchType, TokenType* resultType)
+{
+    if (!ast->match.expression) {
+        return;
+    }
+
+    mergeMatchBranchType(ast, branchType, resultType);
+}
+
+static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vector* continuationNodes,
+    size_t continuationStart, TokenType* resultType)
+{
+    restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
+    analyzeMatchPattern(analyzer, ast, arm);
+    TokenType branchType = analyzeConditionalBranch(analyzer, arm->branch);
+    mergeMatchResult(ast, branchType, resultType);
+}
+
+static void analyzeMatchArms(Analyzer* analyzer, ASTNode* ast, Vector* continuationNodes, size_t continuationStart,
+    TokenType* resultType)
+{
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType);
+    }
+}
+
+static void analyzeMatchSubject(Analyzer* analyzer, ASTNode* ast)
+{
+    if (!ast->match.subject) {
+        return;
+    }
+
+    analyzeNode(analyzer, ast->match.subject);
+}
+
+static void analyzeMatchDefault(Analyzer* analyzer, ASTNode* ast, Vector* continuationNodes,
+    size_t continuationStart, TokenType* resultType)
+{
+    if (!ast->match.defaultBranch) {
+        return;
+    }
+
+    restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
+    TokenType branchType = analyzeConditionalBranch(analyzer, ast->match.defaultBranch);
+    mergeMatchResult(ast, branchType, resultType);
+}
+
+static void finalizeMatchType(ASTNode* ast, TokenType resultType)
+{
+    if (!ast->match.expression) {
+        ast->match.typeId = TOKEN_VOID;
+
+        return;
+    }
+
+    if (!matchIsExhaustive(ast)) {
+        semanticError("Match expression must be exhaustive ", ast->match.token);
+    }
+
+    ast->match.typeId = resultType;
+}
+
+static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
+{
+    Vector* continuationNodes = analyzer->currentNodes;
+    size_t continuationStart = analyzer->nextNode;
+    TokenType resultType = TOKEN_UNKNOWN;
+
+    analyzeMatchSubject(analyzer, ast);
+    analyzeMatchArms(analyzer, ast, continuationNodes, continuationStart, &resultType);
+    analyzeMatchDefault(analyzer, ast, continuationNodes, continuationStart, &resultType);
+    restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
+    finalizeMatchType(ast, resultType);
 }
 
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
@@ -824,7 +1004,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
 {
     Vector args = ast->functionCall.args;
-    
+
     freeStringObject(ast->functionCall.id);
 
     ast->type = AST_BUILTIN_CALL;
@@ -1549,6 +1729,8 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
             analyzeFunctionCall(analyzer, ast); break;
         case AST_FUNCTION_DEFINITION:
             analyzeFunction(analyzer, ast); break;
+        case AST_MATCH:
+            analyzeMatch(analyzer, ast); break;
         case AST_PARAMETER:
             analyzeParameter(analyzer, ast); break;
         case AST_PREFIX:

@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "string_object.h"
 #include "token.h"
+#include "util.h"
 #include "vector.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -14,6 +15,8 @@ static ASTNode* parseIdentifier(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
 static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
 static ASTNode* parseConditional(Parser* parser);
+static ASTNode* parseMatch(Parser* parser);
+static ASTNode* parseStatement(Parser* parser);
 
 static void expectedExpressionError(Token token)
 {
@@ -58,7 +61,7 @@ static void consume(Parser* parser, TokenType type)
     if (parser->currentToken.type != type) {
         expectedTokenError(type, parser->currentToken);
     }
-    
+
     advance(parser);
 }
 
@@ -100,7 +103,7 @@ static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
     ast->integerLiteral.value = integerLiteralToValue(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
-    
+
     consume(parser, token.type);
 
     return ast;
@@ -151,10 +154,10 @@ static ASTNode* parseGroupExpression(Parser* parser)
     if (!ast && parser->currentToken.type == TOKEN_RPAREN) {
         expectedExpressionError(parser->currentToken);
     }
-    
+
     if (!ast || isEndOfFile(parser)) {
         freeASTNode(ast);
-        
+
         return NULL;
     }
 
@@ -203,6 +206,8 @@ static ASTNode* parsePrimary(Parser* parser)
         }
         case TOKEN_IF:
             return parseConditional(parser);
+        case TOKEN_MATCH:
+            return parseMatch(parser);
         case TOKEN_INTEGER_LITERAL:
             return parseIntegerLiteral(parser, parser->currentToken);
         case TOKEN_BINARY_LITERAL:
@@ -304,6 +309,120 @@ static void markConditionalStatement(ASTNode* ast)
     }
 }
 
+static bool isMatchArmEnd(TokenType type)
+{
+    return type == TOKEN_CASE || type == TOKEN_DEFAULT || type == TOKEN_RBRACE;
+}
+
+static bool isMatchBranchEnd(Parser* parser)
+{
+    return isMatchArmEnd(parser->currentToken.type) || isEndOfFile(parser);
+}
+
+static void consumeMatchStatementSeparator(Parser* parser, Token token)
+{
+    bool sameLineStatement = parser->currentToken.line == token.line
+        && !isMatchArmEnd(parser->currentToken.type)
+        && parser->previousToken.type != TOKEN_RBRACE;
+
+    if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
+        consume(parser, TOKEN_SEMICOLON);
+    }
+}
+
+static bool parseMatchBranchStatement(Parser* parser, ASTNode* branch)
+{
+    Token token = parser->currentToken;
+    ASTNode* statement = parseStatement(parser);
+
+    if (!statement) {
+        return false;
+    }
+
+    consumeMatchStatementSeparator(parser, token);
+    pushVectorItem(&branch->compound.statements, statement);
+
+    return true;
+}
+
+static ASTNode* parseMatchBranch(Parser* parser)
+{
+    ASTNode* branch = createASTNode(AST_COMPOUND);
+    branch->compound.scope = NULL;
+
+    while (!isMatchBranchEnd(parser)) {
+        if (!parseMatchBranchStatement(parser, branch)) {
+            freeASTNode(branch);
+
+            return NULL;
+        }
+    }
+
+    return branch;
+}
+
+static bool isWildcardToken(Token token)
+{
+    return token.type == TOKEN_IDENTIFIER && token.length == 1 && token.chars[0] == '_';
+}
+
+static void parseMatchArm(Parser* parser, ASTNode* ast)
+{
+    consume(parser, TOKEN_CASE);
+
+    MatchArm* arm = calloc(1, sizeof(MatchArm));
+    if (!arm) {
+        outOfMemoryError();
+    }
+
+    if (isWildcardToken(parser->currentToken)) {
+        consume(parser, TOKEN_IDENTIFIER);
+    } else {
+        arm->pattern = parseExpression(parser);
+    }
+
+    consume(parser, TOKEN_COLON);
+    arm->branch = parseMatchBranch(parser);
+    pushVectorItem(&ast->match.arms, arm);
+}
+
+static ASTNode* createMatchNode(Token token)
+{
+    ASTNode* ast = createASTNode(AST_MATCH);
+    ast->match.token = token;
+    ast->match.typeId = TOKEN_VOID;
+    ast->match.expression = true;
+
+    return ast;
+}
+
+static ASTNode* parseMatch(Parser* parser)
+{
+    Token token = parser->currentToken;
+    consume(parser, TOKEN_MATCH);
+
+    ASTNode* ast = createMatchNode(token);
+
+    if (parser->currentToken.type != TOKEN_LBRACE) {
+        ast->match.subject = parseExpression(parser);
+    }
+
+    consume(parser, TOKEN_LBRACE);
+    while (parser->currentToken.type == TOKEN_CASE) {
+        parseMatchArm(parser, ast);
+    }
+
+    if (parser->currentToken.type == TOKEN_DEFAULT) {
+        consume(parser, TOKEN_DEFAULT);
+        consume(parser, TOKEN_COLON);
+        ast->match.defaultBranch = parseMatchBranch(parser);
+    }
+
+    consume(parser, TOKEN_RBRACE);
+
+    return ast;
+}
+
 static ASTNode* parsePrefixOperand(Parser* parser)
 {
     if (isPrefixToken(parser->currentToken.type)) {
@@ -312,7 +431,7 @@ static ASTNode* parsePrefixOperand(Parser* parser)
 
     Token token = parser->currentToken;
     ASTNode* expr = parsePrimary(parser);
-    
+
     if (!expr) {
         return NULL;
     }
@@ -320,7 +439,7 @@ static ASTNode* parsePrefixOperand(Parser* parser)
     if (!isPrefix(expr) && !isPrefixOperand(expr)) {
         expectedOperandError(token);
     }
-    
+
     return expr;
 }
 
@@ -333,7 +452,7 @@ static ASTNode* parsePrefix(Parser* parser)
     Token token = parser->currentToken;
     consume(parser, token.type);
     ASTNode* expr = parsePrefixOperand(parser);
-    
+
     if (!expr) {
         return NULL;
     }
@@ -586,10 +705,10 @@ static ASTNode* parseParameter(Parser* parser)
     if (isEndOfFile(parser)) {
         return NULL;
     }
-    
+
     Token token = parser->currentToken;
     StringObject* id = copyStringObject(token.chars, token.length);
-    
+
     consume(parser, TOKEN_IDENTIFIER);
 
     ASTNode* ast = createParameterNode(token, id);
@@ -638,7 +757,7 @@ static bool parseParameterList(Parser* parser, Vector* params)
     if (isEndOfFile(parser)) {
         return false;
     }
-    
+
     consume(parser, TOKEN_RPAREN);
 
     size_t count = countVector(params);
@@ -669,7 +788,7 @@ static ASTNode* parseFunctionCall(Parser* parser)
 
     if (!parseArgumentList(parser, &ast->functionCall.args)) {
         freeASTNode(ast);
-        
+
         return NULL;
     }
 
@@ -816,7 +935,7 @@ static void parseVariableType(Parser* parser, ASTNode* ast)
         ast->variableDefinition.referenceType = parseReferenceType(parser);
         ast->variableDefinition.typeId = parser->currentToken.type;
         consumeType(parser);
-        
+
         return;
     }
 
@@ -881,7 +1000,7 @@ static ASTNode* parseVariableDefinition(Parser* parser)
 static ASTNode* parseIdentifier(Parser* parser)
 {
     consume(parser, TOKEN_IDENTIFIER);
-    
+
     if (isAssignmentToken(parser->currentToken.type)) {
         return parseAssignment(parser);
     }
@@ -909,6 +1028,12 @@ static ASTNode* parseStatement(Parser* parser)
 
             return ast;
         }
+        case TOKEN_MATCH: {
+            ASTNode* ast = parseMatch(parser);
+            ast->match.expression = false;
+
+            return ast;
+        }
         default:
             return parseExpression(parser);
     }
@@ -923,7 +1048,7 @@ static bool parseStatements(Parser* parser, Vector* nodes, TokenType type)
         if (!stmt) {
             return false;
         }
-        
+
         bool sameLineStatement = !isEndOfFile(parser) &&
             parser->currentToken.line == token.line &&
             parser->currentToken.type != type &&

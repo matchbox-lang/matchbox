@@ -16,6 +16,8 @@ typedef enum TokenType
     TOKEN_FOR,
     TOKEN_WHILE,
     TOKEN_MATCH,
+    TOKEN_CASE,
+    TOKEN_DEFAULT,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
     TOKEN_WHERE,

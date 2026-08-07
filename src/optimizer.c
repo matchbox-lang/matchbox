@@ -127,6 +127,26 @@ static void optimizeConditionalBranch(ASTNode* branch)
     optimizeNodes(&branch->compound.statements);
 }
 
+static void optimizeMatch(ASTNode* ast)
+{
+    if (ast->match.subject) {
+        optimizeNode(ast->match.subject);
+    }
+
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        if (arm->pattern) {
+            optimizeNode(arm->pattern);
+        }
+
+        optimizeConditionalBranch(arm->branch);
+    }
+
+    optimizeConditionalBranch(ast->match.defaultBranch);
+}
+
 static void optimizeNode(ASTNode* ast)
 {
     switch (ast->type) {
@@ -151,6 +171,9 @@ static void optimizeNode(ASTNode* ast)
             break;
         case AST_FUNCTION_DEFINITION:
             optimizeNodes(&ast->functionDefinition.body->compound.statements);
+            break;
+        case AST_MATCH:
+            optimizeMatch(ast);
             break;
         case AST_PREFIX:
             optimizeNode(ast->prefix.expr);

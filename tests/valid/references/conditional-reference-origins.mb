@@ -1,0 +1,39 @@
+var condition = true
+var left = 10
+var right = 20
+
+let shared: &i32 = if condition {
+    &left
+} else {
+    &right
+}
+
+print(shared)
+
+var assignedShared: &i32
+
+if condition {
+    assignedShared = &left
+} else {
+    assignedShared = &right
+}
+
+print(assignedShared)
+
+let exclusive: ^i32 = if condition {
+    ^left
+} else {
+    ^right
+}
+
+print(exclusive)
+
+var assignedExclusive: ^i32
+
+if condition {
+    assignedExclusive = ^left
+} else {
+    assignedExclusive = ^right
+}
+
+print(assignedExclusive)

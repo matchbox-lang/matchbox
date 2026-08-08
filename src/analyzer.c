@@ -20,7 +20,7 @@ static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* c
 typedef struct OwnershipState
 {
     ASTNode* symbol;
-    ASTNode* referenceOrigin;
+    Vector referenceOrigins;
     size_t sharedAccessCount;
     bool exclusiveAccessActive;
     bool initialized;
@@ -244,6 +244,71 @@ static ASTNode* referenceOriginFromExpression(ASTNode* ast)
     return getReferenceOrigin(ast);
 }
 
+static Vector* referenceOriginsFromExpression(ASTNode* ast)
+{
+    Vector* origins = getReferenceOrigins(ast);
+
+    if (origins) {
+        return origins;
+    }
+
+    static Vector empty;
+
+    return &empty;
+}
+
+static bool containsReferenceOrigin(Vector* origins, ASTNode* origin)
+{
+    size_t count = countVector(origins);
+
+    for (size_t i = 0; i < count; i++) {
+        if (getVectorAt(origins, i) == origin) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void addReferenceOrigin(Vector* origins, ASTNode* origin)
+{
+    if (!origin || containsReferenceOrigin(origins, origin)) {
+        return;
+    }
+
+    pushVectorItem(origins, origin);
+}
+
+static void copyReferenceOrigins(Vector* destination, Vector* source)
+{
+    if (destination == source) {
+        return;
+    }
+
+    destination->count = 0;
+    size_t count = countVector(source);
+
+    for (size_t i = 0; i < count; i++) {
+        addReferenceOrigin(destination, getVectorAt(source, i));
+    }
+}
+
+static void mergeReferenceOrigins(Vector* destination, Vector* source)
+{
+    size_t count = countVector(source);
+
+    for (size_t i = 0; i < count; i++) {
+        addReferenceOrigin(destination, getVectorAt(source, i));
+    }
+}
+
+static void setReferenceOriginsFromExpression(ASTNode* destination, ASTNode* expression)
+{
+    Vector* destinationOrigins = getReferenceOrigins(destination);
+    Vector* origins = referenceOriginsFromExpression(expression);
+    copyReferenceOrigins(destinationOrigins, origins);
+}
+
 static bool nodesUseId(Vector* nodes, StringObject* id)
 {
     size_t count = countVector(nodes);
@@ -322,12 +387,17 @@ static bool nodesUseIdAfter(Vector* nodes, size_t start, StringObject* id)
 
 static void releaseReferenceAccess(ASTNode* reference)
 {
-    ASTNode* origin = reference->variableDefinition.referenceOrigin;
+    Vector* origins = getReferenceOrigins(reference);
+    size_t count = countVector(origins);
 
-    if (reference->variableDefinition.referenceType == REFERENCE_SHARED) {
-        (*getSharedAccessCount(origin))--;
-    } else {
-        setExclusiveAccess(origin, false);
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* origin = getVectorAt(origins, i);
+
+        if (reference->variableDefinition.referenceType == REFERENCE_SHARED) {
+            (*getSharedAccessCount(origin))--;
+        } else {
+            setExclusiveAccess(origin, false);
+        }
     }
 
     reference->variableDefinition.referenceAccessActive = false;
@@ -363,6 +433,49 @@ static void analyzeNodes(Analyzer* analyzer, Vector* nodes, size_t start)
 static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
 {
     analyzeNodes(analyzer, nodes, 0);
+}
+
+static ASTNode* getBranchResult(ASTNode* branch)
+{
+    if (branch->type == AST_CONDITIONAL) {
+        return branch;
+    }
+
+    Vector* statements = &branch->compound.statements;
+    size_t count = countVector(statements);
+
+    if (!count) {
+        return NULL;
+    }
+
+    return getVectorAt(statements, count - 1);
+}
+
+static void setExpressionReferenceType(ASTNode* ast, ReferenceType type)
+{
+    if (ast->type == AST_CONDITIONAL) {
+        ast->conditional.referenceType = type;
+
+        return;
+    }
+
+    ast->match.referenceType = type;
+}
+
+static void mergeBranchReference(
+    ASTNode* ast, ASTNode* result, bool first, bool hasExpectedType, Token token)
+{
+    ReferenceType type = getReferenceType(result);
+
+    if (first && !hasExpectedType) {
+        setExpressionReferenceType(ast, type);
+    } else if (getReferenceType(ast) != type) {
+        semanticError("Expression branches have incompatible reference types ", token);
+    }
+
+    Vector* origins = referenceOriginsFromExpression(result);
+    Vector* expressionOrigins = getReferenceOrigins(ast);
+    mergeReferenceOrigins(expressionOrigins, origins);
 }
 
 static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, TokenType type)
@@ -425,7 +538,9 @@ static void captureSymbolOwnership(Vector* states, ASTNode* symbol)
 
     OwnershipState* state = malloc(sizeof(OwnershipState));
     state->symbol = symbol;
-    state->referenceOrigin = getReferenceOrigin(symbol);
+    initVector(&state->referenceOrigins);
+    Vector* origins = getReferenceOrigins(symbol);
+    copyReferenceOrigins(&state->referenceOrigins, origins);
     state->sharedAccessCount = *getSharedAccessCount(symbol);
     state->exclusiveAccessActive = hasExclusiveAccess(symbol);
     state->initialized = isInitialized(symbol);
@@ -466,6 +581,8 @@ static void copyOwnershipState(Vector* destination, Vector* source)
         OwnershipState* destinationState = malloc(sizeof(OwnershipState));
 
         *destinationState = *sourceState;
+        initVector(&destinationState->referenceOrigins);
+        copyReferenceOrigins(&destinationState->referenceOrigins, &sourceState->referenceOrigins);
         pushVectorItem(destination, destinationState);
     }
 }
@@ -482,7 +599,8 @@ static void applyOwnershipState(OwnershipState* state)
         return;
     }
 
-    symbol->variableDefinition.referenceOrigin = state->referenceOrigin;
+    Vector* origins = getReferenceOrigins(symbol);
+    copyReferenceOrigins(origins, &state->referenceOrigins);
     symbol->variableDefinition.initialized = state->initialized;
     symbol->variableDefinition.referenceAccessActive = state->referenceAccessActive;
 }
@@ -500,7 +618,8 @@ static void updateOwnershipStates(Vector* states)
         OwnershipState* state = getVectorAt(states, i);
         ASTNode* symbol = state->symbol;
 
-        state->referenceOrigin = getReferenceOrigin(symbol);
+        Vector* origins = getReferenceOrigins(symbol);
+        copyReferenceOrigins(&state->referenceOrigins, origins);
         state->sharedAccessCount = *getSharedAccessCount(symbol);
         state->exclusiveAccessActive = hasExclusiveAccess(symbol);
         state->initialized = isInitialized(symbol);
@@ -513,7 +632,9 @@ static void updateOwnershipStates(Vector* states)
 static void freeOwnershipStates(Vector* states)
 {
     for (size_t i = 0; i < countVector(states); i++) {
-        free(getVectorAt(states, i));
+        OwnershipState* state = getVectorAt(states, i);
+        freeVector(&state->referenceOrigins);
+        free(state);
     }
 
     freeVector(states);
@@ -569,22 +690,6 @@ static void analyzeOwnershipBranch(
     updateOwnershipStates(states);
 }
 
-static ASTNode* mergedReferenceOrigin(OwnershipState* thenState, OwnershipState* elseState)
-{
-    if (thenState->referenceOrigin == elseState->referenceOrigin) {
-        return thenState->referenceOrigin;
-    }
-
-    if (thenState->referenceAccessActive || elseState->referenceAccessActive) {
-        semanticError(
-            "Reference binding cannot have different origins across branches ",
-            thenState->symbol->variableDefinition.token
-        );
-    }
-
-    return NULL;
-}
-
 static size_t maxSize(size_t left, size_t right)
 {
     if (left > right) {
@@ -597,7 +702,9 @@ static size_t maxSize(size_t left, size_t right)
 static void mergeOwnershipState(OwnershipState* thenState, OwnershipState* elseState)
 {
     OwnershipState merged = *thenState;
-    merged.referenceOrigin = mergedReferenceOrigin(thenState, elseState);
+    initVector(&merged.referenceOrigins);
+    copyReferenceOrigins(&merged.referenceOrigins, &thenState->referenceOrigins);
+    mergeReferenceOrigins(&merged.referenceOrigins, &elseState->referenceOrigins);
     merged.sharedAccessCount = maxSize(thenState->sharedAccessCount, elseState->sharedAccessCount);
     merged.exclusiveAccessActive = thenState->exclusiveAccessActive || elseState->exclusiveAccessActive;
     merged.initialized = thenState->initialized && elseState->initialized;
@@ -605,6 +712,7 @@ static void mergeOwnershipState(OwnershipState* thenState, OwnershipState* elseS
     merged.referenceAccessActive = thenState->referenceAccessActive || elseState->referenceAccessActive;
 
     applyOwnershipState(&merged);
+    freeVector(&merged.referenceOrigins);
 }
 
 static void mergeOwnershipStates(Vector* thenStates, Vector* elseStates)
@@ -614,6 +722,19 @@ static void mergeOwnershipStates(Vector* thenStates, Vector* elseStates)
     for (size_t i = 0; i < count; i++) {
         mergeOwnershipState(getVectorAt(thenStates, i), getVectorAt(elseStates, i));
     }
+}
+
+static void mergeOwnershipOutcome(Vector* mergedStates, Vector* states, bool* initialized)
+{
+    if (!*initialized) {
+        copyOwnershipState(mergedStates, states);
+        *initialized = true;
+
+        return;
+    }
+
+    mergeOwnershipStates(mergedStates, states);
+    updateOwnershipStates(mergedStates);
 }
 
 static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
@@ -669,6 +790,13 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     if (thenType != elseType) {
         semanticError("If expression branches have incompatible types ", ast->conditional.token);
     }
+
+    bool hasExpectedType = ast->conditional.typeId != TOKEN_UNKNOWN
+        && ast->conditional.typeId != TOKEN_VOID;
+    ASTNode* thenResult = getBranchResult(ast->conditional.thenBranch);
+    ASTNode* elseResult = getBranchResult(ast->conditional.elseBranch);
+    mergeBranchReference(ast, thenResult, true, hasExpectedType, ast->conditional.token);
+    mergeBranchReference(ast, elseResult, false, hasExpectedType, ast->conditional.token);
 
     ast->conditional.typeId = thenType;
 }
@@ -811,12 +939,16 @@ static void restoreMatchContinuation(Analyzer* analyzer, Vector* continuationNod
     analyzer->nextNode = continuationStart;
 }
 
-static void mergeMatchResult(ASTNode* ast, TokenType branchType, TokenType* resultType)
+static void mergeMatchResult(ASTNode* ast, ASTNode* branch, TokenType branchType, TokenType* resultType)
 {
     if (!ast->match.expression) {
         return;
     }
 
+    bool first = *resultType == TOKEN_UNKNOWN;
+    bool hasExpectedType = ast->match.typeId != TOKEN_UNKNOWN && ast->match.typeId != TOKEN_VOID;
+    ASTNode* result = getBranchResult(branch);
+    mergeBranchReference(ast, result, first, hasExpectedType, ast->match.token);
     mergeMatchBranchType(ast, branchType, resultType);
 }
 
@@ -831,17 +963,32 @@ static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vec
     }
 
     TokenType branchType = analyzeScopedBranch(analyzer, arm->branch, arm->binding, ast->match.typeId);
-    mergeMatchResult(ast, branchType, resultType);
+    mergeMatchResult(ast, arm->branch, branchType, resultType);
+}
+
+static void analyzeMatchArmOwnership(Analyzer* analyzer, ASTNode* ast, MatchArm* arm,
+    Vector* continuationNodes, size_t continuationStart, TokenType* resultType,
+    Vector* initialStates, Vector* mergedStates, bool* mergedInitialized)
+{
+    Vector states;
+    copyOwnershipState(&states, initialStates);
+    applyOwnershipStates(&states);
+    releaseReferencesDeadOnBranch(analyzer, &states, arm->branch);
+    analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType);
+    updateOwnershipStates(&states);
+    mergeOwnershipOutcome(mergedStates, &states, mergedInitialized);
+    freeOwnershipStates(&states);
 }
 
 static void analyzeMatchArms(Analyzer* analyzer, ASTNode* ast, Vector* continuationNodes, size_t continuationStart,
-    TokenType* resultType)
+    TokenType* resultType, Vector* initialStates, Vector* mergedStates, bool* mergedInitialized)
 {
     size_t count = countVector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType);
+        analyzeMatchArmOwnership(analyzer, ast, arm, continuationNodes, continuationStart, resultType,
+            initialStates, mergedStates, mergedInitialized);
     }
 }
 
@@ -855,15 +1002,23 @@ static void analyzeMatchSubject(Analyzer* analyzer, ASTNode* ast)
 }
 
 static void analyzeMatchDefault(Analyzer* analyzer, ASTNode* ast, Vector* continuationNodes,
-    size_t continuationStart, TokenType* resultType)
+    size_t continuationStart, TokenType* resultType, Vector* initialStates,
+    Vector* mergedStates, bool* mergedInitialized)
 {
     if (!ast->match.defaultBranch) {
         return;
     }
 
+    Vector states;
+    copyOwnershipState(&states, initialStates);
+    applyOwnershipStates(&states);
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
+    releaseReferencesDeadOnBranch(analyzer, &states, ast->match.defaultBranch);
     TokenType branchType = analyzeScopedBranch(analyzer, ast->match.defaultBranch, NULL, ast->match.typeId);
-    mergeMatchResult(ast, branchType, resultType);
+    mergeMatchResult(ast, ast->match.defaultBranch, branchType, resultType);
+    updateOwnershipStates(&states);
+    mergeOwnershipOutcome(mergedStates, &states, mergedInitialized);
+    freeOwnershipStates(&states);
 }
 
 static void finalizeMatchType(ASTNode* ast, TokenType resultType)
@@ -881,16 +1036,35 @@ static void finalizeMatchType(ASTNode* ast, TokenType resultType)
     ast->match.typeId = resultType;
 }
 
+static void finalizeMatchOwnership(ASTNode* ast, Vector* initialStates,
+    Vector* mergedStates, bool* mergedInitialized)
+{
+    if (!matchIsExhaustive(ast)) {
+        mergeOwnershipOutcome(mergedStates, initialStates, mergedInitialized);
+    }
+
+    applyOwnershipStates(mergedStates);
+    freeOwnershipStates(mergedStates);
+    freeOwnershipStates(initialStates);
+}
+
 static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
 {
     Vector* continuationNodes = analyzer->currentNodes;
     size_t continuationStart = analyzer->nextNode;
     TokenType resultType = TOKEN_UNKNOWN;
+    Vector initialStates;
+    Vector mergedStates;
+    bool mergedInitialized = false;
 
     analyzeMatchSubject(analyzer, ast);
-    analyzeMatchArms(analyzer, ast, continuationNodes, continuationStart, &resultType);
-    analyzeMatchDefault(analyzer, ast, continuationNodes, continuationStart, &resultType);
+    captureOwnershipState(&initialStates, analyzer->currentScope);
+    analyzeMatchArms(analyzer, ast, continuationNodes, continuationStart, &resultType,
+        &initialStates, &mergedStates, &mergedInitialized);
+    analyzeMatchDefault(analyzer, ast, continuationNodes, continuationStart, &resultType,
+        &initialStates, &mergedStates, &mergedInitialized);
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
+    finalizeMatchOwnership(ast, &initialStates, &mergedStates, &mergedInitialized);
     finalizeMatchType(ast, resultType);
 }
 
@@ -1025,6 +1199,8 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 
     variable->variable.scope = analyzer->currentScope;
     variable->variable.symbol = symbol;
+    Vector* origins = getReferenceOrigins(ast);
+    addReferenceOrigin(origins, symbol);
     trackVariableRead(symbol);
 }
 
@@ -1035,10 +1211,10 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     }
 
     ast->parameter.scope = analyzer->currentScope;
-    ast->parameter.referenceOrigin = NULL;
 
     if (getReferenceType(ast) != REFERENCE_NONE) {
-        ast->parameter.referenceOrigin = ast;
+        Vector* origins = getReferenceOrigins(ast);
+        addReferenceOrigin(origins, ast);
     }
 
     setLocalSymbol(analyzer->currentScope, ast->parameter.id, ast);
@@ -1291,25 +1467,25 @@ static ASTNode* getArgumentReferenceOrigin(ASTNode* argument)
 static bool referenceAccessConflicts(ASTNode* leftOrigin, ReferenceType leftType,
     ASTNode* right, ASTNode* rightParameter)
 {
-    ASTNode* rightOrigin = getArgumentReferenceOrigin(right);
     ReferenceType rightType = getArgumentReferenceType(right, rightParameter);
 
-    return leftOrigin == rightOrigin
-        && (leftType == REFERENCE_EXCLUSIVE || rightType == REFERENCE_EXCLUSIVE);
-}
-
-static void validateArgumentAccess(Vector* arguments, Vector* parameters,
-    size_t position, Token token)
-{
-    ASTNode* left = getVectorAt(arguments, position);
-    ASTNode* leftParameter = getVectorAt(parameters, position);
-    ASTNode* leftOrigin = getArgumentReferenceOrigin(left);
-    ReferenceType leftType = getArgumentReferenceType(left, leftParameter);
-
-    if (!leftOrigin || leftType == REFERENCE_NONE) {
-        return;
+    if (leftType != REFERENCE_EXCLUSIVE && rightType != REFERENCE_EXCLUSIVE) {
+        return false;
     }
 
+    Vector* rightOrigins = referenceOriginsFromExpression(right);
+    if (containsReferenceOrigin(rightOrigins, leftOrigin)) {
+        return true;
+    }
+
+    ASTNode* rightOrigin = getArgumentReferenceOrigin(right);
+
+    return leftOrigin == rightOrigin;
+}
+
+static void validateArgumentOriginAccess(Vector* arguments, Vector* parameters,
+    size_t position, ASTNode* leftOrigin, ReferenceType leftType, Token token)
+{
     size_t count = countVector(arguments);
 
     for (size_t i = position + 1; i < count; i++) {
@@ -1324,6 +1500,35 @@ static void validateArgumentAccess(Vector* arguments, Vector* parameters,
     }
 }
 
+static void validateArgumentAccess(Vector* arguments, Vector* parameters,
+    size_t position, Token token)
+{
+    ASTNode* left = getVectorAt(arguments, position);
+    ASTNode* leftParameter = getVectorAt(parameters, position);
+    ReferenceType leftType = getArgumentReferenceType(left, leftParameter);
+
+    if (leftType == REFERENCE_NONE) {
+        return;
+    }
+
+    Vector* origins = referenceOriginsFromExpression(left);
+    size_t count = countVector(origins);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* origin = getVectorAt(origins, i);
+        validateArgumentOriginAccess(arguments, parameters, position, origin, leftType, token);
+    }
+
+    if (count) {
+        return;
+    }
+
+    ASTNode* origin = getArgumentReferenceOrigin(left);
+    if (origin) {
+        validateArgumentOriginAccess(arguments, parameters, position, origin, leftType, token);
+    }
+}
+
 static void validateArgumentAccesses(ASTNode* caller, ASTNode* callee)
 {
     Vector* arguments = &caller->functionCall.args;
@@ -1335,24 +1540,29 @@ static void validateArgumentAccesses(ASTNode* caller, ASTNode* callee)
     }
 }
 
-static ASTNode* getCallReferenceOrigin(ASTNode* caller, ASTNode* callee)
+static void setCallReferenceOrigins(ASTNode* caller, ASTNode* callee)
 {
     ASTNode* returned = callee->functionDefinition.returnReferenceOrigin;
 
     if (!returned || !isParameter(returned)) {
-        return returned;
+        Vector* origins = getReferenceOrigins(caller);
+        addReferenceOrigin(origins, returned);
+
+        return;
     }
 
     size_t count = countVector(&callee->functionDefinition.params);
 
     for (size_t i = 0; i < count; i++) {
-        if (getVectorAt(&callee->functionDefinition.params, i) == returned) {
-            ASTNode* argument = getVectorAt(&caller->functionCall.args, i);
-            return referenceOriginFromExpression(argument);
+        if (getVectorAt(&callee->functionDefinition.params, i) != returned) {
+            continue;
         }
-    }
 
-    return NULL;
+        ASTNode* argument = getVectorAt(&caller->functionCall.args, i);
+        setReferenceOriginsFromExpression(caller, argument);
+
+        return;
+    }
 }
 
 static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
@@ -1375,7 +1585,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     validateCallArgumentAccess(ast, symbol, ast->functionCall.token);
     validateArgumentAccesses(ast, symbol);
     validateEffectsInVector(&symbol->functionDefinition.body->compound.statements);
-    ast->functionCall.referenceOrigin = getCallReferenceOrigin(ast, symbol);
+    setCallReferenceOrigins(ast, symbol);
 }
 
 static TokenType getFunctionReturnValueType(Vector* statements)
@@ -1492,13 +1702,9 @@ static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
     return symbol;
 }
 
-static void validateAssignmentTarget(Analyzer* analyzer, ASTNode* ast, ASTNode* symbol)
+static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
-
-    if (analyzer->currentScope != getScope(symbol) && !isInitialized(symbol)) {
-        symbolError("uninitialized", token);
-    }
 
     if (isMoved(symbol)) {
         symbolError("moved", token);
@@ -1536,11 +1742,7 @@ static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializ
         return;
     }
 
-    if (!initializesBinding && symbol->variableDefinition.referenceAccessActive) {
-        releaseReferenceAccess(symbol);
-    }
-
-    symbol->variableDefinition.referenceOrigin = referenceOriginFromExpression(ast->assignment.expr);
+    setReferenceOriginsFromExpression(symbol, ast->assignment.expr);
 
     if (getReferenceType(symbol) == REFERENCE_EXCLUSIVE && isVariable(ast->assignment.expr)) {
         transferExclusiveReference(ast->assignment.expr);
@@ -1556,9 +1758,13 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
     bool initializesBinding = !isInitialized(symbol);
-    validateAssignmentTarget(analyzer, ast, symbol);
+    validateAssignmentTarget(ast, symbol);
 
     trackVariableRead(symbol);
+
+    if (!initializesBinding && symbol->variableDefinition.referenceAccessActive) {
+        releaseReferenceAccess(symbol);
+    }
 
     if (isIntegerTypeToken(getTypeId(symbol))) {
         applyIntegerLiteralType(ast->assignment.expr, getTypeId(symbol));
@@ -1592,15 +1798,18 @@ static void transferExclusiveReference(ASTNode* expression)
 
 static void activateReferenceAccess(ASTNode* ast)
 {
-    ASTNode* origin = ast->variableDefinition.referenceOrigin;
+    Vector* origins = getReferenceOrigins(ast);
+    size_t count = countVector(origins);
 
-    if (ast->variableDefinition.referenceType == REFERENCE_SHARED) {
-        (*getSharedAccessCount(origin))++;
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* origin = getVectorAt(origins, i);
 
-        return;
+        if (ast->variableDefinition.referenceType == REFERENCE_SHARED) {
+            (*getSharedAccessCount(origin))++;
+        } else {
+            setExclusiveAccess(origin, true);
+        }
     }
-
-    setExclusiveAccess(origin, true);
 }
 
 static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
@@ -1610,7 +1819,7 @@ static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
     ast->variableDefinition.initialized = false;
 }
 
-static void applyDeclaredType(ASTNode* expression, TokenType type)
+static void applyDeclaredType(ASTNode* expression, TokenType type, ReferenceType referenceType)
 {
     if (type == TOKEN_UNKNOWN) {
         return;
@@ -1622,10 +1831,12 @@ static void applyDeclaredType(ASTNode* expression, TokenType type)
 
     if (expression->type == AST_CONDITIONAL) {
         expression->conditional.typeId = type;
+        expression->conditional.referenceType = referenceType;
     }
 
     if (expression->type == AST_MATCH) {
         expression->match.typeId = type;
+        expression->match.referenceType = referenceType;
     }
 }
 
@@ -1683,11 +1894,12 @@ static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    applyDeclaredType(expression, ast->variableDefinition.typeId);
+    applyDeclaredType(
+        expression, ast->variableDefinition.typeId, ast->variableDefinition.referenceType);
     analyzeNode(analyzer, expression);
     resolveVariableType(ast, expression);
 
-    ast->variableDefinition.referenceOrigin = referenceOriginFromExpression(expression);
+    setReferenceOriginsFromExpression(ast, expression);
     initializeVariable(ast);
 }
 
@@ -1771,10 +1983,8 @@ static ReferenceType validateReturnReferenceType(Analyzer* analyzer, ASTNode* as
     return expected;
 }
 
-static void trackReturnReferenceOrigin(Analyzer* analyzer, ASTNode* ast)
+static void trackReturnOrigin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
 {
-    ASTNode* origin = referenceOriginFromExpression(ast->returnStatement.expr);
-
     if (!canReturnReferenceOrigin(origin)) {
         semanticError("Reference to local binding cannot escape function ",
             ast->returnStatement.token);
@@ -1789,6 +1999,23 @@ static void trackReturnReferenceOrigin(Analyzer* analyzer, ASTNode* ast)
     }
 
     function->functionDefinition.returnReferenceOrigin = origin;
+}
+
+static void trackReturnReferenceOrigin(Analyzer* analyzer, ASTNode* ast)
+{
+    Vector* origins = referenceOriginsFromExpression(ast->returnStatement.expr);
+    size_t count = countVector(origins);
+
+    if (!count) {
+        ASTNode* origin = referenceOriginFromExpression(ast->returnStatement.expr);
+        trackReturnOrigin(analyzer, ast, origin);
+
+        return;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        trackReturnOrigin(analyzer, ast, getVectorAt(origins, i));
+    }
 }
 
 static void analyzeReturn(Analyzer* analyzer, ASTNode* ast)

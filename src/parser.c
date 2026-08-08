@@ -270,6 +270,7 @@ static ASTNode* createConditionalNode(
     ast->conditional.thenBranch = thenBranch;
     ast->conditional.elseBranch = elseBranch;
     ast->conditional.typeId = TOKEN_VOID;
+    ast->conditional.referenceType = REFERENCE_NONE;
     ast->conditional.expression = true;
 
     return ast;
@@ -411,6 +412,7 @@ static ASTNode* createMatchNode(Token token)
     ASTNode* ast = createASTNode(AST_MATCH);
     ast->match.token = token;
     ast->match.typeId = TOKEN_VOID;
+    ast->match.referenceType = REFERENCE_NONE;
     ast->match.expression = true;
 
     return ast;
@@ -797,7 +799,6 @@ static ASTNode* createFunctionCallNode(Token token)
     ast->functionCall.id = copyStringObject(token.chars, token.length);
     ast->functionCall.token = token;
     ast->functionCall.symbol = NULL;
-    ast->functionCall.referenceOrigin = NULL;
 
     return ast;
 }

@@ -1,0 +1,11 @@
+var condition = true
+var left = 10
+var right = 20
+
+let reference: ^i32 = match condition {
+    case true: ^left
+    case false: ^right
+}
+
+print(right)
+print(reference)

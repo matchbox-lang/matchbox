@@ -1,0 +1,8 @@
+var condition = true
+var value: i32
+
+if condition {
+    value = 10
+}
+
+print(value)

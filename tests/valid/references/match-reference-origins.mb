@@ -1,0 +1,17 @@
+var condition = false
+var left = 10
+var right = 20
+
+let shared: &i32 = match condition {
+    case true: &left
+    case false: &right
+}
+
+print(shared)
+
+let exclusive: ^i32 = match condition {
+    case true: ^left
+    case false: ^right
+}
+
+print(exclusive)

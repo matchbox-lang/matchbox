@@ -1,0 +1,14 @@
+func access(shared: &i32, exclusive: ^i32) {
+    print(shared)
+    print(exclusive)
+}
+
+var condition = true
+var left = 10
+var right = 20
+
+access(if condition {
+    &left
+} else {
+    &right
+}, ^right)

@@ -95,6 +95,8 @@ typedef struct ASTNode
             ASTNode* thenBranch;
             ASTNode* elseBranch;
             TokenType typeId;
+            ReferenceType referenceType;
+            Vector referenceOrigins;
             bool expression;
         } conditional;
 
@@ -110,7 +112,7 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             ASTNode* symbol;
-            ASTNode* referenceOrigin;
+            Vector referenceOrigins;
         } functionCall;
 
         struct {
@@ -138,6 +140,8 @@ typedef struct ASTNode
             Vector arms;
             ASTNode* defaultBranch;
             TokenType typeId;
+            ReferenceType referenceType;
+            Vector referenceOrigins;
             bool expression;
         } match;
 
@@ -147,7 +151,7 @@ typedef struct ASTNode
             Token token;
             TokenType typeId;
             ReferenceType referenceType;
-            ASTNode* referenceOrigin;
+            Vector referenceOrigins;
             size_t sharedAccessCount;
             bool exclusiveAccessActive;
             bool moved;
@@ -157,6 +161,7 @@ typedef struct ASTNode
         struct {
             Token operator;
             ASTNode* expr;
+            Vector referenceOrigins;
         } prefix;
 
         struct {
@@ -183,7 +188,7 @@ typedef struct ASTNode
             bool initialized;
             TokenType typeId;
             ReferenceType referenceType;
-            ASTNode* referenceOrigin;
+            Vector referenceOrigins;
             size_t sharedAccessCount;
             bool exclusiveAccessActive;
             bool moved;
@@ -202,6 +207,7 @@ void freeASTNode(ASTNode* ast);
 Scope* getScope(const ASTNode* ast);
 TokenType getTypeId(const ASTNode* ast);
 ASTNode* getReferenceOrigin(const ASTNode* ast);
+Vector* getReferenceOrigins(ASTNode* ast);
 ReferenceType getReferenceType(const ASTNode* ast);
 bool isExpressionStatement(const ASTNode* ast);
 bool isFunctionCall(const ASTNode* ast);

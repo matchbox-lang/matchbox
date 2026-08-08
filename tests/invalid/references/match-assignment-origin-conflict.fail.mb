@@ -1,0 +1,14 @@
+var condition = true
+var left = 10
+var right = 20
+var reference: &i32 = &left
+
+match condition {
+    case true:
+        reference = &left
+    case false:
+        reference = &right
+}
+
+left = 30
+print(reference)

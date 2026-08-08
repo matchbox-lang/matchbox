@@ -26,14 +26,28 @@ ASTNode* createASTNode(ASTNodeType type)
         case AST_COMPOUND:
             initVector(&ast->compound.statements);
             break;
+        case AST_CONDITIONAL:
+            initVector(&ast->conditional.referenceOrigins);
+            break;
         case AST_FUNCTION_CALL:
             initVector(&ast->functionCall.args);
+            initVector(&ast->functionCall.referenceOrigins);
             break;
         case AST_FUNCTION_DEFINITION:
             initVector(&ast->functionDefinition.params);
             break;
         case AST_MATCH:
             initVector(&ast->match.arms);
+            initVector(&ast->match.referenceOrigins);
+            break;
+        case AST_PARAMETER:
+            initVector(&ast->parameter.referenceOrigins);
+            break;
+        case AST_PREFIX:
+            initVector(&ast->prefix.referenceOrigins);
+            break;
+        case AST_VARIABLE_DEFINITION:
+            initVector(&ast->variableDefinition.referenceOrigins);
             break;
         default:
             break;
@@ -94,10 +108,12 @@ void freeASTNode(ASTNode* ast)
             freeASTNode(ast->conditional.condition);
             freeASTNode(ast->conditional.thenBranch);
             freeASTNode(ast->conditional.elseBranch);
+            freeVector(&ast->conditional.referenceOrigins);
             break;
         case AST_FUNCTION_CALL:
             freeStringObject(ast->functionCall.id);
             freeASTNodeVector(&ast->functionCall.args);
+            freeVector(&ast->functionCall.referenceOrigins);
             break;
         case AST_FUNCTION_DEFINITION:
             freeStringObject(ast->functionDefinition.id);
@@ -108,12 +124,15 @@ void freeASTNode(ASTNode* ast)
             freeASTNode(ast->match.subject);
             freeMatchArms(&ast->match.arms);
             freeASTNode(ast->match.defaultBranch);
+            freeVector(&ast->match.referenceOrigins);
             break;
         case AST_PARAMETER:
             freeStringObject(ast->parameter.id);
+            freeVector(&ast->parameter.referenceOrigins);
             break;
         case AST_PREFIX:
             freeASTNode(ast->prefix.expr);
+            freeVector(&ast->prefix.referenceOrigins);
             break;
         case AST_RETURN:
             freeASTNode(ast->returnStatement.expr);
@@ -121,6 +140,7 @@ void freeASTNode(ASTNode* ast)
         case AST_VARIABLE_DEFINITION:
             freeStringObject(ast->variableDefinition.id);
             freeASTNode(ast->variableDefinition.expr);
+            freeVector(&ast->variableDefinition.referenceOrigins);
             break;
         case AST_VARIABLE:
             freeStringObject(ast->variable.id);
@@ -200,26 +220,45 @@ TokenType getTypeId(const ASTNode* ast)
     }
 }
 
+Vector* getReferenceOrigins(ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    switch (ast->type) {
+        case AST_CONDITIONAL:
+            return &ast->conditional.referenceOrigins;
+        case AST_FUNCTION_CALL:
+            return &ast->functionCall.referenceOrigins;
+        case AST_MATCH:
+            return &ast->match.referenceOrigins;
+        case AST_PARAMETER:
+            return &ast->parameter.referenceOrigins;
+        case AST_PREFIX:
+            return &ast->prefix.referenceOrigins;
+        case AST_VARIABLE:
+            return getReferenceOrigins(ast->variable.symbol);
+        case AST_VARIABLE_DEFINITION:
+            return &ast->variableDefinition.referenceOrigins;
+        default:
+            return NULL;
+    }
+}
+
 ASTNode* getReferenceOrigin(const ASTNode* ast)
 {
     if (!ast) {
         return NULL;
     }
 
-    if (ast->type == AST_PARAMETER) {
-        return ast->parameter.referenceOrigin;
-    }
-
-    if (ast->type == AST_FUNCTION_CALL) {
-        return ast->functionCall.referenceOrigin;
+    Vector* origins = getReferenceOrigins((ASTNode*)ast);
+    if (origins && origins->count) {
+        return origins->data[0];
     }
 
     if (ast->type == AST_VARIABLE) {
         return getReferenceOrigin(ast->variable.symbol);
-    }
-
-    if (ast->type == AST_VARIABLE_DEFINITION) {
-        return ast->variableDefinition.referenceOrigin;
     }
 
     return NULL;
@@ -245,10 +284,14 @@ ReferenceType getReferenceType(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case AST_CONDITIONAL:
+            return ast->conditional.referenceType;
         case AST_FUNCTION_CALL:
             return ast->functionCall.symbol->functionDefinition.returnReferenceType;
         case AST_FUNCTION_DEFINITION:
             return ast->functionDefinition.returnReferenceType;
+        case AST_MATCH:
+            return ast->match.referenceType;
         case AST_PARAMETER:
             return ast->parameter.referenceType;
         case AST_PREFIX:

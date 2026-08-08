@@ -1,0 +1,9 @@
+var condition = true
+var value: i32
+
+match condition {
+    case false:
+        value = 10
+}
+
+print(value)

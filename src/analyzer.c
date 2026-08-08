@@ -36,11 +36,11 @@ static void semanticError(char* message, Token token)
     exit(1);
 }
 
-static void bindingAccessError(char* message, Token token, char* detail)
+static void symbolError(char* message, Token token)
 {
-    fprintf(stderr, "Error: %s", message);
+    fprintf(stderr, "Error: ");
     printTokenValue(token);
-    fprintf(stderr, "%s on line %d:%d\n", detail, token.line, token.column);
+    fprintf(stderr, " is %s on line %d:%d\n", message, token.line, token.column);
     exit(1);
 }
 
@@ -48,6 +48,14 @@ static void semanticErrorAt(char* message, Token token)
 {
     fprintf(stderr, "Error: %s", message);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void bindingAccessError(char* message, Token token, char* detail)
+{
+    fprintf(stderr, "Error: %s", message);
+    printTokenValue(token);
+    fprintf(stderr, "%s on line %d:%d\n", detail, token.line, token.column);
     exit(1);
 }
 
@@ -142,14 +150,6 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
     literal->integerLiteral.typeId = type;
 
     return true;
-}
-
-static void symbolError(char* message, Token token)
-{
-    fprintf(stderr, "Error: ");
-    printTokenValue(token);
-    fprintf(stderr, " is %s on line %d:%d\n", message, token.line, token.column);
-    exit(1);
 }
 
 static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
@@ -365,7 +365,7 @@ static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
     analyzeNodes(analyzer, nodes, 0);
 }
 
-static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
+static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, TokenType type)
 {
     Scope* previousScope = analyzer->currentScope;
     branch->compound.scope = createScope(previousScope);
@@ -377,35 +377,44 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
         setLocalVariableSymbol(analyzer->currentScope, binding->variableDefinition.id, binding);
     }
 
+    size_t count = countVector(&branch->compound.statements);
+
+    if (count && isIntegerTypeToken(type)) {
+        ASTNode* result = getVectorAt(&branch->compound.statements, count - 1);
+        applyIntegerLiteralType(result, type);
+    }
+
     analyzeExpressionNodes(analyzer, &branch->compound.statements);
     analyzer->currentScope = previousScope;
 
-    size_t count = countVector(&branch->compound.statements);
     if (!count) {
         return TOKEN_VOID;
     }
 
-    return getTypeId(getVectorAt(&branch->compound.statements, count - 1));
+    ASTNode* result = getVectorAt(&branch->compound.statements, count - 1);
+    TokenType resultType = getTypeId(result);
+
+    if (resultType == type || canImplicitlyWidenInteger(resultType, type)) {
+        return type;
+    }
+
+    return resultType;
 }
 
-static TokenType analyzeConditionalBranch(Analyzer* analyzer, ASTNode* branch)
-{
-    return analyzeScopedBranch(analyzer, branch, NULL);
-}
-
-static TokenType analyzeElseBranch(Analyzer* analyzer, ASTNode* branch)
+static TokenType analyzeElseBranch(Analyzer* analyzer, ASTNode* branch, TokenType type)
 {
     if (!branch) {
         return TOKEN_VOID;
     }
 
     if (branch->type == AST_CONDITIONAL) {
+        branch->conditional.typeId = type;
         analyzeNode(analyzer, branch);
 
         return getTypeId(branch);
     }
 
-    return analyzeConditionalBranch(analyzer, branch);
+    return analyzeScopedBranch(analyzer, branch, NULL, type);
 }
 
 static void captureSymbolOwnership(Vector* states, ASTNode* symbol)
@@ -551,11 +560,12 @@ static void analyzeOwnershipBranch(
     Analyzer* analyzer,
     Vector* states,
     ASTNode* branch,
+    TokenType expectedType,
     TokenType* type)
 {
     applyOwnershipStates(states);
     releaseReferencesDeadOnBranch(analyzer, states, branch);
-    *type = analyzeElseBranch(analyzer, branch);
+    *type = analyzeElseBranch(analyzer, branch, expectedType);
     updateOwnershipStates(states);
 }
 
@@ -627,7 +637,8 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     analyzer->nextNode = continuationStart;
     releaseReferencesDeadOnBranch(analyzer, &thenStates, ast->conditional.thenBranch);
 
-    TokenType thenType = analyzeConditionalBranch(analyzer, ast->conditional.thenBranch);
+    TokenType type = ast->conditional.typeId;
+    TokenType thenType = analyzeScopedBranch(analyzer, ast->conditional.thenBranch, NULL, type);
 
     updateOwnershipStates(&thenStates);
 
@@ -636,7 +647,7 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
 
     TokenType elseType;
 
-    analyzeOwnershipBranch(analyzer, &elseStates, ast->conditional.elseBranch, &elseType);
+    analyzeOwnershipBranch(analyzer, &elseStates, ast->conditional.elseBranch, type, &elseType);
     mergeOwnershipStates(&thenStates, &elseStates);
     freeOwnershipStates(&thenStates);
     freeOwnershipStates(&elseStates);
@@ -819,7 +830,7 @@ static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vec
         arm->binding->variableDefinition.typeId = getTypeId(ast->match.subject);
     }
 
-    TokenType branchType = analyzeScopedBranch(analyzer, arm->branch, arm->binding);
+    TokenType branchType = analyzeScopedBranch(analyzer, arm->branch, arm->binding, ast->match.typeId);
     mergeMatchResult(ast, branchType, resultType);
 }
 
@@ -851,7 +862,7 @@ static void analyzeMatchDefault(Analyzer* analyzer, ASTNode* ast, Vector* contin
     }
 
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
-    TokenType branchType = analyzeConditionalBranch(analyzer, ast->match.defaultBranch);
+    TokenType branchType = analyzeScopedBranch(analyzer, ast->match.defaultBranch, NULL, ast->match.typeId);
     mergeMatchResult(ast, branchType, resultType);
 }
 
@@ -1599,38 +1610,82 @@ static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
     ast->variableDefinition.initialized = false;
 }
 
+static void applyDeclaredType(ASTNode* expression, TokenType type)
+{
+    if (type == TOKEN_UNKNOWN) {
+        return;
+    }
+
+    if (isIntegerTypeToken(type)) {
+        applyIntegerLiteralType(expression, type);
+    }
+
+    if (expression->type == AST_CONDITIONAL) {
+        expression->conditional.typeId = type;
+    }
+
+    if (expression->type == AST_MATCH) {
+        expression->match.typeId = type;
+    }
+}
+
+static bool variableTypesMatch(ASTNode* ast, TokenType type, ReferenceType referenceType)
+{
+    ReferenceType declaredReferenceType = ast->variableDefinition.referenceType;
+
+    if (declaredReferenceType != referenceType) {
+        return false;
+    }
+
+    TokenType declaredType = ast->variableDefinition.typeId;
+    if (declaredType == type) {
+        return true;
+    }
+
+    if (referenceType != REFERENCE_NONE) {
+        return false;
+    }
+
+    return canImplicitlyWidenInteger(type, declaredType);
+}
+
+static void validateVariableTypeMatch(ASTNode* ast, TokenType type, ReferenceType referenceType)
+{
+    if (!variableTypesMatch(ast, type, referenceType)) {
+        semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
+    }
+}
+
+static void resolveVariableType(ASTNode* ast, ASTNode* expression)
+{
+    TokenType type = getTypeId(expression);
+    ReferenceType referenceType = getReferenceType(expression);
+
+    if (ast->variableDefinition.typeId != TOKEN_UNKNOWN) {
+        validateVariableTypeMatch(ast, type, referenceType);
+
+        return;
+    }
+
+    if (type == TOKEN_UNKNOWN) {
+        integerLiteralRequiresTypeError(ast->variableDefinition.token);
+    }
+
+    ast->variableDefinition.typeId = type;
+    ast->variableDefinition.referenceType = referenceType;
+}
+
 static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* expression = ast->variableDefinition.expr;
-    TokenType declaredType = ast->variableDefinition.typeId;
-    ReferenceType declaredReferenceType = ast->variableDefinition.referenceType;
 
     if (isNone(expression)) {
         return;
     }
 
-    if (declaredType != TOKEN_UNKNOWN && isIntegerTypeToken(declaredType)) {
-        applyIntegerLiteralType(expression, declaredType);
-    }
-
+    applyDeclaredType(expression, ast->variableDefinition.typeId);
     analyzeNode(analyzer, expression);
-    TokenType expressionType = getTypeId(expression);
-    ReferenceType expressionReferenceType = getReferenceType(expression);
-
-    if (declaredType == TOKEN_UNKNOWN) {
-        if (expressionType == TOKEN_UNKNOWN) {
-            integerLiteralRequiresTypeError(ast->variableDefinition.token);
-        }
-
-        ast->variableDefinition.typeId = expressionType;
-        ast->variableDefinition.referenceType = expressionReferenceType;
-    } else if ((declaredType != expressionType
-        && (declaredReferenceType != REFERENCE_NONE
-            || expressionReferenceType != REFERENCE_NONE
-            || !canImplicitlyWidenInteger(expressionType, declaredType)))
-        || declaredReferenceType != expressionReferenceType) {
-        semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
-    }
+    resolveVariableType(ast, expression);
 
     ast->variableDefinition.referenceOrigin = referenceOriginFromExpression(expression);
     initializeVariable(ast);

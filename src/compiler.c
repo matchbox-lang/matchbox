@@ -1040,7 +1040,6 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
         case TOKEN_STAR:
             return emitBinaryOperands(compiler, INTEGER_MUL, type, left, right);
         case TOKEN_SLASH:
-        case TOKEN_FLOOR:
             return emitBinaryOperands(compiler, INTEGER_DIV, type, left, right);
         case TOKEN_PERCENT:
             return emitBinaryOperands(compiler, INTEGER_REM, type, left, right);
@@ -1169,7 +1168,6 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
             return compileCompoundAssignment(compiler, ast, INTEGER_SUB);
         case TOKEN_STAR_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_MUL);
-        case TOKEN_FLOOR_EQUAL:
         case TOKEN_SLASH_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_DIV);
         case TOKEN_PERCENT_EQUAL:

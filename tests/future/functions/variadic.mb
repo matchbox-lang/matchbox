@@ -10,4 +10,4 @@ func sum(numbers: ...i32) {
 
 let result = sum(1, 2, 3, 4)
 
-print(result) # 10
+print(result) // 10

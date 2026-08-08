@@ -12,6 +12,8 @@ typedef struct Keyword
     TokenType type;
 } Keyword;
 
+static bool skipWhitespace(Lexer* lexer);
+
 static const Keyword keywords[] = {
     {"alignof",     7, TOKEN_ALIGNOF},
     {"and",         3, TOKEN_AND},
@@ -175,6 +177,11 @@ static Token makeToken(const Lexer* lexer, TokenType type)
     return token;
 }
 
+static bool isKeyword(const Lexer* lexer, const Keyword* keyword, size_t length)
+{
+    return length == keyword->length && memcmp(lexer->start.chars, keyword->chars, length) == 0;
+}
+
 static bool isAlpha(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
@@ -294,6 +301,7 @@ static void validateNumberEnd(Lexer* lexer)
 static void skipCommentSingle(Lexer* lexer)
 {
     advance(lexer);
+    advance(lexer);
     
     while (!isEndOfFile(lexer) && peek(lexer) != '\n') {
         advance(lexer);
@@ -306,7 +314,7 @@ static bool skipCommentMulti(Lexer* lexer)
     advance(lexer);
 
     while (!isEndOfFile(lexer)) {
-        if (peek(lexer) == '#' && next(lexer) == '#') {
+        if (peek(lexer) == '*' && next(lexer) == '/') {
             advance(lexer);
             advance(lexer);
             return true;
@@ -324,7 +332,7 @@ static bool skipComment(Lexer* lexer)
     lexer->start.line = lexer->current.line;
     lexer->start.column = lexer->current.column;
     
-    if (next(lexer) == '#') {
+    if (next(lexer) == '*') {
         return skipCommentMulti(lexer);
     }
 
@@ -333,15 +341,25 @@ static bool skipComment(Lexer* lexer)
     return true;
 }
 
+static bool skipWhitespaceComment(Lexer* lexer)
+{
+    if (next(lexer) != '/' && next(lexer) != '*') {
+        return true;
+    }
+
+    if (!skipComment(lexer)) {
+        return false;
+    }
+
+    return skipWhitespace(lexer);
+}
+
 static bool skipWhitespace(Lexer* lexer)
 {
     while (1) {
         switch (peek(lexer)) {
-            case '#':
-                if (!skipComment(lexer)) {
-                    return false;
-                }
-                break;
+            case '/':
+                return skipWhitespaceComment(lexer);
             case ' ':
             case '\t':
             case '\r':
@@ -354,12 +372,6 @@ static bool skipWhitespace(Lexer* lexer)
                 return true;
         }
     }
-}
-
-static bool isKeyword(const Lexer* lexer, const Keyword* keyword, size_t length)
-{
-    return length == keyword->length &&
-        memcmp(lexer->start.chars, keyword->chars, length) == 0;
 }
 
 static TokenType getIdentifierType(const Lexer* lexer)
@@ -649,10 +661,7 @@ Token scanToken(Lexer* lexer)
                 match(lexer, '=') ? TOKEN_POWER_EQUAL : TOKEN_POWER :
                 match(lexer, '=') ? TOKEN_STAR_EQUAL : TOKEN_STAR);
         case '/':
-            return makeToken(lexer, 
-                match(lexer, '/') ?
-                match(lexer, '=') ? TOKEN_FLOOR_EQUAL : TOKEN_FLOOR :
-                match(lexer, '=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
+            return makeToken(lexer, match(lexer, '=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
         case '<':
             return makeToken(lexer, 
                 match(lexer, '<') ?

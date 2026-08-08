@@ -1,4 +1,4 @@
-# Defined in host API .mbc file
+// Defined in host API .mbc file
 use external game
 
 spawnEnemy()

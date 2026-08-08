@@ -293,12 +293,17 @@ static ASTNode* parseConditional(Parser* parser)
         return NULL;
     }
 
-    return createConditionalNode(
-        token,
-        condition,
-        thenBranch,
-        parseConditionalElse(parser)
-    );
+    bool hasElse = parser->currentToken.type == TOKEN_ELSE;
+    ASTNode* elseBranch = parseConditionalElse(parser);
+
+    if (hasElse && !elseBranch) {
+        freeASTNode(condition);
+        freeASTNode(thenBranch);
+
+        return NULL;
+    }
+
+    return createConditionalNode(token, condition, thenBranch, elseBranch);
 }
 
 static void markConditionalStatement(ASTNode* ast)
@@ -352,7 +357,13 @@ static ASTNode* parseMatchBranch(Parser* parser)
     ASTNode* branch = createASTNode(AST_COMPOUND);
     branch->compound.scope = NULL;
 
-    if (isMatchBranchEnd(parser)) {
+    if (isEndOfFile(parser)) {
+        freeASTNode(branch);
+
+        return NULL;
+    }
+
+    if (isMatchArmEnd(parser->currentToken.type)) {
         freeASTNode(branch);
         expectedExpressionError(parser->currentToken);
     }
@@ -385,7 +396,7 @@ static ASTNode* parseMatchBinding(Parser* parser)
     return binding;
 }
 
-static void parseMatchArm(Parser* parser, ASTNode* ast)
+static bool parseMatchArm(Parser* parser, ASTNode* ast)
 {
     consume(parser, TOKEN_CASE);
 
@@ -393,6 +404,8 @@ static void parseMatchArm(Parser* parser, ASTNode* ast)
     if (!arm) {
         outOfMemoryError();
     }
+
+    pushVectorItem(&ast->match.arms, arm);
 
     if (isWildcardToken(parser->currentToken)) {
         consume(parser, TOKEN_IDENTIFIER);
@@ -402,9 +415,14 @@ static void parseMatchArm(Parser* parser, ASTNode* ast)
         arm->pattern = parseExpression(parser);
     }
 
+    if (isEndOfFile(parser)) {
+        return false;
+    }
+
     consume(parser, TOKEN_COLON);
     arm->branch = parseMatchBranch(parser);
-    pushVectorItem(&ast->match.arms, arm);
+
+    return arm->branch != NULL;
 }
 
 static ASTNode* createMatchNode(Token token)
@@ -429,15 +447,44 @@ static ASTNode* parseMatch(Parser* parser)
         ast->match.subject = parseExpression(parser);
     }
 
+    if (isEndOfFile(parser)) {
+        freeASTNode(ast);
+
+        return NULL;
+    }
+
     consume(parser, TOKEN_LBRACE);
     while (parser->currentToken.type == TOKEN_CASE) {
-        parseMatchArm(parser, ast);
+        if (!parseMatchArm(parser, ast)) {
+            freeASTNode(ast);
+
+            return NULL;
+        }
     }
 
     if (parser->currentToken.type == TOKEN_DEFAULT) {
         consume(parser, TOKEN_DEFAULT);
+
+        if (isEndOfFile(parser)) {
+            freeASTNode(ast);
+
+            return NULL;
+        }
+
         consume(parser, TOKEN_COLON);
         ast->match.defaultBranch = parseMatchBranch(parser);
+
+        if (!ast->match.defaultBranch) {
+            freeASTNode(ast);
+
+            return NULL;
+        }
+    }
+
+    if (isEndOfFile(parser)) {
+        freeASTNode(ast);
+
+        return NULL;
     }
 
     consume(parser, TOKEN_RBRACE);
@@ -1045,12 +1092,22 @@ static ASTNode* parseStatement(Parser* parser)
             return parseReturnStatement(parser);
         case TOKEN_IF: {
             ASTNode* ast = parseConditional(parser);
+
+            if (!ast) {
+                return NULL;
+            }
+
             markConditionalStatement(ast);
 
             return ast;
         }
         case TOKEN_MATCH: {
             ASTNode* ast = parseMatch(parser);
+
+            if (!ast) {
+                return NULL;
+            }
+
             ast->match.expression = false;
 
             return ast;

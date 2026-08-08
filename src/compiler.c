@@ -1626,8 +1626,10 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
     Operand value;
     size_t slots = getNodeSlotCount(ast);
+    bool unused = ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
+    bool preserve = compiler->repl && isCompilingTopLevel(compiler);
 
-    if (ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount) {
+    if (unused && !preserve) {
         compileExpression(compiler, ast->variableDefinition.expr, true);
 
         return;
@@ -2550,6 +2552,7 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
     compiler->registerCount = 0;
     compiler->frameBaseCount = 0;
     compiler->localPositionOffset = 0;
+    compiler->repl = false;
 }
 
 void freeCompiler(Compiler* compiler)
@@ -2564,6 +2567,7 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
         return false;
     }
 
+    compiler->repl = compileStatements == compileReplStatements;
     size_t start = countVector(&compiler->ast->compound.statements);
 
     if (!parse(&compiler->parser, source)) {

@@ -22,6 +22,7 @@ typedef struct Compiler
     int registerCount;
     int frameBaseCount;
     int localPositionOffset;
+    bool repl;
 } Compiler;
 
 void initCompiler(Compiler* compiler, ModuleObject* module);

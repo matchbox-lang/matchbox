@@ -15,6 +15,7 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
 static void validateNodeEffects(ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
 static void transferExclusiveReference(ASTNode* expression);
+static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue);
 
 typedef struct OwnershipState
 {
@@ -675,13 +676,37 @@ static bool matchHasWildcard(ASTNode* ast)
     return false;
 }
 
+static bool updateAlternativeBooleanCoverage(ASTNode* pattern, bool* coversFalse, bool* coversTrue)
+{
+    if (pattern->type != AST_BINARY || pattern->binary.operator.type != TOKEN_PIPE) {
+        return false;
+    }
+
+    MatchArm leftArm = { .pattern = pattern->binary.leftExpr };
+    MatchArm rightArm = { .pattern = pattern->binary.rightExpr };
+    
+    updateBooleanMatchCoverage(&leftArm, coversFalse, coversTrue);
+    updateBooleanMatchCoverage(&rightArm, coversFalse, coversTrue);
+
+    return true;
+}
+
 static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue)
 {
-    if (!arm->pattern || arm->pattern->type != AST_BOOLEAN) {
+    ASTNode* pattern = arm->pattern;
+    if (!pattern) {
         return;
     }
 
-    if (arm->pattern->booleanLiteral.value) {
+    if (updateAlternativeBooleanCoverage(pattern, coversFalse, coversTrue)) {
+        return;
+    }
+
+    if (pattern->type != AST_BOOLEAN) {
+        return;
+    }
+
+    if (pattern->booleanLiteral.value) {
         *coversTrue = true;
 
         return;
@@ -739,22 +764,34 @@ static void mergeMatchBranchType(ASTNode* ast, TokenType branchType, TokenType* 
     }
 }
 
+static void analyzeMatchPatternNode(Analyzer* analyzer, ASTNode* ast, ASTNode* pattern)
+{
+    if (pattern->type == AST_BINARY && pattern->binary.operator.type == TOKEN_PIPE) {
+        analyzeMatchPatternNode(analyzer, ast, pattern->binary.leftExpr);
+        analyzeMatchPatternNode(analyzer, ast, pattern->binary.rightExpr);
+
+        return;
+    }
+
+    analyzeNode(analyzer, pattern);
+    TokenType expected = ast->match.subject ? getTypeId(ast->match.subject) : TOKEN_BOOL;
+
+    if (isIntegerTypeToken(expected)) {
+        applyIntegerLiteralType(pattern, expected);
+    }
+
+    if (getTypeId(pattern) != expected) {
+        semanticError("Match pattern type does not match subject ", ast->match.token);
+    }
+}
+
 static void analyzeMatchPattern(Analyzer* analyzer, ASTNode* ast, MatchArm* arm)
 {
     if (!arm->pattern) {
         return;
     }
 
-    analyzeNode(analyzer, arm->pattern);
-    TokenType expected = ast->match.subject ? getTypeId(ast->match.subject) : TOKEN_BOOL;
-
-    if (isIntegerTypeToken(expected)) {
-        applyIntegerLiteralType(arm->pattern, expected);
-    }
-
-    if (getTypeId(arm->pattern) != expected) {
-        semanticError("Match pattern type does not match subject ", ast->match.token);
-    }
+    analyzeMatchPatternNode(analyzer, ast, arm->pattern);
 }
 
 static void restoreMatchContinuation(Analyzer* analyzer, Vector* continuationNodes, size_t continuationStart)

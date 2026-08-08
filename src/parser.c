@@ -351,6 +351,11 @@ static ASTNode* parseMatchBranch(Parser* parser)
     ASTNode* branch = createASTNode(AST_COMPOUND);
     branch->compound.scope = NULL;
 
+    if (isMatchBranchEnd(parser)) {
+        freeASTNode(branch);
+        expectedExpressionError(parser->currentToken);
+    }
+
     while (!isMatchBranchEnd(parser)) {
         if (!parseMatchBranchStatement(parser, branch)) {
             freeASTNode(branch);

@@ -74,6 +74,7 @@ static void removeDiscardedStatementReads(ASTNode* ast);
 static void markCalledFunctions(ASTNode* ast);
 static void resetFunctionCallCounts(ASTNode* ast);
 static bool isSimpleMatchValue(ASTNode* ast);
+static bool isMatchAlternative(ASTNode* pattern);
 
 static void functionPositionOverflowError()
 {
@@ -1776,15 +1777,32 @@ static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
     return value;
 }
 
-static Operand compileMatchCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
+static bool isMatchAlternative(ASTNode* pattern)
 {
-    Operand pattern = compileExpression(compiler, arm->pattern, false);
+    return pattern->type == AST_BINARY && pattern->binary.operator.type == TOKEN_PIPE;
+}
 
-    if (!ast->match.subject) {
-        return pattern;
+static Operand compileSubjectMatchCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
+{
+    if (!isMatchAlternative(pattern)) {
+        Operand value = compileExpression(compiler, pattern, false);
+
+        return emitComparison(compiler, OP_EQ, subject, value);
     }
 
-    return emitComparison(compiler, OP_EQ, subject, pattern);
+    Operand left = compileSubjectMatchCondition(compiler, pattern->binary.leftExpr, subject);
+    Operand right = compileSubjectMatchCondition(compiler, pattern->binary.rightExpr, subject);
+
+    return emitComparison(compiler, OP_OR, left, right);
+}
+
+static Operand compileMatchCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
+{
+    if (!ast->match.subject) {
+        return compileExpression(compiler, arm->pattern, false);
+    }
+
+    return compileSubjectMatchCondition(compiler, arm->pattern, subject);
 }
 
 static void patchMatchJumps(Compiler* compiler, Vector* jumps)
@@ -1866,7 +1884,7 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
         return 0;
     }
 
-    if (!ast->match.subject || !canUseDirectMatchBranch(arm)) {
+    if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm)) {
         Operand condition = compileMatchCondition(compiler, ast, arm, subject);
         size_t nextJump = emitJump(compiler, OP_BZ, condition.reg);
         releaseOperand(compiler, condition);
@@ -2023,6 +2041,10 @@ static LiteralMatchArmResult selectLiteralMatchArm(
         *binding = arm->binding;
 
         return LITERAL_MATCH_ARM_SELECTED;
+    }
+
+    if (isMatchAlternative(arm->pattern)) {
+        return LITERAL_MATCH_ARM_UNAVAILABLE;
     }
 
     uint64_t patternValue;

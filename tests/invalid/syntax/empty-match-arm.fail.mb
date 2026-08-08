@@ -1,0 +1,9 @@
+let value = 2
+
+match value {
+    case 1:
+        print(10)
+    case 2:
+    case 3:
+        print(20)
+}

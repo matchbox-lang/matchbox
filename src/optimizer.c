@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 static void optimizeNode(ASTNode* ast);
+static void optimizeMatchPattern(ASTNode* pattern);
 
 static int64_t signedI32Value(uint32_t value)
 {
@@ -127,6 +128,18 @@ static void optimizeConditionalBranch(ASTNode* branch)
     optimizeNodes(&branch->compound.statements);
 }
 
+static void optimizeMatchPattern(ASTNode* pattern)
+{
+    if (pattern->type != AST_BINARY || pattern->binary.operator.type != TOKEN_PIPE) {
+        optimizeNode(pattern);
+
+        return;
+    }
+
+    optimizeMatchPattern(pattern->binary.leftExpr);
+    optimizeMatchPattern(pattern->binary.rightExpr);
+}
+
 static void optimizeMatch(ASTNode* ast)
 {
     if (ast->match.subject) {
@@ -138,7 +151,7 @@ static void optimizeMatch(ASTNode* ast)
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
         if (arm->pattern) {
-            optimizeNode(arm->pattern);
+            optimizeMatchPattern(arm->pattern);
         }
 
         optimizeConditionalBranch(arm->branch);

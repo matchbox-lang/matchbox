@@ -3,14 +3,14 @@ let value = 2
 match value {
     case 1:
         print(10)
-    case 2:
+    case 2 | 3 | 4:
         print(20)
     default:
         print(30)
 }
 
 match {
-    case value < 2:
+    case value < 2 or value == 10:
         print(40)
     case value == 2:
         print(50)
@@ -19,7 +19,7 @@ match {
 let result = match value {
     case 0: 100
     case 1: 200
-    case 2: 300
+    case 2 | 3 | 4: 300
     case _: 400
 }
 

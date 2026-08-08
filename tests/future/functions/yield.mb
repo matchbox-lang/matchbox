@@ -8,5 +8,5 @@ func range(start, stop, step) {
 }
 
 for i in range(0, 12, 3) {
-    print(i) # 0, 3, 6, 9, 12
+    print(i) // 0, 3, 6, 9, 12
 }

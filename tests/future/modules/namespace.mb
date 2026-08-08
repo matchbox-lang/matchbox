@@ -2,4 +2,4 @@ use system.out
 
 hello()
 
-secret() # Error
+secret() // Error

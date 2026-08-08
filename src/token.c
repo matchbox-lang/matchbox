@@ -80,7 +80,6 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_MINUS:               return "-";
         case TOKEN_STAR:                return "*";
         case TOKEN_SLASH:               return "/";
-        case TOKEN_FLOOR:               return "//";
         case TOKEN_PERCENT:             return "%";
         case TOKEN_POWER:               return "**";
         case TOKEN_COALESCE:            return "??";
@@ -89,7 +88,6 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_MINUS_EQUAL:         return "-=";
         case TOKEN_STAR_EQUAL:          return "*=";
         case TOKEN_SLASH_EQUAL:         return "/=";
-        case TOKEN_FLOOR_EQUAL:         return "//=";
         case TOKEN_PERCENT_EQUAL:       return "%=";
         case TOKEN_POWER_EQUAL:         return "**=";
         case TOKEN_COALESCE_EQUAL:      return "??" "=";
@@ -163,7 +161,6 @@ bool isAssignmentToken(TokenType type)
         case TOKEN_MINUS_EQUAL:
         case TOKEN_STAR_EQUAL:
         case TOKEN_SLASH_EQUAL:
-        case TOKEN_FLOOR_EQUAL:
         case TOKEN_PERCENT_EQUAL:
         case TOKEN_POWER_EQUAL:
         case TOKEN_AND_EQUAL:
@@ -294,7 +291,6 @@ bool isFactorToken(TokenType type)
     switch (type) {
         case TOKEN_STAR:
         case TOKEN_SLASH:
-        case TOKEN_FLOOR:
         case TOKEN_PERCENT:
             return true;
         default:

@@ -1,0 +1,7 @@
+let reference: &i32 = if true {
+    var local = 10
+    &local
+} else {
+    var local = 20
+    &local
+}

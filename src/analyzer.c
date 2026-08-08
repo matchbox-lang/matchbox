@@ -724,6 +724,36 @@ static void mergeOwnershipStates(Vector* thenStates, Vector* elseStates)
     }
 }
 
+static void validateExpressionBranch(ASTNode* branch, Token token)
+{
+    if (branch->type == AST_CONDITIONAL) {
+        return;
+    }
+
+    Vector* statements = &branch->compound.statements;
+    if (countVector(statements) != 1) {
+        semanticError("Expression branch must contain exactly one expression ", token);
+    }
+
+    ASTNode* expression = getVectorAt(statements, 0);
+    if (!isExpressionStatement(expression)) {
+        semanticError("Expression branch must contain exactly one expression ", token);
+    }
+}
+
+static void validateConditionalExpression(ASTNode* ast)
+{
+    if (!ast->conditional.expression) {
+        return;
+    }
+
+    validateExpressionBranch(ast->conditional.thenBranch, ast->conditional.token);
+
+    if (ast->conditional.elseBranch) {
+        validateExpressionBranch(ast->conditional.elseBranch, ast->conditional.token);
+    }
+}
+
 static void mergeOwnershipOutcome(Vector* mergedStates, Vector* states, bool* initialized)
 {
     if (!*initialized) {
@@ -742,6 +772,7 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     Vector* continuationNodes = analyzer->currentNodes;
     size_t continuationStart = analyzer->nextNode;
 
+    validateConditionalExpression(ast);
     analyzeNode(analyzer, ast->conditional.condition);
 
     if (getTypeId(ast->conditional.condition) != TOKEN_BOOL) {
@@ -1048,6 +1079,24 @@ static void finalizeMatchOwnership(ASTNode* ast, Vector* initialStates,
     freeOwnershipStates(initialStates);
 }
 
+static void validateMatchExpression(ASTNode* ast)
+{
+    if (!ast->match.expression) {
+        return;
+    }
+
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        validateExpressionBranch(arm->branch, ast->match.token);
+    }
+
+    if (ast->match.defaultBranch) {
+        validateExpressionBranch(ast->match.defaultBranch, ast->match.token);
+    }
+}
+
 static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
 {
     Vector* continuationNodes = analyzer->currentNodes;
@@ -1057,6 +1106,7 @@ static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
     Vector mergedStates;
     bool mergedInitialized = false;
 
+    validateMatchExpression(ast);
     analyzeMatchSubject(analyzer, ast);
     captureOwnershipState(&initialStates, analyzer->currentScope);
     analyzeMatchArms(analyzer, ast, continuationNodes, continuationStart, &resultType,

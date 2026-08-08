@@ -1,0 +1,6 @@
+let value = match true {
+    case true:
+        10
+        20
+    case false: 30
+}

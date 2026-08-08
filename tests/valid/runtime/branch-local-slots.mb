@@ -34,11 +34,9 @@ func printFunctionBranch() {
 printFunctionBranch()
 
 var conditionalValue = if true {
-    var branchExpressionValue = 90
-    branchExpressionValue
+    90
 } else {
-    var unusedBranchExpressionValue = 100
-    unusedBranchExpressionValue
+    100
 }
 
 print(conditionalValue)

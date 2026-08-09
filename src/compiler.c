@@ -61,6 +61,8 @@ typedef enum IntegerOperation
 static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
+static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference);
+static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference);
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast, TokenType destination, bool reference);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
@@ -1515,6 +1517,14 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
 
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->type == AST_CONDITIONAL) {
+        return compileConditional(compiler, ast, true);
+    }
+
+    if (ast->type == AST_MATCH) {
+        return compileMatch(compiler, ast, true);
+    }
+
     if (getReferenceType(ast) == REFERENCE_NONE && ast->type != AST_VARIABLE) {
         Operand value = compileExpression(compiler, ast, false);
         int valueRegister = allocateRegister(compiler);
@@ -1696,11 +1706,20 @@ static void storeConditionalValue(
     emitOperandMov(compiler, destination, value);
 }
 
+static Operand compileBranchExpression(Compiler* compiler, ASTNode* ast, bool reference)
+{
+    if (reference) {
+        return compileReferenceExpression(compiler, ast);
+    }
+
+    return compileExpression(compiler, ast, false);
+}
+
 static Operand compileConditionalBranch(
-    Compiler* compiler, ASTNode* branch, TokenType type, int destination)
+    Compiler* compiler, ASTNode* branch, TokenType type, int destination, bool reference)
 {
     if (branch->type == AST_CONDITIONAL) {
-        Operand value = compileExpression(compiler, branch, false);
+        Operand value = compileBranchExpression(compiler, branch, reference);
         storeConditionalValue(compiler, type, destination, value);
 
         return value;
@@ -1710,7 +1729,14 @@ static Operand compileConditionalBranch(
 
     for (size_t i = 0; i < count; i++) {
         bool discard = type == TOKEN_VOID || i + 1 < count;
-        Operand value = compileStatement(compiler, getVectorAt(&branch->compound.statements, i), discard);
+        ASTNode* statement = getVectorAt(&branch->compound.statements, i);
+        Operand value;
+
+        if (!discard && reference) {
+            value = compileReferenceExpression(compiler, statement);
+        } else {
+            value = compileStatement(compiler, statement, discard);
+        }
 
         if (!discard) {
             storeConditionalValue(compiler, type, destination, value);
@@ -1722,7 +1748,7 @@ static Operand compileConditionalBranch(
     return noOperand();
 }
 
-static Operand compileConditional(Compiler* compiler, ASTNode* ast)
+static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference)
 {
     int previousLocalPositionOffset = compiler->localPositionOffset;
     Operand condition = compileExpression(compiler, ast->conditional.condition, false);
@@ -1741,7 +1767,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
 
     int branchRegisterCount = compiler->registerCount;
 
-    compileConditionalBranch(compiler, ast->conditional.thenBranch, type, destination);
+    compileConditionalBranch(compiler, ast->conditional.thenBranch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
 
     if (!ast->conditional.elseBranch) {
@@ -1753,7 +1779,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast)
 
     size_t endJump = emitJump(compiler, OP_JMP, 0);
     patchJump(compiler, elseJump);
-    compileConditionalBranch(compiler, ast->conditional.elseBranch, type, destination);
+    compileConditionalBranch(compiler, ast->conditional.elseBranch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
     patchJump(compiler, endJump);
     compiler->localPositionOffset = previousLocalPositionOffset;
@@ -1918,14 +1944,14 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
 }
 
 static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
-    bool needsEndJump)
+    bool needsEndJump, bool reference)
 {
     int branchRegisterCount = compiler->registerCount;
     size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
     TokenType type = getTypeId(ast);
 
     storeMatchBinding(compiler, arm->binding, subject);
-    compileConditionalBranch(compiler, arm->branch, type, destination);
+    compileConditionalBranch(compiler, arm->branch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
 
     size_t endJump = SIZE_MAX;
@@ -1942,11 +1968,11 @@ static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, O
 }
 
 static bool compileNextMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
-    bool hasFollowingArm, Vector* endJumps)
+    bool hasFollowingArm, Vector* endJumps, bool reference)
 {
     bool unconditional = !arm->pattern;
     bool needsEndJump = !unconditional && hasFollowingArm;
-    size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, needsEndJump);
+    size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, needsEndJump, reference);
 
     if (endJump != SIZE_MAX) {
         pushVectorItem(endJumps, (void*)(uintptr_t)endJump);
@@ -1955,7 +1981,8 @@ static bool compileNextMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm,
     return unconditional;
 }
 
-static bool compileMatchArms(Compiler* compiler, ASTNode* ast, Operand subject, int destination, Vector* endJumps)
+static bool compileMatchArms(
+    Compiler* compiler, ASTNode* ast, Operand subject, int destination, Vector* endJumps, bool reference)
 {
     size_t count = countVector(&ast->match.arms);
 
@@ -1963,7 +1990,7 @@ static bool compileMatchArms(Compiler* compiler, ASTNode* ast, Operand subject, 
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
         bool hasFollowingArm = i + 1 < count || ast->match.defaultBranch;
         bool unconditional = compileNextMatchArm(compiler, ast, arm, subject, destination, hasFollowingArm,
-            endJumps);
+            endJumps, reference);
 
         if (unconditional) {
             return true;
@@ -1973,7 +2000,8 @@ static bool compileMatchArms(Compiler* compiler, ASTNode* ast, Operand subject, 
     return false;
 }
 
-static void compileMatchDefault(Compiler* compiler, ASTNode* ast, int destination, int branchRegisterCount)
+static void compileMatchDefault(
+    Compiler* compiler, ASTNode* ast, int destination, int branchRegisterCount, bool reference)
 {
     if (!ast->match.defaultBranch) {
         return;
@@ -1981,7 +2009,7 @@ static void compileMatchDefault(Compiler* compiler, ASTNode* ast, int destinatio
 
     TokenType type = getTypeId(ast);
 
-    compileConditionalBranch(compiler, ast->match.defaultBranch, type, destination);
+    compileConditionalBranch(compiler, ast->match.defaultBranch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
 }
 
@@ -2090,7 +2118,8 @@ static bool findLiteralMatchBranch(ASTNode* ast, ASTNode** branch, ASTNode** bin
     return true;
 }
 
-static bool compileLiteralMatch(Compiler* compiler, ASTNode* ast, TokenType type, int destination)
+static bool compileLiteralMatch(
+    Compiler* compiler, ASTNode* ast, TokenType type, int destination, bool reference)
 {
     ASTNode* branch;
     ASTNode* binding;
@@ -2107,7 +2136,7 @@ static bool compileLiteralMatch(Compiler* compiler, ASTNode* ast, TokenType type
         storeMatchBinding(compiler, binding, subject);
     }
 
-    compileConditionalBranch(compiler, branch, type, destination);
+    compileConditionalBranch(compiler, branch, type, destination, reference);
 
     return true;
 }
@@ -2123,14 +2152,14 @@ static void restoreMatchCompilerState(Compiler* compiler, TokenType type, int pr
     }
 }
 
-static Operand compileMatch(Compiler* compiler, ASTNode* ast)
+static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference)
 {
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
     TokenType type = getTypeId(ast);
     int destination = allocateMatchDestination(compiler, type);
 
-    if (compileLiteralMatch(compiler, ast, type, destination)) {
+    if (compileLiteralMatch(compiler, ast, type, destination, reference)) {
         restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);
 
         return matchResultOperand(type, destination);
@@ -2147,10 +2176,10 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast)
     Vector endJumps;
     initVector(&endJumps);
 
-    bool unconditionalArm = compileMatchArms(compiler, ast, subject, destination, &endJumps);
+    bool unconditionalArm = compileMatchArms(compiler, ast, subject, destination, &endJumps, reference);
 
     if (!unconditionalArm) {
-        compileMatchDefault(compiler, ast, destination, branchRegisterCount);
+        compileMatchDefault(compiler, ast, destination, branchRegisterCount, reference);
     }
 
     markMatchJoin(compiler, &endJumps);
@@ -2429,10 +2458,10 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
         case AST_BUILTIN_CALL:
             return compileBuiltinCall(compiler, ast, discard);
         case AST_CONDITIONAL:
-            result = compileConditional(compiler, ast);
+            result = compileConditional(compiler, ast, false);
             break;
         case AST_MATCH:
-            result = compileMatch(compiler, ast);
+            result = compileMatch(compiler, ast, false);
             break;
         case AST_FUNCTION_CALL:
             return compileFunctionCall(compiler, ast, discard);

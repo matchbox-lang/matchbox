@@ -1546,7 +1546,7 @@ static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
 
 static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
 {
-    if (!ast->functionDefinition.callCount) {
+    if (!compiler->repl && !ast->functionDefinition.callCount) {
         return;
     }
 

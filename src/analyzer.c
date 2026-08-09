@@ -1321,11 +1321,20 @@ static Builtin* resolveBuiltinCall(ASTNode* ast)
     return resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
 }
 
+static void unresolvedBuiltinCallError(ASTNode* ast)
+{
+    if (isBuiltinName(ast->functionCall.id->chars)) {
+        semanticError("Invalid arguments to builtin ", ast->functionCall.token);
+    }
+
+    symbolError("undefined", ast->functionCall.token);
+}
+
 static void analyzeBuiltinCall(ASTNode* ast)
 {
     Builtin* builtin = resolveBuiltinCall(ast);
     if (!builtin) {
-        symbolError("undefined", ast->functionCall.token);
+        unresolvedBuiltinCallError(ast);
     }
 
     validateBuiltinCall(ast, builtin, ast->functionCall.token);
@@ -1760,8 +1769,11 @@ static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
         symbolError("moved", token);
     }
 
-    if (getReferenceType(symbol) == REFERENCE_NONE
-        && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
+    if (getReferenceType(symbol) == REFERENCE_NONE && hasExclusiveAccess(symbol)) {
+        bindingAccessError("Cannot mutate binding ", token, " while exclusive access is active");
+    }
+
+    if (getReferenceType(symbol) == REFERENCE_NONE && *getSharedAccessCount(symbol)) {
         bindingAccessError("Cannot mutate binding ", token, " while shared access is active");
     }
 

@@ -105,6 +105,17 @@ Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argum
     return NULL;
 }
 
+bool isBuiltinName(const char* name)
+{
+    for (int i = 0; i < BUILTINS_MAX; i++) {
+        if (strcmp(name, builtins[i].name) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void builtinExit(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;

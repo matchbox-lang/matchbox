@@ -192,6 +192,11 @@ static bool isDigit(char c)
     return c >= '0' && c <= '9';
 }
 
+static bool isNewline(char c)
+{
+    return c == '\r' || c == '\n';
+}
+
 static bool isXDigit(char c)
 {
     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
@@ -480,7 +485,7 @@ static Token endCharacterLiteral(Lexer* lexer)
         return makeToken(lexer, TOKEN_CHARACTER_LITERAL);
     }
 
-    if (peek(lexer) == '\n') {
+    if (isNewline(peek(lexer))) {
         newlineCharacterError(lexer);
     }
 
@@ -501,7 +506,7 @@ static Token escapedCharacterLiteral(Lexer* lexer)
         unterminatedLiteralError(lexer, '\'');
     }
 
-    if (peek(lexer) == '\n') {
+    if (isNewline(peek(lexer))) {
         newlineCharacterError(lexer);
     }
 
@@ -518,7 +523,7 @@ static Token scanCharacterLiteral(Lexer* lexer)
         unterminatedLiteralError(lexer, '\'');
     }
 
-    if (peek(lexer) == '\n') {
+    if (isNewline(peek(lexer))) {
         newlineCharacterError(lexer);
     }
 
@@ -546,6 +551,10 @@ static Token scanStringLiteral(Lexer* lexer, char delimiter, TokenType type)
     bool escaped = false;
 
     while (!isEndOfFile(lexer)) {
+        if (delimiter == '"' && isNewline(peek(lexer))) {
+            unterminatedLiteralError(lexer, delimiter);
+        }
+
         char c = advance(lexer);
 
         if (c == delimiter && !escaped) {

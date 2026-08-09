@@ -1632,6 +1632,24 @@ static Operand compileZeroValue(Compiler* compiler, size_t slots)
     return makeOperand(emitLdi(compiler, 0), true);
 }
 
+static bool compileUnusedVariableDefinition(
+    Compiler* compiler, ASTNode* ast, size_t slots, bool unused, bool preserve)
+{
+    if (!unused || preserve) {
+        return false;
+    }
+
+    compileExpression(compiler, ast->variableDefinition.expr, true);
+
+    if (!isCompilingTopLevel(compiler)) {
+        return true;
+    }
+
+    allocateRegisters(compiler, slots);
+
+    return true;
+}
+
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
     Operand value;
@@ -1639,9 +1657,7 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
     bool unused = ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
     bool preserve = compiler->repl && isCompilingTopLevel(compiler);
 
-    if (unused && !preserve) {
-        compileExpression(compiler, ast->variableDefinition.expr, true);
-
+    if (compileUnusedVariableDefinition(compiler, ast, slots, unused, preserve)) {
         return;
     }
 

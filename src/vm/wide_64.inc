@@ -16,6 +16,31 @@ case OP_LDR_64:
 case OP_STR_64:
     *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
     break;
+case OP_F32_TO_F64:
+    vm->fp[a] = F64_VALUE(AS_F32(vm->fp[b]));
+    break;
+case OP_ADD_F64:
+    vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) + AS_F64(vm->fp[c]));
+    break;
+case OP_SUB_F64:
+    vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) - AS_F64(vm->fp[c]));
+    break;
+case OP_MUL_F64:
+    vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) * AS_F64(vm->fp[c]));
+    break;
+case OP_DIV_F64:
+    vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) / AS_F64(vm->fp[c]));
+    break;
+case OP_REM_F64: {
+    double left = AS_F64(vm->fp[b]);
+    double right = AS_F64(vm->fp[c]);
+    double result = fmod(left, right);
+    vm->fp[a] = F64_VALUE(result);
+    break;
+}
+case OP_NEG_F64:
+    vm->fp[a] = F64_VALUE(-AS_F64(vm->fp[b]));
+    break;
 case OP_ADD_I64:
     vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue + vm->fp[c].unsignedValue);
     break;

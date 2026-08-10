@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #if UINTPTR_MAX == UINT32_MAX
 #define VM_WIDE_INSTRUCTIONS "vm/wide_32.inc"
@@ -92,20 +93,9 @@ static void run(VM* vm)
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
 #include VM_WIDE_INSTRUCTIONS
-            case OP_F32_TO_F64: {
-                float source = AS_F32(vm->fp[b]);
-                writeF64(vm->fp, a, source);
-                break;
-            }
             case OP_ADD_F32: {
                 float result = AS_F32(vm->fp[b]) + AS_F32(vm->fp[c]);
                 vm->fp[a] = F32_VALUE(result);
-                break;
-            }
-            case OP_ADD_F64: {
-                double left = readF64(vm->fp, b);
-                double right = readF64(vm->fp, c);
-                writeF64(vm->fp, a, left + right);
                 break;
             }
             case OP_SUB_F32: {
@@ -113,32 +103,14 @@ static void run(VM* vm)
                 vm->fp[a] = F32_VALUE(result);
                 break;
             }
-            case OP_SUB_F64: {
-                double left = readF64(vm->fp, b);
-                double right = readF64(vm->fp, c);
-                writeF64(vm->fp, a, left - right);
-                break;
-            }
             case OP_MUL_F32: {
                 float result = AS_F32(vm->fp[b]) * AS_F32(vm->fp[c]);
                 vm->fp[a] = F32_VALUE(result);
                 break;
             }
-            case OP_MUL_F64: {
-                double left = readF64(vm->fp, b);
-                double right = readF64(vm->fp, c);
-                writeF64(vm->fp, a, left * right);
-                break;
-            }
             case OP_DIV_F32: {
                 float result = AS_F32(vm->fp[b]) / AS_F32(vm->fp[c]);
                 vm->fp[a] = F32_VALUE(result);
-                break;
-            }
-            case OP_DIV_F64: {
-                double left = readF64(vm->fp, b);
-                double right = readF64(vm->fp, c);
-                writeF64(vm->fp, a, left / right);
                 break;
             }
             case OP_REM_F32: {
@@ -148,21 +120,9 @@ static void run(VM* vm)
                 vm->fp[a] = F32_VALUE(result);
                 break;
             }
-            case OP_REM_F64: {
-                double left = readF64(vm->fp, b);
-                double right = readF64(vm->fp, c);
-                double result = fmod(left, right);
-                writeF64(vm->fp, a, result);
-                break;
-            }
             case OP_NEG_F32: {
                 float result = -AS_F32(vm->fp[b]);
                 vm->fp[a] = F32_VALUE(result);
-                break;
-            }
-            case OP_NEG_F64: {
-                double value = readF64(vm->fp, b);
-                writeF64(vm->fp, a, -value);
                 break;
             }
             case OP_ADD_I32:

@@ -128,7 +128,7 @@ typedef enum TokenType
     TOKEN_SEMICOLON,
     TOKEN_COMMA,
     TOKEN_INTEGER_LITERAL,
-    TOKEN_F32_LITERAL,
+    TOKEN_FLOAT_LITERAL,
     TOKEN_OCTAL_LITERAL,
     TOKEN_HEXADECIMAL_LITERAL,
     TOKEN_BINARY_LITERAL,
@@ -154,8 +154,12 @@ const char* getTokenTypeName(TokenType type);
 bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
 bool isIntegerTypeToken(TokenType type);
+bool isFloatTypeToken(TokenType type);
 bool isSignedIntegerTypeToken(TokenType type);
 bool canImplicitlyWidenInteger(TokenType source, TokenType destination);
+bool canImplicitlyConvertIntegerToFloat(TokenType source, TokenType destination);
+bool canImplicitlyWidenFloat(TokenType source, TokenType destination);
+bool canImplicitlyWidenType(TokenType source, TokenType destination);
 size_t getIntegerTypeSize(TokenType type);
 size_t getTypeSlotCount(TokenType type);
 bool isComparisonToken(TokenType type);

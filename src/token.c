@@ -138,7 +138,7 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_SEMICOLON:           return ";";
         case TOKEN_COMMA:               return ",";
         case TOKEN_INTEGER_LITERAL:     return "integer literal";
-        case TOKEN_F32_LITERAL:         return "f32 literal";
+        case TOKEN_FLOAT_LITERAL:       return "float literal";
         case TOKEN_OCTAL_LITERAL:       return "octal literal";
         case TOKEN_HEXADECIMAL_LITERAL: return "hexadecimal literal";
         case TOKEN_BINARY_LITERAL:      return "binary literal";
@@ -174,9 +174,9 @@ bool isAssignmentToken(TokenType type)
     }
 }
 
-bool isTypeToken(TokenType type)
+bool isFloatTypeToken(TokenType type)
 {
-    return isIntegerTypeToken(type) || type == TOKEN_BOOL || type == TOKEN_VOID;
+    return type == TOKEN_F32 || type == TOKEN_F64;
 }
 
 bool isIntegerTypeToken(TokenType type)
@@ -187,6 +187,12 @@ bool isIntegerTypeToken(TokenType type)
 bool isSignedIntegerTypeToken(TokenType type)
 {
     return type >= TOKEN_I8 && type <= TOKEN_I64;
+}
+
+bool isTypeToken(TokenType type)
+{
+    return isIntegerTypeToken(type) || isFloatTypeToken(type)
+        || type == TOKEN_BOOL || type == TOKEN_VOID;
 }
 
 bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
@@ -200,6 +206,39 @@ bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
     }
 
     return getIntegerTypeSize(source) < getIntegerTypeSize(destination);
+}
+
+bool canImplicitlyWidenFloat(TokenType source, TokenType destination)
+{
+    return source == TOKEN_F32 && destination == TOKEN_F64;
+}
+
+bool canImplicitlyConvertIntegerToFloat(TokenType source, TokenType destination)
+{
+    if (!isIntegerTypeToken(source)) {
+        return false;
+    }
+
+    size_t size = getIntegerTypeSize(source);
+
+    if (destination == TOKEN_F32) {
+        return size <= 2;
+    }
+
+    return destination == TOKEN_F64 && size <= 4;
+}
+
+bool canImplicitlyWidenType(TokenType source, TokenType destination)
+{
+    if (canImplicitlyWidenInteger(source, destination)) {
+        return true;
+    }
+
+    if (canImplicitlyConvertIntegerToFloat(source, destination)) {
+        return true;
+    }
+
+    return canImplicitlyWidenFloat(source, destination);
 }
 
 size_t getIntegerTypeSize(TokenType type)

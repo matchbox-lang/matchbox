@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 17
+#define BUILTINS_MAX 19
 #define BUILTIN_PARAMS_MAX 4
 
 typedef struct Builtin
@@ -26,6 +26,8 @@ void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintU32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintU64(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintBool(VM* vm, FunctionObject* function, Value* frame);
 void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
 void builtinClampI64(VM* vm, FunctionObject* function, Value* frame);

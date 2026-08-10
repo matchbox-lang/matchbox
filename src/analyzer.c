@@ -4,6 +4,7 @@
 #include "string_object.h"
 #include "token.h"
 #include "vector.h"
+#include <float.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -59,9 +60,18 @@ static void bindingAccessError(char* message, Token token, char* detail)
     exit(1);
 }
 
-static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
+static void integerLiteralOutOfRangeError(Token token, TokenType type)
 {
-    fprintf(stderr, "Error: Integer literal is too large for type %s", getTokenTypeName(type));
+    const char* typeName = getTokenTypeName(type);
+    fprintf(stderr, "Error: Integer literal is outside the range of %s", typeName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralNotRepresentableError(Token token, TokenType type)
+{
+    const char* typeName = getTokenTypeName(type);
+    fprintf(stderr, "Error: Integer literal cannot be represented as %s", typeName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -69,6 +79,21 @@ static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
 static void integerLiteralRequiresTypeError(Token token)
 {
     fprintf(stderr, "Error: Integer literal requires an explicit type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void floatLiteralOutOfRangeError(Token token, TokenType type)
+{
+    const char* typeName = getTokenTypeName(type);
+    fprintf(stderr, "Error: Float literal is outside the range of %s", typeName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void floatLiteralRequiresTypeError(Token token)
+{
+    fprintf(stderr, "Error: Float literal requires an explicit type");
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -130,6 +155,36 @@ static bool integerLiteralFitsType(uint64_t value, bool negative, TokenType type
     return negative ? value <= limit : value < limit;
 }
 
+static bool integerLiteralFitsFloat(uint64_t value, TokenType type)
+{
+    size_t precision;
+
+    if (type == TOKEN_F32) {
+        precision = FLT_MANT_DIG;
+    } else if (type == TOKEN_F64) {
+        precision = DBL_MANT_DIG;
+    } else {
+        return false;
+    }
+
+    size_t bits = 0;
+    uint64_t remaining = value;
+
+    while (remaining) {
+        bits++;
+        remaining >>= 1;
+    }
+
+    if (bits <= precision) {
+        return true;
+    }
+
+    size_t discardedBits = bits - precision;
+    uint64_t mask = (UINT64_C(1) << discardedBits) - 1;
+
+    return (value & mask) == 0;
+}
+
 static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
 {
     bool negative;
@@ -143,13 +198,37 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
         negativeUnsignedIntegerError(literal->integerLiteral.token);
     }
 
-    if (!integerLiteralFitsType(literal->integerLiteral.value, negative, type)) {
-        integerLiteralTooLargeForTypeError(literal->integerLiteral.token, type);
+    bool fitsInteger = integerLiteralFitsType(literal->integerLiteral.value, negative, type);
+    bool fitsFloat = integerLiteralFitsFloat(literal->integerLiteral.value, type);
+
+    if (isFloatTypeToken(type) && !fitsFloat) {
+        integerLiteralNotRepresentableError(literal->integerLiteral.token, type);
+    }
+
+    if (isIntegerTypeToken(type) && !fitsInteger) {
+        integerLiteralOutOfRangeError(literal->integerLiteral.token, type);
     }
 
     literal->integerLiteral.typeId = type;
 
     return true;
+}
+
+static void applyLiteralType(ASTNode* expression, TokenType type)
+{
+    if (isIntegerTypeToken(type) || isFloatTypeToken(type)) {
+        applyIntegerLiteralType(expression, type);
+    }
+
+    if (expression->type != AST_FLOAT || !isFloatTypeToken(type)) {
+        return;
+    }
+
+    if (type == TOKEN_F32 && expression->floatLiteral.value > FLT_MAX) {
+        floatLiteralOutOfRangeError(expression->floatLiteral.token, type);
+    }
+
+    expression->floatLiteral.typeId = type;
 }
 
 static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
@@ -507,7 +586,7 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
     ASTNode* result = getVectorAt(&branch->compound.statements, count - 1);
     TokenType resultType = getTypeId(result);
 
-    if (resultType == type || canImplicitlyWidenInteger(resultType, type)) {
+    if (resultType == type || canImplicitlyWidenType(resultType, type)) {
         return type;
     }
 
@@ -1118,6 +1197,15 @@ static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
     finalizeMatchType(ast, resultType);
 }
 
+static TokenType getFloatBinaryType(TokenType leftType, TokenType rightType)
+{
+    if (leftType == TOKEN_F64 || rightType == TOKEN_F64) {
+        return TOKEN_F64;
+    }
+
+    return TOKEN_F32;
+}
+
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -1125,6 +1213,16 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
+
+    if (isFloatTypeToken(leftType)) {
+        applyIntegerLiteralType(ast->binary.rightExpr, leftType);
+        rightType = getTypeId(ast->binary.rightExpr);
+    }
+
+    if (isFloatTypeToken(rightType)) {
+        applyIntegerLiteralType(ast->binary.leftExpr, rightType);
+        leftType = getTypeId(ast->binary.leftExpr);
+    }
 
     if (isIntegerTypeToken(leftType)) {
         applyIntegerLiteralType(ast->binary.rightExpr, leftType);
@@ -1136,7 +1234,12 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         leftType = getTypeId(ast->binary.leftExpr);
     }
 
-    if (leftType != rightType) {
+    bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
+    bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);
+    bool floatOperands = isFloatTypeToken(leftType) && isFloatTypeToken(rightType);
+    floatOperands = floatOperands || leftConvertsToRight || rightConvertsToLeft;
+
+    if (leftType != rightType && !floatOperands) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
@@ -1152,7 +1255,16 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
-    ast->binary.typeId = leftType;
+    if (floatOperands && !isTermToken(ast->binary.operator.type)
+        && !isFactorToken(ast->binary.operator.type)) {
+        semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
+    if (floatOperands) {
+        ast->binary.typeId = getFloatBinaryType(leftType, rightType);
+    } else {
+        ast->binary.typeId = leftType;
+    }
 
     if (isBoolOperatorToken(ast->binary.operator.type)) {
         ast->binary.typeId = TOKEN_BOOL;
@@ -1280,13 +1392,13 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
-        applyIntegerLiteralType(arg, builtin->params[i]);
+        applyLiteralType(arg, builtin->params[i]);
 
         TokenType argumentType = getTypeId(arg);
         TokenType parameterType = builtin->params[i];
 
         if (argumentType != parameterType
-            && !canImplicitlyWidenInteger(argumentType, parameterType)) {
+            && !canImplicitlyWidenType(argumentType, parameterType)) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -1353,7 +1465,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
         ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
-        applyIntegerLiteralType(arg, param->parameter.typeId);
+        applyLiteralType(arg, param->parameter.typeId);
 
         ReferenceType argumentType = getReferenceType(arg);
         ReferenceType parameterType = getReferenceType(param);
@@ -1369,7 +1481,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
         bool compatibleValue = argumentValueType == parameterValueType
             || (argumentType == REFERENCE_NONE
                 && parameterType == REFERENCE_NONE
-                && canImplicitlyWidenInteger(argumentValueType, parameterValueType));
+                && canImplicitlyWidenType(argumentValueType, parameterValueType));
 
         if (!compatibleValue || !compatibleReference) {
             semanticError("Invalid arguments to function ", token);
@@ -1669,7 +1781,7 @@ static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
     bool valueReturn = ast->functionDefinition.returnReferenceType == REFERENCE_NONE;
 
     if (returnType != type
-        && (!valueReturn || !canImplicitlyWidenInteger(type, returnType))) {
+        && (!valueReturn || !canImplicitlyWidenType(type, returnType))) {
         semanticError("Invalid return type for function ", ast->functionDefinition.token);
     }
 }
@@ -1690,8 +1802,7 @@ static void setParameterPositions(ASTNode* ast)
 
 static void applyFunctionReturnLiteralType(ASTNode* ast)
 {
-    if (!ast->functionDefinition.hasExplicitReturnType
-        || !isIntegerTypeToken(ast->functionDefinition.returnTypeId)) {
+    if (!ast->functionDefinition.hasExplicitReturnType) {
         return;
     }
 
@@ -1702,7 +1813,7 @@ static void applyFunctionReturnLiteralType(ASTNode* ast)
         ASTNode* statement = getVectorAt(statements, i);
 
         if (statement->type == AST_RETURN) {
-            applyIntegerLiteralType(
+            applyLiteralType(
                 statement->returnStatement.expr, ast->functionDefinition.returnTypeId);
         }
     }
@@ -1791,7 +1902,7 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
     bool compatibleValue = bindingType == expressionType
         || (getReferenceType(symbol) == REFERENCE_NONE
             && getReferenceType(expression) == REFERENCE_NONE
-            && canImplicitlyWidenInteger(expressionType, bindingType));
+            && canImplicitlyWidenType(expressionType, bindingType));
 
     if (!compatibleValue || getReferenceType(symbol) != getReferenceType(expression)) {
         semanticError("Assignment type does not match binding ", ast->assignment.token);
@@ -1816,6 +1927,12 @@ static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializ
     ast->assignment.initializesBinding = initializesBinding;
 }
 
+static bool isFloatAssignmentToken(TokenType type)
+{
+    return type == TOKEN_EQUAL || type == TOKEN_PLUS_EQUAL || type == TOKEN_MINUS_EQUAL
+        || type == TOKEN_STAR_EQUAL || type == TOKEN_SLASH_EQUAL || type == TOKEN_PERCENT_EQUAL;
+}
+
 static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
@@ -1828,12 +1945,15 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
         releaseReferenceAccess(symbol);
     }
 
-    if (isIntegerTypeToken(getTypeId(symbol))) {
-        applyIntegerLiteralType(ast->assignment.expr, getTypeId(symbol));
-    }
+    applyLiteralType(ast->assignment.expr, getTypeId(symbol));
 
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);
+
+    if (isFloatTypeToken(getTypeId(symbol))
+        && !isFloatAssignmentToken(ast->assignment.operator.type)) {
+        semanticError("Invalid operands to assignment ", ast->assignment.operator);
+    }
 
     if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getTypeId(symbol) != TOKEN_I32) {
         semanticError("Invalid operands to assignment ", ast->assignment.operator);
@@ -1887,9 +2007,7 @@ static void applyDeclaredType(ASTNode* expression, TokenType type, ReferenceType
         return;
     }
 
-    if (isIntegerTypeToken(type)) {
-        applyIntegerLiteralType(expression, type);
-    }
+    applyLiteralType(expression, type);
 
     if (expression->type == AST_CONDITIONAL) {
         expression->conditional.typeId = type;
@@ -1919,7 +2037,7 @@ static bool variableTypesMatch(ASTNode* ast, TokenType type, ReferenceType refer
         return false;
     }
 
-    return canImplicitlyWidenInteger(type, declaredType);
+    return canImplicitlyWidenType(type, declaredType);
 }
 
 static void validateVariableTypeMatch(ASTNode* ast, TokenType type, ReferenceType referenceType)
@@ -1941,6 +2059,10 @@ static void resolveVariableType(ASTNode* ast, ASTNode* expression)
     }
 
     if (type == TOKEN_UNKNOWN) {
+        if (expression->type == AST_FLOAT) {
+            floatLiteralRequiresTypeError(expression->floatLiteral.token);
+        }
+
         integerLiteralRequiresTypeError(ast->variableDefinition.token);
     }
 
@@ -2106,9 +2228,11 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
         semanticError("Logical not requires a bool operand ", ast->prefix.operator);
     }
 
-    if (ast->prefix.operator.type == TOKEN_MINUS
-        && !isSignedIntegerTypeToken(getTypeId(ast->prefix.expr))) {
-        semanticError("Negation requires a signed integer operand ", ast->prefix.operator);
+    TokenType type = getTypeId(ast->prefix.expr);
+    bool numeric = isSignedIntegerTypeToken(type) || isFloatTypeToken(type);
+
+    if (ast->prefix.operator.type == TOKEN_MINUS && !numeric) {
+        semanticError("Negation requires a signed numeric operand ", ast->prefix.operator);
     }
 }
 

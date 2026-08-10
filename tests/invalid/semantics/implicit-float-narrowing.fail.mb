@@ -1,0 +1,2 @@
+let wide: f64 = 2.5
+let narrow: f32 = wide

@@ -1,0 +1,53 @@
+let narrow: f32 = 2.5
+let wide: f64 = 3.0
+
+let sum: f64 = narrow + wide
+let difference: f64 = wide - narrow
+let product: f64 = narrow * wide
+let quotient: f64 = wide / narrow
+let remainder32: f32 = 5.5 % 2.0
+let remainder64: f64 = wide % narrow
+let literalProduct: f32 = narrow * 4
+
+let signed16: i16 = -4
+let unsigned16: u16 = 4
+let signed32: i32 = -4
+let unsigned32: u32 = 4
+let signedProduct32: f32 = narrow * signed16
+let unsignedProduct32: f32 = narrow * unsigned16
+let signedProduct64: f64 = wide * signed32
+let unsignedProduct64: f64 = wide * unsigned32
+
+let widened: f64 = narrow
+var assigned: f64
+assigned = narrow
+var accumulated: f64 = wide
+accumulated += narrow
+var scaled: f32 = narrow
+scaled *= 2.0
+
+func accept64(value: f64) -> f64 {
+    return value
+}
+
+func widenReturn(value: f32) -> f64 {
+    return value
+}
+
+print(sum)
+print(difference)
+print(product)
+print(quotient)
+print(remainder32)
+print(remainder64)
+print(literalProduct)
+print(signedProduct32)
+print(unsignedProduct32)
+print(signedProduct64)
+print(unsignedProduct64)
+print(widened)
+print(assigned)
+print(accumulated)
+print(scaled)
+print(accept64(narrow))
+print(widenReturn(narrow))

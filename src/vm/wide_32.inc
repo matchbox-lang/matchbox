@@ -8,6 +8,18 @@
     (values)[(index) + 1].unsignedValue = wideValue >> 32; \
 }
 
+#define READ_F64(values, index, result) { \
+    uint64_t bits = READ_U64(values, index); \
+    memcpy(&(result), &bits, sizeof(result)); \
+}
+
+#define WRITE_F64(values, index, value) { \
+    double doubleValue = (value); \
+    uint64_t bits; \
+    memcpy(&bits, &doubleValue, sizeof(bits)); \
+    WRITE_U64(values, index, bits); \
+}
+
 case OP_MOV_64:
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b));
     break;
@@ -28,6 +40,62 @@ case OP_STR_64:
     *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
     *((Value*)AS_POINTER(vm->fp[b]) + 1) = vm->fp[a + 1];
     break;
+case OP_F32_TO_F64:
+    WRITE_F64(vm->fp, a, AS_F32(vm->fp[b]));
+    break;
+case OP_INT_TO_F64:
+    WRITE_F64(vm->fp, a, AS_SIGNED(vm->fp[b]));
+    break;
+case OP_UINT_TO_F64:
+    WRITE_F64(vm->fp, a, AS_UNSIGNED(vm->fp[b]));
+    break;
+case OP_ADD_F64: {
+    double left;
+    double right;
+    READ_F64(vm->fp, b, left);
+    READ_F64(vm->fp, c, right);
+    WRITE_F64(vm->fp, a, left + right);
+    break;
+}
+case OP_SUB_F64: {
+    double left;
+    double right;
+    READ_F64(vm->fp, b, left);
+    READ_F64(vm->fp, c, right);
+    WRITE_F64(vm->fp, a, left - right);
+    break;
+}
+case OP_MUL_F64: {
+    double left;
+    double right;
+    READ_F64(vm->fp, b, left);
+    READ_F64(vm->fp, c, right);
+    WRITE_F64(vm->fp, a, left * right);
+    break;
+}
+case OP_DIV_F64: {
+    double left;
+    double right;
+    READ_F64(vm->fp, b, left);
+    READ_F64(vm->fp, c, right);
+    WRITE_F64(vm->fp, a, left / right);
+    break;
+}
+case OP_REM_F64: {
+    double left;
+    double right;
+    READ_F64(vm->fp, b, left);
+    READ_F64(vm->fp, c, right);
+    double result = fmod(left, right);
+    WRITE_F64(vm->fp, a, result);
+    break;
+}
+case OP_NEG_F64: {
+    double value;
+    READ_F64(vm->fp, b, value);
+    WRITE_F64(vm->fp, a, -value);
+    break;
+}
 case OP_ADD_I64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) + READ_U64(vm->fp, c));
     break;
@@ -164,3 +232,5 @@ case OP_RET_64: {
 
 #undef READ_U64
 #undef WRITE_U64
+#undef READ_F64
+#undef WRITE_F64

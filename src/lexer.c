@@ -298,7 +298,10 @@ static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
 
 static void validateNumberEnd(Lexer* lexer)
 {
-    if (isAlpha(peek(lexer)) || isDigit(peek(lexer)) || peek(lexer) == '_') {
+    bool adjacentDecimal = peek(lexer) == '.' && isDigit(next(lexer));
+
+    if (isAlpha(peek(lexer)) || isDigit(peek(lexer)) || peek(lexer) == '_'
+        || adjacentDecimal) {
         invalidNumberError(lexer);
     }
 }
@@ -410,6 +413,17 @@ static void scanExponent(Lexer* lexer)
     scanDigits(lexer, isDigit);
 }
 
+static Token finishFloatLiteral(Lexer* lexer)
+{
+    if (peek(lexer) == 'e' || peek(lexer) == 'E') {
+        scanExponent(lexer);
+    }
+
+    validateNumberEnd(lexer);
+
+    return makeToken(lexer, TOKEN_FLOAT_LITERAL);
+}
+
 static Token scanFloatLiteral(Lexer* lexer)
 {
     if (peek(lexer) == '.' && next(lexer) != '.') {
@@ -417,13 +431,7 @@ static Token scanFloatLiteral(Lexer* lexer)
         scanDigits(lexer, isDigit);
     }
 
-    if (peek(lexer) == 'e' || peek(lexer) == 'E') {
-        scanExponent(lexer);
-    }
-
-    validateNumberEnd(lexer);
-
-    return makeToken(lexer, TOKEN_F32_LITERAL);
+    return finishFloatLiteral(lexer);
 }
 
 static Token scanIntegerLiteral(Lexer* lexer)
@@ -691,7 +699,9 @@ Token scanToken(Lexer* lexer)
                 match(lexer, '.') ? TOKEN_SAFE_ACCESS : TOKEN_QUESTION);
         case '.':
             if (isDigit(peek(lexer))) {
-                return scanFloatLiteral(lexer);
+                scanDigits(lexer, isDigit);
+
+                return finishFloatLiteral(lexer);
             }
             return makeToken(lexer, 
                 match(lexer, '.') ?

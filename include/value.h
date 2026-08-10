@@ -65,6 +65,10 @@ typedef struct ValueArray
 
 void initValueArray(ValueArray* array);
 void freeValueArray(ValueArray* array);
+int64_t readI64(Value* frame, size_t position);
+uint64_t readU64(Value* frame, size_t position);
+double readF64(Value* frame, size_t position);
+void writeI64(Value* frame, int64_t value);
 size_t countValueArray(ValueArray* array);
 void reserveValueArray(ValueArray* array, size_t capacity);
 void resizeValueArray(ValueArray* array, size_t size);

@@ -1,8 +1,10 @@
 #include "vm.h"
 #include "function_object.h"
 #include "opcode.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #if UINTPTR_MAX == UINT32_MAX
 #define VM_WIDE_INSTRUCTIONS "vm/wide_32.inc"
@@ -91,6 +93,44 @@ static void run(VM* vm)
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
 #include VM_WIDE_INSTRUCTIONS
+            case OP_INT_TO_F32:
+                vm->fp[a] = F32_VALUE((float)AS_SIGNED(vm->fp[b]));
+                break;
+            case OP_UINT_TO_F32:
+                vm->fp[a] = F32_VALUE((float)AS_UNSIGNED(vm->fp[b]));
+                break;
+            case OP_ADD_F32: {
+                float result = AS_F32(vm->fp[b]) + AS_F32(vm->fp[c]);
+                vm->fp[a] = F32_VALUE(result);
+                break;
+            }
+            case OP_SUB_F32: {
+                float result = AS_F32(vm->fp[b]) - AS_F32(vm->fp[c]);
+                vm->fp[a] = F32_VALUE(result);
+                break;
+            }
+            case OP_MUL_F32: {
+                float result = AS_F32(vm->fp[b]) * AS_F32(vm->fp[c]);
+                vm->fp[a] = F32_VALUE(result);
+                break;
+            }
+            case OP_DIV_F32: {
+                float result = AS_F32(vm->fp[b]) / AS_F32(vm->fp[c]);
+                vm->fp[a] = F32_VALUE(result);
+                break;
+            }
+            case OP_REM_F32: {
+                float left = AS_F32(vm->fp[b]);
+                float right = AS_F32(vm->fp[c]);
+                float result = fmodf(left, right);
+                vm->fp[a] = F32_VALUE(result);
+                break;
+            }
+            case OP_NEG_F32: {
+                float result = -AS_F32(vm->fp[b]);
+                vm->fp[a] = F32_VALUE(result);
+                break;
+            }
             case OP_ADD_I32:
                 vm->fp[a] = I32_VALUE(AS_U32(vm->fp[b]) + AS_U32(vm->fp[c]));
                 break;

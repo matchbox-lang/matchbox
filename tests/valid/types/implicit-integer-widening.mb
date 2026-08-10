@@ -8,6 +8,13 @@ let unsigned16: u16 = unsigned8
 let unsigned32: u32 = unsigned16
 let unsigned64: u64 = unsigned32
 
+let signedFloat32: f32 = signed16
+let unsignedFloat32: f32 = unsigned16
+let signedFloat64: f64 = signed32
+let unsignedFloat64: f64 = unsigned32
+let literalFloat32: f32 = 4
+let literalFloat64: f64 = 16777217
+
 func widenArgument(value: i64) -> i64 {
     return value
 }
@@ -16,9 +23,28 @@ func widenReturn(value: i8) -> i64 {
     return value
 }
 
+func integerToFloatArgument(value: f64) -> f64 {
+    return value
+}
+
+func integerToFloatReturn(value: i32) -> f64 {
+    return value
+}
+
 var assigned: i64
 assigned = signed8
+var assignedFloat: f32
+assignedFloat = 4
 
 print(signed32)
 widenArgument(signed8)
 widenReturn(signed8)
+print(signedFloat32)
+print(unsignedFloat32)
+print(signedFloat64)
+print(unsignedFloat64)
+print(literalFloat32)
+print(literalFloat64)
+print(assignedFloat)
+print(integerToFloatArgument(signed32))
+print(integerToFloatReturn(signed32))

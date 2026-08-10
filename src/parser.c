@@ -6,7 +6,9 @@
 #include "token.h"
 #include "util.h"
 #include "vector.h"
+#include <float.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -98,12 +100,46 @@ static bool isEndOfFile(Parser* parser)
         || parser->currentToken.type == TOKEN_EOF;
 }
 
+static TokenType inferIntegerLiteralType(uint64_t value)
+{
+    if (value <= INT32_MAX) {
+        return TOKEN_I32;
+    }
+
+    if (value <= INT64_MAX) {
+        return TOKEN_I64;
+    }
+
+    return TOKEN_UNKNOWN;
+}
+
+static TokenType inferFloatLiteralType(double value)
+{
+    if (value <= FLT_MAX) {
+        return TOKEN_F32;
+    }
+
+    return TOKEN_F64;
+}
+
 static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
     ast->integerLiteral.value = integerLiteralToValue(token);
     ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
+    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
+
+    consume(parser, token.type);
+
+    return ast;
+}
+
+static ASTNode* parseFloatLiteral(Parser* parser, Token token)
+{
+    ASTNode* ast = createASTNode(AST_FLOAT);
+    ast->floatLiteral.value = floatLiteralToValue(token);
+    ast->floatLiteral.token = token;
+    ast->floatLiteral.typeId = inferFloatLiteralType(ast->floatLiteral.value);
 
     consume(parser, token.type);
 
@@ -115,7 +151,7 @@ static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
     ASTNode* ast = createASTNode(AST_INTEGER);
     ast->integerLiteral.value = binaryLiteralToValue(token);
     ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
+    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
     consume(parser, token.type);
 
@@ -127,7 +163,7 @@ static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
     ASTNode* ast = createASTNode(AST_INTEGER);
     ast->integerLiteral.value = hexadecimalLiteralToValue(token);
     ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
+    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
     consume(parser, token.type);
 
@@ -139,7 +175,7 @@ static ASTNode* parseOctalLiteral(Parser* parser, Token token)
     ASTNode* ast = createASTNode(AST_INTEGER);
     ast->integerLiteral.value = octalLiteralToValue(token);
     ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
+    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
     consume(parser, token.type);
 
@@ -211,6 +247,8 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseMatch(parser);
         case TOKEN_INTEGER_LITERAL:
             return parseIntegerLiteral(parser, parser->currentToken);
+        case TOKEN_FLOAT_LITERAL:
+            return parseFloatLiteral(parser, parser->currentToken);
         case TOKEN_BINARY_LITERAL:
             return parseBinaryLiteral(parser, parser->currentToken);
         case TOKEN_HEXADECIMAL_LITERAL:

@@ -87,9 +87,7 @@ void printVersion()
 bool runProgram(Options* options)
 {
     if (options->mode == PROGRAM_TEST) {
-        runTests(options);
-
-        return true;
+        return runTests(options);
     }
 
     if (!options->filename) {

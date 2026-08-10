@@ -58,7 +58,28 @@ typedef enum Opcode
     OP_LDR_64,
     OP_STR_64,
 
-    // Addition
+    // Floating-point conversion
+    OP_F32_TO_F64,
+    OP_INT_TO_F32,
+    OP_UINT_TO_F32,
+    OP_INT_TO_F64,
+    OP_UINT_TO_F64,
+
+    // Floating-point arithmetic
+    OP_ADD_F32,
+    OP_ADD_F64,
+    OP_SUB_F32,
+    OP_SUB_F64,
+    OP_MUL_F32,
+    OP_MUL_F64,
+    OP_DIV_F32,
+    OP_DIV_F64,
+    OP_REM_F32,
+    OP_REM_F64,
+    OP_NEG_F32,
+    OP_NEG_F64,
+
+    // Integer addition
     OP_ADD_I64,
     OP_ADDI_I64,
     OP_ADD_I32,
@@ -68,7 +89,7 @@ typedef enum Opcode
     OP_ADD_I8,
     OP_ADDI_I8,
 
-    // Subtraction
+    // Integer subtraction
     OP_SUB_I64,
     OP_SUBI_I64,
     OP_SUB_I32,
@@ -78,7 +99,7 @@ typedef enum Opcode
     OP_SUB_I8,
     OP_SUBI_I8,
 
-    // Multiplication
+    // Integer multiplication
     OP_MUL_I64,
     OP_MULI_I64,
     OP_MUL_I32,
@@ -98,7 +119,7 @@ typedef enum Opcode
     OP_IDIV_I8,
     OP_IDIV_U8,
 
-    // Remainder
+    // Integer remainder
     OP_REM_I64,
     OP_REM_U64,
     OP_REM_I32,
@@ -179,7 +200,7 @@ typedef enum Opcode
     OP_OR,
     OP_NOT,
 
-    // Negation
+    // Integer negation
     OP_NEG_I64,
     OP_NEG_I32,
     OP_NEG_I16,

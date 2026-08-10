@@ -2,6 +2,7 @@ let a: f32 = 12.34
 let b: f32 = 12.34e2
 let c: f64 = 12.34
 let d: f64 = 12.34e2
+
 let large: f64 = 1.0e100
 let inferredLarge = 1e100
 let leadingDecimal = .2
@@ -24,10 +25,13 @@ let returned32 = preserve32(a)
 let returned64 = preserve64(c)
 let contextual64 = preserve64(90.12)
 
-print(returned32)
+print(a)
 print(b)
-print(returned64)
+print(c)
 print(d)
+
+print(returned32)
+print(returned64)
 print(literal64())
 print(contextual64)
 print(large)

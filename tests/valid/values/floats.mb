@@ -3,6 +3,9 @@ let b: f32 = 12.34e2
 let c: f64 = 12.34
 let d: f64 = 12.34e2
 let large: f64 = 1.0e100
+let leadingDecimal = .2
+let leadingDecimalExponent = .2e2
+let leadingZeros = 001.2
 
 func preserve32(value: f32) -> f32 {
     return value
@@ -27,3 +30,6 @@ print(d)
 print(literal64())
 print(contextual64)
 print(large)
+print(leadingDecimal)
+print(leadingDecimalExponent)
+print(leadingZeros)

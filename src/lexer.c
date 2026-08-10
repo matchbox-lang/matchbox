@@ -691,6 +691,8 @@ Token scanToken(Lexer* lexer)
                 match(lexer, '.') ? TOKEN_SAFE_ACCESS : TOKEN_QUESTION);
         case '.':
             if (isDigit(peek(lexer))) {
+                scanDigits(lexer, isDigit);
+
                 return scanFloatLiteral(lexer);
             }
             return makeToken(lexer, 

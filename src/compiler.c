@@ -77,6 +77,7 @@ static void removeDiscardedStatementReads(ASTNode* ast);
 static void markCalledFunctions(ASTNode* ast);
 static void resetFunctionCallCounts(ASTNode* ast);
 static bool isSimpleMatchValue(ASTNode* ast);
+static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 
 static void functionPositionOverflowError()
@@ -778,6 +779,18 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     uint64_t value = ast->integerLiteral.value;
 
+    if (getTypeId(ast) == TOKEN_F64) {
+        size_t position = makeF64Constant(compiler, (double)value);
+
+        return makeWideOperand(emitLdcI64(compiler, position), true);
+    }
+
+    if (getTypeId(ast) == TOKEN_F32) {
+        size_t position = makeF32Constant(compiler, (float)value);
+
+        return makeOperand(emitLdc(compiler, position), true);
+    }
+
     if (getNodeSlotCount(ast) == 2) {
         return compileWideNumber(compiler, value);
     }
@@ -1406,6 +1419,40 @@ static Operand widenFloatOperand(Compiler* compiler, Operand operand,
     return makeWideOperand(destinationRegister, true);
 }
 
+static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
+    TokenType source, TokenType destination)
+{
+    if (!canImplicitlyConvertIntegerToFloat(source, destination)) {
+        return operand;
+    }
+
+    bool wide = destination == TOKEN_F64;
+    int destinationRegister = operand.reg;
+
+    if (!operand.temporary) {
+        destinationRegister = allocateRegisters(compiler, wide ? 2 : 1);
+    } else if (wide) {
+        allocateRegister(compiler);
+    }
+
+    bool signedInteger = isSignedIntegerTypeToken(source);
+    Opcode opcode;
+
+    if (wide) {
+        opcode = signedInteger ? OP_INT_TO_F64 : OP_UINT_TO_F64;
+    } else {
+        opcode = signedInteger ? OP_INT_TO_F32 : OP_UINT_TO_F32;
+    }
+
+    emitInstruction(compiler, opcode, destinationRegister, operand.reg, 0);
+
+    if (wide) {
+        return makeWideOperand(destinationRegister, true);
+    }
+
+    return makeOperand(destinationRegister, true);
+}
+
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
     TokenType destination, bool reference)
 {
@@ -1417,6 +1464,7 @@ static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
 
     TokenType source = getTypeId(ast);
     operand = widenIntegerOperand(compiler, operand, source, destination);
+    operand = convertIntegerToFloatOperand(compiler, operand, source, destination);
 
     return widenFloatOperand(compiler, operand, source, destination);
 }
@@ -1777,15 +1825,6 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
     compiler->peepholeBarrier = previousPeepholeBarrier;
 }
 
-static TokenType getWideReturnType(TokenType expressionType)
-{
-    if (expressionType == TOKEN_F32) {
-        return TOKEN_F64;
-    }
-
-    return isSignedIntegerTypeToken(expressionType) ? TOKEN_I64 : TOKEN_U64;
-}
-
 static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
 {
     if (isNone(ast->returnStatement.expr)) {
@@ -1795,19 +1834,31 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
     }
 
     bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
-    TokenType expressionType = getTypeId(ast->returnStatement.expr);
-    TokenType returnType = expressionType;
-
-    if (compiler->function->returnCount == 2) {
-        returnType = getWideReturnType(expressionType);
-    }
-
+    ASTNode* function = getCurrentFunctionDefinition(compiler);
+    TokenType returnType = function->functionDefinition.returnTypeId;
     Operand value = compileConvertedExpression(
         compiler, ast->returnStatement.expr, returnType, reference);
 
     emitRetv(compiler, value);
     releaseOperand(compiler, value);
     compiler->registerCount = compiler->frameBaseCount;
+}
+
+static ASTNode* getCurrentFunctionDefinition(Compiler* compiler)
+{
+    size_t count = countVector(&compiler->module->functions);
+
+    for (size_t i = 0; i < count; i++) {
+        FunctionObject* function = getVectorAt(&compiler->module->functions, i);
+
+        if (function == compiler->function) {
+            ASTNode* reference = getVectorAt(&compiler->functionReferences, i);
+
+            return reference;
+        }
+    }
+
+    return NULL;
 }
 
 static Operand compileZeroValue(Compiler* compiler, size_t slots)

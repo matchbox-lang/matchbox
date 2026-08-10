@@ -60,6 +60,10 @@ typedef enum Opcode
 
     // Floating-point conversion
     OP_F32_TO_F64,
+    OP_INT_TO_F32,
+    OP_UINT_TO_F32,
+    OP_INT_TO_F64,
+    OP_UINT_TO_F64,
 
     // Floating-point arithmetic
     OP_ADD_F32,

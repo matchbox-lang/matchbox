@@ -43,6 +43,12 @@ case OP_STR_64:
 case OP_F32_TO_F64:
     WRITE_F64(vm->fp, a, AS_F32(vm->fp[b]));
     break;
+case OP_INT_TO_F64:
+    WRITE_F64(vm->fp, a, AS_SIGNED(vm->fp[b]));
+    break;
+case OP_UINT_TO_F64:
+    WRITE_F64(vm->fp, a, AS_UNSIGNED(vm->fp[b]));
+    break;
 case OP_ADD_F64: {
     double left;
     double right;

@@ -157,6 +157,7 @@ bool isIntegerTypeToken(TokenType type);
 bool isFloatTypeToken(TokenType type);
 bool isSignedIntegerTypeToken(TokenType type);
 bool canImplicitlyWidenInteger(TokenType source, TokenType destination);
+bool canImplicitlyConvertIntegerToFloat(TokenType source, TokenType destination);
 bool canImplicitlyWidenFloat(TokenType source, TokenType destination);
 bool canImplicitlyWidenType(TokenType source, TokenType destination);
 size_t getIntegerTypeSize(TokenType type);

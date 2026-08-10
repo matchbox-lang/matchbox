@@ -1,0 +1,2 @@
+let integer: i32 = 4
+let product: f32 = 2.5 * integer

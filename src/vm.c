@@ -93,6 +93,12 @@ static void run(VM* vm)
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
 #include VM_WIDE_INSTRUCTIONS
+            case OP_INT_TO_F32:
+                vm->fp[a] = F32_VALUE((float)AS_SIGNED(vm->fp[b]));
+                break;
+            case OP_UINT_TO_F32:
+                vm->fp[a] = F32_VALUE((float)AS_UNSIGNED(vm->fp[b]));
+                break;
             case OP_ADD_F32: {
                 float result = AS_F32(vm->fp[b]) + AS_F32(vm->fp[c]);
                 vm->fp[a] = F32_VALUE(result);

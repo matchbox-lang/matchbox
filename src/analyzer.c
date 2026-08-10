@@ -145,6 +145,36 @@ static bool integerLiteralFitsType(uint64_t value, bool negative, TokenType type
     return negative ? value <= limit : value < limit;
 }
 
+static bool integerLiteralFitsFloat(uint64_t value, TokenType type)
+{
+    size_t precision;
+
+    if (type == TOKEN_F32) {
+        precision = FLT_MANT_DIG;
+    } else if (type == TOKEN_F64) {
+        precision = DBL_MANT_DIG;
+    } else {
+        return false;
+    }
+
+    size_t bits = 0;
+    uint64_t remaining = value;
+
+    while (remaining) {
+        bits++;
+        remaining >>= 1;
+    }
+
+    if (bits <= precision) {
+        return true;
+    }
+
+    size_t discardedBits = bits - precision;
+    uint64_t mask = (UINT64_C(1) << discardedBits) - 1;
+
+    return (value & mask) == 0;
+}
+
 static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
 {
     bool negative;
@@ -158,7 +188,10 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
         negativeUnsignedIntegerError(literal->integerLiteral.token);
     }
 
-    if (!integerLiteralFitsType(literal->integerLiteral.value, negative, type)) {
+    bool fitsInteger = integerLiteralFitsType(literal->integerLiteral.value, negative, type);
+    bool fitsFloat = integerLiteralFitsFloat(literal->integerLiteral.value, type);
+
+    if (!fitsInteger && !fitsFloat) {
         integerLiteralTooLargeForTypeError(literal->integerLiteral.token, type);
     }
 
@@ -169,10 +202,8 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
 
 static void applyLiteralType(ASTNode* expression, TokenType type)
 {
-    if (isIntegerTypeToken(type)) {
+    if (isIntegerTypeToken(type) || isFloatTypeToken(type)) {
         applyIntegerLiteralType(expression, type);
-
-        return;
     }
 
     if (expression->type != AST_FLOAT || !isFloatTypeToken(type)) {
@@ -1152,6 +1183,15 @@ static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
     finalizeMatchType(ast, resultType);
 }
 
+static TokenType getFloatBinaryType(TokenType leftType, TokenType rightType)
+{
+    if (leftType == TOKEN_F64 || rightType == TOKEN_F64) {
+        return TOKEN_F64;
+    }
+
+    return TOKEN_F32;
+}
+
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -1159,6 +1199,16 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
+
+    if (isFloatTypeToken(leftType)) {
+        applyIntegerLiteralType(ast->binary.rightExpr, leftType);
+        rightType = getTypeId(ast->binary.rightExpr);
+    }
+
+    if (isFloatTypeToken(rightType)) {
+        applyIntegerLiteralType(ast->binary.leftExpr, rightType);
+        leftType = getTypeId(ast->binary.leftExpr);
+    }
 
     if (isIntegerTypeToken(leftType)) {
         applyIntegerLiteralType(ast->binary.rightExpr, leftType);
@@ -1170,7 +1220,10 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         leftType = getTypeId(ast->binary.leftExpr);
     }
 
+    bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
+    bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);
     bool floatOperands = isFloatTypeToken(leftType) && isFloatTypeToken(rightType);
+    floatOperands = floatOperands || leftConvertsToRight || rightConvertsToLeft;
 
     if (leftType != rightType && !floatOperands) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
@@ -1193,9 +1246,11 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
-    ast->binary.typeId = floatOperands && (leftType == TOKEN_F64 || rightType == TOKEN_F64)
-        ? TOKEN_F64
-        : leftType;
+    if (floatOperands) {
+        ast->binary.typeId = getFloatBinaryType(leftType, rightType);
+    } else {
+        ast->binary.typeId = leftType;
+    }
 
     if (isBoolOperatorToken(ast->binary.operator.type)) {
         ast->binary.typeId = TOKEN_BOOL;
@@ -1876,9 +1931,7 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
         releaseReferenceAccess(symbol);
     }
 
-    if (isIntegerTypeToken(getTypeId(symbol))) {
-        applyIntegerLiteralType(ast->assignment.expr, getTypeId(symbol));
-    }
+    applyLiteralType(ast->assignment.expr, getTypeId(symbol));
 
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);

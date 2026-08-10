@@ -213,9 +213,28 @@ bool canImplicitlyWidenFloat(TokenType source, TokenType destination)
     return source == TOKEN_F32 && destination == TOKEN_F64;
 }
 
+bool canImplicitlyConvertIntegerToFloat(TokenType source, TokenType destination)
+{
+    if (!isIntegerTypeToken(source)) {
+        return false;
+    }
+
+    size_t size = getIntegerTypeSize(source);
+
+    if (destination == TOKEN_F32) {
+        return size <= 2;
+    }
+
+    return destination == TOKEN_F64 && size <= 4;
+}
+
 bool canImplicitlyWidenType(TokenType source, TokenType destination)
 {
     if (canImplicitlyWidenInteger(source, destination)) {
+        return true;
+    }
+
+    if (canImplicitlyConvertIntegerToFloat(source, destination)) {
         return true;
     }
 

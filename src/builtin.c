@@ -1,4 +1,5 @@
 #include "builtin.h"
+#include "float_format.h"
 #include "token.h"
 #include "value.h"
 #include <inttypes.h>
@@ -186,8 +187,10 @@ void builtinPrintF32(VM* vm, FunctionObject* function, Value* frame)
     (void)function;
 
     float value = AS_F32(frame[0]);
+    char buffer[32];
+    formatShortestF32(buffer, sizeof(buffer), value);
 
-    printf("%.9g\n", value);
+    printf("%s\n", buffer);
 }
 
 void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame)
@@ -196,8 +199,10 @@ void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame)
     (void)function;
 
     double value = readF64(frame, 0);
+    char buffer[32];
+    formatShortestF64(buffer, sizeof(buffer), value);
 
-    printf("%.17g\n", value);
+    printf("%s\n", buffer);
 }
 
 void builtinPrintBool(VM* vm, FunctionObject* function, Value* frame)

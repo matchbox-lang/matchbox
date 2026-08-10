@@ -385,20 +385,20 @@ static void printTestSummary(const TestRun* run)
     printf("%d %s failed.\n", run->failed, run->failed == 1 ? "test" : "tests");
 }
 
-void runTests(Options* options)
+bool runTests(Options* options)
 {
     TestRun run = {options->testOutput, PROGRAM_COMMAND, true, 0, 0, 0};
     const char* path = configureTestRun(&run, options);
     int testCount;
 
     if (!validateTestPath(path)) {
-        return;
+        return false;
     }
 
     testCount = countTests(&run, path);
 
     if (!validateTestCount(path, testCount)) {
-        return;
+        return false;
     }
 
     printTestStart(testCount);
@@ -407,8 +407,10 @@ void runTests(Options* options)
     if (run.found == 0) {
         testsNotFoundError(path);
 
-        return;
+        return false;
     }
 
     printTestSummary(&run);
+
+    return run.failed == 0;
 }

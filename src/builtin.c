@@ -31,51 +31,6 @@ Builtin builtins[BUILTINS_MAX] = {
     {"byteorder",   builtinByteorder,   0,  {},                                 TOKEN_I32}
 };
 
-static int64_t readI64(Value* frame, size_t position)
-{
-#if UINTPTR_MAX == UINT32_MAX
-    uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
-
-    return (int64_t)bits;
-#else
-    return AS_SIGNED(frame[position]);
-#endif
-}
-
-static uint64_t readU64(Value* frame, size_t position)
-{
-#if UINTPTR_MAX == UINT32_MAX
-    return AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
-#else
-    return AS_UNSIGNED(frame[position]);
-#endif
-}
-
-static double readF64(Value* frame, size_t position)
-{
-#if UINTPTR_MAX == UINT32_MAX
-    uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
-    double value;
-    memcpy(&value, &bits, sizeof(value));
-
-    return value;
-#else
-    return AS_F64(frame[position]);
-#endif
-}
-
-static void writeI64(Value* frame, int64_t value)
-{
-#if UINTPTR_MAX == UINT32_MAX
-    uint64_t bits = (uint64_t)value;
-    
-    frame[-2] = U32_VALUE(bits);
-    frame[-1] = U32_VALUE(bits >> 32);
-#else
-    frame[-2] = SIGNED_VALUE(value);
-#endif
-}
-
 static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)
 {
     TokenType argumentType = argumentTypes[position];
@@ -83,7 +38,7 @@ static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, s
 
     return argumentType == TOKEN_UNKNOWN
         || argumentType == parameterType
-        || canImplicitlyWidenInteger(argumentType, parameterType);
+        || canImplicitlyWidenType(argumentType, parameterType);
 }
 
 static bool builtinMatches(Builtin* builtin, TokenType* argumentTypes, size_t argumentCount)

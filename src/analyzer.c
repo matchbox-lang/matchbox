@@ -541,7 +541,7 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
     ASTNode* result = getVectorAt(&branch->compound.statements, count - 1);
     TokenType resultType = getTypeId(result);
 
-    if (resultType == type || canImplicitlyWidenInteger(resultType, type)) {
+    if (resultType == type || canImplicitlyWidenType(resultType, type)) {
         return type;
     }
 
@@ -1170,7 +1170,9 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         leftType = getTypeId(ast->binary.leftExpr);
     }
 
-    if (leftType != rightType) {
+    bool floatOperands = isFloatTypeToken(leftType) && isFloatTypeToken(rightType);
+
+    if (leftType != rightType && !floatOperands) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
@@ -1186,7 +1188,14 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
-    ast->binary.typeId = leftType;
+    if (floatOperands && !isTermToken(ast->binary.operator.type)
+        && !isFactorToken(ast->binary.operator.type)) {
+        semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
+    ast->binary.typeId = floatOperands && (leftType == TOKEN_F64 || rightType == TOKEN_F64)
+        ? TOKEN_F64
+        : leftType;
 
     if (isBoolOperatorToken(ast->binary.operator.type)) {
         ast->binary.typeId = TOKEN_BOOL;
@@ -1320,7 +1329,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
         TokenType parameterType = builtin->params[i];
 
         if (argumentType != parameterType
-            && !canImplicitlyWidenInteger(argumentType, parameterType)) {
+            && !canImplicitlyWidenType(argumentType, parameterType)) {
             semanticError("Invalid arguments to function ", token);
         }
     }
@@ -1403,7 +1412,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
         bool compatibleValue = argumentValueType == parameterValueType
             || (argumentType == REFERENCE_NONE
                 && parameterType == REFERENCE_NONE
-                && canImplicitlyWidenInteger(argumentValueType, parameterValueType));
+                && canImplicitlyWidenType(argumentValueType, parameterValueType));
 
         if (!compatibleValue || !compatibleReference) {
             semanticError("Invalid arguments to function ", token);
@@ -1703,7 +1712,7 @@ static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
     bool valueReturn = ast->functionDefinition.returnReferenceType == REFERENCE_NONE;
 
     if (returnType != type
-        && (!valueReturn || !canImplicitlyWidenInteger(type, returnType))) {
+        && (!valueReturn || !canImplicitlyWidenType(type, returnType))) {
         semanticError("Invalid return type for function ", ast->functionDefinition.token);
     }
 }
@@ -1824,7 +1833,7 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
     bool compatibleValue = bindingType == expressionType
         || (getReferenceType(symbol) == REFERENCE_NONE
             && getReferenceType(expression) == REFERENCE_NONE
-            && canImplicitlyWidenInteger(expressionType, bindingType));
+            && canImplicitlyWidenType(expressionType, bindingType));
 
     if (!compatibleValue || getReferenceType(symbol) != getReferenceType(expression)) {
         semanticError("Assignment type does not match binding ", ast->assignment.token);
@@ -1849,6 +1858,12 @@ static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializ
     ast->assignment.initializesBinding = initializesBinding;
 }
 
+static bool isFloatAssignmentToken(TokenType type)
+{
+    return type == TOKEN_EQUAL || type == TOKEN_PLUS_EQUAL || type == TOKEN_MINUS_EQUAL
+        || type == TOKEN_STAR_EQUAL || type == TOKEN_SLASH_EQUAL || type == TOKEN_PERCENT_EQUAL;
+}
+
 static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
@@ -1867,6 +1882,11 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);
+
+    if (isFloatTypeToken(getTypeId(symbol))
+        && !isFloatAssignmentToken(ast->assignment.operator.type)) {
+        semanticError("Invalid operands to assignment ", ast->assignment.operator);
+    }
 
     if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getTypeId(symbol) != TOKEN_I32) {
         semanticError("Invalid operands to assignment ", ast->assignment.operator);
@@ -1950,7 +1970,7 @@ static bool variableTypesMatch(ASTNode* ast, TokenType type, ReferenceType refer
         return false;
     }
 
-    return canImplicitlyWidenInteger(type, declaredType);
+    return canImplicitlyWidenType(type, declaredType);
 }
 
 static void validateVariableTypeMatch(ASTNode* ast, TokenType type, ReferenceType referenceType)
@@ -2141,9 +2161,11 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
         semanticError("Logical not requires a bool operand ", ast->prefix.operator);
     }
 
-    if (ast->prefix.operator.type == TOKEN_MINUS
-        && !isSignedIntegerTypeToken(getTypeId(ast->prefix.expr))) {
-        semanticError("Negation requires a signed integer operand ", ast->prefix.operator);
+    TokenType type = getTypeId(ast->prefix.expr);
+    bool numeric = isSignedIntegerTypeToken(type) || isFloatTypeToken(type);
+
+    if (ast->prefix.operator.type == TOKEN_MINUS && !numeric) {
+        semanticError("Negation requires a signed numeric operand ", ast->prefix.operator);
     }
 }
 

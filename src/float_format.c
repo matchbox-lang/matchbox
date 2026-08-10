@@ -31,6 +31,7 @@ void formatShortestF32(char* buffer, size_t size, float value)
 {
     char candidate[32];
     size_t shortest = SIZE_MAX;
+    snprintf(buffer, size, "%.9g", value);
 
     for (int precision = 1; precision <= 9; precision++) {
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
@@ -54,6 +55,7 @@ void formatShortestF64(char* buffer, size_t size, double value)
 {
     char candidate[32];
     size_t shortest = SIZE_MAX;
+    snprintf(buffer, size, "%.17g", value);
 
     for (int precision = 1; precision <= 17; precision++) {
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);

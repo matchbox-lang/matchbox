@@ -208,6 +208,20 @@ bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
     return getIntegerTypeSize(source) < getIntegerTypeSize(destination);
 }
 
+bool canImplicitlyWidenFloat(TokenType source, TokenType destination)
+{
+    return source == TOKEN_F32 && destination == TOKEN_F64;
+}
+
+bool canImplicitlyWidenType(TokenType source, TokenType destination)
+{
+    if (canImplicitlyWidenInteger(source, destination)) {
+        return true;
+    }
+
+    return canImplicitlyWidenFloat(source, destination);
+}
+
 size_t getIntegerTypeSize(TokenType type)
 {
     switch (type) {

@@ -60,9 +60,18 @@ static void bindingAccessError(char* message, Token token, char* detail)
     exit(1);
 }
 
-static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
+static void integerLiteralOutOfRangeError(Token token, TokenType type)
 {
-    fprintf(stderr, "Error: Integer literal is too large for type %s", getTokenTypeName(type));
+    const char* typeName = getTokenTypeName(type);
+    fprintf(stderr, "Error: Integer literal is outside the range of %s", typeName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralNotRepresentableError(Token token, TokenType type)
+{
+    const char* typeName = getTokenTypeName(type);
+    fprintf(stderr, "Error: Integer literal cannot be represented as %s", typeName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -74,9 +83,10 @@ static void integerLiteralRequiresTypeError(Token token)
     exit(1);
 }
 
-static void floatLiteralTooLargeForTypeError(Token token, TokenType type)
+static void floatLiteralOutOfRangeError(Token token, TokenType type)
 {
-    fprintf(stderr, "Error: Float literal is too large for type %s", getTokenTypeName(type));
+    const char* typeName = getTokenTypeName(type);
+    fprintf(stderr, "Error: Float literal is outside the range of %s", typeName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -191,8 +201,12 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
     bool fitsInteger = integerLiteralFitsType(literal->integerLiteral.value, negative, type);
     bool fitsFloat = integerLiteralFitsFloat(literal->integerLiteral.value, type);
 
-    if (!fitsInteger && !fitsFloat) {
-        integerLiteralTooLargeForTypeError(literal->integerLiteral.token, type);
+    if (isFloatTypeToken(type) && !fitsFloat) {
+        integerLiteralNotRepresentableError(literal->integerLiteral.token, type);
+    }
+
+    if (isIntegerTypeToken(type) && !fitsInteger) {
+        integerLiteralOutOfRangeError(literal->integerLiteral.token, type);
     }
 
     literal->integerLiteral.typeId = type;
@@ -211,7 +225,7 @@ static void applyLiteralType(ASTNode* expression, TokenType type)
     }
 
     if (type == TOKEN_F32 && expression->floatLiteral.value > FLT_MAX) {
-        floatLiteralTooLargeForTypeError(expression->floatLiteral.token, type);
+        floatLiteralOutOfRangeError(expression->floatLiteral.token, type);
     }
 
     expression->floatLiteral.typeId = type;

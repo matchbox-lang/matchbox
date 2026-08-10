@@ -3,9 +3,17 @@ let b = 1_234_567   // 1234567
 let c = 0o123       // 83
 let d = 0x1A        // 26
 let e = 0b11111111  // 255
+let largeDecimal = 2147483648
+let largeOctal = 0o20000000000
+let largeHexadecimal = 0x80000000
+let largeBinary = 0b10000000000000000000000000000000
 
 print(a)
 print(b)
 print(c)
 print(d)
 print(e)
+print(largeDecimal)
+print(largeOctal)
+print(largeHexadecimal)
+print(largeBinary)

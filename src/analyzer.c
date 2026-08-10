@@ -4,6 +4,7 @@
 #include "string_object.h"
 #include "token.h"
 #include "vector.h"
+#include <float.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -69,6 +70,20 @@ static void integerLiteralTooLargeForTypeError(Token token, TokenType type)
 static void integerLiteralRequiresTypeError(Token token)
 {
     fprintf(stderr, "Error: Integer literal requires an explicit type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void floatLiteralTooLargeForTypeError(Token token, TokenType type)
+{
+    fprintf(stderr, "Error: Float literal is too large for type %s", getTokenTypeName(type));
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void floatLiteralRequiresTypeError(Token token)
+{
+    fprintf(stderr, "Error: Float literal requires an explicit type");
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -150,6 +165,25 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
     literal->integerLiteral.typeId = type;
 
     return true;
+}
+
+static void applyLiteralType(ASTNode* expression, TokenType type)
+{
+    if (isIntegerTypeToken(type)) {
+        applyIntegerLiteralType(expression, type);
+
+        return;
+    }
+
+    if (expression->type != AST_FLOAT || !isFloatTypeToken(type)) {
+        return;
+    }
+
+    if (type == TOKEN_F32 && expression->floatLiteral.value > FLT_MAX) {
+        floatLiteralTooLargeForTypeError(expression->floatLiteral.token, type);
+    }
+
+    expression->floatLiteral.typeId = type;
 }
 
 static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
@@ -1280,7 +1314,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
-        applyIntegerLiteralType(arg, builtin->params[i]);
+        applyLiteralType(arg, builtin->params[i]);
 
         TokenType argumentType = getTypeId(arg);
         TokenType parameterType = builtin->params[i];
@@ -1353,7 +1387,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
         ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
-        applyIntegerLiteralType(arg, param->parameter.typeId);
+        applyLiteralType(arg, param->parameter.typeId);
 
         ReferenceType argumentType = getReferenceType(arg);
         ReferenceType parameterType = getReferenceType(param);
@@ -1690,8 +1724,7 @@ static void setParameterPositions(ASTNode* ast)
 
 static void applyFunctionReturnLiteralType(ASTNode* ast)
 {
-    if (!ast->functionDefinition.hasExplicitReturnType
-        || !isIntegerTypeToken(ast->functionDefinition.returnTypeId)) {
+    if (!ast->functionDefinition.hasExplicitReturnType) {
         return;
     }
 
@@ -1702,7 +1735,7 @@ static void applyFunctionReturnLiteralType(ASTNode* ast)
         ASTNode* statement = getVectorAt(statements, i);
 
         if (statement->type == AST_RETURN) {
-            applyIntegerLiteralType(
+            applyLiteralType(
                 statement->returnStatement.expr, ast->functionDefinition.returnTypeId);
         }
     }
@@ -1887,9 +1920,7 @@ static void applyDeclaredType(ASTNode* expression, TokenType type, ReferenceType
         return;
     }
 
-    if (isIntegerTypeToken(type)) {
-        applyIntegerLiteralType(expression, type);
-    }
+    applyLiteralType(expression, type);
 
     if (expression->type == AST_CONDITIONAL) {
         expression->conditional.typeId = type;
@@ -1941,6 +1972,10 @@ static void resolveVariableType(ASTNode* ast, ASTNode* expression)
     }
 
     if (type == TOKEN_UNKNOWN) {
+        if (expression->type == AST_FLOAT) {
+            floatLiteralRequiresTypeError(expression->floatLiteral.token);
+        }
+
         integerLiteralRequiresTypeError(ast->variableDefinition.token);
     }
 

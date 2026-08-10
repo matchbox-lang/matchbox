@@ -14,6 +14,8 @@ Builtin builtins[BUILTINS_MAX] = {
     {"print",       builtinPrintI64,    1,  {TOKEN_I64},                        TOKEN_VOID},
     {"print",       builtinPrintU32,    1,  {TOKEN_U32},                        TOKEN_VOID},
     {"print",       builtinPrintU64,    1,  {TOKEN_U64},                        TOKEN_VOID},
+    {"print",       builtinPrintF32,    1,  {TOKEN_F32},                        TOKEN_VOID},
+    {"print",       builtinPrintF64,    1,  {TOKEN_F64},                        TOKEN_VOID},
     {"print",       builtinPrintBool,   1,  {TOKEN_BOOL},                       TOKEN_VOID},
     {"clamp",       builtinClamp,       3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
     {"clamp",       builtinClampI64,    3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
@@ -45,6 +47,19 @@ static uint64_t readU64(Value* frame, size_t position)
     return AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
 #else
     return AS_UNSIGNED(frame[position]);
+#endif
+}
+
+static double readF64(Value* frame, size_t position)
+{
+#if UINTPTR_MAX == UINT32_MAX
+    uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
+    double value;
+    memcpy(&value, &bits, sizeof(value));
+
+    return value;
+#else
+    return AS_F64(frame[position]);
 #endif
 }
 
@@ -163,6 +178,26 @@ void builtinPrintU64(VM* vm, FunctionObject* function, Value* frame)
     uint64_t n = readU64(frame, 0);
 
     printf("%" PRIu64 "\n", n);
+}
+
+void builtinPrintF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float value = AS_F32(frame[0]);
+
+    printf("%.9g\n", value);
+}
+
+void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double value = readF64(frame, 0);
+
+    printf("%.17g\n", value);
 }
 
 void builtinPrintBool(VM* vm, FunctionObject* function, Value* frame)

@@ -423,7 +423,7 @@ static Token scanFloatLiteral(Lexer* lexer)
 
     validateNumberEnd(lexer);
 
-    return makeToken(lexer, TOKEN_F32_LITERAL);
+    return makeToken(lexer, TOKEN_FLOAT_LITERAL);
 }
 
 static Token scanIntegerLiteral(Lexer* lexer)

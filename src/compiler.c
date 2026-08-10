@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
 
@@ -87,6 +88,12 @@ static void functionPositionOverflowError()
 static void functionNotFoundError(ASTNode* ast)
 {
     fprintf(stderr, "Error: Could not find function %s\n", ast->functionDefinition.id->chars);
+    exit(1);
+}
+
+static void unresolvedReplExpressionTypeError(void)
+{
+    fprintf(stderr, "Error: Cannot display expression with an unresolved type\n");
     exit(1);
 }
 
@@ -504,6 +511,21 @@ static size_t makeI64Constant(Compiler* compiler, uint64_t value)
     return position;
 }
 
+static size_t makeF32Constant(Compiler* compiler, float value)
+{
+    Value constant = F32_VALUE(value);
+
+    return makeConstant(compiler, constant);
+}
+
+static size_t makeF64Constant(Compiler* compiler, double value)
+{
+    uint64_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+
+    return makeI64Constant(compiler, bits);
+}
+
 static CallArea openCallArea(Compiler* compiler)
 {
     CallArea call = { .resultRegister = compiler->registerCount };
@@ -770,6 +792,23 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
     }
 
     return makeOperand(emitLdi(compiler, (int16_t)value), true);
+}
+
+static Operand compileFloat(Compiler* compiler, ASTNode* ast)
+{
+    double value = ast->floatLiteral.value;
+
+    if (getTypeId(ast) == TOKEN_F64) {
+        size_t position = makeF64Constant(compiler, value);
+        int reg = emitLdcI64(compiler, position);
+
+        return makeWideOperand(reg, true);
+    }
+
+    size_t position = makeF32Constant(compiler, (float)value);
+    int reg = emitLdc(compiler, position);
+
+    return makeOperand(reg, true);
 }
 
 static Operand compileBoolean(Compiler* compiler, ASTNode* ast)
@@ -1899,6 +1938,7 @@ static bool isSimpleMatchValue(ASTNode* ast)
     switch (ast->type) {
         case AST_BOOLEAN:
         case AST_INTEGER:
+        case AST_FLOAT:
         case AST_VARIABLE:
             return true;
         case AST_BUILTIN_CALL:
@@ -2481,6 +2521,9 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
             break;
         case AST_FUNCTION_CALL:
             return compileFunctionCall(compiler, ast, discard);
+        case AST_FLOAT:
+            result = compileFloat(compiler, ast);
+            break;
         case AST_INTEGER:
             result = compileNumber(compiler, ast);
             break;
@@ -2549,6 +2592,11 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
     bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
+
+    if (display && getTypeId(ast) == TOKEN_UNKNOWN) {
+        unresolvedReplExpressionTypeError();
+    }
+
     Operand value = compileStatement(compiler, ast, !display);
 
     if (!display) {
@@ -2556,6 +2604,7 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
     }
 
     TokenType argumentType = getTypeId(ast);
+
     Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
     uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);

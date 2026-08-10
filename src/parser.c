@@ -6,6 +6,7 @@
 #include "token.h"
 #include "util.h"
 #include "vector.h"
+#include <float.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,6 +105,18 @@ static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
     ast->integerLiteral.value = integerLiteralToValue(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = ast->integerLiteral.value <= INT32_MAX ? TOKEN_I32 : TOKEN_UNKNOWN;
+
+    consume(parser, token.type);
+
+    return ast;
+}
+
+static ASTNode* parseFloatLiteral(Parser* parser, Token token)
+{
+    ASTNode* ast = createASTNode(AST_FLOAT);
+    ast->floatLiteral.value = floatLiteralToValue(token);
+    ast->floatLiteral.token = token;
+    ast->floatLiteral.typeId = ast->floatLiteral.value <= FLT_MAX ? TOKEN_F32 : TOKEN_UNKNOWN;
 
     consume(parser, token.type);
 
@@ -211,6 +224,8 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseMatch(parser);
         case TOKEN_INTEGER_LITERAL:
             return parseIntegerLiteral(parser, parser->currentToken);
+        case TOKEN_FLOAT_LITERAL:
+            return parseFloatLiteral(parser, parser->currentToken);
         case TOKEN_BINARY_LITERAL:
             return parseBinaryLiteral(parser, parser->currentToken);
         case TOKEN_HEXADECIMAL_LITERAL:

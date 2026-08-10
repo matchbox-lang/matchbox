@@ -11,7 +11,14 @@ static void integerExceedsMaximumSizeError(Token token)
     exit(1);
 }
 
-static uint64_t parseIntegerLiteral(Token token, size_t offset, int base)
+static void floatOutsideSupportedRangeError(Token token)
+{
+    fprintf(stderr, "Error: Float is outside the supported range");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static uint64_t integerLiteralToValueInBase(Token token, size_t offset, int base)
 {
     size_t length = token.length - offset;
     char* tmp = strndup(token.chars + offset, length);
@@ -30,22 +37,22 @@ static uint64_t parseIntegerLiteral(Token token, size_t offset, int base)
 
 uint64_t integerLiteralToValue(Token token)
 {
-    return parseIntegerLiteral(token, 0, 10);
+    return integerLiteralToValueInBase(token, 0, 10);
 }
 
 uint64_t binaryLiteralToValue(Token token)
 {
-    return parseIntegerLiteral(token, 2, 2);
+    return integerLiteralToValueInBase(token, 2, 2);
 }
 
 uint64_t hexadecimalLiteralToValue(Token token)
 {
-    return parseIntegerLiteral(token, 2, 16);
+    return integerLiteralToValueInBase(token, 2, 16);
 }
 
 uint64_t octalLiteralToValue(Token token)
 {
-    return parseIntegerLiteral(token, 2, 8);
+    return integerLiteralToValueInBase(token, 2, 8);
 }
 
 double floatLiteralToValue(Token token)
@@ -53,7 +60,12 @@ double floatLiteralToValue(Token token)
     size_t length = token.length;
     char* tmp = strndup(token.chars, length);
     stripUnderscores(tmp, &length);
+    errno = 0;
     double value = strtod(tmp, NULL);
+
+    if (errno == ERANGE) {
+        floatOutsideSupportedRangeError(token);
+    }
 
     free(tmp);
 

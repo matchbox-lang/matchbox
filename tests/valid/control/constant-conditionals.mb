@@ -1,0 +1,25 @@
+if false {
+    print(999)
+}
+
+let wideLeft: i64 = 3000000000
+let wideRight: i64 = 4000000000
+
+let wide = if false {
+    wideLeft
+} else {
+    wideRight
+}
+
+print(wide == wideRight)
+
+var left = 30
+var right = 40
+
+let shared: &i32 = if false {
+    &left
+} else {
+    &right
+}
+
+print(shared)

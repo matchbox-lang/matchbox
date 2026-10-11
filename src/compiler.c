@@ -2050,51 +2050,84 @@ static Operand compileConditionalBranch(
     return noOperand();
 }
 
-static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference)
+static Operand allocateConditionalResult(Compiler* compiler, TokenType type)
 {
-    int previousLocalPositionOffset = compiler->localPositionOffset;
-    Operand condition = compileExpression(compiler, ast->conditional.condition, false);
-    size_t elseJump = emitJump(compiler, OP_BZ, condition.reg);
-
-    releaseOperand(compiler, condition);
-
-    int destination = -1;
-
-    TokenType type = getTypeId(ast);
-    if (type != TOKEN_VOID) {
-        size_t slots = getTypeSlotCount(type);
-        destination = allocateRegisters(compiler, slots);
-        compiler->localPositionOffset += slots;
-    }
-
-    int branchRegisterCount = compiler->registerCount;
-
-    compileConditionalBranch(compiler, ast->conditional.thenBranch, type, destination, reference);
-    compiler->registerCount = branchRegisterCount;
-
-    if (!ast->conditional.elseBranch) {
-        patchJump(compiler, elseJump);
-        compiler->localPositionOffset = previousLocalPositionOffset;
-
-        return noOperand();
-    }
-
-    size_t endJump = emitJump(compiler, OP_JMP, 0);
-    patchJump(compiler, elseJump);
-    compileConditionalBranch(compiler, ast->conditional.elseBranch, type, destination, reference);
-    compiler->registerCount = branchRegisterCount;
-    patchJump(compiler, endJump);
-    compiler->localPositionOffset = previousLocalPositionOffset;
-
     if (type == TOKEN_VOID) {
         return noOperand();
     }
 
-    if (getTypeSlotCount(type) == 2) {
-        return makeWideOperand(destination, true);
+    size_t slots = getTypeSlotCount(type);
+    int reg = allocateRegisters(compiler, slots);
+    Operand result = {reg, true, slots};
+    compiler->localPositionOffset += slots;
+
+    return result;
+}
+
+static void compileScopedConditionalBranch(
+    Compiler* compiler, ASTNode* branch, TokenType type, int destination, bool reference)
+{
+    if (!branch) {
+        return;
     }
 
-    return makeOperand(destination, true);
+    int registerCount = compiler->registerCount;
+
+    compileConditionalBranch(compiler, branch, type, destination, reference);
+
+    compiler->registerCount = registerCount;
+}
+
+static void compileConditionalBranches(
+    Compiler* compiler, ASTNode* ast, int destination, bool reference, size_t elseJump)
+{
+    ASTNode* condition = ast->conditional.condition;
+    TokenType type = getTypeId(ast);
+
+    if (condition->type == AST_BOOLEAN) {
+        ASTNode* branch = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
+
+        compileScopedConditionalBranch(compiler, branch, type, destination, reference);
+
+        return;
+    }
+
+    compileScopedConditionalBranch(compiler, ast->conditional.thenBranch, type, destination, reference);
+
+    if (!ast->conditional.elseBranch) {
+        patchJump(compiler, elseJump);
+
+        return;
+    }
+
+    size_t endJump = emitJump(compiler, OP_JMP, 0);
+
+    patchJump(compiler, elseJump);
+    compileScopedConditionalBranch(compiler, ast->conditional.elseBranch, type, destination, reference);
+    patchJump(compiler, endJump);
+}
+
+static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference)
+{
+    int previousLocalPositionOffset = compiler->localPositionOffset;
+    ASTNode* conditionNode = ast->conditional.condition;
+    size_t elseJump = 0;
+
+    if (conditionNode->type != AST_BOOLEAN) {
+        Operand condition = compileExpression(compiler, conditionNode, false);
+        elseJump = emitJump(compiler, OP_BZ, condition.reg);
+
+        releaseOperand(compiler, condition);
+    }
+
+    TokenType type = getTypeId(ast);
+    Operand result = allocateConditionalResult(compiler, type);
+
+    compileConditionalBranches(compiler, ast, result.reg, reference, elseJump);
+
+    compiler->localPositionOffset = previousLocalPositionOffset;
+
+    return result;
 }
 
 static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)

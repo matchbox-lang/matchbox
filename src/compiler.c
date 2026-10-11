@@ -981,18 +981,46 @@ static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediat
     return immediate >= 0 && immediate <= (int16_t)UINT8_MAX;
 }
 
+static bool getBinaryImmediate(PreviousInstruction* previous, Operand left, Operand right, int16_t* immediate,
+    int* source)
+{
+    if (previous->opcode == OP_LDI && previous->a == right.reg) {
+        *immediate = (int16_t)(previous->b << 8 | previous->c);
+        *source = left.reg;
+
+        return true;
+    }
+
+    if (!left.temporary || left.slots != 1 || right.slots != 1) {
+        return false;
+    }
+
+    if (previous->opcode != OP_MOV_LDI || previous->a != left.reg || previous->a + 1 != right.reg) {
+        return false;
+    }
+
+    *immediate = (int8_t)previous->c;
+    *source = previous->b;
+
+    return true;
+}
+
 static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
     TokenType type, Operand left, Operand right, Operand* result)
 {
     PreviousInstruction previous;
 
-    if (!right.temporary || !getPreviousInstruction(compiler, &previous)
-        || previous.opcode != OP_LDI
-        || previous.a != right.reg) {
+    if (!right.temporary || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
 
-    int16_t immediate = (int16_t)(previous.b << 8 | previous.c);
+    int16_t immediate;
+    int source;
+
+    if (!getBinaryImmediate(&previous, left, right, &immediate, &source)) {
+        return false;
+    }
+
     Opcode opcode = getIntegerImmediateOpcode(type, operation);
 
     if (opcode == OP_HLT || !isImmediateOperandValid(operation, immediate)) {
@@ -1003,7 +1031,7 @@ static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
     releaseOperand(compiler, right);
 
     int dst = left.temporary ? left.reg : allocateRegisters(compiler, left.slots);
-    emitInstruction(compiler, opcode, dst, left.reg, immediate);
+    emitInstruction(compiler, opcode, dst, source, immediate);
     *result = left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 
     return true;

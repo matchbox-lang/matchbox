@@ -155,10 +155,9 @@ static void emitHlt(Compiler* compiler)
     emitInstruction(compiler, OP_HLT, 0, 0, 0);
 }
 
-static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* instruction)
+static bool getInstructionBefore(Compiler* compiler, size_t count, PreviousInstruction* instruction)
 {
     CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
 
     if (count < INSTRUCTION_SIZE) {
         return false;
@@ -177,6 +176,14 @@ static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* inst
     instruction->c = code->data[start + 3];
 
     return true;
+}
+
+static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* instruction)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    return getInstructionBefore(compiler, count, instruction);
 }
 
 static bool fuseMovMov(Compiler* compiler, int dst, int src)
@@ -308,12 +315,12 @@ static bool isLoadPairOperandValid(Opcode opcode, uint16_t operand)
     return !isLargerThan8BitSigned((int16_t)operand);
 }
 
-static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t operand)
+static bool fuseLoadPairBefore(Compiler* compiler, size_t end, Opcode opcode, int reg, uint16_t operand)
 {
     PreviousInstruction previous;
 
     if (!isLoadPairOperandValid(opcode, operand)
-        || !getPreviousInstruction(compiler, &previous)
+        || !getInstructionBefore(compiler, end, &previous)
         || previous.a + 1 != reg) {
         return false;
     }
@@ -335,6 +342,30 @@ static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t op
     setByteAt(previous.code, previous.start + 3, operand);
 
     return true;
+}
+
+static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t operand)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t count = countCodeObject(code);
+
+    return fuseLoadPairBefore(compiler, count, opcode, reg, operand);
+}
+
+static void fuseRetargetedLoad(Compiler* compiler, PreviousInstruction* instruction, int dst)
+{
+    if (instruction->opcode != OP_LDI && instruction->opcode != OP_LDG) {
+        return;
+    }
+
+    uint16_t operand = (uint16_t)(instruction->b << 8 | instruction->c);
+    bool fused = fuseLoadPairBefore(compiler, instruction->start, instruction->opcode, dst, operand);
+
+    if (!fused) {
+        return;
+    }
+
+    resizeCodeObject(instruction->code, instruction->start);
 }
 
 static bool fuseMovLdi(Compiler* compiler, int reg, int16_t imm)
@@ -760,6 +791,7 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
     }
 
     setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, dst);
+    fuseRetargetedLoad(compiler, &previous, dst);
 
     return true;
 }
@@ -1976,6 +2008,8 @@ static void patchJump(Compiler* compiler, size_t position)
     int offset = (int)(countCodeObject(code) - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
     Opcode opcode = (Opcode)code->data[position];
 
+    compiler->peepholeBarrier = countCodeObject(code);
+
     if (opcode == OP_BZ || opcode == OP_BNZ) {
         setByteAt(code, position + 2, offset >> 8);
         setByteAt(code, position + 3, offset);
@@ -2183,7 +2217,6 @@ static void markMatchJoin(Compiler* compiler, Vector* jumps)
     }
 
     patchMatchJumps(compiler, jumps);
-    compiler->peepholeBarrier = countCodeObject(currentCodeObject(compiler));
 }
 
 static int allocateMatchDestination(Compiler* compiler, TokenType type)

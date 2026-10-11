@@ -247,6 +247,7 @@ typedef enum Opcode
     OP_LDI_STG,
     OP_LDI_LDG,
     OP_LDG_LDI,
+    OP_MOV_LDI,
 
     OP_COUNT
 } Opcode;

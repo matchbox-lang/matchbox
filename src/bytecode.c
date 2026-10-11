@@ -295,6 +295,7 @@ static void printInstruction(uint8_t c)
         case OP_LDI_STG:        printOpcodeRegisterInt8Uint8("LDI_STG"); break;
         case OP_LDI_LDG:        printOpcodeRegisterInt8Uint8("LDI_LDG"); break;
         case OP_LDG_LDI:        printOpcodeRegisterUint8Int8("LDG_LDI"); break;
+        case OP_MOV_LDI:        printOpcodeRegisters2Int8("MOV_LDI"); break;
         default:
             unknownOpcodeError(c);
     }

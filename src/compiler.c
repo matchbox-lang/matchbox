@@ -336,11 +336,28 @@ static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t op
     return true;
 }
 
+static bool fuseMovLdi(Compiler* compiler, int reg, int16_t imm)
+{
+    PreviousInstruction previous;
+
+    if (isLargerThan8BitSigned(imm)
+        || !getPreviousInstruction(compiler, &previous)
+        || previous.opcode != OP_MOV
+        || previous.a + 1 != reg) {
+        return false;
+    }
+
+    setByteAt(previous.code, previous.start, OP_MOV_LDI);
+    setByteAt(previous.code, previous.start + 3, imm);
+
+    return true;
+}
+
 static int emitLdi(Compiler* compiler, int16_t imm)
 {
     int reg = allocateRegister(compiler);
 
-    if (fuseLoadPair(compiler, OP_LDI, reg, (uint16_t)imm)) {
+    if (fuseMovLdi(compiler, reg, imm) || fuseLoadPair(compiler, OP_LDI, reg, (uint16_t)imm)) {
         return reg;
     }
 

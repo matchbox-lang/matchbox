@@ -79,6 +79,7 @@ static void resetFunctionCallCounts(ASTNode* ast);
 static bool isSimpleMatchValue(ASTNode* ast);
 static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
+static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
 
 static void functionPositionOverflowError()
 {
@@ -2190,6 +2191,12 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
         releaseOperand(compiler, condition);
 
         return nextJump;
+    }
+
+    uint64_t patternValue;
+
+    if (subject.slots == 1 && getLiteralMatchValue(arm->pattern, &patternValue) && patternValue == 0) {
+        return emitJump(compiler, OP_BNZ, subject.reg);
     }
 
     Operand pattern = compileExpression(compiler, arm->pattern, false);

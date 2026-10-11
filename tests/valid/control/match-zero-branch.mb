@@ -1,0 +1,25 @@
+func checkZero(value) {
+    let result = match value {
+        case 0: 10
+        case 1: 20
+        default: 30
+    }
+    print(result)
+    print(value)
+}
+
+checkZero(0)
+checkZero(1)
+checkZero(2)
+checkZero(-1)
+checkZero(256)
+
+func checkFalse(value: bool) {
+    match value {
+        case false: print(40)
+        default: print(50)
+    }
+}
+
+checkFalse(false)
+checkFalse(true)

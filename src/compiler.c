@@ -2804,13 +2804,41 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes)
     }
 }
 
+static int getRequiredGlobalRegisterCount(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+    int registers = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* ast = nodes->data[i];
+        if (ast->type != AST_VARIABLE_DEFINITION || hasNoValueReads(ast)) {
+            continue;
+        }
+
+        size_t slots = getNodeSlotCount(ast);
+        registers = ast->variableDefinition.position + slots;
+    }
+
+    return registers;
+}
+
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
+    int requiredRegisters = getRequiredGlobalRegisterCount(nodes);
 
     while (compiler->statementIndex < count) {
-        compileStatement(compiler, nodes->data[compiler->statementIndex], true);
-        compiler->statementIndex++;
+        ASTNode* ast = nodes->data[compiler->statementIndex++];
+        compileStatement(compiler, ast, true);
+
+        if (ast->type != AST_VARIABLE_DEFINITION || compiler->registerCount <= requiredRegisters) {
+            continue;
+        }
+
+        // Reclaim trailing unused globals while keeping nested local positions aligned.
+        int unusedSlots = compiler->registerCount - requiredRegisters;
+        compiler->registerCount = requiredRegisters;
+        compiler->localPositionOffset -= unusedSlots;
     }
 }
 

@@ -1,4 +1,6 @@
 #include "optimizer.h"
+#include "scope.h"
+#include "string_object.h"
 #include "token.h"
 #include "vector.h"
 #include <math.h>
@@ -104,6 +106,45 @@ static void foldBinary(ASTNode* ast)
     ast->integerLiteral.typeId = TOKEN_I32;
 }
 
+static void propagateIntegerLet(ASTNode* ast)
+{
+    ASTNode* symbol = ast->variable.symbol;
+
+    if (!symbol || symbol->type != AST_VARIABLE_DEFINITION) {
+        return;
+    }
+
+    if (!symbol->variableDefinition.fixed || symbol->variableDefinition.addressTaken
+        || symbol->variableDefinition.referenceType != REFERENCE_NONE) {
+        return;
+    }
+
+    // Keep captured bindings dynamic across later interactive reference accesses.
+    Scope* definitionScope = symbol->variableDefinition.scope;
+    if (definitionScope->frameScope != ast->variable.scope->frameScope) {
+        return;
+    }
+
+    ASTNode* initializer = symbol->variableDefinition.expr;
+    TokenType type = symbol->variableDefinition.typeId;
+
+    if (!initializer || initializer->type != AST_INTEGER || !isIntegerTypeToken(type)
+        || initializer->integerLiteral.typeId != type) {
+        return;
+    }
+
+    uint64_t value = initializer->integerLiteral.value;
+    Token token = ast->variable.token;
+
+    freeStringObject(ast->variable.id);
+    symbol->variableDefinition.readCount--;
+    
+    ast->type = AST_INTEGER;
+    ast->integerLiteral.value = value;
+    ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = type;
+}
+
 static void optimizeNodes(Vector* nodes)
 {
     size_t count = countVector(nodes);
@@ -193,6 +234,9 @@ static void optimizeNode(ASTNode* ast)
             break;
         case AST_RETURN:
             optimizeNode(ast->returnStatement.expr);
+            break;
+        case AST_VARIABLE:
+            propagateIntegerLet(ast);
             break;
         case AST_VARIABLE_DEFINITION:
             optimizeNode(ast->variableDefinition.expr);

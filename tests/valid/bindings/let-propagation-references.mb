@@ -1,0 +1,40 @@
+func shared(value: &i32) {
+    print(value)
+}
+
+func exclusive(value: ^i32) {
+    print(value)
+}
+
+func returnShared(value: &i32) -> &i32 {
+    return value
+}
+
+let explicitShared = 11
+let explicitExclusive = 12
+let implicitShared = 13
+let implicitExclusive = 14
+
+shared(&explicitShared)
+exclusive(^explicitExclusive)
+shared(implicitShared)
+exclusive(implicitExclusive)
+
+print(explicitShared)
+print(explicitExclusive)
+print(implicitShared)
+print(implicitExclusive)
+
+let reference = returnShared(&explicitShared)
+
+print(reference)
+
+let globalValue = 15
+
+func readGlobal() {
+    print(globalValue)
+}
+
+readGlobal()
+exclusive(globalValue)
+readGlobal()

@@ -196,6 +196,7 @@ typedef struct ASTNode
             size_t readCount;
             size_t discardedReadCount;
             bool discardedReadsAnalyzed;
+            bool addressTaken;
             int position;
             ASTNode* expr;
         } variableDefinition;

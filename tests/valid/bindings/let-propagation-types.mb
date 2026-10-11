@@ -1,0 +1,30 @@
+let small: i8 = 100
+let smallCopy: i8 = small
+let wider: i64 = smallCopy
+
+print(smallCopy)
+print(wider)
+
+let unsigned: u32 = 4294967295
+let unsignedCopy = unsigned
+
+print(unsignedCopy)
+
+let wide: i64 = 4294967296
+let wideCopy = wide
+
+print(wideCopy)
+
+let floating: f32 = 10
+let floatingCopy = floating
+
+print(floatingCopy)
+
+let wrapped = 2147483647 + 1
+let wrappedCopy = wrapped
+
+print(wrappedCopy)
+
+let negative = 0 - 10
+
+print(negative / 2)

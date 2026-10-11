@@ -1353,11 +1353,21 @@ static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* sy
     }
 }
 
+static void markAddressTaken(ASTNode* symbol)
+{
+    if (!symbol || !isVariableDefinition(symbol)) {
+        return;
+    }
+
+    symbol->variableDefinition.addressTaken = true;
+}
+
 static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* variable = getReferenceVariable(ast);
     ASTNode* symbol = findReferenceSymbol(analyzer, variable);
     validateReferenceAccess(ast, variable, symbol);
+    markAddressTaken(symbol);
 
     variable->variable.scope = analyzer->currentScope;
     variable->variable.symbol = symbol;
@@ -1539,6 +1549,7 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
         }
 
         validateEffectAccess(origin, type, token);
+        markAddressTaken(origin);
     }
 }
 

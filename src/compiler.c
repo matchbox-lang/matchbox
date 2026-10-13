@@ -99,6 +99,29 @@ static void unresolvedReplExpressionTypeError(void)
     exit(1);
 }
 
+static void registerIndexOverflowError(ASTNode* function)
+{
+    if (!function) {
+        fprintf(stderr, "Error: Top-level code requires more than 256 virtual registers\n");
+        exit(1);
+    }
+
+    fprintf(stderr, "Error: Function '%s' requires more than 256 virtual registers\n",
+        function->functionDefinition.id->chars);
+    exit(1);
+}
+
+static void checkRegisterCount(Compiler* compiler, int count)
+{
+    if (count <= (int)UINT8_MAX + 1) {
+        return;
+    }
+
+    ASTNode* function = getCurrentFunctionDefinition(compiler);
+
+    registerIndexOverflowError(function);
+}
+
 static CodeObject* currentCodeObject(Compiler* compiler)
 {
     return &compiler->function->code;
@@ -111,6 +134,8 @@ static bool isCompilingTopLevel(Compiler* compiler)
 
 static int allocateRegister(Compiler* compiler)
 {
+    checkRegisterCount(compiler, compiler->registerCount + 1);
+
     int reg = compiler->registerCount++;
     int extent = compiler->registerCount + 2;
 
@@ -511,8 +536,10 @@ static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t fun
     return true;
 }
 
-static void emitCallInstruction(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+static void emitCallInstruction(Compiler* compiler, int frameRegister, uint16_t functionPosition)
 {
+    checkRegisterCount(compiler, frameRegister + 1);
+
     if (fuseCallCall(compiler, frameRegister, functionPosition)) {
         return;
     }
@@ -601,7 +628,7 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
         allocateCallAreaRegister(compiler);
     }
 
-    emitCallInstruction(compiler, (uint8_t)call.frameRegister, functionPosition);
+    emitCallInstruction(compiler, call.frameRegister, functionPosition);
 
     if (!discard && function->returnCount) {
         compiler->registerCount = call.resultRegister + function->returnCount;
@@ -618,12 +645,20 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
 
 static int getLocalPosition(Compiler* compiler, ASTNode* ast)
 {
+    int position;
+
     if (isParameter(ast)) {
-        return ast->parameter.position;
+        position = ast->parameter.position;
+    } else {
+        position = compiler->frameBaseCount + compiler->localPositionOffset + ast->variableDefinition.position;
     }
 
-    return compiler->frameBaseCount + compiler->localPositionOffset
-        + ast->variableDefinition.position;
+    size_t slots = getNodeSlotCount(ast);
+    int extent = position + slots;
+
+    checkRegisterCount(compiler, extent);
+
+    return position;
 }
 
 static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
@@ -1697,6 +1732,11 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
 
     function->localCount = getMaxLocalCount(body->compound.scope);
     int base = getCallAreaCount(function);
+
+    if (base > (int)UINT8_MAX + 1) {
+        registerIndexOverflowError(ast);
+    }
+
     function->maxStackCount = base + 2;
 
     return function;
@@ -1738,16 +1778,18 @@ static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
     return 0;
 }
 
-static Operand compileCall(Compiler* compiler, FunctionObject* function,
-    uint16_t functionPosition, Vector* args, Vector* params, bool discard)
+static Operand compileCall(Compiler* compiler, FunctionObject* function, uint16_t functionPosition,
+    Vector* args, Vector* params, bool discard)
 {
-    if (function->type == FUNCTION_BUILTIN && !function->returnCount && function->paramCount == 1) {
-        CallArea call = openCallArea(compiler);
+    size_t argumentCount = countVector(args);
+
+    if (function->type == FUNCTION_BUILTIN && !function->returnCount && argumentCount == 1) {
+        int previousRegisterCount = compiler->registerCount;
         Operand argument = compileExpression(compiler, args->data[0], false);
 
-        emitCallInstruction(compiler, (uint8_t)argument.reg, functionPosition);
+        emitCallInstruction(compiler, argument.reg, functionPosition);
         releaseOperand(compiler, argument);
-        compiler->registerCount = call.resultRegister;
+        compiler->registerCount = previousRegisterCount;
 
         return noOperand();
     }
@@ -1784,7 +1826,7 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
     uint16_t functionPosition, Operand argument, bool discard)
 {
     if (function->type == FUNCTION_BUILTIN && !function->returnCount) {
-        emitCallInstruction(compiler, (uint8_t)argument.reg, functionPosition);
+        emitCallInstruction(compiler, argument.reg, functionPosition);
         releaseOperand(compiler, argument);
 
         return;

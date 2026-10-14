@@ -12,6 +12,27 @@
 #define READ_INT24() (ptr += 3, (int32_t)((ptr[-3] << 24) | (ptr[-2] << 16) | (ptr[-1] << 8)) >> 8)
 
 static uint8_t* ptr;
+static uint16_t registerHigh[3];
+
+static uint16_t readRegister(int field)
+{
+    uint8_t low = READ_UINT8();
+
+    return registerHigh[field] | low;
+}
+
+static void printWidePrefix(void)
+{
+    uint8_t a = READ_UINT8();
+    uint8_t b = READ_UINT8();
+    uint8_t c = READ_UINT8();
+    
+    registerHigh[0] = (uint16_t)a << 8;
+    registerHigh[1] = (uint16_t)b << 8;
+    registerHigh[2] = (uint16_t)c << 8;
+
+    printf("%-15s #%u, #%u, #%u\n", "WIDE", a, b, c);
+}
 
 static void unknownOpcodeError(int opcode)
 {
@@ -28,7 +49,7 @@ static void printOpcode(const char* name)
 
 static void printOpcodeRegister(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     ptr += 2;
 
     printf("%-15s R%d\n", name, a);
@@ -36,8 +57,8 @@ static void printOpcodeRegister(const char* name)
 
 static void printOpcodeRegisters2(const char* name)
 {
-    uint8_t a = READ_UINT8();
-    uint8_t b = READ_UINT8();
+    uint16_t a = readRegister(0);
+    uint16_t b = readRegister(1);
     ptr++;
 
     printf("%-15s R%d, R%d\n", name, a, b);
@@ -45,17 +66,17 @@ static void printOpcodeRegisters2(const char* name)
 
 static void printOpcodeRegisters3(const char* name)
 {
-    uint8_t a = READ_UINT8();
-    uint8_t b = READ_UINT8();
-    uint8_t c = READ_UINT8();
+    uint16_t a = readRegister(0);
+    uint16_t b = readRegister(1);
+    uint16_t c = readRegister(2);
 
     printf("%-15s R%d, R%d, R%d\n", name, a, b, c);
 }
 
 static void printOpcodeRegisters2Int8(const char* name)
 {
-    uint8_t a = READ_UINT8();
-    uint8_t b = READ_UINT8();
+    uint16_t a = readRegister(0);
+    uint16_t b = readRegister(1);
     int8_t imm = READ_INT8();
 
     printf("%-15s R%d, R%d, #%d\n", name, a, b, imm);
@@ -63,7 +84,7 @@ static void printOpcodeRegisters2Int8(const char* name)
 
 static void printOpcodeRegisterInt16(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     int16_t imm = READ_INT16();
 
     printf("%-15s R%d, #%d\n", name, a, imm);
@@ -71,7 +92,7 @@ static void printOpcodeRegisterInt16(const char* name)
 
 static void printOpcodeRegisterUint16(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     uint16_t imm = READ_UINT16();
 
     printf("%-15s R%d, #%u\n", name, a, imm);
@@ -79,7 +100,7 @@ static void printOpcodeRegisterUint16(const char* name)
 
 static void printOpcodeRegisterInt8Uint8(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     int8_t imm = READ_INT8();
     uint8_t position = READ_UINT8();
 
@@ -88,7 +109,7 @@ static void printOpcodeRegisterInt8Uint8(const char* name)
 
 static void printOpcodeRegisterUint8Int8(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     uint8_t position = READ_UINT8();
     int8_t imm = READ_INT8();
 
@@ -97,7 +118,7 @@ static void printOpcodeRegisterUint8Int8(const char* name)
 
 static void printOpcodeRegisterInt8Int8(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     int8_t first = READ_INT8();
     int8_t second = READ_INT8();
 
@@ -106,7 +127,7 @@ static void printOpcodeRegisterInt8Int8(const char* name)
 
 static void printOpcodeRegisterUint8Uint8(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     uint8_t first = READ_UINT8();
     uint8_t second = READ_UINT8();
 
@@ -115,7 +136,7 @@ static void printOpcodeRegisterUint8Uint8(const char* name)
 
 static void printLoadCall(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     uint16_t operands = READ_UINT16();
 
     printf("%-15s R%d, #%u, #%u\n", name, a,
@@ -124,7 +145,7 @@ static void printLoadCall(const char* name)
 
 static void printSignedLoadCall(const char* name)
 {
-    uint8_t a = READ_UINT8();
+    uint16_t a = readRegister(0);
     uint16_t operands = READ_UINT16();
 
     printf("%-15s R%d, #%d, #%u\n", name, a, LOAD_CALL_SIGNED_OPERAND(operands), LOAD_CALL_FUNCTION(operands));
@@ -132,8 +153,8 @@ static void printSignedLoadCall(const char* name)
 
 static void printOpcodeBranch(const char* name)
 {
-    uint8_t a = READ_UINT8();
-    uint8_t b = READ_UINT8();
+    uint16_t a = readRegister(0);
+    uint16_t b = readRegister(1);
     int8_t offset = READ_INT8();
 
     printf("%-15s R%d, R%d, #%d\n", name, a, b, offset);
@@ -166,6 +187,23 @@ static void printInstruction(uint8_t c)
         case OP_STG_64:         printOpcodeRegisterUint16("STG_64"); break;
         case OP_LDR_64:         printOpcodeRegisters2("LDR_64"); break;
         case OP_STR_64:         printOpcodeRegisters2("STR_64"); break;
+        case OP_F32_TO_F64:     printOpcodeRegisters2("F32_TO_F64"); break;
+        case OP_INT_TO_F32:     printOpcodeRegisters2("INT_TO_F32"); break;
+        case OP_UINT_TO_F32:    printOpcodeRegisters2("UINT_TO_F32"); break;
+        case OP_INT_TO_F64:     printOpcodeRegisters2("INT_TO_F64"); break;
+        case OP_UINT_TO_F64:    printOpcodeRegisters2("UINT_TO_F64"); break;
+        case OP_ADD_F32:        printOpcodeRegisters3("ADD_F32"); break;
+        case OP_ADD_F64:        printOpcodeRegisters3("ADD_F64"); break;
+        case OP_SUB_F32:        printOpcodeRegisters3("SUB_F32"); break;
+        case OP_SUB_F64:        printOpcodeRegisters3("SUB_F64"); break;
+        case OP_MUL_F32:        printOpcodeRegisters3("MUL_F32"); break;
+        case OP_MUL_F64:        printOpcodeRegisters3("MUL_F64"); break;
+        case OP_DIV_F32:        printOpcodeRegisters3("DIV_F32"); break;
+        case OP_DIV_F64:        printOpcodeRegisters3("DIV_F64"); break;
+        case OP_REM_F32:        printOpcodeRegisters3("REM_F32"); break;
+        case OP_REM_F64:        printOpcodeRegisters3("REM_F64"); break;
+        case OP_NEG_F32:        printOpcodeRegisters2("NEG_F32"); break;
+        case OP_NEG_F64:        printOpcodeRegisters2("NEG_F64"); break;
         case OP_ADD_I64:        printOpcodeRegisters3("ADD_I64"); break;
         case OP_ADD_I32:        printOpcodeRegisters3("ADD_I32"); break;
         case OP_ADD_I16:        printOpcodeRegisters3("ADD_I16"); break;
@@ -307,7 +345,15 @@ void disassemble(CodeObject* code)
     ptr = code->data;
 
     while (ptr != codeObjectEnd(code)) {
+        registerHigh[0] = 0;
+        registerHigh[1] = 0;
+        registerHigh[2] = 0;
         uint8_t c = READ_UINT8();
+
+        if (c == OP_WIDE) {
+            printWidePrefix();
+            c = READ_UINT8();
+        }
 
         printInstruction(c);
     }

@@ -102,18 +102,24 @@ static void unresolvedReplExpressionTypeError(void)
 static void registerIndexOverflowError(ASTNode* function)
 {
     if (!function) {
-        fprintf(stderr, "Error: Top-level code requires more than 256 virtual registers\n");
+        fprintf(stderr, "Error: Top-level code requires more than 65536 virtual registers\n");
         exit(1);
     }
 
-    fprintf(stderr, "Error: Function '%s' requires more than 256 virtual registers\n",
+    fprintf(stderr, "Error: Function %s requires more than 65536 virtual registers\n",
         function->functionDefinition.id->chars);
+    exit(1);
+}
+
+static void branchOffsetOverflowError(void)
+{
+    fprintf(stderr, "Error: Branch offset exceeds instruction range\n");
     exit(1);
 }
 
 static void checkRegisterCount(Compiler* compiler, int count)
 {
-    if (count <= (int)UINT8_MAX + 1) {
+    if (count <= (int)UINT16_MAX + 1) {
         return;
     }
 
@@ -162,17 +168,40 @@ static int allocateRegisters(Compiler* compiler, size_t count)
     return first;
 }
 
-static void write8(Compiler* compiler, uint8_t n)
+static void emitInstructionWord(Compiler* compiler, Opcode opcode, int a, int b, int c)
 {
-    pushByte(currentCodeObject(compiler), n);
+    CodeObject* code = currentCodeObject(compiler);
+
+    pushByte(code, opcode);
+    pushByte(code, (uint8_t)a);
+    pushByte(code, (uint8_t)b);
+    pushByte(code, (uint8_t)c);
 }
 
-static void emitInstruction(Compiler* compiler, Opcode opcode, uint8_t a, uint8_t b, uint8_t c)
+static int getRegisterHighByte(Compiler* compiler, int operand, OpcodeRegisterFlag flag, OpcodeRegisterFlag field)
 {
-    write8(compiler, opcode);
-    write8(compiler, a);
-    write8(compiler, b);
-    write8(compiler, c);
+    if (!(flag & field)) {
+        return 0;
+    }
+
+    checkRegisterCount(compiler, operand + 1);
+
+    return operand >> 8;
+}
+
+static void emitInstruction(Compiler* compiler, Opcode opcode, int a, int b, int c)
+{
+    OpcodeRegisterFlag flag = getOpcodeRegisterFlag(opcode);
+    
+    int highA = getRegisterHighByte(compiler, a, flag, OP_REGISTER_A);
+    int highB = getRegisterHighByte(compiler, b, flag, OP_REGISTER_B);
+    int highC = getRegisterHighByte(compiler, c, flag, OP_REGISTER_C);
+
+    if (highA || highB || highC) {
+        emitInstructionWord(compiler, OP_WIDE, highA, highB, highC);
+    }
+
+    emitInstructionWord(compiler, opcode, a, b, c);
 }
 
 static void emitHlt(Compiler* compiler)
@@ -190,6 +219,11 @@ static bool getInstructionBefore(Compiler* compiler, size_t count, PreviousInstr
 
     size_t start = count - INSTRUCTION_SIZE;
     if (start < compiler->peepholeBarrier) {
+        return false;
+    }
+
+    // Byte-based peephole rewrites must not edit the body of a prefixed instruction
+    if (start >= INSTRUCTION_SIZE && code->data[start - INSTRUCTION_SIZE] == OP_WIDE) {
         return false;
     }
 
@@ -215,7 +249,8 @@ static bool fuseMovMov(Compiler* compiler, int dst, int src)
 {
     PreviousInstruction previous;
 
-    if (!getPreviousInstruction(compiler, &previous)
+    if (dst > (int)UINT8_MAX || src > (int)UINT8_MAX
+        || !getPreviousInstruction(compiler, &previous)
         || previous.a + 1 != dst
         || previous.opcode != OP_MOV) {
         return false;
@@ -344,7 +379,7 @@ static bool fuseLoadPairBefore(Compiler* compiler, size_t end, Opcode opcode, in
 {
     PreviousInstruction previous;
 
-    if (!isLoadPairOperandValid(opcode, operand)
+    if (reg > (int)UINT8_MAX || !isLoadPairOperandValid(opcode, operand)
         || !getInstructionBefore(compiler, end, &previous)
         || previous.a + 1 != reg) {
         return false;
@@ -397,7 +432,7 @@ static bool fuseMovLdi(Compiler* compiler, int reg, int16_t imm)
 {
     PreviousInstruction previous;
 
-    if (isLargerThan8BitSigned(imm)
+    if (reg > (int)UINT8_MAX || isLargerThan8BitSigned(imm)
         || !getPreviousInstruction(compiler, &previous)
         || previous.opcode != OP_MOV
         || previous.a + 1 != reg) {
@@ -464,11 +499,11 @@ static bool isLoadCallOperandValid(Opcode opcode, uint16_t operands)
         && imm <= LOAD_CALL_SIGNED_OPERAND_MAX;
 }
 
-static bool fuseLoadCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+static bool fuseLoadCall(Compiler* compiler, int frameRegister, uint16_t functionPosition)
 {
     PreviousInstruction previous;
 
-    if (functionPosition > LOAD_CALL_FUNCTION_MASK
+    if (frameRegister > (int)UINT8_MAX || functionPosition > LOAD_CALL_FUNCTION_MASK
         || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
@@ -508,11 +543,11 @@ static bool isBuiltinFunctionAtPosition(Compiler* compiler, uint16_t position)
     return function->type == FUNCTION_BUILTIN;
 }
 
-static bool fuseCallCall(Compiler* compiler, uint8_t frameRegister, uint16_t functionPosition)
+static bool fuseCallCall(Compiler* compiler, int frameRegister, uint16_t functionPosition)
 {
     PreviousInstruction previous;
 
-    if (functionPosition > UINT8_MAX
+    if (frameRegister > (int)UINT8_MAX || functionPosition > UINT8_MAX
         || !getPreviousInstruction(compiler, &previous)) {
         return false;
     }
@@ -812,7 +847,7 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
 {
     PreviousInstruction previous;
 
-    if (!value.temporary) {
+    if (!value.temporary || dst > (int)UINT8_MAX) {
         return false;
     }
 
@@ -1733,7 +1768,7 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     function->localCount = getMaxLocalCount(body->compound.scope);
     int base = getCallAreaCount(function);
 
-    if (base > (int)UINT8_MAX + 1) {
+    if (base > (int)UINT16_MAX + 1) {
         registerIndexOverflowError(ast);
     }
 
@@ -2044,13 +2079,40 @@ static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
     return position;
 }
 
+static void checkJumpOffset(Opcode opcode, size_t offset)
+{
+    size_t maximum = INT32_MAX >> 8;
+
+    if (opcode == OP_BZ || opcode == OP_BNZ) {
+        maximum = INT16_MAX;
+    }
+
+    if (opcode >= OP_BEQ && opcode <= OP_BLE_UINT) {
+        maximum = INT8_MAX;
+    }
+
+    if (offset > maximum) {
+        branchOffsetOverflowError();
+    }
+}
+
 static void patchJump(Compiler* compiler, size_t position)
 {
     CodeObject* code = currentCodeObject(compiler);
-    int offset = (int)(countCodeObject(code) - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
-    Opcode opcode = (Opcode)code->data[position];
 
-    compiler->peepholeBarrier = countCodeObject(code);
+    // A branch offset starts after its body word, excluding the prefix
+    if (code->data[position] == OP_WIDE) {
+        position += INSTRUCTION_SIZE;
+    }
+
+    size_t count = countCodeObject(code);
+    size_t wordOffset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
+    Opcode opcode = (Opcode)code->data[position];
+    compiler->peepholeBarrier = count;
+
+    checkJumpOffset(opcode, wordOffset);
+
+    int offset = (int)wordOffset;
 
     if (opcode == OP_BZ || opcode == OP_BNZ) {
         setByteAt(code, position + 2, offset >> 8);
@@ -2059,7 +2121,7 @@ static void patchJump(Compiler* compiler, size_t position)
         return;
     }
 
-    if (opcode == OP_BEQ || opcode == OP_BNE) {
+    if (opcode >= OP_BEQ && opcode <= OP_BLE_UINT) {
         setByteAt(code, position + 3, offset);
 
         return;

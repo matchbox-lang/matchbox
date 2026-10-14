@@ -56,10 +56,11 @@ static void run(VM* vm)
     for (;;) {
         Instruction inst = *vm->ip++;
         Opcode opcode = (Opcode)OPCODE(inst);
-        uint8_t a = OPERAND_A(inst);
-        uint8_t b = OPERAND_B(inst);
-        uint8_t c = OPERAND_C(inst);
+        uint16_t a = OPERAND_A(inst);
+        uint16_t b = OPERAND_B(inst);
+        uint16_t c = OPERAND_C(inst);
 
+        dispatch:
         switch (opcode) {
             case OP_HLT:
                 return;
@@ -579,6 +580,16 @@ static void run(VM* vm)
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);
                 vm->gp[c] = vm->fp[a];
                 break;
+            case OP_WIDE: {
+                Instruction prefix = inst;
+                inst = *vm->ip++;
+                opcode = (Opcode)OPCODE(inst);
+                a = ((uint16_t)OPERAND_A(prefix) << 8) | OPERAND_A(inst);
+                b = ((uint16_t)OPERAND_B(prefix) << 8) | OPERAND_B(inst);
+                c = ((uint16_t)OPERAND_C(prefix) << 8) | OPERAND_C(inst);
+
+                goto dispatch;
+            }
             default:
                 return;
         }

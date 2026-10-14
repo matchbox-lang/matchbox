@@ -33,6 +33,14 @@ typedef enum OpcodeFlag
     OP_FLAG_WRITES_A = 1 << 0
 } OpcodeFlag;
 
+typedef enum OpcodeRegisterFlag
+{
+    OP_REGISTER_NONE = 0,
+    OP_REGISTER_A = 1 << 0,
+    OP_REGISTER_B = 1 << 1,
+    OP_REGISTER_C = 1 << 2
+} OpcodeRegisterFlag;
+
 typedef enum Opcode
 {
     // Control
@@ -249,9 +257,13 @@ typedef enum Opcode
     OP_LDG_LDI,
     OP_MOV_LDI,
 
+    // Wide prefix
+    OP_WIDE,
+
     OP_COUNT
 } Opcode;
 
 OpcodeFlag getOpcodeFlags(Opcode opcode);
+OpcodeRegisterFlag getOpcodeRegisterFlag(Opcode opcode);
 
 #endif

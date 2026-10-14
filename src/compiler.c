@@ -2304,6 +2304,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_BOOLEAN:
+        case AST_FLOAT:
         case AST_INTEGER:
         case AST_VARIABLE:
             return true;

@@ -107,7 +107,28 @@ static void foldBinary(ASTNode* ast)
     ast->integerLiteral.typeId = TOKEN_I32;
 }
 
-static void propagateIntegerLet(ASTNode* ast)
+static bool isLiteralOfType(ASTNode* ast, TokenType type)
+{
+    if (ast->type != AST_INTEGER && ast->type != AST_BOOLEAN && ast->type != AST_FLOAT) {
+        return false;
+    }
+
+    TokenType literalType = getTypeId(ast);
+
+    return literalType == type;
+}
+
+static void setLiteralToken(ASTNode* ast, Token token)
+{
+    switch (ast->type) {
+        case AST_INTEGER: ast->integerLiteral.token = token; break;
+        case AST_BOOLEAN: ast->booleanLiteral.token = token; break;
+        case AST_FLOAT: ast->floatLiteral.token = token; break;
+        default: break;
+    }
+}
+
+static void propagateLiteralLet(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
 
@@ -129,21 +150,131 @@ static void propagateIntegerLet(ASTNode* ast)
     ASTNode* initializer = symbol->variableDefinition.expr;
     TokenType type = symbol->variableDefinition.typeId;
 
-    if (!initializer || initializer->type != AST_INTEGER || !isIntegerTypeToken(type)
-        || initializer->integerLiteral.typeId != type) {
+    if (!initializer) {
         return;
     }
 
-    uint64_t value = initializer->integerLiteral.value;
+    bool literal = isLiteralOfType(initializer, type);
+
+    if (!literal) {
+        return;
+    }
+
+    ASTNode replacement = *initializer;
     Token token = ast->variable.token;
 
+    setLiteralToken(&replacement, token);
     freeStringObject(ast->variable.id);
+
     symbol->variableDefinition.readCount--;
-    
-    ast->type = AST_INTEGER;
-    ast->integerLiteral.value = value;
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = type;
+    *ast = replacement;
+}
+
+static void replacePrefixWithLiteral(ASTNode* ast, ASTNode* literal)
+{
+    freeASTNode(ast->prefix.expr);
+    freeVector(&ast->prefix.referenceOrigins);
+
+    *ast = *literal;
+}
+
+static void foldLogicalNot(ASTNode* ast)
+{
+    ASTNode* operand = ast->prefix.expr;
+
+    if (operand->type != AST_BOOLEAN) {
+        return;
+    }
+
+    ASTNode replacement = *operand;
+
+    replacement.booleanLiteral.value = !operand->booleanLiteral.value;
+    replacement.booleanLiteral.token = ast->prefix.operator;
+
+    replacePrefixWithLiteral(ast, &replacement);
+}
+
+static uint64_t negateIntegerValue(uint64_t value, TokenType type)
+{
+    uint64_t result = UINT64_C(0) - value;
+
+    switch (type) {
+        case TOKEN_I8:
+            return (uint64_t)(int64_t)(int8_t)result;
+        case TOKEN_I16:
+            return (uint64_t)(int64_t)(int16_t)result;
+        case TOKEN_I32:
+            return (uint64_t)(int64_t)(int32_t)result;
+        default:
+            return result;
+    }
+}
+
+static void foldIntegerNegation(ASTNode* ast, TokenType type)
+{
+    ASTNode* operand = ast->prefix.expr;
+
+    if (operand->type != AST_INTEGER) {
+        return;
+    }
+
+    ASTNode replacement = *operand;
+    uint64_t value = negateIntegerValue(operand->integerLiteral.value, type);
+
+    replacement.integerLiteral.value = value;
+    replacement.integerLiteral.token = ast->prefix.operator;
+
+    replacePrefixWithLiteral(ast, &replacement);
+}
+
+static void foldFloatNegation(ASTNode* ast, TokenType type)
+{
+    ASTNode* operand = ast->prefix.expr;
+
+    if (type != TOKEN_F32 && type != TOKEN_F64) {
+        return;
+    }
+
+    if (operand->type != AST_FLOAT && operand->type != AST_INTEGER) {
+        return;
+    }
+
+    double value = operand->type == AST_FLOAT ? operand->floatLiteral.value : operand->integerLiteral.value;
+    ASTNode replacement = {.type = AST_FLOAT};
+
+    if (type == TOKEN_F32) {
+        value = (float)value;
+    }
+
+    replacement.floatLiteral.value = -value;
+    replacement.floatLiteral.typeId = type;
+    replacement.floatLiteral.token = ast->prefix.operator;
+
+    replacePrefixWithLiteral(ast, &replacement);
+}
+
+static void foldPrefix(ASTNode* ast)
+{
+    if (ast->prefix.operator.type == TOKEN_NOT) {
+        foldLogicalNot(ast);
+
+        return;
+    }
+
+    if (ast->prefix.operator.type != TOKEN_MINUS) {
+        return;
+    }
+
+    TokenType type = getTypeId(ast->prefix.expr);
+    bool integer = isSignedIntegerTypeToken(type);
+
+    if (integer) {
+        foldIntegerNegation(ast, type);
+
+        return;
+    }
+
+    foldFloatNegation(ast, type);
 }
 
 static void optimizeNodes(Vector* nodes)
@@ -306,12 +437,13 @@ static void optimizeNode(ASTNode* ast)
             break;
         case AST_PREFIX:
             optimizeNode(ast->prefix.expr);
+            foldPrefix(ast);
             break;
         case AST_RETURN:
             optimizeNode(ast->returnStatement.expr);
             break;
         case AST_VARIABLE:
-            propagateIntegerLet(ast);
+            propagateLiteralLet(ast);
             break;
         case AST_VARIABLE_DEFINITION:
             optimizeNode(ast->variableDefinition.expr);

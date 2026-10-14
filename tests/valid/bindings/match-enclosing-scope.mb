@@ -1,0 +1,16 @@
+func select(choose: bool, value: i32) -> i32 {
+    let local = value + 4
+    
+    let result = match choose {
+        case true: value
+        default: local
+    }
+
+    return result
+}
+
+let selectedThen = select(true, 60)
+let selectedElse = select(false, 70)
+
+print(selectedThen)
+print(selectedElse)

@@ -1,0 +1,13 @@
+let narrow: f32 = 2.5
+let other: f32 = -3.75
+var choose = false
+
+let result: f64 = if choose {
+    other
+} else if true {
+    narrow
+} else {
+    other
+}
+
+print(result)

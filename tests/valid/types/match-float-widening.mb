@@ -1,0 +1,10 @@
+let narrow: f32 = 2.5
+let other: f32 = -3.75
+var choose = false
+
+let result: f64 = match choose {
+    case true: narrow
+    default: other
+}
+
+print(result)

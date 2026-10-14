@@ -17,11 +17,13 @@ typedef struct OptimizationWord
     size_t destination;
 } OptimizationWord;
 
-typedef struct KnownInteger
+typedef struct KnownConstant
 {
     bool known;
     int64_t value;
-} KnownInteger;
+    Opcode loadOpcode;
+    uint16_t operand;
+} KnownConstant;
 
 static bool usesRegisterPairs(Opcode opcode)
 {
@@ -180,9 +182,9 @@ static bool invalidatesConstants(Opcode opcode)
         || opcode == OP_REFL || opcode == OP_REFG || opcode == OP_WIDE;
 }
 
-static void selectImmediateArithmetic(OptimizationWord* word, KnownInteger* known)
+static void selectImmediateArithmetic(OptimizationWord* word, KnownConstant* known)
 {
-    KnownInteger right = known[word->c];
+    KnownConstant right = known[word->c];
     Opcode immediate = immediateOpcode(word->opcode);
     bool signedOperand = word->opcode >= OP_ADD_I64 && word->opcode <= OP_MULI_I8;
     int64_t minimum = signedOperand ? INT8_MIN : 0;
@@ -196,9 +198,22 @@ static void selectImmediateArithmetic(OptimizationWord* word, KnownInteger* know
     word->c = right.value;
 }
 
-static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownInteger* known)
+static void selectConstantMove(OptimizationWord* word, KnownConstant* known)
 {
-    KnownInteger value = {false, 0};
+    KnownConstant value = known[word->b];
+
+    if (word->opcode != OP_MOV || !value.known) {
+        return;
+    }
+
+    word->opcode = value.loadOpcode;
+    word->b = value.operand >> 8;
+    word->c = value.operand;
+}
+
+static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownConstant* known)
+{
+    KnownConstant value = {0};
     OpcodeFlag flags = getOpcodeFlags(word->opcode);
 
     if (word->opcode == OP_LDI) {
@@ -213,6 +228,11 @@ static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownInt
         value.value = module->constants.data[position].signedValue;
     }
 
+    if (value.known) {
+        value.loadOpcode = word->opcode;
+        value.operand = word->b << 8 | word->c;
+    }
+
     if (word->opcode == OP_MOV) {
         value = known[word->b];
     }
@@ -222,9 +242,9 @@ static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownInt
     }
 }
 
-static void optimizeImmediateArithmetic(ModuleObject* module, OptimizationWord* words, size_t count)
+static void optimizeConstants(ModuleObject* module, OptimizationWord* words, size_t count)
 {
-    KnownInteger known[256] = {0};
+    KnownConstant known[256] = {0};
 
     for (size_t i = 0; i < count; i++) {
         OptimizationWord* word = &words[i];
@@ -244,6 +264,7 @@ static void optimizeImmediateArithmetic(ModuleObject* module, OptimizationWord* 
             continue;
         }
 
+        selectConstantMove(word, known);
         selectImmediateArithmetic(word, known);
         trackConstant(module, word, known);
     }
@@ -710,7 +731,7 @@ void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentR
     bool topLevel = code == &topLevelFunction->code;
 
     decodeWords(code, words, count);
-    optimizeImmediateArithmetic(module, words, count);
+    optimizeConstants(module, words, count);
     removeDeadLoads(module, words, count, persistentRegisters, topLevel);
     removeImmediateOperandMoves(words, count);
     fuseInstructions(module, words, count);

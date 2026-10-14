@@ -626,17 +626,32 @@ static Operand compileWideNumber(Compiler* compiler, uint64_t value)
     return makeWideOperand(emitLdcI64(compiler, position), true);
 }
 
+static bool isNarrowIntegerImmediate(uint64_t value, TokenType type)
+{
+    bool signedType = isSignedIntegerTypeToken(type);
+
+    if (!signedType) {
+        return value <= INT16_MAX;
+    }
+
+    // Folded i32 arithmetic may store its result as unsigned 32-bit bits
+    int32_t signedValue = (int32_t)value;
+
+    return signedValue >= INT16_MIN && signedValue <= INT16_MAX;
+}
+
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     uint64_t value = ast->integerLiteral.value;
+    TokenType type = getTypeId(ast);
 
-    if (getTypeId(ast) == TOKEN_F64) {
+    if (type == TOKEN_F64) {
         size_t position = makeF64Constant(compiler, (double)value);
 
         return makeWideOperand(emitLdcI64(compiler, position), true);
     }
 
-    if (getTypeId(ast) == TOKEN_F32) {
+    if (type == TOKEN_F32) {
         size_t position = makeF32Constant(compiler, (float)value);
 
         return makeOperand(emitLdc(compiler, position), true);
@@ -646,8 +661,10 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
         return compileWideNumber(compiler, value);
     }
 
-    if (value > INT16_MAX) {
-        Value constant = isSignedIntegerTypeToken(getTypeId(ast))
+    bool immediate = isNarrowIntegerImmediate(value, type);
+
+    if (!immediate) {
+        Value constant = isSignedIntegerTypeToken(type)
             ? SIGNED_VALUE((int64_t)value)
             : UNSIGNED_VALUE(value);
         size_t position = makeConstant(compiler, constant);

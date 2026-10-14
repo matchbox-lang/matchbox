@@ -8,6 +8,7 @@
 
 static void optimizeNode(ASTNode* ast);
 static void optimizeMatchPattern(ASTNode* pattern);
+static void optimizeConditional(ASTNode* ast, bool fold);
 
 static int64_t signedI32Value(uint32_t value)
 {
@@ -161,12 +162,88 @@ static void optimizeConditionalBranch(ASTNode* branch)
     }
 
     if (branch->type == AST_CONDITIONAL) {
-        optimizeNode(branch);
+        optimizeConditional(branch, false);
 
         return;
     }
 
     optimizeNodes(&branch->compound.statements);
+}
+
+static ASTNode* getLiteralBranchResult(ASTNode* branch)
+{
+    while (branch && branch->type == AST_CONDITIONAL) {
+        ASTNode* condition = branch->conditional.condition;
+
+        if (condition->type != AST_BOOLEAN) {
+            return NULL;
+        }
+
+        branch = condition->booleanLiteral.value ? branch->conditional.thenBranch : branch->conditional.elseBranch;
+    }
+
+    if (!branch || branch->type != AST_COMPOUND) {
+        return NULL;
+    }
+
+    size_t count = countVector(&branch->compound.statements);
+
+    if (count != 1) {
+        return NULL;
+    }
+
+    ASTNode* result = getVectorAt(&branch->compound.statements, 0);
+
+    if (result->type != AST_INTEGER && result->type != AST_FLOAT && result->type != AST_BOOLEAN) {
+        return NULL;
+    }
+
+    return result;
+}
+
+static void foldConditional(ASTNode* ast)
+{
+    ASTNode* condition = ast->conditional.condition;
+
+    if (!ast->conditional.expression || ast->conditional.referenceType != REFERENCE_NONE
+        || condition->type != AST_BOOLEAN) {
+        return;
+    }
+
+    ASTNode* selected = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
+    ASTNode* result = getLiteralBranchResult(selected);
+
+    if (!result) {
+        return;
+    }
+
+    TokenType type = getTypeId(result);
+
+    if (type != ast->conditional.typeId) {
+        return;
+    }
+
+    ASTNode replacement = *result;
+
+    freeASTNode(ast->conditional.condition);
+    freeASTNode(ast->conditional.thenBranch);
+    freeASTNode(ast->conditional.elseBranch);
+    freeVector(&ast->conditional.referenceOrigins);
+
+    *ast = replacement;
+}
+
+static void optimizeConditional(ASTNode* ast, bool fold)
+{
+    optimizeNode(ast->conditional.condition);
+    optimizeConditionalBranch(ast->conditional.thenBranch);
+    optimizeConditionalBranch(ast->conditional.elseBranch);
+
+    if (!fold) {
+        return;
+    }
+
+    foldConditional(ast);
 }
 
 static void optimizeMatchPattern(ASTNode* pattern)
@@ -216,9 +293,7 @@ static void optimizeNode(ASTNode* ast)
             optimizeNodes(&ast->builtinCall.args);
             break;
         case AST_CONDITIONAL:
-            optimizeNode(ast->conditional.condition);
-            optimizeConditionalBranch(ast->conditional.thenBranch);
-            optimizeConditionalBranch(ast->conditional.elseBranch);
+            optimizeConditional(ast, true);
             break;
         case AST_FUNCTION_CALL:
             optimizeNodes(&ast->functionCall.args);

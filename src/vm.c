@@ -527,6 +527,10 @@ static void run(VM* vm)
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
+            case OP_LDC2:
+                vm->fp[a] = vm->module->constants.data[b];
+                vm->fp[a + 1] = vm->module->constants.data[c];
+                break;
             case OP_LDG2:
                 vm->fp[a] = vm->gp[b];
                 vm->fp[a + 1] = vm->gp[c];
@@ -538,6 +542,14 @@ static void run(VM* vm)
             case OP_MOV_LDI:
                 vm->fp[a] = vm->fp[b];
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
+                break;
+            case OP_MOV_LDC:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->module->constants.data[c];
+                break;
+            case OP_MOV_LDG:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->gp[c];
                 break;
             case OP_LDI_LDG:
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);

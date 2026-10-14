@@ -446,7 +446,7 @@ static bool smallLoad(OptimizationWord* word)
 {
     int operand = word->b << 8 | word->c;
 
-    if (word->opcode == OP_LDG) {
+    if (word->opcode == OP_LDG || word->opcode == OP_LDC) {
         return operand <= (int)UINT8_MAX;
     }
 
@@ -459,31 +459,63 @@ static bool smallLoad(OptimizationWord* word)
     return immediate >= INT8_MIN && immediate <= INT8_MAX;
 }
 
+static Opcode loadPairOpcode(Opcode first, Opcode second)
+{
+    if (first == OP_LDI && second == OP_LDI) {
+        return OP_LDI2;
+    }
+
+    if (first == OP_LDC && second == OP_LDC) {
+        return OP_LDC2;
+    }
+
+    if (first == OP_LDG && second == OP_LDG) {
+        return OP_LDG2;
+    }
+
+    if (first == OP_LDI && second == OP_LDG) {
+        return OP_LDI_LDG;
+    }
+
+    if (first == OP_LDG && second == OP_LDI) {
+        return OP_LDG_LDI;
+    }
+
+    return OP_NOP;
+}
+
 static bool fuseLoads(OptimizationWord* first, OptimizationWord* second)
 {
     bool firstSmall = smallLoad(first);
     bool secondSmall = smallLoad(second);
+    Opcode opcode = loadPairOpcode(first->opcode, second->opcode);
 
-    if (first->a + 1 != second->a || !firstSmall || !secondSmall) {
+    if (first->a + 1 != second->a || !firstSmall || !secondSmall || opcode == OP_NOP) {
         return false;
-    }
-
-    Opcode opcode = OP_LDG2;
-
-    if (first->opcode == OP_LDI && second->opcode == OP_LDI) {
-        opcode = OP_LDI2;
-    }
-
-    if (first->opcode == OP_LDI && second->opcode == OP_LDG) {
-        opcode = OP_LDI_LDG;
-    }
-
-    if (first->opcode == OP_LDG && second->opcode == OP_LDI) {
-        opcode = OP_LDG_LDI;
     }
 
     first->opcode = opcode;
     first->b = first->c;
+    first->c = second->c;
+
+    return true;
+}
+
+static bool fuseMoveLoad(OptimizationWord* first, OptimizationWord* second)
+{
+    bool small = smallLoad(second);
+
+    if (first->opcode != OP_MOV || first->a + 1 != second->a || !small) {
+        return false;
+    }
+
+    switch (second->opcode) {
+        case OP_LDI: first->opcode = OP_MOV_LDI; break;
+        case OP_LDC: first->opcode = OP_MOV_LDC; break;
+        case OP_LDG: first->opcode = OP_MOV_LDG; break;
+        default: return false;
+    }
+
     first->c = second->c;
 
     return true;
@@ -545,12 +577,9 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
         return true;
     }
 
-    bool small = smallLoad(second);
+    bool moveLoad = fuseMoveLoad(first, second);
 
-    if (first->opcode == OP_MOV && second->opcode == OP_LDI && first->a + 1 == second->a && small) {
-        first->opcode = OP_MOV_LDI;
-        first->c = second->c;
-
+    if (moveLoad) {
         return true;
     }
 
@@ -561,7 +590,7 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
         return true;
     }
 
-    small = smallLoad(first);
+    bool small = smallLoad(first);
 
     if (first->opcode == OP_LDI && second->opcode == OP_STG && first->a == second->a
         && second->b == 0 && small) {

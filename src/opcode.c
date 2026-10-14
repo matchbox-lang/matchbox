@@ -135,6 +135,7 @@ static const OpcodeFlag opcodeFlags[OP_COUNT] = {
     [OP_NEG_I16] = OP_FLAG_WRITES_A,
     [OP_NEG_I8] = OP_FLAG_WRITES_A,
     [OP_LDI2] = OP_FLAG_WRITES_A,
+    [OP_LDC2] = OP_FLAG_WRITES_A,
     [OP_LDG2] = OP_FLAG_WRITES_A,
     [OP_MOV2] = OP_FLAG_WRITES_A,
     [OP_LDI_LDG] = OP_FLAG_WRITES_A,
@@ -293,6 +294,7 @@ static const OpcodeRegisterFlag OpcodeRegisterFlags[OP_COUNT] = {
     [OP_RETV] = OP_REGISTER_A,
     [OP_CALL2] = OP_REGISTER_A,
     [OP_LDI2] = OP_REGISTER_A,
+    [OP_LDC2] = OP_REGISTER_A,
     [OP_LDG2] = OP_REGISTER_A,
     [OP_MOV2] = OP_REGISTER_A | OP_REGISTER_B | OP_REGISTER_C,
     [OP_LDI_CALL] = OP_REGISTER_A,
@@ -303,6 +305,8 @@ static const OpcodeRegisterFlag OpcodeRegisterFlags[OP_COUNT] = {
     [OP_LDI_LDG] = OP_REGISTER_A,
     [OP_LDG_LDI] = OP_REGISTER_A,
     [OP_MOV_LDI] = OP_REGISTER_A | OP_REGISTER_B,
+    [OP_MOV_LDC] = OP_REGISTER_A | OP_REGISTER_B,
+    [OP_MOV_LDG] = OP_REGISTER_A | OP_REGISTER_B,
 };
 
 OpcodeFlag getOpcodeFlags(Opcode opcode)

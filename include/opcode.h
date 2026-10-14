@@ -242,6 +242,7 @@ typedef enum Opcode
     // Repeated instructions
     OP_CALL2,
     OP_LDI2,
+    OP_LDC2,
     OP_LDG2,
     OP_MOV2,
 
@@ -256,6 +257,8 @@ typedef enum Opcode
     OP_LDI_LDG,
     OP_LDG_LDI,
     OP_MOV_LDI,
+    OP_MOV_LDC,
+    OP_MOV_LDG,
 
     // Wide prefix
     OP_WIDE,

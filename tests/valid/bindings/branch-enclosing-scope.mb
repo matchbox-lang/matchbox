@@ -1,0 +1,70 @@
+let value = 1000
+
+func select(choose: bool, value: i32) -> i32 {
+    let local = value + 1
+    let result = if choose { value } else { local }
+
+    return result
+}
+
+func update(choose: bool, value: i32) -> i32 {
+    var result = value
+
+    if choose {
+        result += 2
+    } else {
+        result -= 3
+    }
+
+    return result
+}
+
+func matchParameter(choose: bool, value: i32) -> i32 {
+    let local = value + 4
+    let result = match choose {
+        case true: value
+        default: local
+    }
+
+    return result
+}
+
+func shadow(value: i32) -> i32 {
+    if true {
+        let value = 50
+
+        print(value)
+    }
+
+    return value
+}
+
+let selectedThen = select(true, 10)
+let selectedElse = select(false, 20)
+let updatedThen = update(true, 30)
+let updatedElse = update(false, 40)
+let matchedThen = matchParameter(true, 60)
+let matchedElse = matchParameter(false, 70)
+let shadowed = shadow(80)
+
+print(selectedThen)
+print(selectedElse)
+print(updatedThen)
+print(updatedElse)
+print(matchedThen)
+print(matchedElse)
+print(shadowed)
+print(value)
+
+func readReference(choose: bool, value: &i32) {
+    if choose {
+        print(value)
+    }
+
+    print(value)
+}
+
+var referenced = 90
+readReference(true, &referenced)
+
+print(referenced)

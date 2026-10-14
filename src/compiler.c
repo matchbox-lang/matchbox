@@ -449,7 +449,7 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     if (isParameter(ast)) {
         position = ast->parameter.position;
     } else {
-        position = compiler->frameBaseCount + compiler->localPositionOffset + ast->variableDefinition.position;
+        position = ast->variableDefinition.registerPosition;
     }
 
     size_t slots = getNodeSlotCount(ast);
@@ -1695,6 +1695,7 @@ static bool compileUnusedVariableDefinition(
 
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
+    ast->variableDefinition.registerPosition = compiler->registerCount;
     Operand value;
     size_t slots = getNodeSlotCount(ast);
     bool unused = ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
@@ -1794,20 +1795,12 @@ static void storeConditionalValue(
     emitOperandMov(compiler, destination, value);
 }
 
-static Operand compileBranchExpression(Compiler* compiler, ASTNode* ast, bool reference)
-{
-    if (reference) {
-        return compileReferenceExpression(compiler, ast);
-    }
-
-    return compileExpression(compiler, ast, false);
-}
-
 static Operand compileConditionalBranch(
     Compiler* compiler, ASTNode* branch, TokenType type, int destination, bool reference)
 {
     if (branch->type == AST_CONDITIONAL) {
-        Operand value = compileBranchExpression(compiler, branch, reference);
+        Operand value = compileConvertedExpression(compiler, branch, type, reference);
+
         storeConditionalValue(compiler, type, destination, value);
 
         return value;
@@ -1818,19 +1811,18 @@ static Operand compileConditionalBranch(
     for (size_t i = 0; i < count; i++) {
         bool discard = type == TOKEN_VOID || i + 1 < count;
         ASTNode* statement = getVectorAt(&branch->compound.statements, i);
-        Operand value;
 
-        if (!discard && reference) {
-            value = compileReferenceExpression(compiler, statement);
-        } else {
-            value = compileStatement(compiler, statement, discard);
+        if (discard) {
+            compileStatement(compiler, statement, true);
+
+            continue;
         }
 
-        if (!discard) {
-            storeConditionalValue(compiler, type, destination, value);
+        Operand value = compileConvertedExpression(compiler, statement, type, reference);
 
-            return value;
-        }
+        storeConditionalValue(compiler, type, destination, value);
+
+        return value;
     }
 
     return noOperand();
@@ -2059,7 +2051,10 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
         return;
     }
 
+    binding->variableDefinition.registerPosition = compiler->frameBaseCount + compiler->localPositionOffset
+        + binding->variableDefinition.position;
     int position = getLocalPosition(compiler, binding);
+
     emitOperandMov(compiler, position, subject);
 
     TokenType bindingType = getTypeId(binding);

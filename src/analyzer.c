@@ -233,9 +233,18 @@ static void applyLiteralType(ASTNode* expression, TokenType type)
 
 static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
 {
-    ASTNode* symbol = getLocalSymbol(analyzer->currentScope, id);
-    if (symbol) {
-        return symbol;
+    Scope* frame = analyzer->currentScope->frameScope;
+
+    for (Scope* scope = analyzer->currentScope; scope; scope = scope->parent) {
+        ASTNode* symbol = getLocalSymbol(scope, id);
+
+        if (symbol) {
+            return symbol;
+        }
+
+        if (scope == frame) {
+            break;
+        }
     }
 
     return getLocalSymbol(analyzer->topLevel->compound.scope, id);

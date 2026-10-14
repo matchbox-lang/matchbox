@@ -1,0 +1,36 @@
+let narrow: f32 = 2.5
+let other: f32 = -3.75
+var choose = true
+
+let constantThen: f64 = if true { narrow } else { other }
+let constantElse: f64 = if false { narrow } else { other }
+let dynamicThen: f64 = if choose { narrow } else { other }
+
+choose = false
+
+let dynamicElse: f64 = if choose { narrow } else { other }
+let chained: f64 = if choose { other } else if true { narrow } else { other }
+let arithmetic: f64 = if choose { narrow + other } else { narrow * other }
+let matched: f64 = match choose {
+    case true: narrow
+    default: other
+}
+
+func conditionalLocal(choose: bool, left: f32, right: f32) -> f64 {
+    let result: f64 = if choose { left } else { right }
+
+    return result
+}
+
+let localThen = conditionalLocal(true, narrow, other)
+let localElse = conditionalLocal(false, narrow, other)
+
+print(constantThen)
+print(constantElse)
+print(dynamicThen)
+print(dynamicElse)
+print(chained)
+print(arithmetic)
+print(matched)
+print(localThen)
+print(localElse)

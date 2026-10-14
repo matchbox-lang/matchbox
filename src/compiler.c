@@ -6,7 +6,8 @@
 #include "module_object.h"
 #include "opcode.h"
 #include "parser.h"
-#include "optimizer.h"
+#include "ast_optimizer.h"
+#include "bytecode_optimizer.h"
 #include "scope.h"
 #include "token.h"
 #include "util.h"
@@ -245,30 +246,9 @@ static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* inst
     return getInstructionBefore(compiler, count, instruction);
 }
 
-static bool fuseMovMov(Compiler* compiler, int dst, int src)
-{
-    PreviousInstruction previous;
-
-    if (dst > (int)UINT8_MAX || src > (int)UINT8_MAX
-        || !getPreviousInstruction(compiler, &previous)
-        || previous.a + 1 != dst
-        || previous.opcode != OP_MOV) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_MOV2);
-    setByteAt(previous.code, previous.start + 3, src);
-
-    return true;
-}
-
 static void emitMov(Compiler* compiler, int dst, int src)
 {
     if (dst == src) {
-        return;
-    }
-
-    if (fuseMovMov(compiler, dst, src)) {
         return;
     }
 
@@ -345,113 +325,9 @@ static int emitLdcI64(Compiler* compiler, uint16_t position)
     return reg;
 }
 
-static Opcode getLoadPairOpcode(Opcode first, Opcode second)
-{
-    if (first == OP_LDI && second == OP_LDI) {
-        return OP_LDI2;
-    }
-
-    if (first == OP_LDI && second == OP_LDG) {
-        return OP_LDI_LDG;
-    }
-
-    if (first == OP_LDG && second == OP_LDI) {
-        return OP_LDG_LDI;
-    }
-
-    if (first == OP_LDG && second == OP_LDG) {
-        return OP_LDG2;
-    }
-
-    return OP_HLT;
-}
-
-static bool isLoadPairOperandValid(Opcode opcode, uint16_t operand)
-{
-    if (opcode != OP_LDI) {
-        return operand <= UINT8_MAX;
-    }
-
-    return !isLargerThan8BitSigned((int16_t)operand);
-}
-
-static bool fuseLoadPairBefore(Compiler* compiler, size_t end, Opcode opcode, int reg, uint16_t operand)
-{
-    PreviousInstruction previous;
-
-    if (reg > (int)UINT8_MAX || !isLoadPairOperandValid(opcode, operand)
-        || !getInstructionBefore(compiler, end, &previous)
-        || previous.a + 1 != reg) {
-        return false;
-    }
-
-    Opcode fusedOpcode = getLoadPairOpcode(previous.opcode, opcode);
-
-    if (fusedOpcode == OP_HLT) {
-        return false;
-    }
-
-    uint16_t previousOperand = (uint16_t)(previous.b << 8 | previous.c);
-
-    if (!isLoadPairOperandValid(previous.opcode, previousOperand)) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, fusedOpcode);
-    setByteAt(previous.code, previous.start + 2, previousOperand);
-    setByteAt(previous.code, previous.start + 3, operand);
-
-    return true;
-}
-
-static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t operand)
-{
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
-
-    return fuseLoadPairBefore(compiler, count, opcode, reg, operand);
-}
-
-static void fuseRetargetedLoad(Compiler* compiler, PreviousInstruction* instruction, int dst)
-{
-    if (instruction->opcode != OP_LDI && instruction->opcode != OP_LDG) {
-        return;
-    }
-
-    uint16_t operand = (uint16_t)(instruction->b << 8 | instruction->c);
-    bool fused = fuseLoadPairBefore(compiler, instruction->start, instruction->opcode, dst, operand);
-
-    if (!fused) {
-        return;
-    }
-
-    resizeCodeObject(instruction->code, instruction->start);
-}
-
-static bool fuseMovLdi(Compiler* compiler, int reg, int16_t imm)
-{
-    PreviousInstruction previous;
-
-    if (reg > (int)UINT8_MAX || isLargerThan8BitSigned(imm)
-        || !getPreviousInstruction(compiler, &previous)
-        || previous.opcode != OP_MOV
-        || previous.a + 1 != reg) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_MOV_LDI);
-    setByteAt(previous.code, previous.start + 3, imm);
-
-    return true;
-}
-
 static int emitLdi(Compiler* compiler, int16_t imm)
 {
     int reg = allocateRegister(compiler);
-
-    if (fuseMovLdi(compiler, reg, imm) || fuseLoadPair(compiler, OP_LDI, reg, (uint16_t)imm)) {
-        return reg;
-    }
 
     emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
 
@@ -462,126 +338,14 @@ static int emitLdg(Compiler* compiler, uint16_t imm)
 {
     int reg = allocateRegister(compiler);
 
-    if (fuseLoadPair(compiler, OP_LDG, reg, imm)) {
-        return reg;
-    }
-
     emitInstruction(compiler, OP_LDG, reg, imm >> 8, imm);
 
     return reg;
 }
 
-static Opcode getLoadCallOpcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OP_LDI:
-            return OP_LDI_CALL;
-        case OP_LDC:
-            return OP_LDC_CALL;
-        case OP_LDG:
-            return OP_LDG_CALL;
-        case OP_LDR:
-            return OP_LDR_CALL;
-        default:
-            return OP_HLT;
-    }
-}
-
-static bool isLoadCallOperandValid(Opcode opcode, uint16_t operands)
-{
-    if (opcode != OP_LDI) {
-        return operands <= LOAD_CALL_OPERAND_MASK;
-    }
-
-    int16_t imm = (int16_t)operands;
-
-    return imm >= LOAD_CALL_SIGNED_OPERAND_MIN
-        && imm <= LOAD_CALL_SIGNED_OPERAND_MAX;
-}
-
-static bool fuseLoadCall(Compiler* compiler, int frameRegister, uint16_t functionPosition)
-{
-    PreviousInstruction previous;
-
-    if (frameRegister > (int)UINT8_MAX || functionPosition > LOAD_CALL_FUNCTION_MASK
-        || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    Opcode fusedOpcode = getLoadCallOpcode(previous.opcode);
-
-    if (fusedOpcode == OP_HLT) {
-        return false;
-    }
-
-    if (previous.a != frameRegister) {
-        return false;
-    }
-
-    uint16_t operands = previous.opcode == OP_LDR
-        ? previous.b
-        : previous.b << 8 | previous.c;
-
-    if (!isLoadCallOperandValid(previous.opcode, operands)) {
-        return false;
-    }
-
-    operands = ((operands & LOAD_CALL_OPERAND_MASK) << LOAD_CALL_FUNCTION_BITS)
-        | functionPosition;
-
-    setByteAt(previous.code, previous.start, fusedOpcode);
-    setByteAt(previous.code, previous.start + 2, operands >> 8);
-    setByteAt(previous.code, previous.start + 3, operands);
-
-    return true;
-}
-
-static bool isBuiltinFunctionAtPosition(Compiler* compiler, uint16_t position)
-{
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
-
-    return function->type == FUNCTION_BUILTIN;
-}
-
-static bool fuseCallCall(Compiler* compiler, int frameRegister, uint16_t functionPosition)
-{
-    PreviousInstruction previous;
-
-    if (frameRegister > (int)UINT8_MAX || functionPosition > UINT8_MAX
-        || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    if (previous.opcode != OP_CALL
-        || previous.a + 1 != frameRegister
-        || previous.b != 0) {
-        return false;
-    }
-
-    uint8_t previousFunctionPosition = previous.c;
-
-    if (!isBuiltinFunctionAtPosition(compiler, previousFunctionPosition)) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_CALL2);
-    setByteAt(previous.code, previous.start + 2, previousFunctionPosition);
-    setByteAt(previous.code, previous.start + 3, functionPosition);
-
-    return true;
-}
-
 static void emitCallInstruction(Compiler* compiler, int frameRegister, uint16_t functionPosition)
 {
     checkRegisterCount(compiler, frameRegister + 1);
-
-    if (fuseCallCall(compiler, frameRegister, functionPosition)) {
-        return;
-    }
-
-    if (fuseLoadCall(compiler, frameRegister, functionPosition)) {
-        return;
-    }
 
     emitInstruction(compiler, OP_CALL, frameRegister, functionPosition >> 8, functionPosition);
 }
@@ -798,34 +562,6 @@ static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t sl
     return slots == 2 ? makeWideOperand(operand.reg, true) : operand;
 }
 
-static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
-{
-    PreviousInstruction previous;
-
-    if (!value.temporary
-        || position > (int)UINT8_MAX
-        || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    if (previous.opcode != OP_LDI
-        || previous.a != value.reg) {
-        return false;
-    }
-
-    int16_t imm = (int16_t)(previous.b << 8 | previous.c);
-
-    if (isLargerThan8BitSigned(imm)) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_LDI_STG);
-    setByteAt(previous.code, previous.start + 2, imm);
-    setByteAt(previous.code, previous.start + 3, position);
-
-    return true;
-}
-
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     int position = ast->variableDefinition.position;
@@ -833,10 +569,6 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
     if (value.slots == 2) {
         emitInstruction(compiler, OP_STG_64, value.reg, position >> 8, position);
 
-        return;
-    }
-
-    if (fuseLdiStore(compiler, value, position)) {
         return;
     }
 
@@ -861,7 +593,6 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
     }
 
     setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, dst);
-    fuseRetargetedLoad(compiler, &previous, dst);
 
     return true;
 }
@@ -1046,141 +777,9 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
     return OP_HLT;
 }
 
-static Opcode getIntegerImmediateOpcode(TokenType type, IntegerOperation operation)
-{
-    switch (operation) {
-        case INTEGER_ADD:
-            return getWidthOpcode(type, OP_ADDI_I64, OP_ADDI_I32, OP_ADDI_I16, OP_ADDI_I8);
-        case INTEGER_SUB:
-            return getWidthOpcode(type, OP_SUBI_I64, OP_SUBI_I32, OP_SUBI_I16, OP_SUBI_I8);
-        case INTEGER_MUL:
-            return getWidthOpcode(type, OP_MULI_I64, OP_MULI_I32, OP_MULI_I16, OP_MULI_I8);
-        case INTEGER_BAND:
-            return getWidthOpcode(type, OP_BANDI_I64, OP_BANDI_I32, OP_BANDI_I16, OP_BANDI_I8);
-        case INTEGER_BOR:
-            return getWidthOpcode(type, OP_BORI_I64, OP_BORI_I32, OP_BORI_I16, OP_BORI_I8);
-        case INTEGER_BXOR:
-            return getWidthOpcode(type, OP_BXORI_I64, OP_BXORI_I32, OP_BXORI_I16, OP_BXORI_I8);
-        case INTEGER_LSL:
-            return getWidthOpcode(type, OP_LSLI_I64, OP_LSLI_I32, OP_LSLI_I16, OP_LSLI_I8);
-        case INTEGER_LSR:
-            if (isSignedIntegerTypeToken(type)) {
-                return getWidthOpcode(type, OP_ASRI_I64, OP_ASRI_I32, OP_ASRI_I16, OP_ASRI_I8);
-            }
-
-            return getWidthOpcode(type, OP_LSRI_I64, OP_LSRI_I32, OP_LSRI_I16, OP_LSRI_I8);
-        default:
-            return OP_HLT;
-    }
-}
-
-static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediate)
-{
-    if (operation == INTEGER_ADD || operation == INTEGER_SUB || operation == INTEGER_MUL) {
-        return !isLargerThan8BitSigned(immediate);
-    }
-
-    return immediate >= 0 && immediate <= (int16_t)UINT8_MAX;
-}
-
-static Opcode getImmediatePairLoadOpcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OP_MOV_LDI:
-            return OP_MOV;
-        case OP_LDG_LDI:
-            return OP_LDG;
-        case OP_LDI2:
-            return OP_LDI;
-        default:
-            return OP_HLT;
-    }
-}
-
-static bool getBinaryImmediate(PreviousInstruction* previous, Operand left, Operand right, int16_t* immediate,
-    int* source)
-{
-    if (previous->opcode == OP_LDI && previous->a == right.reg) {
-        *immediate = (int16_t)(previous->b << 8 | previous->c);
-        *source = left.reg;
-
-        return true;
-    }
-
-    if (!left.temporary || left.slots != 1 || right.slots != 1) {
-        return false;
-    }
-
-    Opcode loadOpcode = getImmediatePairLoadOpcode(previous->opcode);
-
-    if (loadOpcode == OP_HLT
-        || previous->a != left.reg
-        || previous->a + 1 != right.reg) {
-        return false;
-    }
-
-    *immediate = (int8_t)previous->c;
-    *source = loadOpcode == OP_MOV ? previous->b : left.reg;
-
-    return true;
-}
-
-static void removeBinaryImmediateLoad(Compiler* compiler, PreviousInstruction* previous)
-{
-    Opcode opcode = getImmediatePairLoadOpcode(previous->opcode);
-
-    resizeCodeObject(previous->code, previous->start);
-
-    if (opcode == OP_HLT || opcode == OP_MOV) {
-        return;
-    }
-
-    uint16_t operand = opcode == OP_LDI ? (int16_t)(int8_t)previous->b : previous->b;
-
-    emitInstruction(compiler, opcode, previous->a, operand >> 8, operand);
-}
-
-static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
-    TokenType type, Operand left, Operand right, Operand* result)
-{
-    PreviousInstruction previous;
-
-    if (!right.temporary || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    int16_t immediate;
-    int source;
-
-    if (!getBinaryImmediate(&previous, left, right, &immediate, &source)) {
-        return false;
-    }
-
-    Opcode opcode = getIntegerImmediateOpcode(type, operation);
-
-    if (opcode == OP_HLT || !isImmediateOperandValid(operation, immediate)) {
-        return false;
-    }
-
-    removeBinaryImmediateLoad(compiler, &previous);
-    releaseOperand(compiler, right);
-
-    int dst = left.temporary ? left.reg : allocateRegisters(compiler, left.slots);
-    emitInstruction(compiler, opcode, dst, source, immediate);
-    *result = left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
-
-    return true;
-}
-
 static Operand emitBinaryOperands(
     Compiler* compiler, IntegerOperation operation, TokenType type, Operand left, Operand right)
 {
-    Operand immediateResult;
-
-    if (emitBinaryImmediate(compiler, operation, type, left, right, &immediateResult)) {
-        return immediateResult;
-    }
-
     int dst;
 
     if (left.temporary) {
@@ -2006,6 +1605,8 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
         emitRet(compiler);
     }
 
+    optimizeBytecode(compiler->module, &function->code, 0);
+
     compiler->function = previousFunction;
     compiler->frameBaseCount = previousFrameBaseCount;
     compiler->localPositionOffset = previousLocalPositionOffset;
@@ -2069,10 +1670,7 @@ static bool compileUnusedVariableDefinition(
 
     compileExpression(compiler, ast->variableDefinition.expr, true);
 
-    if (!isCompilingTopLevel(compiler)) {
-        return true;
-    }
-
+    // Preserve analyzed binding positions after discarding an unused initializer
     allocateRegisters(compiler, slots);
 
     return true;
@@ -2706,6 +2304,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_BOOLEAN:
+        case AST_FLOAT:
         case AST_INTEGER:
         case AST_VARIABLE:
             return true;
@@ -3066,7 +2665,7 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
             continue;
         }
 
-        // Reclaim trailing unused globals while keeping nested local positions aligned.
+        // Reclaim trailing unused globals while keeping nested local positions aligned
         int unusedSlots = compiler->registerCount - requiredRegisters;
         compiler->registerCount = requiredRegisters;
         compiler->localPositionOffset -= unusedSlots;
@@ -3164,6 +2763,10 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
     compiler->peepholeBarrier = 0;
     compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);
+
+    CodeObject* code = currentCodeObject(compiler);
+
+    optimizeBytecode(compiler->module, code, compiler->registerCount);
 
     return true;
 }

@@ -1,4 +1,4 @@
-#include "optimizer.h"
+#include "ast_optimizer.h"
 #include "scope.h"
 #include "string_object.h"
 #include "token.h"
@@ -8,6 +8,7 @@
 
 static void optimizeNode(ASTNode* ast);
 static void optimizeMatchPattern(ASTNode* pattern);
+static void optimizeConditional(ASTNode* ast, bool fold);
 
 static int64_t signedI32Value(uint32_t value)
 {
@@ -106,7 +107,28 @@ static void foldBinary(ASTNode* ast)
     ast->integerLiteral.typeId = TOKEN_I32;
 }
 
-static void propagateIntegerLet(ASTNode* ast)
+static bool isLiteralOfType(ASTNode* ast, TokenType type)
+{
+    if (ast->type != AST_INTEGER && ast->type != AST_BOOLEAN && ast->type != AST_FLOAT) {
+        return false;
+    }
+
+    TokenType literalType = getTypeId(ast);
+
+    return literalType == type;
+}
+
+static void setLiteralToken(ASTNode* ast, Token token)
+{
+    switch (ast->type) {
+        case AST_INTEGER: ast->integerLiteral.token = token; break;
+        case AST_BOOLEAN: ast->booleanLiteral.token = token; break;
+        case AST_FLOAT: ast->floatLiteral.token = token; break;
+        default: break;
+    }
+}
+
+static void propagateLiteralLet(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
 
@@ -119,7 +141,7 @@ static void propagateIntegerLet(ASTNode* ast)
         return;
     }
 
-    // Keep captured bindings dynamic across later interactive reference accesses.
+    // Keep captured bindings dynamic across later interactive reference accesses
     Scope* definitionScope = symbol->variableDefinition.scope;
     if (definitionScope->frameScope != ast->variable.scope->frameScope) {
         return;
@@ -128,21 +150,131 @@ static void propagateIntegerLet(ASTNode* ast)
     ASTNode* initializer = symbol->variableDefinition.expr;
     TokenType type = symbol->variableDefinition.typeId;
 
-    if (!initializer || initializer->type != AST_INTEGER || !isIntegerTypeToken(type)
-        || initializer->integerLiteral.typeId != type) {
+    if (!initializer) {
         return;
     }
 
-    uint64_t value = initializer->integerLiteral.value;
+    bool literal = isLiteralOfType(initializer, type);
+
+    if (!literal) {
+        return;
+    }
+
+    ASTNode replacement = *initializer;
     Token token = ast->variable.token;
 
+    setLiteralToken(&replacement, token);
     freeStringObject(ast->variable.id);
+
     symbol->variableDefinition.readCount--;
-    
-    ast->type = AST_INTEGER;
-    ast->integerLiteral.value = value;
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = type;
+    *ast = replacement;
+}
+
+static void replacePrefixWithLiteral(ASTNode* ast, ASTNode* literal)
+{
+    freeASTNode(ast->prefix.expr);
+    freeVector(&ast->prefix.referenceOrigins);
+
+    *ast = *literal;
+}
+
+static void foldLogicalNot(ASTNode* ast)
+{
+    ASTNode* operand = ast->prefix.expr;
+
+    if (operand->type != AST_BOOLEAN) {
+        return;
+    }
+
+    ASTNode replacement = *operand;
+
+    replacement.booleanLiteral.value = !operand->booleanLiteral.value;
+    replacement.booleanLiteral.token = ast->prefix.operator;
+
+    replacePrefixWithLiteral(ast, &replacement);
+}
+
+static uint64_t negateIntegerValue(uint64_t value, TokenType type)
+{
+    uint64_t result = UINT64_C(0) - value;
+
+    switch (type) {
+        case TOKEN_I8:
+            return (uint64_t)(int64_t)(int8_t)result;
+        case TOKEN_I16:
+            return (uint64_t)(int64_t)(int16_t)result;
+        case TOKEN_I32:
+            return (uint64_t)(int64_t)(int32_t)result;
+        default:
+            return result;
+    }
+}
+
+static void foldIntegerNegation(ASTNode* ast, TokenType type)
+{
+    ASTNode* operand = ast->prefix.expr;
+
+    if (operand->type != AST_INTEGER) {
+        return;
+    }
+
+    ASTNode replacement = *operand;
+    uint64_t value = negateIntegerValue(operand->integerLiteral.value, type);
+
+    replacement.integerLiteral.value = value;
+    replacement.integerLiteral.token = ast->prefix.operator;
+
+    replacePrefixWithLiteral(ast, &replacement);
+}
+
+static void foldFloatNegation(ASTNode* ast, TokenType type)
+{
+    ASTNode* operand = ast->prefix.expr;
+
+    if (type != TOKEN_F32 && type != TOKEN_F64) {
+        return;
+    }
+
+    if (operand->type != AST_FLOAT && operand->type != AST_INTEGER) {
+        return;
+    }
+
+    double value = operand->type == AST_FLOAT ? operand->floatLiteral.value : operand->integerLiteral.value;
+    ASTNode replacement = {.type = AST_FLOAT};
+
+    if (type == TOKEN_F32) {
+        value = (float)value;
+    }
+
+    replacement.floatLiteral.value = -value;
+    replacement.floatLiteral.typeId = type;
+    replacement.floatLiteral.token = ast->prefix.operator;
+
+    replacePrefixWithLiteral(ast, &replacement);
+}
+
+static void foldPrefix(ASTNode* ast)
+{
+    if (ast->prefix.operator.type == TOKEN_NOT) {
+        foldLogicalNot(ast);
+
+        return;
+    }
+
+    if (ast->prefix.operator.type != TOKEN_MINUS) {
+        return;
+    }
+
+    TokenType type = getTypeId(ast->prefix.expr);
+    bool integer = isSignedIntegerTypeToken(type);
+
+    if (integer) {
+        foldIntegerNegation(ast, type);
+
+        return;
+    }
+
+    foldFloatNegation(ast, type);
 }
 
 static void optimizeNodes(Vector* nodes)
@@ -161,12 +293,88 @@ static void optimizeConditionalBranch(ASTNode* branch)
     }
 
     if (branch->type == AST_CONDITIONAL) {
-        optimizeNode(branch);
+        optimizeConditional(branch, false);
 
         return;
     }
 
     optimizeNodes(&branch->compound.statements);
+}
+
+static ASTNode* getLiteralBranchResult(ASTNode* branch)
+{
+    while (branch && branch->type == AST_CONDITIONAL) {
+        ASTNode* condition = branch->conditional.condition;
+
+        if (condition->type != AST_BOOLEAN) {
+            return NULL;
+        }
+
+        branch = condition->booleanLiteral.value ? branch->conditional.thenBranch : branch->conditional.elseBranch;
+    }
+
+    if (!branch || branch->type != AST_COMPOUND) {
+        return NULL;
+    }
+
+    size_t count = countVector(&branch->compound.statements);
+
+    if (count != 1) {
+        return NULL;
+    }
+
+    ASTNode* result = getVectorAt(&branch->compound.statements, 0);
+
+    if (result->type != AST_INTEGER && result->type != AST_FLOAT && result->type != AST_BOOLEAN) {
+        return NULL;
+    }
+
+    return result;
+}
+
+static void foldConditional(ASTNode* ast)
+{
+    ASTNode* condition = ast->conditional.condition;
+
+    if (!ast->conditional.expression || ast->conditional.referenceType != REFERENCE_NONE
+        || condition->type != AST_BOOLEAN) {
+        return;
+    }
+
+    ASTNode* selected = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
+    ASTNode* result = getLiteralBranchResult(selected);
+
+    if (!result) {
+        return;
+    }
+
+    TokenType type = getTypeId(result);
+
+    if (type != ast->conditional.typeId) {
+        return;
+    }
+
+    ASTNode replacement = *result;
+
+    freeASTNode(ast->conditional.condition);
+    freeASTNode(ast->conditional.thenBranch);
+    freeASTNode(ast->conditional.elseBranch);
+    freeVector(&ast->conditional.referenceOrigins);
+
+    *ast = replacement;
+}
+
+static void optimizeConditional(ASTNode* ast, bool fold)
+{
+    optimizeNode(ast->conditional.condition);
+    optimizeConditionalBranch(ast->conditional.thenBranch);
+    optimizeConditionalBranch(ast->conditional.elseBranch);
+
+    if (!fold) {
+        return;
+    }
+
+    foldConditional(ast);
 }
 
 static void optimizeMatchPattern(ASTNode* pattern)
@@ -216,9 +424,7 @@ static void optimizeNode(ASTNode* ast)
             optimizeNodes(&ast->builtinCall.args);
             break;
         case AST_CONDITIONAL:
-            optimizeNode(ast->conditional.condition);
-            optimizeConditionalBranch(ast->conditional.thenBranch);
-            optimizeConditionalBranch(ast->conditional.elseBranch);
+            optimizeConditional(ast, true);
             break;
         case AST_FUNCTION_CALL:
             optimizeNodes(&ast->functionCall.args);
@@ -231,12 +437,13 @@ static void optimizeNode(ASTNode* ast)
             break;
         case AST_PREFIX:
             optimizeNode(ast->prefix.expr);
+            foldPrefix(ast);
             break;
         case AST_RETURN:
             optimizeNode(ast->returnStatement.expr);
             break;
         case AST_VARIABLE:
-            propagateIntegerLet(ast);
+            propagateLiteralLet(ast);
             break;
         case AST_VARIABLE_DEFINITION:
             optimizeNode(ast->variableDefinition.expr);

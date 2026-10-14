@@ -1083,6 +1083,20 @@ static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediat
     return immediate >= 0 && immediate <= (int16_t)UINT8_MAX;
 }
 
+static Opcode getImmediatePairLoadOpcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OP_MOV_LDI:
+            return OP_MOV;
+        case OP_LDG_LDI:
+            return OP_LDG;
+        case OP_LDI2:
+            return OP_LDI;
+        default:
+            return OP_HLT;
+    }
+}
+
 static bool getBinaryImmediate(PreviousInstruction* previous, Operand left, Operand right, int16_t* immediate,
     int* source)
 {
@@ -1097,14 +1111,33 @@ static bool getBinaryImmediate(PreviousInstruction* previous, Operand left, Oper
         return false;
     }
 
-    if (previous->opcode != OP_MOV_LDI || previous->a != left.reg || previous->a + 1 != right.reg) {
+    Opcode loadOpcode = getImmediatePairLoadOpcode(previous->opcode);
+
+    if (loadOpcode == OP_HLT
+        || previous->a != left.reg
+        || previous->a + 1 != right.reg) {
         return false;
     }
 
     *immediate = (int8_t)previous->c;
-    *source = previous->b;
+    *source = loadOpcode == OP_MOV ? previous->b : left.reg;
 
     return true;
+}
+
+static void removeBinaryImmediateLoad(Compiler* compiler, PreviousInstruction* previous)
+{
+    Opcode opcode = getImmediatePairLoadOpcode(previous->opcode);
+
+    resizeCodeObject(previous->code, previous->start);
+
+    if (opcode == OP_HLT || opcode == OP_MOV) {
+        return;
+    }
+
+    uint16_t operand = opcode == OP_LDI ? (int16_t)(int8_t)previous->b : previous->b;
+
+    emitInstruction(compiler, opcode, previous->a, operand >> 8, operand);
 }
 
 static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
@@ -1129,7 +1162,7 @@ static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
         return false;
     }
 
-    resizeCodeObject(previous.code, previous.start);
+    removeBinaryImmediateLoad(compiler, &previous);
     releaseOperand(compiler, right);
 
     int dst = left.temporary ? left.reg : allocateRegisters(compiler, left.slots);

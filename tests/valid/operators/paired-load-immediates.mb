@@ -1,0 +1,14 @@
+func readPairedImmediateResults() {
+    print((if true { 120 } else { 0 }) + 7)
+    print((if true { 0 - 120 } else { 0 }) + 7)
+    print((if true { 120 } else { 0 }) / 3)
+    print((if true { 120 } else { 0 }) & 3)
+}
+
+func readMovedImmediateResults(value: i32) {
+    print(value + 7)
+    print(value - 3)
+}
+
+readPairedImmediateResults()
+readMovedImmediateResults(10)

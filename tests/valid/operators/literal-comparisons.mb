@@ -1,0 +1,11 @@
+let value = 2
+
+print(value == 2)
+print(value != 2)
+print(value < 2)
+print(value <= 2)
+print(value > 2)
+print(value >= 2)
+print(-1 < 0)
+print(2147483647 + 1 < 0)
+print(-2147483648 == 2147483647 + 1)

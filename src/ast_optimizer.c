@@ -76,8 +76,109 @@ static bool foldBinaryValue(ASTNode* ast, uint64_t* value)
     }
 }
 
+static bool getLiteralComparisonOperand(ASTNode* ast, int64_t* value)
+{
+    if (ast->type == AST_BOOLEAN) {
+        *value = ast->booleanLiteral.value;
+
+        return true;
+    }
+
+    if (ast->type != AST_INTEGER) {
+        return false;
+    }
+
+    uint64_t integer = ast->integerLiteral.value;
+
+    switch (ast->integerLiteral.typeId) {
+        case TOKEN_I8:
+            *value = (int8_t)integer;
+            break;
+        case TOKEN_I16:
+            *value = (int16_t)integer;
+            break;
+        case TOKEN_I32:
+            *value = signedI32Value(integer);
+            break;
+        case TOKEN_U8:
+            *value = (uint8_t)integer;
+            break;
+        case TOKEN_U16:
+            *value = (uint16_t)integer;
+            break;
+        case TOKEN_U32:
+            *value = (uint32_t)integer;
+            break;
+        default: return false;
+    }
+
+    return true;
+}
+
+static bool foldBooleanValue(TokenType operator, int64_t left, int64_t right, bool* value)
+{
+    switch (operator) {
+        case TOKEN_EQUAL_EQUAL:
+            *value = left == right;
+            break;
+        case TOKEN_NOT_EQUAL:
+            *value = left != right;
+            break;
+        case TOKEN_LESS:
+            *value = left < right;
+            break;
+        case TOKEN_LESS_EQUAL:
+            *value = left <= right;
+            break;
+        case TOKEN_GREATER:
+            *value = left > right;
+            break;
+        case TOKEN_GREATER_EQUAL:
+            *value = left >= right;
+            break;
+        case TOKEN_AND:
+            *value = left && right;
+            break;
+        case TOKEN_OR:
+            *value = left || right;
+            break;
+        default: return false;
+    }
+
+    return true;
+}
+
+static bool foldBooleanBinary(ASTNode* ast)
+{
+    int64_t left;
+    int64_t right;
+    bool value;
+
+    if (ast->binary.typeId != TOKEN_BOOL
+        || !getLiteralComparisonOperand(ast->binary.leftExpr, &left)
+        || !getLiteralComparisonOperand(ast->binary.rightExpr, &right)
+        || !foldBooleanValue(ast->binary.operator.type, left, right, &value)) {
+        return false;
+    }
+
+    Token token = ast->binary.operator;
+
+    freeASTNode(ast->binary.leftExpr);
+    freeASTNode(ast->binary.rightExpr);
+
+    ast->type = AST_BOOLEAN;
+    ast->booleanLiteral.value = value;
+    ast->booleanLiteral.token = token;
+
+    return true;
+}
+
 static void foldBinary(ASTNode* ast)
 {
+    if (foldBooleanBinary(ast)) {
+        return;
+    }
+
     if (ast->binary.leftExpr->type != AST_INTEGER) {
         return;
     }

@@ -1,0 +1,7 @@
+func check() -> bool {
+    print(10)
+    return true
+}
+
+print(false and check())
+print(true or check())

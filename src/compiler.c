@@ -2164,10 +2164,70 @@ static bool canUseDirectMatchBranch(MatchArm* arm)
     return isSimpleMatchValue(statement);
 }
 
+static bool isLiteralMatchPattern(ASTNode* pattern)
+{
+    if (pattern->type == AST_INTEGER || pattern->type == AST_BOOLEAN) {
+        return true;
+    }
+
+    if (!isMatchAlternative(pattern)) {
+        return false;
+    }
+
+    return isLiteralMatchPattern(pattern->binary.leftExpr) && isLiteralMatchPattern(pattern->binary.rightExpr);
+}
+
+static size_t compileMatchAlternativeJumps(
+    Compiler* compiler, ASTNode* pattern, Operand subject, bool last, Vector* matches)
+{
+    if (isMatchAlternative(pattern)) {
+        compileMatchAlternativeJumps(compiler, pattern->binary.leftExpr, subject, false, matches);
+
+        return compileMatchAlternativeJumps(compiler, pattern->binary.rightExpr, subject, last, matches);
+    }
+
+    Opcode opcode = OP_NE;
+
+    if (last) {
+        opcode = OP_EQ;
+    }
+
+    Operand value = compileExpression(compiler, pattern, false);
+    Operand condition = emitComparison(compiler, opcode, subject, value);
+    size_t jump = emitConditionJump(compiler, condition);
+
+    releaseOperand(compiler, condition);
+
+    if (!last) {
+        pushVectorItem(matches, (void*)(uintptr_t)jump);
+    }
+
+    return jump;
+}
+
+static size_t compileMatchAlternativeCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
+{
+    Vector matches;
+
+    initVector(&matches);
+
+    size_t nextJump = compileMatchAlternativeJumps(compiler, pattern, subject, true, &matches);
+
+    patchMatchJumps(compiler, &matches);
+    freeVector(&matches);
+
+    return nextJump;
+}
+
 static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
 {
     if (!arm->pattern) {
         return 0;
+    }
+
+    if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
+        && isLiteralMatchPattern(arm->pattern)) {
+        return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
     }
 
     if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm)) {

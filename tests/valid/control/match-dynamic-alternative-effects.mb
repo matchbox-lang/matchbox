@@ -1,0 +1,20 @@
+func pattern() {
+    print(99)
+    return 3
+}
+
+func check(value) {
+    match value {
+        case 1 | 2 | pattern():
+            print(10)
+        default:
+            print(20)
+    }
+
+    print(value)
+}
+
+check(1)
+check(2)
+check(3)
+check(4)

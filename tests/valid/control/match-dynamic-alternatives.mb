@@ -1,0 +1,22 @@
+func check(value) {
+    let result = match value {
+        case 0:
+            10
+        case 2 | 3 | 4:
+            20
+        case 4 | 5:
+            30
+        default:
+            40
+    }
+
+    print(result)
+    print(value)
+}
+
+check(0)
+check(2)
+check(3)
+check(4)
+check(5)
+check(9)

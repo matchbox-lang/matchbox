@@ -1,0 +1,24 @@
+match 2 {
+    case 1:
+        print(10)
+    case 2 | 3 | 4:
+        print(20)
+    default:
+        print(30)
+}
+
+match 3 {
+    case 2 | 3 | 4:
+        print(40)
+    default:
+        print(50)
+}
+
+match 4 {
+    case 2 | 3 | 4:
+        print(60)
+    case 4:
+        print(70)
+    default:
+        print(80)
+}

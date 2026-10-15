@@ -2311,13 +2311,17 @@ static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value)
         return true;
     }
 
-    if (ast->type == AST_INTEGER) {
-        *value = ast->integerLiteral.value;
-
-        return true;
+    if (ast->type != AST_INTEGER) {
+        return false;
     }
 
-    return false;
+    *value = ast->integerLiteral.value;
+
+    if (ast->integerLiteral.typeId == TOKEN_I32) {
+        *value = (uint64_t)(int64_t)(int32_t)*value;
+    }
+
+    return true;
 }
 
 static bool getLiteralMatchSubject(ASTNode* ast, uint64_t* value)
@@ -2338,6 +2342,33 @@ typedef enum LiteralMatchArmResult
     LITERAL_MATCH_ARM_SELECTED
 } LiteralMatchArmResult;
 
+static bool evaluateLiteralMatchPattern(ASTNode* pattern, uint64_t subjectValue, bool* matches)
+{
+    uint64_t patternValue;
+
+    if (getLiteralMatchValue(pattern, &patternValue)) {
+        *matches = subjectValue == patternValue;
+
+        return true;
+    }
+
+    if (!isMatchAlternative(pattern)) {
+        return false;
+    }
+
+    bool left;
+    bool right;
+
+    if (!evaluateLiteralMatchPattern(pattern->binary.leftExpr, subjectValue, &left)
+        || !evaluateLiteralMatchPattern(pattern->binary.rightExpr, subjectValue, &right)) {
+        return false;
+    }
+
+    *matches = left || right;
+
+    return true;
+}
+
 static LiteralMatchArmResult selectLiteralMatchArm(
     MatchArm* arm, uint64_t subjectValue, ASTNode** branch, ASTNode** binding)
 {
@@ -2348,16 +2379,13 @@ static LiteralMatchArmResult selectLiteralMatchArm(
         return LITERAL_MATCH_ARM_SELECTED;
     }
 
-    if (isMatchAlternative(arm->pattern)) {
+    bool matches;
+
+    if (!evaluateLiteralMatchPattern(arm->pattern, subjectValue, &matches)) {
         return LITERAL_MATCH_ARM_UNAVAILABLE;
     }
 
-    uint64_t patternValue;
-    if (!getLiteralMatchValue(arm->pattern, &patternValue)) {
-        return LITERAL_MATCH_ARM_UNAVAILABLE;
-    }
-
-    if (subjectValue != patternValue) {
+    if (!matches) {
         return LITERAL_MATCH_ARM_SKIPPED;
     }
 

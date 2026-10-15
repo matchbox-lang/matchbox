@@ -1,0 +1,24 @@
+let result = match 9 {
+    case 1 | 2:
+        10
+    case 3 | 4:
+        20
+    default:
+        30
+}
+
+print(result)
+
+match 9 {
+    case 1 | 2:
+        print(40)
+    case captured:
+        print(captured)
+}
+
+match 9 {
+    case 1 | 2:
+        print(50)
+}
+
+print(60)

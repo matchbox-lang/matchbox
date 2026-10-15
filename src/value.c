@@ -84,7 +84,13 @@ void reserveValueArray(ValueArray* array, size_t capacity)
 
 void resizeValueArray(ValueArray* array, size_t size)
 {
-    reserveValueArray(array, size);
+    size_t capacity = array->capacity;
+
+    while (capacity < size) {
+        capacity = GROW_CAPACITY(capacity);
+    }
+
+    reserveValueArray(array, capacity);
 
     for (size_t i = array->count; i < size; i++) {
         array->data[i] = SIGNED_VALUE(0);

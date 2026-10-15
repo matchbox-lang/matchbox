@@ -45,7 +45,13 @@ void reserveCodeObject(CodeObject* code, size_t capacity)
 
 void resizeCodeObject(CodeObject* code, size_t size)
 {
-    reserveCodeObject(code, size);
+    size_t capacity = code->capacity;
+
+    while (capacity < size) {
+        capacity = GROW_CAPACITY(capacity);
+    }
+
+    reserveCodeObject(code, capacity);
 
     for (size_t i = code->count; i < size; i++) {
         code->data[i] = 0;

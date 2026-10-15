@@ -27,19 +27,23 @@ case OP_LDC_64:
     WRITE_U64(vm->fp, a, READ_U64(vm->module->constants.data, OPERAND_BC(inst)));
     break;
 case OP_LDG_64:
-    WRITE_U64(vm->fp, a, READ_U64(vm->gp, OPERAND_BC(inst)));
+    WRITE_U64(vm->fp, a, READ_U64(vm->globals.data, OPERAND_BC(inst)));
     break;
 case OP_STG_64:
-    WRITE_U64(vm->gp, OPERAND_BC(inst), READ_U64(vm->fp, a));
+    WRITE_U64(vm->globals.data, OPERAND_BC(inst), READ_U64(vm->fp, a));
     break;
-case OP_LDR_64:
-    vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);
-    vm->fp[a + 1] = *((Value*)AS_POINTER(vm->fp[b]) + 1);
+case OP_LDR_64: {
+    Value* reference = AS_POINTER(vm->fp[b]);
+    vm->fp[a] = reference[0];
+    vm->fp[a + 1] = reference[1];
     break;
-case OP_STR_64:
-    *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
-    *((Value*)AS_POINTER(vm->fp[b]) + 1) = vm->fp[a + 1];
+}
+case OP_STR_64: {
+    Value* reference = AS_POINTER(vm->fp[b]);
+    reference[0] = vm->fp[a];
+    reference[1] = vm->fp[a + 1];
     break;
+}
 case OP_F32_TO_F64:
     WRITE_F64(vm->fp, a, AS_F32(vm->fp[b]));
     break;

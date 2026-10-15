@@ -82,9 +82,21 @@ static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
 
-static void functionPositionOverflowError()
+static void constantIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than 65536 functions\n");
+    fprintf(stderr, "Error: Cannot create more than %u constants\n", UINT16_MAX + 1u);
+    exit(1);
+}
+
+static void globalIndexOverflowError(void)
+{
+    fprintf(stderr, "Error: Cannot create more than %u globals\n", UINT16_MAX + 1u);
+    exit(1);
+}
+
+static void functionIndexOverflowError(void)
+{
+    fprintf(stderr, "Error: Cannot create more than %u functions\n", UINT16_MAX + 1u);
     exit(1);
 }
 
@@ -103,12 +115,12 @@ static void unresolvedReplExpressionTypeError(void)
 static void registerIndexOverflowError(ASTNode* function)
 {
     if (!function) {
-        fprintf(stderr, "Error: Top-level code requires more than 65536 virtual registers\n");
+        fprintf(stderr, "Error: Top-level code requires more than %u virtual registers\n", UINT16_MAX + 1u);
         exit(1);
     }
 
-    fprintf(stderr, "Error: Function %s requires more than 65536 virtual registers\n",
-        function->functionDefinition.id->chars);
+    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n",
+        function->functionDefinition.id->chars, UINT16_MAX + 1u);
     exit(1);
 }
 
@@ -334,11 +346,20 @@ static int emitLdi(Compiler* compiler, int16_t imm)
     return reg;
 }
 
-static int emitLdg(Compiler* compiler, uint16_t imm)
+static void emitGlobalInstruction(Compiler* compiler, Opcode opcode, int reg, size_t position)
+{
+    if (position > UINT16_MAX) {
+        globalIndexOverflowError();
+    }
+
+    emitInstruction(compiler, opcode, reg, position >> 8, position);
+}
+
+static int emitLdg(Compiler* compiler, size_t position)
 {
     int reg = allocateRegister(compiler);
 
-    emitInstruction(compiler, OP_LDG, reg, imm >> 8, imm);
+    emitGlobalInstruction(compiler, OP_LDG, reg, position);
 
     return reg;
 }
@@ -369,12 +390,22 @@ static int getCallAreaCount(FunctionObject* function)
 
 static size_t makeConstant(Compiler* compiler, Value value)
 {
+    size_t position = countValueArray(&compiler->module->constants);
+
+    if (position > UINT16_MAX) {
+        constantIndexOverflowError();
+    }
+
     return pushValue(&compiler->module->constants, value) - 1;
 }
 
 static size_t makeI64Constant(Compiler* compiler, uint64_t value)
 {
     size_t position = countValueArray(&compiler->module->constants);
+
+    if (position > (size_t)UINT16_MAX - 1) {
+        constantIndexOverflowError();
+    }
 
 #if UINTPTR_MAX == UINT32_MAX
     pushValue(&compiler->module->constants, U32_VALUE(value));
@@ -460,7 +491,7 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     return position;
 }
 
-static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
+static Operand loadGlobalWithStoreForwarding(Compiler* compiler, size_t position)
 {
     PreviousInstruction previous;
     uint16_t storedPosition;
@@ -477,7 +508,7 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
         return makeOperand(emitLdg(compiler, position), true);
     }
 
-    if (storedPosition != position) {
+    if (storedPosition != position || previous.a >= compiler->registerCount) {
         return makeOperand(emitLdg(compiler, position), true);
     }
 
@@ -486,16 +517,12 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
 
 static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = ast->variableDefinition.position;
+    size_t position = ast->variableDefinition.position;
     bool wide = getNodeSlotCount(ast) == 2;
-
-    if (isCompilingTopLevel(compiler)) {
-        return wide ? makeWideOperand(position, false) : makeOperand(position, false);
-    }
 
     if (wide) {
         int reg = allocateRegisters(compiler, 2);
-        emitInstruction(compiler, OP_LDG_64, reg, position >> 8, position);
+        emitGlobalInstruction(compiler, OP_LDG_64, reg, position);
 
         return makeWideOperand(reg, true);
     }
@@ -530,8 +557,8 @@ static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
     int reg = allocateRegister(compiler);
 
     if (isTopLevelScope(getScope(ast))) {
-        int position = ast->variableDefinition.position;
-        emitInstruction(compiler, OP_REFG, reg, position >> 8, position);
+        size_t position = ast->variableDefinition.position;
+        emitGlobalInstruction(compiler, OP_REFG, reg, position);
 
         return makeOperand(reg, true);
     }
@@ -564,15 +591,15 @@ static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t sl
 
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    int position = ast->variableDefinition.position;
+    size_t position = ast->variableDefinition.position;
 
     if (value.slots == 2) {
-        emitInstruction(compiler, OP_STG_64, value.reg, position >> 8, position);
+        emitGlobalInstruction(compiler, OP_STG_64, value.reg, position);
 
         return;
     }
 
-    emitInstruction(compiler, OP_STG, value.reg, position >> 8, position);
+    emitGlobalInstruction(compiler, OP_STG, value.reg, position);
 }
 
 static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
@@ -1371,7 +1398,7 @@ static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
 static uint16_t makeFunctionPosition(size_t position)
 {
     if (position > UINT16_MAX) {
-        functionPositionOverflowError();
+        functionIndexOverflowError();
     }
 
     return (uint16_t)position;
@@ -1687,10 +1714,24 @@ static bool compileUnusedVariableDefinition(
 
     compileExpression(compiler, ast->variableDefinition.expr, true);
 
+    if (isTopLevelScope(ast->variableDefinition.scope)) {
+        return true;
+    }
+
     // Preserve analyzed binding positions after discarding an unused initializer
     allocateRegisters(compiler, slots);
 
     return true;
+}
+
+static void finishGlobalDefinition(Compiler* compiler, ASTNode* ast, Operand value)
+{
+    if (!isTopLevelScope(ast->variableDefinition.scope)) {
+        return;
+    }
+
+    storeGlobalVariable(compiler, ast, value);
+    releaseOperand(compiler, value);
 }
 
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
@@ -1717,7 +1758,12 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
         int reg = allocateRegisters(compiler, slots);
 
         emitOperandMov(compiler, reg, value);
+
+        value.reg = reg;
+        value.temporary = true;
     }
+
+    finishGlobalDefinition(compiler, ast, value);
 }
 
 static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
@@ -2646,41 +2692,33 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes)
     }
 }
 
-static int getRequiredGlobalRegisterCount(Vector* nodes)
+static void finishTopLevelStatement(Compiler* compiler, ASTNode* ast)
 {
-    size_t count = countVector(nodes);
-    int registers = 0;
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* ast = nodes->data[i];
-        if (ast->type != AST_VARIABLE_DEFINITION || hasNoValueReads(ast)) {
-            continue;
-        }
-
-        size_t slots = getNodeSlotCount(ast);
-        registers = ast->variableDefinition.position + slots;
+    if (ast->type != AST_VARIABLE_DEFINITION) {
+        return;
     }
 
-    return registers;
+    size_t slots = getNodeSlotCount(ast);
+    size_t position = ast->variableDefinition.position;
+    size_t count = position + slots;
+
+    if (count > (size_t)UINT16_MAX + 1) {
+        globalIndexOverflowError();
+    }
+
+    compiler->module->globalCount = count;
+    compiler->localPositionOffset = -(int)count;
 }
 
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
-    int requiredRegisters = getRequiredGlobalRegisterCount(nodes);
 
     while (compiler->statementIndex < count) {
         ASTNode* ast = nodes->data[compiler->statementIndex++];
+
         compileStatement(compiler, ast, true);
-
-        if (ast->type != AST_VARIABLE_DEFINITION || compiler->registerCount <= requiredRegisters) {
-            continue;
-        }
-
-        // Reclaim trailing unused globals while keeping nested local positions aligned
-        int unusedSlots = compiler->registerCount - requiredRegisters;
-        compiler->registerCount = requiredRegisters;
-        compiler->localPositionOffset -= unusedSlots;
+        finishTopLevelStatement(compiler, ast);
     }
 }
 
@@ -2716,6 +2754,7 @@ static void compileReplStatements(Compiler* compiler, Vector* nodes)
         bool isLast = compiler->statementIndex == count;
 
         compileReplStatement(compiler, ast, isLast);
+        finishTopLevelStatement(compiler, ast);
     }
 }
 

@@ -38,7 +38,13 @@ void reserveVector(Vector* vector, size_t capacity)
 
 void resizeVector(Vector* vector, size_t size)
 {
-    reserveVector(vector, size);
+    size_t capacity = vector->capacity;
+
+    while (capacity < size) {
+        capacity = GROW_CAPACITY(capacity);
+    }
+
+    reserveVector(vector, capacity);
 
     for (size_t i = vector->count; i < size; i++) {
         vector->data[i] = NULL;

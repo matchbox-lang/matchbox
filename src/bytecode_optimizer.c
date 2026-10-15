@@ -298,22 +298,16 @@ static bool updateBuiltinCallLiveness(ModuleObject* module, OptimizationWord* wo
     return true;
 }
 
-static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live, bool topLevel)
+static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live)
 {
     if (word->wide || (word->opcode != OP_STG && word->opcode != OP_STG_64)) {
         return false;
     }
 
     int slots = word->opcode == OP_STG_64 ? 2 : 1;
-    int position = word->b << 8 | word->c;
 
     if (word->a + slots > 256) {
         return false;
-    }
-
-    // Top-level registers share storage with globals; function registers do not
-    for (int i = 0; topLevel && i < slots && position + i < 256; i++) {
-        live[position + i] = false;
     }
 
     for (int i = 0; i < slots; i++) {
@@ -324,7 +318,7 @@ static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live, bool t
 }
 
 static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* live,
-    size_t persistentRegisters, bool topLevel)
+    size_t persistentRegisters)
 {
     bool builtin = updateBuiltinCallLiveness(module, word, live);
 
@@ -332,7 +326,7 @@ static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* l
         return;
     }
 
-    bool store = updateGlobalStoreLiveness(word, live, topLevel);
+    bool store = updateGlobalStoreLiveness(word, live);
 
     if (store) {
         return;
@@ -378,7 +372,7 @@ static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* l
 }
 
 static void removeDeadLoads(ModuleObject* module, OptimizationWord* words, size_t count,
-    size_t persistentRegisters, bool topLevel)
+    size_t persistentRegisters)
 {
     bool live[256];
 
@@ -387,7 +381,7 @@ static void removeDeadLoads(ModuleObject* module, OptimizationWord* words, size_
     for (size_t end = count; end > 0; end--) {
         OptimizationWord* word = &words[end - 1];
 
-        updateLiveness(module, word, live, persistentRegisters, topLevel);
+        updateLiveness(module, word, live, persistentRegisters);
 
         if (word->target) {
             memset(live, 1, sizeof(live));
@@ -727,12 +721,9 @@ void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentR
         outOfMemoryError();
     }
 
-    FunctionObject* topLevelFunction = module->functions.data[0];
-    bool topLevel = code == &topLevelFunction->code;
-
     decodeWords(code, words, count);
     optimizeConstants(module, words, count);
-    removeDeadLoads(module, words, count, persistentRegisters, topLevel);
+    removeDeadLoads(module, words, count, persistentRegisters);
     removeImmediateOperandMoves(words, count);
     fuseInstructions(module, words, count);
     writeWords(code, words, count, positions);

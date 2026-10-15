@@ -14,6 +14,8 @@ ModuleObject* createModuleObject()
     initValueArray(&module->constants);
     initVector(&module->functions);
     pushVectorItem(&module->functions, function);
+    
+    module->globalCount = 0;
 
     return module;
 }

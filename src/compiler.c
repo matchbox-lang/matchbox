@@ -838,8 +838,67 @@ static Operand emitBinaryOperands(
     return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
+static bool prepareImmediateComparison(
+    Compiler* compiler, Opcode opcode, Operand* left, Operand* right, PreviousInstruction* load)
+{
+    if ((opcode != OP_EQ && opcode != OP_NE) || !getPreviousInstruction(compiler, load)
+        || load->opcode != OP_LDI) {
+        return false;
+    }
+
+    int16_t value = load->b << 8 | load->c;
+
+    if (left->temporary && !right->temporary && left->slots == 1 && load->a == left->reg) {
+        Operand swap = *left;
+        *left = *right;
+        *right = swap;
+    }
+
+    return right->temporary && right->slots == 1 && load->a == right->reg
+        && value >= INT8_MIN && value <= INT8_MAX;
+}
+
+static Operand emitImmediateComparisonValue(Compiler* compiler, Opcode opcode, Operand left, int8_t value)
+{
+    int destination = left.reg;
+
+    if (!left.temporary) {
+        destination = allocateRegister(compiler);
+    }
+
+    Opcode immediate = OP_EQI;
+
+    if (opcode == OP_NE) {
+        immediate = OP_NEI;
+    }
+
+    emitInstruction(compiler, immediate, destination, left.reg, value);
+
+    return makeOperand(destination, true);
+}
+
+static Operand emitImmediateComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+{
+    PreviousInstruction load;
+
+    if (!prepareImmediateComparison(compiler, opcode, &left, &right, &load)) {
+        return noOperand();
+    }
+
+    resizeCodeObject(load.code, load.start);
+    releaseOperand(compiler, right);
+
+    return emitImmediateComparisonValue(compiler, opcode, left, load.c);
+}
+
 static Operand emitComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
+    Operand immediate = emitImmediateComparison(compiler, opcode, left, right);
+
+    if (immediate.reg >= 0) {
+        return immediate;
+    }
+
     if (left.temporary) {
         releaseOperand(compiler, right);
         emitInstruction(compiler, opcode, left.reg, left.reg, right.reg);
@@ -1772,6 +1831,49 @@ static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
     return position;
 }
 
+static size_t emitConditionJump(Compiler* compiler, Operand condition)
+{
+    PreviousInstruction comparison;
+
+    if (!condition.temporary || !getPreviousInstruction(compiler, &comparison)
+        || (comparison.opcode != OP_EQI && comparison.opcode != OP_NEI) || comparison.a != condition.reg) {
+        return emitJump(compiler, OP_BZ, condition.reg);
+    }
+
+    Opcode opcode = OP_BNEI;
+    size_t position = comparison.start + INSTRUCTION_SIZE;
+
+    if (comparison.opcode == OP_NEI) {
+        opcode = OP_BEQI;
+    }
+
+    // Keep the comparison operands in a placeholder for the long-branch fallback
+    setByteAt(comparison.code, comparison.start, OP_NOP);
+    emitInstruction(compiler, opcode, comparison.b, comparison.c, 0);
+
+    return position;
+}
+
+static Opcode expandImmediateJump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
+{
+    if ((opcode != OP_BEQI && opcode != OP_BNEI) || offset <= INT8_MAX) {
+        return opcode;
+    }
+
+    size_t comparison = position - INSTRUCTION_SIZE;
+    Opcode comparisonOpcode = OP_EQI;
+
+    if (opcode == OP_BEQI) {
+        comparisonOpcode = OP_NEI;
+    }
+
+    setByteAt(code, comparison, comparisonOpcode);
+    setByteAt(code, position, OP_BZ);
+    setByteAt(code, position + 1, code->data[comparison + 1]);
+
+    return OP_BZ;
+}
+
 static void checkJumpOffset(Opcode opcode, size_t offset)
 {
     size_t maximum = INT32_MAX >> 8;
@@ -1802,6 +1904,7 @@ static void patchJump(Compiler* compiler, size_t position)
     size_t wordOffset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
     Opcode opcode = (Opcode)code->data[position];
     compiler->peepholeBarrier = count;
+    opcode = expandImmediateJump(code, position, opcode, wordOffset);
 
     checkJumpOffset(opcode, wordOffset);
 
@@ -1937,7 +2040,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
 
     if (conditionNode->type != AST_BOOLEAN) {
         Operand condition = compileExpression(compiler, conditionNode, false);
-        elseJump = emitJump(compiler, OP_BZ, condition.reg);
+        elseJump = emitConditionJump(compiler, condition);
 
         releaseOperand(compiler, condition);
     }
@@ -2069,7 +2172,7 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
 
     if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm)) {
         Operand condition = compileMatchCondition(compiler, ast, arm, subject);
-        size_t nextJump = emitJump(compiler, OP_BZ, condition.reg);
+        size_t nextJump = emitConditionJump(compiler, condition);
         releaseOperand(compiler, condition);
 
         return nextJump;
@@ -2082,6 +2185,16 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
     }
 
     Operand pattern = compileExpression(compiler, arm->pattern, false);
+    Operand condition = emitImmediateComparison(compiler, OP_EQ, subject, pattern);
+
+    if (condition.reg >= 0) {
+        size_t nextJump = emitConditionJump(compiler, condition);
+
+        releaseOperand(compiler, condition);
+
+        return nextJump;
+    }
+
     size_t nextJump = countCodeObject(currentCodeObject(compiler));
     emitInstruction(compiler, OP_BNE, subject.reg, pattern.reg, 0);
     releaseOperand(compiler, pattern);

@@ -1,0 +1,13 @@
+func check(value: u32) {
+    print(value == 127)
+    print(value != 128)
+    print(value == 4294967295)
+
+    if value != 127 {
+        print(10)
+    }
+}
+
+check(127)
+check(128)
+check(4294967295)

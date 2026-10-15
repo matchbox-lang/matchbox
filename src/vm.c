@@ -430,8 +430,14 @@ static void run(VM* vm)
             case OP_EQ:
                 vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) == AS_UNSIGNED(vm->fp[c]));
                 break;
+            case OP_EQI:
+                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) == (int8_t)c);
+                break;
             case OP_NE:
                 vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) != AS_UNSIGNED(vm->fp[c]));
+                break;
+            case OP_NEI:
+                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) != (int8_t)c);
                 break;
             case OP_LT_INT:
                 vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) < AS_SIGNED(vm->fp[c]));
@@ -460,8 +466,18 @@ static void run(VM* vm)
                     vm->ip += (int8_t)c;
                 }
                 break;
+            case OP_BEQI:
+                if (AS_SIGNED(vm->fp[a]) == (int8_t)b) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
             case OP_BNE:
                 if (AS_UNSIGNED(vm->fp[a]) != AS_UNSIGNED(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BNEI:
+                if (AS_SIGNED(vm->fp[a]) != (int8_t)b) {
                     vm->ip += (int8_t)c;
                 }
                 break;

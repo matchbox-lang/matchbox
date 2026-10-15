@@ -352,7 +352,7 @@ static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* l
 
     bool load = word->opcode == OP_LDI || word->opcode == OP_LDC;
 
-    word->removed = load && !word->target && !live[word->a];
+    word->removed = word->opcode == OP_NOP || (load && !word->target && !live[word->a]);
 
     if (flags & OP_FLAG_WRITES_A) {
         live[word->a] = false;

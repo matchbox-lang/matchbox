@@ -216,7 +216,9 @@ typedef enum Opcode
 
     // Comparisons
     OP_EQ,
+    OP_EQI,
     OP_NE,
+    OP_NEI,
     OP_LT_INT,
     OP_LT_UINT,
     OP_LE_INT,
@@ -226,7 +228,9 @@ typedef enum Opcode
     OP_BZ,
     OP_BNZ,
     OP_BEQ,
+    OP_BEQI,
     OP_BNE,
+    OP_BNEI,
     OP_BLT_INT,
     OP_BLT_UINT,
     OP_BLE_INT,

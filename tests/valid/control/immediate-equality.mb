@@ -1,0 +1,13 @@
+func check(value) {
+    print(value == -128)
+    print(-128 != value)
+    print(value == 127)
+    print(127 != value)
+    print(value == -129)
+    print(value != 128)
+}
+
+check(-128)
+check(127)
+check(-129)
+check(128)

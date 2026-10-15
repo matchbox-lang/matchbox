@@ -1,0 +1,11 @@
+var value = 10
+let exclusive = ^value
+
+if true {
+    let shared = &value
+
+    match true {
+        case true:
+            print(exclusive)
+    }
+}

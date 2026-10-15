@@ -1,0 +1,13 @@
+var value = 10
+let exclusive = ^value
+
+print(exclusive)
+
+value = 20
+
+let shared = &value
+print(shared)
+
+value = 30
+
+print(value)

@@ -4,6 +4,8 @@
 #include "ast.h"
 #include <stddef.h>
 
+typedef struct ReferenceLifetimes ReferenceLifetimes;
+
 typedef struct Analyzer
 {
     ASTNode* topLevel;
@@ -11,6 +13,7 @@ typedef struct Analyzer
     Scope* currentScope;
     Vector* currentNodes;
     size_t nextNode;
+    ReferenceLifetimes* referenceLifetimes;
 } Analyzer;
 
 void initAnalyzer(Analyzer* analyzer, ASTNode* ast);

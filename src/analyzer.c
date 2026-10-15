@@ -2,7 +2,9 @@
 #include "builtin.h"
 #include "scope.h"
 #include "string_object.h"
+#include "table.h"
 #include "token.h"
+#include "util.h"
 #include "vector.h"
 #include <float.h>
 #include <limits.h>
@@ -11,7 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static bool nodeUsesId(ASTNode* ast, StringObject* id);
+typedef bool (*VisitId)(StringObject* id, void* context);
+
+static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context);
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
 static void validateNodeEffects(ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
@@ -28,6 +32,19 @@ typedef struct OwnershipState
     bool moved;
     bool referenceAccessActive;
 } OwnershipState;
+
+typedef struct ReferenceUse
+{
+    StringObject id;
+    size_t last;
+} ReferenceUse;
+
+typedef struct ReferenceLifetimes
+{
+    size_t position;
+    Table lastUses;
+    Vector* releases;
+} ReferenceLifetimes;
 
 static void semanticError(char* message, Token token)
 {
@@ -397,12 +414,15 @@ static void setReferenceOriginsFromExpression(ASTNode* destination, ASTNode* exp
     copyReferenceOrigins(destinationOrigins, origins);
 }
 
-static bool nodesUseId(Vector* nodes, StringObject* id)
+static bool visitNodeListUses(Vector* nodes, VisitId visit, void* context)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        if (nodeUsesId(getVectorAt(nodes, i), id)) {
+        ASTNode* node = getVectorAt(nodes, i);
+        bool found = visitNodeUses(node, visit, context);
+
+        if (found) {
             return true;
         }
     }
@@ -410,20 +430,40 @@ static bool nodesUseId(Vector* nodes, StringObject* id)
     return false;
 }
 
-static bool conditionalBranchUsesId(ASTNode* branch, StringObject* id)
+static bool visitMatchUses(ASTNode* ast, VisitId visit, void* context)
 {
-    if (!branch) {
-        return false;
+    if (visitNodeUses(ast->match.subject, visit, context)) {
+        return true;
     }
 
-    if (branch->type == AST_CONDITIONAL) {
-        return nodeUsesId(branch, id);
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        bool found = visitNodeUses(arm->pattern, visit, context)
+            || visitNodeUses(arm->branch, visit, context);
+
+        if (found) {
+            return true;
+        }
     }
 
-    return nodesUseId(&branch->compound.statements, id);
+    return visitNodeUses(ast->match.defaultBranch, visit, context);
 }
 
-static bool nodeUsesId(ASTNode* ast, StringObject* id)
+static bool visitAssignmentUses(ASTNode* ast, VisitId visit, void* context)
+{
+    Token token = ast->assignment.token;
+    StringObject id = {0};
+
+    id.chars = token.chars;
+    id.length = token.length;
+    id.hash = hashStringObject(token.chars, token.length);
+
+    return visit(&id, context) || visitNodeUses(ast->assignment.expr, visit, context);
+}
+
+static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
 {
     if (!ast) {
         return false;
@@ -431,46 +471,121 @@ static bool nodeUsesId(ASTNode* ast, StringObject* id)
 
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            return (ast->assignment.token.length == id->length
-                && memcmp(ast->assignment.token.chars, id->chars, id->length) == 0)
-                || nodeUsesId(ast->assignment.expr, id);
+            return visitAssignmentUses(ast, visit, context);
         case AST_BINARY:
-            return nodeUsesId(ast->binary.leftExpr, id)
-                || nodeUsesId(ast->binary.rightExpr, id);
+            return visitNodeUses(ast->binary.leftExpr, visit, context)
+                || visitNodeUses(ast->binary.rightExpr, visit, context);
         case AST_BUILTIN_CALL:
-            return nodesUseId(&ast->builtinCall.args, id);
+            return visitNodeListUses(&ast->builtinCall.args, visit, context);
+        case AST_COMPOUND:
+            return visitNodeListUses(&ast->compound.statements, visit, context);
         case AST_CONDITIONAL:
-            return nodeUsesId(ast->conditional.condition, id)
-                || conditionalBranchUsesId(ast->conditional.thenBranch, id)
-                || conditionalBranchUsesId(ast->conditional.elseBranch, id);
+            return visitNodeUses(ast->conditional.condition, visit, context)
+                || visitNodeUses(ast->conditional.thenBranch, visit, context)
+                || visitNodeUses(ast->conditional.elseBranch, visit, context);
         case AST_FUNCTION_CALL:
-            return nodesUseId(&ast->functionCall.args, id);
+            return visitNodeListUses(&ast->functionCall.args, visit, context);
         case AST_FUNCTION_DEFINITION:
-            return nodesUseId(&ast->functionDefinition.body->compound.statements, id);
+            return visitNodeUses(ast->functionDefinition.body, visit, context);
+        case AST_MATCH:
+            return visitMatchUses(ast, visit, context);
         case AST_PREFIX:
-            return nodeUsesId(ast->prefix.expr, id);
+            return visitNodeUses(ast->prefix.expr, visit, context);
         case AST_RETURN:
-            return nodeUsesId(ast->returnStatement.expr, id);
+            return visitNodeUses(ast->returnStatement.expr, visit, context);
         case AST_VARIABLE:
-            return compareStringObject(ast->variable.id, id);
+            return visit(ast->variable.id, context);
         case AST_VARIABLE_DEFINITION:
-            return nodeUsesId(ast->variableDefinition.expr, id);
+            return visitNodeUses(ast->variableDefinition.expr, visit, context);
         default:
             return false;
     }
 }
 
-static bool nodesUseIdAfter(Vector* nodes, size_t start, StringObject* id)
+static bool matchesReferenceId(StringObject* id, void* context)
+{
+    return compareStringObject(id, context);
+}
+
+static bool recordReferenceUse(StringObject* id, void* context)
+{
+    ReferenceLifetimes* lifetimes = context;
+    ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
+
+    if (use) {
+        use->last = lifetimes->position;
+
+        return false;
+    }
+
+    use = malloc(sizeof(ReferenceUse));
+    if (!use) {
+        outOfMemoryError();
+    }
+
+    // Assignment visits provide a temporary identifier object
+    use->id = *id;
+    use->last = lifetimes->position;
+
+    setTableAt(&lifetimes->lastUses, &use->id, use);
+
+    return false;
+}
+
+static void initReferenceLifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size_t start)
 {
     size_t count = countVector(nodes);
 
+    initTable(&lifetimes->lastUses, count * 2);
+
+    lifetimes->releases = calloc(count, sizeof(Vector));
+
+    if (count && !lifetimes->releases) {
+        outOfMemoryError();
+    }
+
+    // Collect last uses before analysis changes nodes or ownership state
     for (size_t i = start; i < count; i++) {
-        if (nodeUsesId(getVectorAt(nodes, i), id)) {
-            return true;
+        ASTNode* ast = getVectorAt(nodes, i);
+        lifetimes->position = i;
+
+        visitNodeUses(ast, recordReferenceUse, lifetimes);
+    }
+}
+
+static void scheduleReferenceRelease(ReferenceLifetimes* lifetimes, ASTNode* ast, size_t position)
+{
+    if (!isVariableDefinition(ast) || getReferenceType(ast) == REFERENCE_NONE) {
+        return;
+    }
+
+    StringObject* id = ast->variableDefinition.id;
+    ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
+
+    if (use && use->last > position) {
+        position = use->last;
+    }
+
+    pushVectorItem(&lifetimes->releases[position], ast);
+}
+
+static void freeReferenceLifetimes(ReferenceLifetimes* lifetimes, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        freeVector(&lifetimes->releases[i]);
+    }
+
+    for (size_t i = 0; i < lifetimes->lastUses.capacity; i++) {
+        TableItem* item = lifetimes->lastUses.data[i];
+
+        while (item) {
+            free(item->value);
+            item = item->next;
         }
     }
 
-    return false;
+    free(lifetimes->releases);
+    freeTable(&lifetimes->lastUses);
 }
 
 static void releaseReferenceAccess(ASTNode* reference)
@@ -491,16 +606,14 @@ static void releaseReferenceAccess(ASTNode* reference)
     reference->variableDefinition.referenceAccessActive = false;
 }
 
-static void releaseInactiveReferenceAccess(Vector* nodes, size_t next)
+static void releaseInactiveReferenceAccess(Vector* references)
 {
-    for (size_t i = 0; i < next; i++) {
-        ASTNode* ast = getVectorAt(nodes, i);
+    size_t count = countVector(references);
 
-        if (!isVariableDefinition(ast) || !ast->variableDefinition.referenceAccessActive) {
-            continue;
-        }
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* ast = getVectorAt(references, i);
 
-        if (!nodesUseIdAfter(nodes, next, ast->variableDefinition.id)) {
+        if (ast->variableDefinition.referenceAccessActive) {
             releaseReferenceAccess(ast);
         }
     }
@@ -510,12 +623,41 @@ static void analyzeNodes(Analyzer* analyzer, Vector* nodes, size_t start)
 {
     size_t count = countVector(nodes);
 
+    if (start >= count) {
+        return;
+    }
+
+    ReferenceLifetimes lifetimes;
+    ReferenceLifetimes* previousLifetimes = analyzer->referenceLifetimes;
+    Vector* previousNodes = analyzer->currentNodes;
+    size_t previousNext = analyzer->nextNode;
+
+    initReferenceLifetimes(&lifetimes, nodes, start);
+
+    analyzer->referenceLifetimes = &lifetimes;
+
+    // Include earlier bindings when analyzing a new interactive submission
+    for (size_t i = 0; i < start; i++) {
+        ASTNode* ast = getVectorAt(nodes, i);
+
+        scheduleReferenceRelease(&lifetimes, ast, start);
+    }
+
     for (size_t i = start; i < count; i++) {
+        ASTNode* ast = getVectorAt(nodes, i);
         analyzer->currentNodes = nodes;
         analyzer->nextNode = i + 1;
-        analyzeNode(analyzer, getVectorAt(nodes, i));
-        releaseInactiveReferenceAccess(nodes, i + 1);
+
+        analyzeNode(analyzer, ast);
+        scheduleReferenceRelease(&lifetimes, ast, i);
+        releaseInactiveReferenceAccess(&lifetimes.releases[i]);
     }
+
+    analyzer->referenceLifetimes = previousLifetimes;
+    analyzer->currentNodes = previousNodes;
+    analyzer->nextNode = previousNext;
+
+    freeReferenceLifetimes(&lifetimes, count);
 }
 
 static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
@@ -734,16 +876,19 @@ static bool branchUsesReference(ASTNode* branch, StringObject* id)
         return false;
     }
 
-    return conditionalBranchUsesId(branch, id);
+    return visitNodeUses(branch, matchesReferenceId, id);
 }
 
 static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
 {
-    if (!analyzer->currentNodes) {
+    ReferenceLifetimes* lifetimes = analyzer->referenceLifetimes;
+    if (!lifetimes) {
         return false;
     }
 
-    return nodesUseIdAfter(analyzer->currentNodes, analyzer->nextNode, id);
+    ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
+
+    return use && use->last >= analyzer->nextNode;
 }
 
 static void releaseReferencesDeadOnBranch(Analyzer* analyzer, Vector* states, ASTNode* branch)
@@ -2294,6 +2439,7 @@ void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
     analyzer->currentScope = ast->compound.scope;
     analyzer->currentNodes = NULL;
     analyzer->nextNode = 0;
+    analyzer->referenceLifetimes = NULL;
 }
 
 bool analyze(Analyzer* analyzer, size_t start)

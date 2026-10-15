@@ -1,6 +1,7 @@
 #include "scope.h"
 #include "ast.h"
 #include "table.h"
+#include "util.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -95,9 +96,7 @@ ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
     scope->localCount += getSymbolSlotCount(symbol);
     size_t localExtent = getNextLocalPosition(scope);
 
-    if (localExtent > scope->frameScope->maxLocalCount) {
-        scope->frameScope->maxLocalCount = localExtent;
-    }
+    scope->frameScope->maxLocalCount = MAX(scope->frameScope->maxLocalCount, localExtent);
     
     return setLocalSymbol(scope, id, symbol);
 }

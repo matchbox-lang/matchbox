@@ -158,9 +158,7 @@ static int allocateRegister(Compiler* compiler)
     int reg = compiler->registerCount++;
     int extent = compiler->registerCount + 2;
 
-    if (extent > compiler->function->maxStackCount) {
-        compiler->function->maxStackCount = extent;
-    }
+    compiler->function->maxStackCount = MAX(compiler->function->maxStackCount, extent);
 
     return reg;
 }
@@ -2106,9 +2104,7 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
     TokenType bindingType = getTypeId(binding);
     int bindingRegisterCount = position + getTypeSlotCount(bindingType);
 
-    if (compiler->registerCount < bindingRegisterCount) {
-        compiler->registerCount = bindingRegisterCount;
-    }
+    compiler->registerCount = MAX(compiler->registerCount, bindingRegisterCount);
 }
 
 static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,

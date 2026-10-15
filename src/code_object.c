@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
-
 void initCodeObject(CodeObject* code)
 {
     code->data = NULL;
@@ -34,6 +32,10 @@ void reserveCodeObject(CodeObject* code, size_t capacity)
         return;
     }
 
+    if (capacity > SIZE_MAX / sizeof(uint8_t)) {
+        outOfMemoryError();
+    }
+
     uint8_t* data = realloc(code->data, sizeof(uint8_t) * capacity);
     if (!data) {
         outOfMemoryError();
@@ -45,13 +47,11 @@ void reserveCodeObject(CodeObject* code, size_t capacity)
 
 void resizeCodeObject(CodeObject* code, size_t size)
 {
-    size_t capacity = code->capacity;
+    if (code->capacity < size) {
+        size_t capacity = MAX(code->capacity * 2, size);
 
-    while (capacity < size) {
-        capacity = GROW_CAPACITY(capacity);
+        reserveCodeObject(code, capacity);
     }
-
-    reserveCodeObject(code, capacity);
 
     for (size_t i = code->count; i < size; i++) {
         code->data[i] = 0;
@@ -63,10 +63,13 @@ void resizeCodeObject(CodeObject* code, size_t size)
 size_t pushByte(CodeObject* code, uint8_t byte)
 {
     if (code->capacity <= code->count) {
-        reserveCodeObject(code, GROW_CAPACITY(code->capacity));
+        size_t capacity = MAX(code->capacity * 2, 4);
+
+        reserveCodeObject(code, capacity);
     }
 
     code->data[code->count] = byte;
+
     return ++code->count;
 }
 

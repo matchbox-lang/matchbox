@@ -562,8 +562,8 @@ static void scheduleReferenceRelease(ReferenceLifetimes* lifetimes, ASTNode* ast
     StringObject* id = ast->variableDefinition.id;
     ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
 
-    if (use && use->last > position) {
-        position = use->last;
+    if (use) {
+        position = MAX(position, use->last);
     }
 
     pushVectorItem(&lifetimes->releases[position], ast);
@@ -923,22 +923,13 @@ static void analyzeOwnershipBranch(
     updateOwnershipStates(states);
 }
 
-static size_t maxSize(size_t left, size_t right)
-{
-    if (left > right) {
-        return left;
-    }
-
-    return right;
-}
-
 static void mergeOwnershipState(OwnershipState* thenState, OwnershipState* elseState)
 {
     OwnershipState merged = *thenState;
     initVector(&merged.referenceOrigins);
     copyReferenceOrigins(&merged.referenceOrigins, &thenState->referenceOrigins);
     mergeReferenceOrigins(&merged.referenceOrigins, &elseState->referenceOrigins);
-    merged.sharedAccessCount = maxSize(thenState->sharedAccessCount, elseState->sharedAccessCount);
+    merged.sharedAccessCount = MAX(thenState->sharedAccessCount, elseState->sharedAccessCount);
     merged.exclusiveAccessActive = thenState->exclusiveAccessActive || elseState->exclusiveAccessActive;
     merged.initialized = thenState->initialized && elseState->initialized;
     merged.moved = thenState->moved || elseState->moved;

@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
-
 void initValueArray(ValueArray* array)
 {
     array->data = NULL;
@@ -73,6 +71,10 @@ void reserveValueArray(ValueArray* array, size_t capacity)
         return;
     }
 
+    if (capacity > SIZE_MAX / sizeof(Value)) {
+        outOfMemoryError();
+    }
+
     Value* data = realloc(array->data, sizeof(Value) * capacity);
     if (!data) {
         outOfMemoryError();
@@ -84,13 +86,11 @@ void reserveValueArray(ValueArray* array, size_t capacity)
 
 void resizeValueArray(ValueArray* array, size_t size)
 {
-    size_t capacity = array->capacity;
+    if (array->capacity < size) {
+        size_t capacity = MAX(array->capacity * 2, size);
 
-    while (capacity < size) {
-        capacity = GROW_CAPACITY(capacity);
+        reserveValueArray(array, capacity);
     }
-
-    reserveValueArray(array, capacity);
 
     for (size_t i = array->count; i < size; i++) {
         array->data[i] = SIGNED_VALUE(0);
@@ -102,10 +102,13 @@ void resizeValueArray(ValueArray* array, size_t size)
 size_t pushValue(ValueArray* array, Value value)
 {
     if (array->count == array->capacity) {
-        reserveValueArray(array, GROW_CAPACITY(array->capacity));
+        size_t capacity = MAX(array->capacity * 2, 4);
+
+        reserveValueArray(array, capacity);
     }
 
     array->data[array->count++] = value;
+
     return array->count;
 }
 

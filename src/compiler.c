@@ -506,8 +506,15 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, size_t position
         return makeOperand(emitLdg(compiler, position), true);
     }
 
-    if (storedPosition != position || previous.a >= compiler->registerCount) {
+    if (storedPosition != position || previous.a > compiler->registerCount) {
         return makeOperand(emitLdg(compiler, position), true);
+    }
+
+    if (previous.a == compiler->registerCount) {
+        // Reclaim the released store operand while its value is still in the register
+        int reg = allocateRegister(compiler);
+
+        return makeOperand(reg, true);
     }
 
     return makeOperand(previous.a, false);

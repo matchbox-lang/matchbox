@@ -1,0 +1,17 @@
+let value = 0 - 1
+
+match value {
+    case -1:
+        print(10)
+    default:
+        print(20)
+}
+
+let result = match value {
+    case -2 | -1:
+        30
+    default:
+        40
+}
+
+print(result)

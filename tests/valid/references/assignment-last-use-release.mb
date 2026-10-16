@@ -1,0 +1,8 @@
+var first = 10
+var second = 20
+var exclusive = ^first
+
+exclusive = ^second
+second = 30
+
+print(second)

@@ -1,0 +1,11 @@
+func subject() {
+    print(99)
+    return 3
+}
+
+match subject() {
+    case 1 | 2 | 3:
+        print(10)
+    default:
+        print(20)
+}

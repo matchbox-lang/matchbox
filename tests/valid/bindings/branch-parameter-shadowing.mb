@@ -1,0 +1,13 @@
+func shadow(value: i32) -> i32 {
+    if true {
+        let value = 50
+
+        print(value)
+    }
+
+    return value
+}
+
+let result = shadow(80)
+
+print(result)

@@ -5,10 +5,10 @@ case OP_LDC_64:
     vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
     break;
 case OP_LDG_64:
-    vm->fp[a] = vm->gp[OPERAND_BC(inst)];
+    vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
     break;
 case OP_STG_64:
-    vm->gp[OPERAND_BC(inst)] = vm->fp[a];
+    vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
     break;
 case OP_LDR_64:
     vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);

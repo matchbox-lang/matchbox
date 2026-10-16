@@ -76,16 +76,16 @@ static void run(VM* vm)
                 vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
                 break;
             case OP_LDG:
-                vm->fp[a] = vm->gp[OPERAND_BC(inst)];
+                vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
                 break;
             case OP_STG:
-                vm->gp[OPERAND_BC(inst)] = vm->fp[a];
+                vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
                 break;
             case OP_REFL:
                 vm->fp[a] = POINTER_VALUE(&vm->fp[b]);
                 break;
             case OP_REFG:
-                vm->fp[a] = POINTER_VALUE(&vm->gp[OPERAND_BC(inst)]);
+                vm->fp[a] = POINTER_VALUE(&vm->globals.data[OPERAND_BC(inst)]);
                 break;
             case OP_LDR:
                 vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);
@@ -430,8 +430,14 @@ static void run(VM* vm)
             case OP_EQ:
                 vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) == AS_UNSIGNED(vm->fp[c]));
                 break;
+            case OP_EQI:
+                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) == (int8_t)c);
+                break;
             case OP_NE:
                 vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) != AS_UNSIGNED(vm->fp[c]));
+                break;
+            case OP_NEI:
+                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) != (int8_t)c);
                 break;
             case OP_LT_INT:
                 vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) < AS_SIGNED(vm->fp[c]));
@@ -460,8 +466,18 @@ static void run(VM* vm)
                     vm->ip += (int8_t)c;
                 }
                 break;
+            case OP_BEQI:
+                if (AS_SIGNED(vm->fp[a]) == (int8_t)b) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
             case OP_BNE:
                 if (AS_UNSIGNED(vm->fp[a]) != AS_UNSIGNED(vm->fp[b])) {
+                    vm->ip += (int8_t)c;
+                }
+                break;
+            case OP_BNEI:
+                if (AS_SIGNED(vm->fp[a]) != (int8_t)b) {
                     vm->ip += (int8_t)c;
                 }
                 break;
@@ -527,9 +543,13 @@ static void run(VM* vm)
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
+            case OP_LDC2:
+                vm->fp[a] = vm->module->constants.data[b];
+                vm->fp[a + 1] = vm->module->constants.data[c];
+                break;
             case OP_LDG2:
-                vm->fp[a] = vm->gp[b];
-                vm->fp[a + 1] = vm->gp[c];
+                vm->fp[a] = vm->globals.data[b];
+                vm->fp[a + 1] = vm->globals.data[c];
                 break;
             case OP_MOV2:
                 vm->fp[a] = vm->fp[b];
@@ -539,12 +559,20 @@ static void run(VM* vm)
                 vm->fp[a] = vm->fp[b];
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
+            case OP_MOV_LDC:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->module->constants.data[c];
+                break;
+            case OP_MOV_LDG:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->globals.data[c];
+                break;
             case OP_LDI_LDG:
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);
-                vm->fp[a + 1] = vm->gp[c];
+                vm->fp[a + 1] = vm->globals.data[c];
                 break;
             case OP_LDG_LDI:
-                vm->fp[a] = vm->gp[b];
+                vm->fp[a] = vm->globals.data[b];
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
             case OP_LDI_CALL: {
@@ -565,7 +593,7 @@ static void run(VM* vm)
             case OP_LDG_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
 
-                vm->fp[a] = vm->gp[LOAD_CALL_OPERAND(operands)];
+                vm->fp[a] = vm->globals.data[LOAD_CALL_OPERAND(operands)];
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
@@ -578,7 +606,7 @@ static void run(VM* vm)
             }
             case OP_LDI_STG:
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);
-                vm->gp[c] = vm->fp[a];
+                vm->globals.data[c] = vm->fp[a];
                 break;
             case OP_WIDE: {
                 Instruction prefix = inst;
@@ -601,17 +629,21 @@ void initVM(VM* vm, ModuleObject* module)
     vm->module = module;
     vm->ip = NULL;
     vm->fp = vm->stack;
-    vm->gp = vm->stack;
+
+    initValueArray(&vm->globals);
+    resizeValueArray(&vm->globals, module->globalCount);
 }
 
 void freeVM(VM* vm)
 {
-    (void)vm;
+    freeValueArray(&vm->globals);
 }
 
 void interpret(VM* vm)
 {
-    if (vm->module) {
-        run(vm);
+    if (!vm->module) {
+        return;
     }
+
+    run(vm);
 }

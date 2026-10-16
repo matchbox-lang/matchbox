@@ -1,0 +1,4 @@
+var wide: i64 = 4294967296
+var reference = &wide
+
+print(reference)

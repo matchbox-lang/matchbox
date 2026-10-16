@@ -1,0 +1,20 @@
+var first = 10
+var second = 20
+
+print(second + first)
+
+func update() {
+    first = second + 3
+}
+
+update()
+print(first)
+
+var wide: i64 = 4294967296
+
+func updateWide() {
+    wide += first
+}
+
+updateWide()
+print(wide)

@@ -1,0 +1,12 @@
+let signed8: i8 = -128
+let signed16: i16 = -32768
+let unsigned8: u8 = 255
+let unsigned16: u16 = 65535
+let unsigned32: u32 = 4294967295
+
+print(signed8 < 0)
+print(signed16 >= 0)
+print(unsigned8 > 127)
+print(unsigned16 <= 32767)
+print(unsigned32 > 2147483647)
+print(unsigned32 == 4294967295)

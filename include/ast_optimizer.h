@@ -1,5 +1,5 @@
-#ifndef OPTIMIZER_H
-#define OPTIMIZER_H
+#ifndef AST_OPTIMIZER_H
+#define AST_OPTIMIZER_H
 
 #include "ast.h"
 #include <stddef.h>

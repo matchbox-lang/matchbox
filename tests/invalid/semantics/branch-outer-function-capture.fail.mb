@@ -1,0 +1,11 @@
+func outer(value: i32) {
+    func inner() {
+        if true {
+            print(value)
+        }
+    }
+
+    inner()
+}
+
+outer(10)

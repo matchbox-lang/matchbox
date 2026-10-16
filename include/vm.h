@@ -12,7 +12,7 @@ typedef struct VM
     Value stack[STACK_MAX];
     Instruction* ip;
     Value* fp;
-    Value* gp;
+    ValueArray globals;
     ModuleObject* module;
 } VM;
 

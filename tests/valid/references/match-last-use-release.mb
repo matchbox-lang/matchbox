@@ -1,0 +1,11 @@
+var value = 10
+let exclusive = ^value
+
+match true {
+    case true:
+        print(exclusive)
+}
+
+value = 20
+
+print(value)

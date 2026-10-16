@@ -1,0 +1,19 @@
+func check(value) {
+    if value == -128 {
+        print(10)
+    } else {
+        print(20)
+    }
+
+    if 127 != value {
+        print(30)
+    } else {
+        print(40)
+    }
+
+    print(value)
+}
+
+check(-128)
+check(127)
+check(0)

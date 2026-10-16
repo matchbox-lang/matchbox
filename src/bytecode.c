@@ -82,6 +82,15 @@ static void printOpcodeRegisters2Int8(const char* name)
     printf("%-15s R%d, R%d, #%d\n", name, a, b, imm);
 }
 
+static void printOpcodeRegisters2Uint8(const char* name)
+{
+    uint16_t a = readRegister(0);
+    uint16_t b = readRegister(1);
+    uint8_t index = READ_UINT8();
+
+    printf("%-15s R%d, R%d, #%u\n", name, a, b, index);
+}
+
 static void printOpcodeRegisterInt16(const char* name)
 {
     uint16_t a = readRegister(0);
@@ -304,7 +313,9 @@ static void printInstruction(uint8_t c)
         case OP_NEG_I16:        printOpcodeRegisters2("NEG_I16"); break;
         case OP_NEG_I8:         printOpcodeRegisters2("NEG_I8"); break;
         case OP_EQ:             printOpcodeRegisters3("EQ"); break;
+        case OP_EQI:            printOpcodeRegisters2Int8("EQI"); break;
         case OP_NE:             printOpcodeRegisters3("NE"); break;
+        case OP_NEI:            printOpcodeRegisters2Int8("NEI"); break;
         case OP_LT_INT:         printOpcodeRegisters3("LT_INT"); break;
         case OP_LT_UINT:        printOpcodeRegisters3("LT_UINT"); break;
         case OP_LE_INT:         printOpcodeRegisters3("LE_INT"); break;
@@ -312,7 +323,9 @@ static void printInstruction(uint8_t c)
         case OP_BZ:             printOpcodeRegisterInt16("BZ"); break;
         case OP_BNZ:            printOpcodeRegisterInt16("BNZ"); break;
         case OP_BEQ:            printOpcodeBranch("BEQ"); break;
+        case OP_BEQI:           printOpcodeRegisterInt8Int8("BEQI"); break;
         case OP_BNE:            printOpcodeBranch("BNE"); break;
+        case OP_BNEI:           printOpcodeRegisterInt8Int8("BNEI"); break;
         case OP_BLT_INT:        printOpcodeBranch("BLT_INT"); break;
         case OP_BLT_UINT:       printOpcodeBranch("BLT_UINT"); break;
         case OP_BLE_INT:        printOpcodeBranch("BLE_INT"); break;
@@ -324,6 +337,7 @@ static void printInstruction(uint8_t c)
         case OP_RETV:           printOpcodeRegister("RETV"); break;
         case OP_CALL2:          printOpcodeRegisterUint8Uint8("CALL2"); break;
         case OP_LDI2:           printOpcodeRegisterInt8Int8("LDI2"); break;
+        case OP_LDC2:           printOpcodeRegisterUint8Uint8("LDC2"); break;
         case OP_LDG2:           printOpcodeRegisterUint8Uint8("LDG2"); break;
         case OP_MOV2:           printOpcodeRegisters3("MOV2"); break;
         case OP_LDI_CALL:       printSignedLoadCall("LDI_CALL"); break;
@@ -334,6 +348,8 @@ static void printInstruction(uint8_t c)
         case OP_LDI_LDG:        printOpcodeRegisterInt8Uint8("LDI_LDG"); break;
         case OP_LDG_LDI:        printOpcodeRegisterUint8Int8("LDG_LDI"); break;
         case OP_MOV_LDI:        printOpcodeRegisters2Int8("MOV_LDI"); break;
+        case OP_MOV_LDC:        printOpcodeRegisters2Uint8("MOV_LDC"); break;
+        case OP_MOV_LDG:        printOpcodeRegisters2Uint8("MOV_LDG"); break;
         default:
             unknownOpcodeError(c);
     }

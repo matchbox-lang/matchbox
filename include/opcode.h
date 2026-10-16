@@ -216,7 +216,9 @@ typedef enum Opcode
 
     // Comparisons
     OP_EQ,
+    OP_EQI,
     OP_NE,
+    OP_NEI,
     OP_LT_INT,
     OP_LT_UINT,
     OP_LE_INT,
@@ -226,7 +228,9 @@ typedef enum Opcode
     OP_BZ,
     OP_BNZ,
     OP_BEQ,
+    OP_BEQI,
     OP_BNE,
+    OP_BNEI,
     OP_BLT_INT,
     OP_BLT_UINT,
     OP_BLE_INT,
@@ -242,6 +246,7 @@ typedef enum Opcode
     // Repeated instructions
     OP_CALL2,
     OP_LDI2,
+    OP_LDC2,
     OP_LDG2,
     OP_MOV2,
 
@@ -256,6 +261,8 @@ typedef enum Opcode
     OP_LDI_LDG,
     OP_LDG_LDI,
     OP_MOV_LDI,
+    OP_MOV_LDC,
+    OP_MOV_LDG,
 
     // Wide prefix
     OP_WIDE,

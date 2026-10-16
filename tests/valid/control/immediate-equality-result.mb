@@ -1,0 +1,19 @@
+func check(value) {
+    let equal = value == 2
+    let unequal = value != 2
+
+    if equal {
+        print(10)
+    }
+
+    if unequal {
+        print(20)
+    }
+
+    print(equal)
+    print(unequal)
+    print(value)
+}
+
+check(2)
+check(3)

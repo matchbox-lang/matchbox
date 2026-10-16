@@ -132,6 +132,64 @@ static void validateReplHistory(char* history)
     freeModuleObject(module);
 }
 
+static void relocateGlobalReference(VM* vm, ASTNode* ast, size_t previousCount,
+    uintptr_t begin, uintptr_t end)
+{
+    if (ast->type != AST_VARIABLE_DEFINITION) {
+        return;
+    }
+
+    size_t position = ast->variableDefinition.position;
+
+    if (position >= previousCount || getReferenceType(ast) == REFERENCE_NONE) {
+        return;
+    }
+
+    uintptr_t pointer;
+
+    memcpy(&pointer, &vm->globals.data[position], sizeof(pointer));
+
+    if (pointer < begin || pointer >= end) {
+        return;
+    }
+
+    size_t offset = (pointer - begin) / sizeof(Value);
+    vm->globals.data[position] = POINTER_VALUE(&vm->globals.data[offset]);
+}
+
+static void relocateGlobalReferences(VM* vm, Compiler* compiler, size_t previousCount, uintptr_t begin)
+{
+    uintptr_t end = begin + previousCount * sizeof(Value);
+    Vector* statements = &compiler->ast->compound.statements;
+
+    for (size_t i = 0; i < statements->count; i++) {
+        ASTNode* ast = statements->data[i];
+
+        relocateGlobalReference(vm, ast, previousCount, begin, end);
+    }
+}
+
+static void resizeGlobals(VM* vm, Compiler* compiler)
+{
+    size_t previousCount = vm->globals.count;
+
+    if (vm->module->globalCount <= previousCount) {
+        return;
+    }
+
+    uintptr_t begin = (uintptr_t)vm->globals.data;
+
+    resizeValueArray(&vm->globals, vm->module->globalCount);
+
+    uintptr_t current = (uintptr_t)vm->globals.data;
+
+    if (current == begin) {
+        return;
+    }
+
+    relocateGlobalReferences(vm, compiler, previousCount, begin);
+}
+
 void runRepl()
 {
     char* source = NULL;
@@ -154,6 +212,7 @@ void runRepl()
         pushVectorItem(&sources, source);
         source = NULL;
         size = 0;
+        resizeGlobals(&vm, &compiler);
         interpret(&vm);
     }
 

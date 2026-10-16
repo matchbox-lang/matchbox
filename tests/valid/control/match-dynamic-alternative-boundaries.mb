@@ -1,0 +1,18 @@
+func check(value) {
+    match value {
+        case -128 | 0 | 127:
+            print(10)
+        case -129 | 128 | 1000:
+            print(20)
+        default:
+            print(30)
+    }
+}
+
+check(-128)
+check(0)
+check(127)
+check(-129)
+check(128)
+check(1000)
+check(1)

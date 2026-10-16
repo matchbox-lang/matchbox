@@ -1,8 +1,7 @@
 #include "vector.h"
 #include "util.h"
+#include <stdint.h>
 #include <stdlib.h>
-
-#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 
 void initVector(Vector* vector)
 {
@@ -27,6 +26,10 @@ void reserveVector(Vector* vector, size_t capacity)
         return;
     }
 
+    if (capacity > SIZE_MAX / sizeof(void*)) {
+        outOfMemoryError();
+    }
+
     void** data = realloc(vector->data, sizeof(void*) * capacity);
     if (!data) {
         outOfMemoryError();
@@ -38,7 +41,11 @@ void reserveVector(Vector* vector, size_t capacity)
 
 void resizeVector(Vector* vector, size_t size)
 {
-    reserveVector(vector, size);
+    if (vector->capacity < size) {
+        size_t capacity = MAX(vector->capacity * 2, size);
+
+        reserveVector(vector, capacity);
+    }
 
     for (size_t i = vector->count; i < size; i++) {
         vector->data[i] = NULL;
@@ -50,10 +57,13 @@ void resizeVector(Vector* vector, size_t size)
 size_t pushVectorItem(Vector* vector, void* item)
 {
     if (vector->capacity == vector->count) {
-        reserveVector(vector, GROW_CAPACITY(vector->capacity));
+        size_t capacity = MAX(vector->capacity * 2, 4);
+
+        reserveVector(vector, capacity);
     }
     
     vector->data[vector->count++] = item;
+    
     return vector->count;
 }
 

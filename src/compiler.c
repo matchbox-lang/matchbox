@@ -6,7 +6,8 @@
 #include "module_object.h"
 #include "opcode.h"
 #include "parser.h"
-#include "optimizer.h"
+#include "ast_optimizer.h"
+#include "bytecode_optimizer.h"
 #include "scope.h"
 #include "token.h"
 #include "util.h"
@@ -81,9 +82,21 @@ static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
 
-static void functionPositionOverflowError()
+static void constantIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than 65536 functions\n");
+    fprintf(stderr, "Error: Cannot create more than %u constants\n", UINT16_MAX + 1u);
+    exit(1);
+}
+
+static void globalIndexOverflowError(void)
+{
+    fprintf(stderr, "Error: Cannot create more than %u globals\n", UINT16_MAX + 1u);
+    exit(1);
+}
+
+static void functionIndexOverflowError(void)
+{
+    fprintf(stderr, "Error: Cannot create more than %u functions\n", UINT16_MAX + 1u);
     exit(1);
 }
 
@@ -102,12 +115,12 @@ static void unresolvedReplExpressionTypeError(void)
 static void registerIndexOverflowError(ASTNode* function)
 {
     if (!function) {
-        fprintf(stderr, "Error: Top-level code requires more than 65536 virtual registers\n");
+        fprintf(stderr, "Error: Top-level code requires more than %u virtual registers\n", UINT16_MAX + 1u);
         exit(1);
     }
 
-    fprintf(stderr, "Error: Function %s requires more than 65536 virtual registers\n",
-        function->functionDefinition.id->chars);
+    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n",
+        function->functionDefinition.id->chars, UINT16_MAX + 1u);
     exit(1);
 }
 
@@ -145,9 +158,7 @@ static int allocateRegister(Compiler* compiler)
     int reg = compiler->registerCount++;
     int extent = compiler->registerCount + 2;
 
-    if (extent > compiler->function->maxStackCount) {
-        compiler->function->maxStackCount = extent;
-    }
+    compiler->function->maxStackCount = MAX(compiler->function->maxStackCount, extent);
 
     return reg;
 }
@@ -245,30 +256,9 @@ static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* inst
     return getInstructionBefore(compiler, count, instruction);
 }
 
-static bool fuseMovMov(Compiler* compiler, int dst, int src)
-{
-    PreviousInstruction previous;
-
-    if (dst > (int)UINT8_MAX || src > (int)UINT8_MAX
-        || !getPreviousInstruction(compiler, &previous)
-        || previous.a + 1 != dst
-        || previous.opcode != OP_MOV) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_MOV2);
-    setByteAt(previous.code, previous.start + 3, src);
-
-    return true;
-}
-
 static void emitMov(Compiler* compiler, int dst, int src)
 {
     if (dst == src) {
-        return;
-    }
-
-    if (fuseMovMov(compiler, dst, src)) {
         return;
     }
 
@@ -345,243 +335,36 @@ static int emitLdcI64(Compiler* compiler, uint16_t position)
     return reg;
 }
 
-static Opcode getLoadPairOpcode(Opcode first, Opcode second)
-{
-    if (first == OP_LDI && second == OP_LDI) {
-        return OP_LDI2;
-    }
-
-    if (first == OP_LDI && second == OP_LDG) {
-        return OP_LDI_LDG;
-    }
-
-    if (first == OP_LDG && second == OP_LDI) {
-        return OP_LDG_LDI;
-    }
-
-    if (first == OP_LDG && second == OP_LDG) {
-        return OP_LDG2;
-    }
-
-    return OP_HLT;
-}
-
-static bool isLoadPairOperandValid(Opcode opcode, uint16_t operand)
-{
-    if (opcode != OP_LDI) {
-        return operand <= UINT8_MAX;
-    }
-
-    return !isLargerThan8BitSigned((int16_t)operand);
-}
-
-static bool fuseLoadPairBefore(Compiler* compiler, size_t end, Opcode opcode, int reg, uint16_t operand)
-{
-    PreviousInstruction previous;
-
-    if (reg > (int)UINT8_MAX || !isLoadPairOperandValid(opcode, operand)
-        || !getInstructionBefore(compiler, end, &previous)
-        || previous.a + 1 != reg) {
-        return false;
-    }
-
-    Opcode fusedOpcode = getLoadPairOpcode(previous.opcode, opcode);
-
-    if (fusedOpcode == OP_HLT) {
-        return false;
-    }
-
-    uint16_t previousOperand = (uint16_t)(previous.b << 8 | previous.c);
-
-    if (!isLoadPairOperandValid(previous.opcode, previousOperand)) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, fusedOpcode);
-    setByteAt(previous.code, previous.start + 2, previousOperand);
-    setByteAt(previous.code, previous.start + 3, operand);
-
-    return true;
-}
-
-static bool fuseLoadPair(Compiler* compiler, Opcode opcode, int reg, uint16_t operand)
-{
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
-
-    return fuseLoadPairBefore(compiler, count, opcode, reg, operand);
-}
-
-static void fuseRetargetedLoad(Compiler* compiler, PreviousInstruction* instruction, int dst)
-{
-    if (instruction->opcode != OP_LDI && instruction->opcode != OP_LDG) {
-        return;
-    }
-
-    uint16_t operand = (uint16_t)(instruction->b << 8 | instruction->c);
-    bool fused = fuseLoadPairBefore(compiler, instruction->start, instruction->opcode, dst, operand);
-
-    if (!fused) {
-        return;
-    }
-
-    resizeCodeObject(instruction->code, instruction->start);
-}
-
-static bool fuseMovLdi(Compiler* compiler, int reg, int16_t imm)
-{
-    PreviousInstruction previous;
-
-    if (reg > (int)UINT8_MAX || isLargerThan8BitSigned(imm)
-        || !getPreviousInstruction(compiler, &previous)
-        || previous.opcode != OP_MOV
-        || previous.a + 1 != reg) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_MOV_LDI);
-    setByteAt(previous.code, previous.start + 3, imm);
-
-    return true;
-}
-
 static int emitLdi(Compiler* compiler, int16_t imm)
 {
     int reg = allocateRegister(compiler);
-
-    if (fuseMovLdi(compiler, reg, imm) || fuseLoadPair(compiler, OP_LDI, reg, (uint16_t)imm)) {
-        return reg;
-    }
 
     emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
 
     return reg;
 }
 
-static int emitLdg(Compiler* compiler, uint16_t imm)
+static void emitGlobalInstruction(Compiler* compiler, Opcode opcode, int reg, size_t position)
+{
+    if (position > UINT16_MAX) {
+        globalIndexOverflowError();
+    }
+
+    emitInstruction(compiler, opcode, reg, position >> 8, position);
+}
+
+static int emitLdg(Compiler* compiler, size_t position)
 {
     int reg = allocateRegister(compiler);
 
-    if (fuseLoadPair(compiler, OP_LDG, reg, imm)) {
-        return reg;
-    }
-
-    emitInstruction(compiler, OP_LDG, reg, imm >> 8, imm);
+    emitGlobalInstruction(compiler, OP_LDG, reg, position);
 
     return reg;
-}
-
-static Opcode getLoadCallOpcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OP_LDI:
-            return OP_LDI_CALL;
-        case OP_LDC:
-            return OP_LDC_CALL;
-        case OP_LDG:
-            return OP_LDG_CALL;
-        case OP_LDR:
-            return OP_LDR_CALL;
-        default:
-            return OP_HLT;
-    }
-}
-
-static bool isLoadCallOperandValid(Opcode opcode, uint16_t operands)
-{
-    if (opcode != OP_LDI) {
-        return operands <= LOAD_CALL_OPERAND_MASK;
-    }
-
-    int16_t imm = (int16_t)operands;
-
-    return imm >= LOAD_CALL_SIGNED_OPERAND_MIN
-        && imm <= LOAD_CALL_SIGNED_OPERAND_MAX;
-}
-
-static bool fuseLoadCall(Compiler* compiler, int frameRegister, uint16_t functionPosition)
-{
-    PreviousInstruction previous;
-
-    if (frameRegister > (int)UINT8_MAX || functionPosition > LOAD_CALL_FUNCTION_MASK
-        || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    Opcode fusedOpcode = getLoadCallOpcode(previous.opcode);
-
-    if (fusedOpcode == OP_HLT) {
-        return false;
-    }
-
-    if (previous.a != frameRegister) {
-        return false;
-    }
-
-    uint16_t operands = previous.opcode == OP_LDR
-        ? previous.b
-        : previous.b << 8 | previous.c;
-
-    if (!isLoadCallOperandValid(previous.opcode, operands)) {
-        return false;
-    }
-
-    operands = ((operands & LOAD_CALL_OPERAND_MASK) << LOAD_CALL_FUNCTION_BITS)
-        | functionPosition;
-
-    setByteAt(previous.code, previous.start, fusedOpcode);
-    setByteAt(previous.code, previous.start + 2, operands >> 8);
-    setByteAt(previous.code, previous.start + 3, operands);
-
-    return true;
-}
-
-static bool isBuiltinFunctionAtPosition(Compiler* compiler, uint16_t position)
-{
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
-
-    return function->type == FUNCTION_BUILTIN;
-}
-
-static bool fuseCallCall(Compiler* compiler, int frameRegister, uint16_t functionPosition)
-{
-    PreviousInstruction previous;
-
-    if (frameRegister > (int)UINT8_MAX || functionPosition > UINT8_MAX
-        || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    if (previous.opcode != OP_CALL
-        || previous.a + 1 != frameRegister
-        || previous.b != 0) {
-        return false;
-    }
-
-    uint8_t previousFunctionPosition = previous.c;
-
-    if (!isBuiltinFunctionAtPosition(compiler, previousFunctionPosition)) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_CALL2);
-    setByteAt(previous.code, previous.start + 2, previousFunctionPosition);
-    setByteAt(previous.code, previous.start + 3, functionPosition);
-
-    return true;
 }
 
 static void emitCallInstruction(Compiler* compiler, int frameRegister, uint16_t functionPosition)
 {
     checkRegisterCount(compiler, frameRegister + 1);
-
-    if (fuseCallCall(compiler, frameRegister, functionPosition)) {
-        return;
-    }
-
-    if (fuseLoadCall(compiler, frameRegister, functionPosition)) {
-        return;
-    }
 
     emitInstruction(compiler, OP_CALL, frameRegister, functionPosition >> 8, functionPosition);
 }
@@ -605,12 +388,22 @@ static int getCallAreaCount(FunctionObject* function)
 
 static size_t makeConstant(Compiler* compiler, Value value)
 {
+    size_t position = countValueArray(&compiler->module->constants);
+
+    if (position > UINT16_MAX) {
+        constantIndexOverflowError();
+    }
+
     return pushValue(&compiler->module->constants, value) - 1;
 }
 
 static size_t makeI64Constant(Compiler* compiler, uint64_t value)
 {
     size_t position = countValueArray(&compiler->module->constants);
+
+    if (position > (size_t)UINT16_MAX - 1) {
+        constantIndexOverflowError();
+    }
 
 #if UINTPTR_MAX == UINT32_MAX
     pushValue(&compiler->module->constants, U32_VALUE(value));
@@ -685,7 +478,7 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     if (isParameter(ast)) {
         position = ast->parameter.position;
     } else {
-        position = compiler->frameBaseCount + compiler->localPositionOffset + ast->variableDefinition.position;
+        position = ast->variableDefinition.registerPosition;
     }
 
     size_t slots = getNodeSlotCount(ast);
@@ -696,7 +489,7 @@ static int getLocalPosition(Compiler* compiler, ASTNode* ast)
     return position;
 }
 
-static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
+static Operand loadGlobalWithStoreForwarding(Compiler* compiler, size_t position)
 {
     PreviousInstruction previous;
     uint16_t storedPosition;
@@ -713,8 +506,15 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
         return makeOperand(emitLdg(compiler, position), true);
     }
 
-    if (storedPosition != position) {
+    if (storedPosition != position || previous.a > compiler->registerCount) {
         return makeOperand(emitLdg(compiler, position), true);
+    }
+
+    if (previous.a == compiler->registerCount) {
+        // Reclaim the released store operand while its value is still in the register
+        int reg = allocateRegister(compiler);
+
+        return makeOperand(reg, true);
     }
 
     return makeOperand(previous.a, false);
@@ -722,16 +522,12 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, int position)
 
 static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
 {
-    int position = ast->variableDefinition.position;
+    size_t position = ast->variableDefinition.position;
     bool wide = getNodeSlotCount(ast) == 2;
-
-    if (isCompilingTopLevel(compiler)) {
-        return wide ? makeWideOperand(position, false) : makeOperand(position, false);
-    }
 
     if (wide) {
         int reg = allocateRegisters(compiler, 2);
-        emitInstruction(compiler, OP_LDG_64, reg, position >> 8, position);
+        emitGlobalInstruction(compiler, OP_LDG_64, reg, position);
 
         return makeWideOperand(reg, true);
     }
@@ -766,8 +562,8 @@ static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
     int reg = allocateRegister(compiler);
 
     if (isTopLevelScope(getScope(ast))) {
-        int position = ast->variableDefinition.position;
-        emitInstruction(compiler, OP_REFG, reg, position >> 8, position);
+        size_t position = ast->variableDefinition.position;
+        emitGlobalInstruction(compiler, OP_REFG, reg, position);
 
         return makeOperand(reg, true);
     }
@@ -798,49 +594,17 @@ static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t sl
     return slots == 2 ? makeWideOperand(operand.reg, true) : operand;
 }
 
-static bool fuseLdiStore(Compiler* compiler, Operand value, int position)
-{
-    PreviousInstruction previous;
-
-    if (!value.temporary
-        || position > (int)UINT8_MAX
-        || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    if (previous.opcode != OP_LDI
-        || previous.a != value.reg) {
-        return false;
-    }
-
-    int16_t imm = (int16_t)(previous.b << 8 | previous.c);
-
-    if (isLargerThan8BitSigned(imm)) {
-        return false;
-    }
-
-    setByteAt(previous.code, previous.start, OP_LDI_STG);
-    setByteAt(previous.code, previous.start + 2, imm);
-    setByteAt(previous.code, previous.start + 3, position);
-
-    return true;
-}
-
 static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    int position = ast->variableDefinition.position;
+    size_t position = ast->variableDefinition.position;
 
     if (value.slots == 2) {
-        emitInstruction(compiler, OP_STG_64, value.reg, position >> 8, position);
+        emitGlobalInstruction(compiler, OP_STG_64, value.reg, position);
 
         return;
     }
 
-    if (fuseLdiStore(compiler, value, position)) {
-        return;
-    }
-
-    emitInstruction(compiler, OP_STG, value.reg, position >> 8, position);
+    emitGlobalInstruction(compiler, OP_STG, value.reg, position);
 }
 
 static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
@@ -861,7 +625,6 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
     }
 
     setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, dst);
-    fuseRetargetedLoad(compiler, &previous, dst);
 
     return true;
 }
@@ -895,17 +658,32 @@ static Operand compileWideNumber(Compiler* compiler, uint64_t value)
     return makeWideOperand(emitLdcI64(compiler, position), true);
 }
 
+static bool isNarrowIntegerImmediate(uint64_t value, TokenType type)
+{
+    bool signedType = isSignedIntegerTypeToken(type);
+
+    if (!signedType) {
+        return value <= INT16_MAX;
+    }
+
+    // Folded i32 arithmetic may store its result as unsigned 32-bit bits
+    int32_t signedValue = (int32_t)value;
+
+    return signedValue >= INT16_MIN && signedValue <= INT16_MAX;
+}
+
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     uint64_t value = ast->integerLiteral.value;
+    TokenType type = getTypeId(ast);
 
-    if (getTypeId(ast) == TOKEN_F64) {
+    if (type == TOKEN_F64) {
         size_t position = makeF64Constant(compiler, (double)value);
 
         return makeWideOperand(emitLdcI64(compiler, position), true);
     }
 
-    if (getTypeId(ast) == TOKEN_F32) {
+    if (type == TOKEN_F32) {
         size_t position = makeF32Constant(compiler, (float)value);
 
         return makeOperand(emitLdc(compiler, position), true);
@@ -915,8 +693,10 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
         return compileWideNumber(compiler, value);
     }
 
-    if (value > INT16_MAX) {
-        Value constant = isSignedIntegerTypeToken(getTypeId(ast))
+    bool immediate = isNarrowIntegerImmediate(value, type);
+
+    if (!immediate) {
+        Value constant = isSignedIntegerTypeToken(type)
             ? SIGNED_VALUE((int64_t)value)
             : UNSIGNED_VALUE(value);
         size_t position = makeConstant(compiler, constant);
@@ -1063,141 +843,9 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
     return OP_HLT;
 }
 
-static Opcode getIntegerImmediateOpcode(TokenType type, IntegerOperation operation)
-{
-    switch (operation) {
-        case INTEGER_ADD:
-            return getWidthOpcode(type, OP_ADDI_I64, OP_ADDI_I32, OP_ADDI_I16, OP_ADDI_I8);
-        case INTEGER_SUB:
-            return getWidthOpcode(type, OP_SUBI_I64, OP_SUBI_I32, OP_SUBI_I16, OP_SUBI_I8);
-        case INTEGER_MUL:
-            return getWidthOpcode(type, OP_MULI_I64, OP_MULI_I32, OP_MULI_I16, OP_MULI_I8);
-        case INTEGER_BAND:
-            return getWidthOpcode(type, OP_BANDI_I64, OP_BANDI_I32, OP_BANDI_I16, OP_BANDI_I8);
-        case INTEGER_BOR:
-            return getWidthOpcode(type, OP_BORI_I64, OP_BORI_I32, OP_BORI_I16, OP_BORI_I8);
-        case INTEGER_BXOR:
-            return getWidthOpcode(type, OP_BXORI_I64, OP_BXORI_I32, OP_BXORI_I16, OP_BXORI_I8);
-        case INTEGER_LSL:
-            return getWidthOpcode(type, OP_LSLI_I64, OP_LSLI_I32, OP_LSLI_I16, OP_LSLI_I8);
-        case INTEGER_LSR:
-            if (isSignedIntegerTypeToken(type)) {
-                return getWidthOpcode(type, OP_ASRI_I64, OP_ASRI_I32, OP_ASRI_I16, OP_ASRI_I8);
-            }
-
-            return getWidthOpcode(type, OP_LSRI_I64, OP_LSRI_I32, OP_LSRI_I16, OP_LSRI_I8);
-        default:
-            return OP_HLT;
-    }
-}
-
-static bool isImmediateOperandValid(IntegerOperation operation, int16_t immediate)
-{
-    if (operation == INTEGER_ADD || operation == INTEGER_SUB || operation == INTEGER_MUL) {
-        return !isLargerThan8BitSigned(immediate);
-    }
-
-    return immediate >= 0 && immediate <= (int16_t)UINT8_MAX;
-}
-
-static Opcode getImmediatePairLoadOpcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OP_MOV_LDI:
-            return OP_MOV;
-        case OP_LDG_LDI:
-            return OP_LDG;
-        case OP_LDI2:
-            return OP_LDI;
-        default:
-            return OP_HLT;
-    }
-}
-
-static bool getBinaryImmediate(PreviousInstruction* previous, Operand left, Operand right, int16_t* immediate,
-    int* source)
-{
-    if (previous->opcode == OP_LDI && previous->a == right.reg) {
-        *immediate = (int16_t)(previous->b << 8 | previous->c);
-        *source = left.reg;
-
-        return true;
-    }
-
-    if (!left.temporary || left.slots != 1 || right.slots != 1) {
-        return false;
-    }
-
-    Opcode loadOpcode = getImmediatePairLoadOpcode(previous->opcode);
-
-    if (loadOpcode == OP_HLT
-        || previous->a != left.reg
-        || previous->a + 1 != right.reg) {
-        return false;
-    }
-
-    *immediate = (int8_t)previous->c;
-    *source = loadOpcode == OP_MOV ? previous->b : left.reg;
-
-    return true;
-}
-
-static void removeBinaryImmediateLoad(Compiler* compiler, PreviousInstruction* previous)
-{
-    Opcode opcode = getImmediatePairLoadOpcode(previous->opcode);
-
-    resizeCodeObject(previous->code, previous->start);
-
-    if (opcode == OP_HLT || opcode == OP_MOV) {
-        return;
-    }
-
-    uint16_t operand = opcode == OP_LDI ? (int16_t)(int8_t)previous->b : previous->b;
-
-    emitInstruction(compiler, opcode, previous->a, operand >> 8, operand);
-}
-
-static bool emitBinaryImmediate(Compiler* compiler, IntegerOperation operation,
-    TokenType type, Operand left, Operand right, Operand* result)
-{
-    PreviousInstruction previous;
-
-    if (!right.temporary || !getPreviousInstruction(compiler, &previous)) {
-        return false;
-    }
-
-    int16_t immediate;
-    int source;
-
-    if (!getBinaryImmediate(&previous, left, right, &immediate, &source)) {
-        return false;
-    }
-
-    Opcode opcode = getIntegerImmediateOpcode(type, operation);
-
-    if (opcode == OP_HLT || !isImmediateOperandValid(operation, immediate)) {
-        return false;
-    }
-
-    removeBinaryImmediateLoad(compiler, &previous);
-    releaseOperand(compiler, right);
-
-    int dst = left.temporary ? left.reg : allocateRegisters(compiler, left.slots);
-    emitInstruction(compiler, opcode, dst, source, immediate);
-    *result = left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
-
-    return true;
-}
-
 static Operand emitBinaryOperands(
     Compiler* compiler, IntegerOperation operation, TokenType type, Operand left, Operand right)
 {
-    Operand immediateResult;
-
-    if (emitBinaryImmediate(compiler, operation, type, left, right, &immediateResult)) {
-        return immediateResult;
-    }
-
     int dst;
 
     if (left.temporary) {
@@ -1214,8 +862,67 @@ static Operand emitBinaryOperands(
     return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
 }
 
+static bool prepareImmediateComparison(
+    Compiler* compiler, Opcode opcode, Operand* left, Operand* right, PreviousInstruction* load)
+{
+    if ((opcode != OP_EQ && opcode != OP_NE) || !getPreviousInstruction(compiler, load)
+        || load->opcode != OP_LDI) {
+        return false;
+    }
+
+    int16_t value = load->b << 8 | load->c;
+
+    if (left->temporary && !right->temporary && left->slots == 1 && load->a == left->reg) {
+        Operand swap = *left;
+        *left = *right;
+        *right = swap;
+    }
+
+    return right->temporary && right->slots == 1 && load->a == right->reg
+        && value >= INT8_MIN && value <= INT8_MAX;
+}
+
+static Operand emitImmediateComparisonValue(Compiler* compiler, Opcode opcode, Operand left, int8_t value)
+{
+    int destination = left.reg;
+
+    if (!left.temporary) {
+        destination = allocateRegister(compiler);
+    }
+
+    Opcode immediate = OP_EQI;
+
+    if (opcode == OP_NE) {
+        immediate = OP_NEI;
+    }
+
+    emitInstruction(compiler, immediate, destination, left.reg, value);
+
+    return makeOperand(destination, true);
+}
+
+static Operand emitImmediateComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+{
+    PreviousInstruction load;
+
+    if (!prepareImmediateComparison(compiler, opcode, &left, &right, &load)) {
+        return noOperand();
+    }
+
+    resizeCodeObject(load.code, load.start);
+    releaseOperand(compiler, right);
+
+    return emitImmediateComparisonValue(compiler, opcode, left, load.c);
+}
+
 static Operand emitComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
+    Operand immediate = emitImmediateComparison(compiler, opcode, left, right);
+
+    if (immediate.reg >= 0) {
+        return immediate;
+    }
+
     if (left.temporary) {
         releaseOperand(compiler, right);
         emitInstruction(compiler, opcode, left.reg, left.reg, right.reg);
@@ -1772,7 +1479,7 @@ static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
 static uint16_t makeFunctionPosition(size_t position)
 {
     if (position > UINT16_MAX) {
-        functionPositionOverflowError();
+        functionIndexOverflowError();
     }
 
     return (uint16_t)position;
@@ -2023,6 +1730,8 @@ static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
         emitRet(compiler);
     }
 
+    optimizeBytecode(compiler->module, &function->code, 0);
+
     compiler->function = previousFunction;
     compiler->frameBaseCount = previousFrameBaseCount;
     compiler->localPositionOffset = previousLocalPositionOffset;
@@ -2086,17 +1795,29 @@ static bool compileUnusedVariableDefinition(
 
     compileExpression(compiler, ast->variableDefinition.expr, true);
 
-    if (!isCompilingTopLevel(compiler)) {
+    if (isTopLevelScope(ast->variableDefinition.scope)) {
         return true;
     }
 
+    // Preserve analyzed binding positions after discarding an unused initializer
     allocateRegisters(compiler, slots);
 
     return true;
 }
 
+static void finishGlobalDefinition(Compiler* compiler, ASTNode* ast, Operand value)
+{
+    if (!isTopLevelScope(ast->variableDefinition.scope)) {
+        return;
+    }
+
+    storeGlobalVariable(compiler, ast, value);
+    releaseOperand(compiler, value);
+}
+
 static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
 {
+    ast->variableDefinition.registerPosition = compiler->registerCount;
     Operand value;
     size_t slots = getNodeSlotCount(ast);
     bool unused = ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
@@ -2118,7 +1839,12 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
         int reg = allocateRegisters(compiler, slots);
 
         emitOperandMov(compiler, reg, value);
+
+        value.reg = reg;
+        value.temporary = true;
     }
+
+    finishGlobalDefinition(compiler, ast, value);
 }
 
 static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
@@ -2127,6 +1853,49 @@ static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
     emitInstruction(compiler, opcode, conditionRegister, 0, 0);
 
     return position;
+}
+
+static size_t emitConditionJump(Compiler* compiler, Operand condition)
+{
+    PreviousInstruction comparison;
+
+    if (!condition.temporary || !getPreviousInstruction(compiler, &comparison)
+        || (comparison.opcode != OP_EQI && comparison.opcode != OP_NEI) || comparison.a != condition.reg) {
+        return emitJump(compiler, OP_BZ, condition.reg);
+    }
+
+    Opcode opcode = OP_BNEI;
+    size_t position = comparison.start + INSTRUCTION_SIZE;
+
+    if (comparison.opcode == OP_NEI) {
+        opcode = OP_BEQI;
+    }
+
+    // Keep the comparison operands in a placeholder for the long-branch fallback
+    setByteAt(comparison.code, comparison.start, OP_NOP);
+    emitInstruction(compiler, opcode, comparison.b, comparison.c, 0);
+
+    return position;
+}
+
+static Opcode expandImmediateJump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
+{
+    if ((opcode != OP_BEQI && opcode != OP_BNEI) || offset <= INT8_MAX) {
+        return opcode;
+    }
+
+    size_t comparison = position - INSTRUCTION_SIZE;
+    Opcode comparisonOpcode = OP_EQI;
+
+    if (opcode == OP_BEQI) {
+        comparisonOpcode = OP_NEI;
+    }
+
+    setByteAt(code, comparison, comparisonOpcode);
+    setByteAt(code, position, OP_BZ);
+    setByteAt(code, position + 1, code->data[comparison + 1]);
+
+    return OP_BZ;
 }
 
 static void checkJumpOffset(Opcode opcode, size_t offset)
@@ -2159,6 +1928,7 @@ static void patchJump(Compiler* compiler, size_t position)
     size_t wordOffset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
     Opcode opcode = (Opcode)code->data[position];
     compiler->peepholeBarrier = count;
+    opcode = expandImmediateJump(code, position, opcode, wordOffset);
 
     checkJumpOffset(opcode, wordOffset);
 
@@ -2196,20 +1966,12 @@ static void storeConditionalValue(
     emitOperandMov(compiler, destination, value);
 }
 
-static Operand compileBranchExpression(Compiler* compiler, ASTNode* ast, bool reference)
-{
-    if (reference) {
-        return compileReferenceExpression(compiler, ast);
-    }
-
-    return compileExpression(compiler, ast, false);
-}
-
 static Operand compileConditionalBranch(
     Compiler* compiler, ASTNode* branch, TokenType type, int destination, bool reference)
 {
     if (branch->type == AST_CONDITIONAL) {
-        Operand value = compileBranchExpression(compiler, branch, reference);
+        Operand value = compileConvertedExpression(compiler, branch, type, reference);
+
         storeConditionalValue(compiler, type, destination, value);
 
         return value;
@@ -2220,19 +1982,18 @@ static Operand compileConditionalBranch(
     for (size_t i = 0; i < count; i++) {
         bool discard = type == TOKEN_VOID || i + 1 < count;
         ASTNode* statement = getVectorAt(&branch->compound.statements, i);
-        Operand value;
 
-        if (!discard && reference) {
-            value = compileReferenceExpression(compiler, statement);
-        } else {
-            value = compileStatement(compiler, statement, discard);
+        if (discard) {
+            compileStatement(compiler, statement, true);
+
+            continue;
         }
 
-        if (!discard) {
-            storeConditionalValue(compiler, type, destination, value);
+        Operand value = compileConvertedExpression(compiler, statement, type, reference);
 
-            return value;
-        }
+        storeConditionalValue(compiler, type, destination, value);
+
+        return value;
     }
 
     return noOperand();
@@ -2303,7 +2064,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
 
     if (conditionNode->type != AST_BOOLEAN) {
         Operand condition = compileExpression(compiler, conditionNode, false);
-        elseJump = emitJump(compiler, OP_BZ, condition.reg);
+        elseJump = emitConditionJump(compiler, condition);
 
         releaseOperand(compiler, condition);
     }
@@ -2428,15 +2189,75 @@ static bool canUseDirectMatchBranch(MatchArm* arm)
     return isSimpleMatchValue(statement);
 }
 
+static bool isLiteralMatchPattern(ASTNode* pattern)
+{
+    if (pattern->type == AST_INTEGER || pattern->type == AST_BOOLEAN) {
+        return true;
+    }
+
+    if (!isMatchAlternative(pattern)) {
+        return false;
+    }
+
+    return isLiteralMatchPattern(pattern->binary.leftExpr) && isLiteralMatchPattern(pattern->binary.rightExpr);
+}
+
+static size_t compileMatchAlternativeJumps(
+    Compiler* compiler, ASTNode* pattern, Operand subject, bool last, Vector* matches)
+{
+    if (isMatchAlternative(pattern)) {
+        compileMatchAlternativeJumps(compiler, pattern->binary.leftExpr, subject, false, matches);
+
+        return compileMatchAlternativeJumps(compiler, pattern->binary.rightExpr, subject, last, matches);
+    }
+
+    Opcode opcode = OP_NE;
+
+    if (last) {
+        opcode = OP_EQ;
+    }
+
+    Operand value = compileExpression(compiler, pattern, false);
+    Operand condition = emitComparison(compiler, opcode, subject, value);
+    size_t jump = emitConditionJump(compiler, condition);
+
+    releaseOperand(compiler, condition);
+
+    if (!last) {
+        pushVectorItem(matches, (void*)(uintptr_t)jump);
+    }
+
+    return jump;
+}
+
+static size_t compileMatchAlternativeCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
+{
+    Vector matches;
+
+    initVector(&matches);
+
+    size_t nextJump = compileMatchAlternativeJumps(compiler, pattern, subject, true, &matches);
+
+    patchMatchJumps(compiler, &matches);
+    freeVector(&matches);
+
+    return nextJump;
+}
+
 static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
 {
     if (!arm->pattern) {
         return 0;
     }
 
+    if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
+        && isLiteralMatchPattern(arm->pattern)) {
+        return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
+    }
+
     if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm)) {
         Operand condition = compileMatchCondition(compiler, ast, arm, subject);
-        size_t nextJump = emitJump(compiler, OP_BZ, condition.reg);
+        size_t nextJump = emitConditionJump(compiler, condition);
         releaseOperand(compiler, condition);
 
         return nextJump;
@@ -2449,6 +2270,16 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
     }
 
     Operand pattern = compileExpression(compiler, arm->pattern, false);
+    Operand condition = emitImmediateComparison(compiler, OP_EQ, subject, pattern);
+
+    if (condition.reg >= 0) {
+        size_t nextJump = emitConditionJump(compiler, condition);
+
+        releaseOperand(compiler, condition);
+
+        return nextJump;
+    }
+
     size_t nextJump = countCodeObject(currentCodeObject(compiler));
     emitInstruction(compiler, OP_BNE, subject.reg, pattern.reg, 0);
     releaseOperand(compiler, pattern);
@@ -2462,15 +2293,16 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
         return;
     }
 
+    binding->variableDefinition.registerPosition = compiler->frameBaseCount + compiler->localPositionOffset
+        + binding->variableDefinition.position;
     int position = getLocalPosition(compiler, binding);
+
     emitOperandMov(compiler, position, subject);
 
     TokenType bindingType = getTypeId(binding);
     int bindingRegisterCount = position + getTypeSlotCount(bindingType);
 
-    if (compiler->registerCount < bindingRegisterCount) {
-        compiler->registerCount = bindingRegisterCount;
-    }
+    compiler->registerCount = MAX(compiler->registerCount, bindingRegisterCount);
 }
 
 static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
@@ -2570,13 +2402,17 @@ static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value)
         return true;
     }
 
-    if (ast->type == AST_INTEGER) {
-        *value = ast->integerLiteral.value;
-
-        return true;
+    if (ast->type != AST_INTEGER) {
+        return false;
     }
 
-    return false;
+    *value = ast->integerLiteral.value;
+
+    if (ast->integerLiteral.typeId == TOKEN_I32) {
+        *value = (uint64_t)(int64_t)(int32_t)*value;
+    }
+
+    return true;
 }
 
 static bool getLiteralMatchSubject(ASTNode* ast, uint64_t* value)
@@ -2597,6 +2433,33 @@ typedef enum LiteralMatchArmResult
     LITERAL_MATCH_ARM_SELECTED
 } LiteralMatchArmResult;
 
+static bool evaluateLiteralMatchPattern(ASTNode* pattern, uint64_t subjectValue, bool* matches)
+{
+    uint64_t patternValue;
+
+    if (getLiteralMatchValue(pattern, &patternValue)) {
+        *matches = subjectValue == patternValue;
+
+        return true;
+    }
+
+    if (!isMatchAlternative(pattern)) {
+        return false;
+    }
+
+    bool left;
+    bool right;
+
+    if (!evaluateLiteralMatchPattern(pattern->binary.leftExpr, subjectValue, &left)
+        || !evaluateLiteralMatchPattern(pattern->binary.rightExpr, subjectValue, &right)) {
+        return false;
+    }
+
+    *matches = left || right;
+
+    return true;
+}
+
 static LiteralMatchArmResult selectLiteralMatchArm(
     MatchArm* arm, uint64_t subjectValue, ASTNode** branch, ASTNode** binding)
 {
@@ -2607,16 +2470,13 @@ static LiteralMatchArmResult selectLiteralMatchArm(
         return LITERAL_MATCH_ARM_SELECTED;
     }
 
-    if (isMatchAlternative(arm->pattern)) {
+    bool matches;
+
+    if (!evaluateLiteralMatchPattern(arm->pattern, subjectValue, &matches)) {
         return LITERAL_MATCH_ARM_UNAVAILABLE;
     }
 
-    uint64_t patternValue;
-    if (!getLiteralMatchValue(arm->pattern, &patternValue)) {
-        return LITERAL_MATCH_ARM_UNAVAILABLE;
-    }
-
-    if (subjectValue != patternValue) {
+    if (!matches) {
         return LITERAL_MATCH_ARM_SKIPPED;
     }
 
@@ -2731,6 +2591,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
     switch (ast->type) {
         case AST_BOOLEAN:
         case AST_CHARACTER:
+        case AST_FLOAT:
         case AST_INTEGER:
         case AST_VARIABLE:
             return true;
@@ -3063,41 +2924,33 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes)
     }
 }
 
-static int getRequiredGlobalRegisterCount(Vector* nodes)
+static void finishTopLevelStatement(Compiler* compiler, ASTNode* ast)
 {
-    size_t count = countVector(nodes);
-    int registers = 0;
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* ast = nodes->data[i];
-        if (ast->type != AST_VARIABLE_DEFINITION || hasNoValueReads(ast)) {
-            continue;
-        }
-
-        size_t slots = getNodeSlotCount(ast);
-        registers = ast->variableDefinition.position + slots;
+    if (ast->type != AST_VARIABLE_DEFINITION) {
+        return;
     }
 
-    return registers;
+    size_t slots = getNodeSlotCount(ast);
+    size_t position = ast->variableDefinition.position;
+    size_t count = position + slots;
+
+    if (count > (size_t)UINT16_MAX + 1) {
+        globalIndexOverflowError();
+    }
+
+    compiler->module->globalCount = count;
+    compiler->localPositionOffset = -(int)count;
 }
 
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 {
     size_t count = countVector(nodes);
-    int requiredRegisters = getRequiredGlobalRegisterCount(nodes);
 
     while (compiler->statementIndex < count) {
         ASTNode* ast = nodes->data[compiler->statementIndex++];
+
         compileStatement(compiler, ast, true);
-
-        if (ast->type != AST_VARIABLE_DEFINITION || compiler->registerCount <= requiredRegisters) {
-            continue;
-        }
-
-        // Reclaim trailing unused globals while keeping nested local positions aligned.
-        int unusedSlots = compiler->registerCount - requiredRegisters;
-        compiler->registerCount = requiredRegisters;
-        compiler->localPositionOffset -= unusedSlots;
+        finishTopLevelStatement(compiler, ast);
     }
 }
 
@@ -3133,6 +2986,7 @@ static void compileReplStatements(Compiler* compiler, Vector* nodes)
         bool isLast = compiler->statementIndex == count;
 
         compileReplStatement(compiler, ast, isLast);
+        finishTopLevelStatement(compiler, ast);
     }
 }
 
@@ -3192,6 +3046,10 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
     compiler->peepholeBarrier = 0;
     compileStatements(compiler, &compiler->ast->compound.statements);
     emitHlt(compiler);
+
+    CodeObject* code = currentCodeObject(compiler);
+
+    optimizeBytecode(compiler->module, code, compiler->registerCount);
 
     return true;
 }

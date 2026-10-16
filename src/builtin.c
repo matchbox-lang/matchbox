@@ -3,6 +3,7 @@
 #include "token.h"
 #include "unicode.h"
 #include "value.h"
+#include <util.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdint.h>
@@ -207,7 +208,7 @@ void builtinAbs(VM* vm, FunctionObject* function, Value* frame)
     (void)function;
 
     int32_t n = AS_SIGNED(frame[0]);
-    int32_t x = n < 0 ? -n : n;
+    int32_t x = ABS(n);
     
     frame[-2] = SIGNED_VALUE(x);
 }
@@ -236,7 +237,7 @@ void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame)
     (void)function;
 
     int64_t n = readI64(frame, 0);
-    int64_t x = n < 0 ? -n : n;
+    int64_t x = ABS(n);
 
     writeI64(frame, x);
 }
@@ -248,7 +249,7 @@ void builtinMin(VM* vm, FunctionObject* function, Value* frame)
 
     int32_t a = AS_SIGNED(frame[0]);
     int32_t b = AS_SIGNED(frame[1]);
-    int32_t x = a < b ? a : b;
+    int32_t x = MIN(a, b);
     
     frame[-2] = SIGNED_VALUE(x);
 }
@@ -260,7 +261,7 @@ void builtinMinI64(VM* vm, FunctionObject* function, Value* frame)
 
     int64_t a = readI64(frame, 0);
     int64_t b = readI64(frame, 2);
-    int64_t x = a < b ? a : b;
+    int64_t x = MIN(a, b);
 
     writeI64(frame, x);
 }
@@ -272,7 +273,7 @@ void builtinMax(VM* vm, FunctionObject* function, Value* frame)
 
     int32_t a = AS_SIGNED(frame[0]);
     int32_t b = AS_SIGNED(frame[1]);
-    int32_t x = a > b ? a : b;
+    int32_t x = MAX(a, b);
     
     frame[-2] = SIGNED_VALUE(x);
 }
@@ -284,7 +285,7 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame)
 
     int64_t a = readI64(frame, 0);
     int64_t b = readI64(frame, 2);
-    int64_t x = a > b ? a : b;
+    int64_t x = MAX(a, b);
 
     writeI64(frame, x);
 }

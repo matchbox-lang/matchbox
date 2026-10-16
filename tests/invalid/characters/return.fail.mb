@@ -1,0 +1,4 @@
+func bad() -> char {
+    return 97
+}
+print(bad())

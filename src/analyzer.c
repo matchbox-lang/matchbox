@@ -1357,6 +1357,21 @@ static TokenType getFloatBinaryType(TokenType leftType, TokenType rightType)
     return TOKEN_F32;
 }
 
+static bool isCharacterComparison(TokenType type)
+{
+    switch (type) {
+        case TOKEN_EQUAL_EQUAL:
+        case TOKEN_NOT_EQUAL:
+        case TOKEN_LESS:
+        case TOKEN_LESS_EQUAL:
+        case TOKEN_GREATER:
+        case TOKEN_GREATER_EQUAL:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -1394,12 +1409,16 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
+    if (leftType == TOKEN_CHAR && !isCharacterComparison(ast->binary.operator.type)) {
+        semanticError("Invalid operator for char operands ", ast->binary.operator);
+    }
+
     if (isLogicalToken(ast->binary.operator.type) && leftType != TOKEN_BOOL) {
         semanticError("Logical operators require bool operands ", ast->binary.operator);
     }
 
-    if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType)) {
-        semanticError("Comparison operators require integer operands ", ast->binary.operator);
+    if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType) && leftType != TOKEN_CHAR) {
+        semanticError("Comparison operators require integer or char operands ", ast->binary.operator);
     }
 
     if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
@@ -2146,6 +2165,12 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);
 
+    TokenType bindingType = getTypeId(symbol);
+
+    if (bindingType == TOKEN_CHAR && ast->assignment.operator.type != TOKEN_EQUAL) {
+        semanticError("Invalid operator for char assignment ", ast->assignment.operator);
+    }
+
     if (isFloatTypeToken(getTypeId(symbol))
         && !isFloatAssignmentToken(ast->assignment.operator.type)) {
         semanticError("Invalid operands to assignment ", ast->assignment.operator);
@@ -2425,6 +2450,11 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     }
 
     TokenType type = getTypeId(ast->prefix.expr);
+
+    if (type == TOKEN_CHAR) {
+        semanticError("Invalid prefix operator for char ", ast->prefix.operator);
+    }
+
     bool numeric = isSignedIntegerTypeToken(type) || isFloatTypeToken(type);
 
     if (ast->prefix.operator.type == TOKEN_MINUS && !numeric) {

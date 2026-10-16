@@ -2,6 +2,7 @@
 #include "ast.h"
 #include "conversion.h"
 #include "lexer.h"
+#include "literal.h"
 #include "string_object.h"
 #include "token.h"
 #include "util.h"
@@ -229,6 +230,25 @@ static ASTNode* createVariableNode(Token token)
     return ast;
 }
 
+static ASTNode* parseCharacterLiteral(Parser* parser)
+{
+    Token token = parser->currentToken;
+    DecodedScalar scalar;
+    bool valid = decodeLiteralScalar(token.chars + 1, token.length - 2, &scalar);
+
+    if (!valid) {
+        expectedExpressionError(token);
+    }
+
+    ASTNode* ast = createASTNode(AST_CHARACTER);
+    ast->characterLiteral.token = token;
+    ast->characterLiteral.value = scalar.value;
+
+    consume(parser, TOKEN_CHARACTER_LITERAL);
+
+    return ast;
+}
+
 static ASTNode* parsePrimary(Parser* parser)
 {
     switch (parser->currentToken.type) {
@@ -245,6 +265,8 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseConditional(parser);
         case TOKEN_MATCH:
             return parseMatch(parser);
+        case TOKEN_CHARACTER_LITERAL:
+            return parseCharacterLiteral(parser);
         case TOKEN_INTEGER_LITERAL:
             return parseIntegerLiteral(parser, parser->currentToken);
         case TOKEN_FLOAT_LITERAL:

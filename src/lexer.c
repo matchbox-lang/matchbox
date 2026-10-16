@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include "literal.h"
 #include "token.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -98,6 +99,12 @@ static void emptyCharacterError(const Lexer* lexer)
 {
     fprintf(stderr, "Error: Empty character literal");
     fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    exit(1);
+}
+
+static void invalidCharacterEscapeError(const Lexer* lexer)
+{
+    fprintf(stderr, "Error: Invalid character escape on line %d:%d\n", lexer->start.line, lexer->start.column);
     exit(1);
 }
 
@@ -210,70 +217,6 @@ static bool isODigit(char c)
 static bool isBDigit(char c)
 {
     return c == '0' || c == '1';
-}
-
-static bool isUtf8Continuation(char c)
-{
-    return ((unsigned char)c & 0xC0) == 0x80;
-}
-
-static bool hasUtf8Continuations(const char* chars, size_t count)
-{
-    for (size_t i = 1; i <= count; i++) {
-        if (chars[i] == '\0') {
-            return false;
-        }
-
-        if (!isUtf8Continuation(chars[i])) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static size_t utf8CodePointLength(const char* chars)
-{
-    unsigned char first = (unsigned char)chars[0];
-    unsigned char second = (unsigned char)chars[1];
-
-    if (first <= 0x7F) {
-        return 1;
-    }
-
-    if (first >= 0xC2 && first <= 0xDF && hasUtf8Continuations(chars, 1)) {
-        return 2;
-    }
-
-    if (first == 0xE0 && second >= 0xA0 && second <= 0xBF && hasUtf8Continuations(chars, 2)) {
-        return 3;
-    }
-
-    if (first >= 0xE1 && first <= 0xEC && hasUtf8Continuations(chars, 2)) {
-        return 3;
-    }
-
-    if (first == 0xED && second >= 0x80 && second <= 0x9F && hasUtf8Continuations(chars, 2)) {
-        return 3;
-    }
-
-    if (first >= 0xEE && first <= 0xEF && hasUtf8Continuations(chars, 2)) {
-        return 3;
-    }
-
-    if (first == 0xF0 && second >= 0x90 && second <= 0xBF && hasUtf8Continuations(chars, 3)) {
-        return 4;
-    }
-
-    if (first >= 0xF1 && first <= 0xF3 && hasUtf8Continuations(chars, 3)) {
-        return 4;
-    }
-
-    if (first == 0xF4 && second >= 0x80 && second <= 0x8F && hasUtf8Continuations(chars, 3)) {
-        return 4;
-    }
-
-    return 0;
 }
 
 static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
@@ -506,6 +449,17 @@ static Token endCharacterLiteral(Lexer* lexer)
     return makeToken(lexer, TOKEN_UNKNOWN);
 }
 
+static size_t characterSourceLength(const char* chars)
+{
+    size_t length = 0;
+
+    while (length < LITERAL_SCALAR_MAX_LENGTH && chars[length] != '\0') {
+        length++;
+    }
+
+    return length;
+}
+
 static Token escapedCharacterLiteral(Lexer* lexer)
 {
     advance(lexer);
@@ -514,19 +468,26 @@ static Token escapedCharacterLiteral(Lexer* lexer)
         unterminatedLiteralError(lexer, '\'');
     }
 
-    if (isNewline(peek(lexer))) {
+    if (isNewline(*lexer->current.chars)) {
         newlineCharacterError(lexer);
     }
 
-    advance(lexer);
+    const char* chars = lexer->current.chars - 1;
+    size_t length = characterSourceLength(chars);
+    DecodedScalar scalar;
+    bool valid = decodeLiteralScalar(chars, length, &scalar);
+
+    if (!valid) {
+        invalidCharacterEscapeError(lexer);
+    }
+
+    advanceCharacters(lexer, scalar.length - 1);
 
     return endCharacterLiteral(lexer);
 }
 
 static Token scanCharacterLiteral(Lexer* lexer)
 {
-    size_t length;
-
     if (isEndOfFile(lexer)) {
         unterminatedLiteralError(lexer, '\'');
     }
@@ -543,13 +504,16 @@ static Token scanCharacterLiteral(Lexer* lexer)
         return escapedCharacterLiteral(lexer);
     }
 
-    length = utf8CodePointLength(lexer->current.chars);
+    const char* chars = lexer->current.chars;
+    size_t length = characterSourceLength(chars);
+    DecodedScalar scalar;
+    bool valid = decodeLiteralScalar(chars, length, &scalar);
 
-    if (length == 0) {
+    if (!valid) {
         invalidUtf8CharacterError(lexer);
     }
 
-    advanceCharacters(lexer, length);
+    advanceCharacters(lexer, scalar.length);
 
     return endCharacterLiteral(lexer);
 }

@@ -724,6 +724,23 @@ static Operand compileFloat(Compiler* compiler, ASTNode* ast)
     return makeOperand(reg, true);
 }
 
+static Operand compileCharacter(Compiler* compiler, ASTNode* ast)
+{
+    uint32_t value = ast->characterLiteral.value;
+    int reg;
+
+    if (value <= INT16_MAX) {
+        reg = emitLdi(compiler, (int16_t)value);
+    } else {
+        Value constant = U32_VALUE(value);
+        size_t position = makeConstant(compiler, constant);
+
+        reg = emitLdc(compiler, position);
+    }
+
+    return makeOperand(reg, true);
+}
+
 static Operand compileBoolean(Compiler* compiler, ASTNode* ast)
 {
     return makeOperand(emitLdi(compiler, ast->booleanLiteral.value), true);
@@ -2148,6 +2165,7 @@ static bool isSimpleMatchValue(ASTNode* ast)
 {
     switch (ast->type) {
         case AST_BOOLEAN:
+        case AST_CHARACTER:
         case AST_INTEGER:
         case AST_FLOAT:
         case AST_VARIABLE:
@@ -2378,6 +2396,12 @@ static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value)
         return true;
     }
 
+    if (ast->type == AST_CHARACTER) {
+        *value = ast->characterLiteral.value;
+
+        return true;
+    }
+
     if (ast->type != AST_INTEGER) {
         return false;
     }
@@ -2566,6 +2590,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_BOOLEAN:
+        case AST_CHARACTER:
         case AST_FLOAT:
         case AST_INTEGER:
         case AST_VARIABLE:
@@ -2824,6 +2849,9 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
     switch (ast->type) {
         case AST_BINARY:
             result = compileBinary(compiler, ast);
+            break;
+        case AST_CHARACTER:
+            result = compileCharacter(compiler, ast);
             break;
         case AST_BOOLEAN:
             result = compileBoolean(compiler, ast);

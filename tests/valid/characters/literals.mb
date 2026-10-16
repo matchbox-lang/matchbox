@@ -1,5 +1,6 @@
 let character: char = 'a'
 let inferred = '😀'
+
 print(character)
 print(inferred)
 print('é')

@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 typedef struct ReferenceLifetimes ReferenceLifetimes;
+typedef struct FunctionPath FunctionPath;
 
 typedef struct Analyzer
 {
@@ -14,6 +15,7 @@ typedef struct Analyzer
     Vector* currentNodes;
     size_t nextNode;
     ReferenceLifetimes* referenceLifetimes;
+    FunctionPath* functionPath;
 } Analyzer;
 
 void initAnalyzer(Analyzer* analyzer, ASTNode* ast);

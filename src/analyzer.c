@@ -17,10 +17,16 @@ typedef bool (*VisitId)(StringObject* id, void* context);
 
 static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context);
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
-static void validateNodeEffects(ASTNode* ast);
+static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
 static void transferExclusiveReference(ASTNode* expression);
 static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue);
+
+typedef struct FunctionPath
+{
+    ASTNode* function;
+    struct FunctionPath* previous;
+} FunctionPath;
 
 typedef struct OwnershipState
 {
@@ -1644,7 +1650,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
     }
 }
 
-static void validateEffectAccess(ASTNode* origin, ReferenceType type, Token token)
+static void validateGlobalBindingAccess(ASTNode* origin, ReferenceType type, Token token)
 {
     if (!origin || !isTopLevelScope(getScope(origin))) {
         return;
@@ -1693,76 +1699,101 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
             semanticError("Reference access requires a binding for ", token);
         }
 
-        validateEffectAccess(origin, type, token);
+        validateGlobalBindingAccess(origin, type, token);
         markAddressTaken(origin);
     }
 }
 
-static void validateEffectsInVector(Vector* nodes)
+static bool functionInPath(FunctionPath* path, ASTNode* function)
+{
+    if (!path || path->function == function) {
+        return path != NULL;
+    }
+
+    return functionInPath(path->previous, function);
+}
+
+static void validateGlobalAccessInNodes(Analyzer* analyzer, Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        validateNodeEffects(getVectorAt(nodes, i));
+        ASTNode* node = getVectorAt(nodes, i);
+
+        validateNodeGlobalAccess(analyzer, node);
     }
 }
 
-static void validateConditionalBranchEffects(ASTNode* branch)
+static void validateFunctionGlobalAccess(Analyzer* analyzer, ASTNode* function)
+{
+    if (functionInPath(analyzer->functionPath, function)) {
+        return;
+    }
+
+    FunctionPath path = {function, analyzer->functionPath};
+    analyzer->functionPath = &path;
+
+    validateGlobalAccessInNodes(analyzer, &function->functionDefinition.body->compound.statements);
+
+    analyzer->functionPath = path.previous;
+}
+
+static void validateBranchGlobalAccess(Analyzer* analyzer, ASTNode* branch)
 {
     if (!branch) {
         return;
     }
 
     if (branch->type == AST_CONDITIONAL) {
-        validateNodeEffects(branch);
+        validateNodeGlobalAccess(analyzer, branch);
 
         return;
     }
 
-    validateEffectsInVector(&branch->compound.statements);
+    validateGlobalAccessInNodes(analyzer, &branch->compound.statements);
 }
 
-static void validateNodeEffects(ASTNode* ast)
+static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT: {
             ASTNode* origin = getReferenceOriginOrSelf(ast->assignment.symbol);
-            validateEffectAccess(origin, REFERENCE_EXCLUSIVE, ast->assignment.token);
-            validateNodeEffects(ast->assignment.expr);
+            validateGlobalBindingAccess(origin, REFERENCE_EXCLUSIVE, ast->assignment.token);
+            validateNodeGlobalAccess(analyzer, ast->assignment.expr);
             break;
         }
         case AST_BINARY:
-            validateNodeEffects(ast->binary.leftExpr);
-            validateNodeEffects(ast->binary.rightExpr);
+            validateNodeGlobalAccess(analyzer, ast->binary.leftExpr);
+            validateNodeGlobalAccess(analyzer, ast->binary.rightExpr);
             break;
         case AST_BUILTIN_CALL:
-            validateEffectsInVector(&ast->builtinCall.args);
+            validateGlobalAccessInNodes(analyzer, &ast->builtinCall.args);
             break;
         case AST_CONDITIONAL:
-            validateNodeEffects(ast->conditional.condition);
-            validateConditionalBranchEffects(ast->conditional.thenBranch);
-            validateConditionalBranchEffects(ast->conditional.elseBranch);
+            validateNodeGlobalAccess(analyzer, ast->conditional.condition);
+            validateBranchGlobalAccess(analyzer, ast->conditional.thenBranch);
+            validateBranchGlobalAccess(analyzer, ast->conditional.elseBranch);
             break;
         case AST_FUNCTION_CALL:
-            validateEffectsInVector(&ast->functionCall.args);
-            validateEffectsInVector(&ast->functionCall.symbol->functionDefinition.body->compound.statements);
+            validateGlobalAccessInNodes(analyzer, &ast->functionCall.args);
+            validateFunctionGlobalAccess(analyzer, ast->functionCall.symbol);
             break;
         case AST_PREFIX: {
             ASTNode* origin = referenceOriginFromExpression(ast);
             ReferenceType type = getReferenceType(ast);
-            validateEffectAccess(origin, type, ast->prefix.operator);
+            validateGlobalBindingAccess(origin, type, ast->prefix.operator);
             break;
         }
         case AST_RETURN:
-            validateNodeEffects(ast->returnStatement.expr);
+            validateNodeGlobalAccess(analyzer, ast->returnStatement.expr);
             break;
         case AST_VARIABLE: {
             ASTNode* origin = getReferenceOriginOrSelf(ast->variable.symbol);
-            validateEffectAccess(origin, REFERENCE_SHARED, ast->variable.token);
+            validateGlobalBindingAccess(origin, REFERENCE_SHARED, ast->variable.token);
             break;
         }
         case AST_VARIABLE_DEFINITION:
-            validateNodeEffects(ast->variableDefinition.expr);
+            validateNodeGlobalAccess(analyzer, ast->variableDefinition.expr);
             break;
         default:
             break;
@@ -1911,7 +1942,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     validateFunctionCall(ast, symbol, ast->functionCall.token);
     validateCallArgumentAccess(ast, symbol, ast->functionCall.token);
     validateArgumentAccesses(ast, symbol);
-    validateEffectsInVector(&symbol->functionDefinition.body->compound.statements);
+    validateFunctionGlobalAccess(analyzer, symbol);
     setCallReferenceOrigins(ast, symbol);
 }
 
@@ -2005,13 +2036,22 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     ast->functionDefinition.body->compound.scope = scope;
     analyzer->currentScope = scope;
     analyzer->function = ast;
+
+    setLocalSymbol(scope, ast->functionDefinition.id, ast);
     analyzeExpressionNodes(analyzer, &ast->functionDefinition.params);
     setParameterPositions(ast);
+    setLocalSymbol(parent, ast->functionDefinition.id, ast);
+
+    FunctionPath path = {ast, analyzer->functionPath};
+    analyzer->functionPath = &path;
+
     analyzeExpressionNodes(analyzer, &ast->functionDefinition.body->compound.statements);
+
+    analyzer->functionPath = path.previous;
     analyzer->currentScope = parent;
     analyzer->function = previousFunction;
+
     resolveFunctionReturnValueType(ast);
-    setLocalSymbol(parent, ast->functionDefinition.id, ast);
 }
 
 static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
@@ -2431,6 +2471,7 @@ void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
     analyzer->currentNodes = NULL;
     analyzer->nextNode = 0;
     analyzer->referenceLifetimes = NULL;
+    analyzer->functionPath = NULL;
 }
 
 bool analyze(Analyzer* analyzer, size_t start)

@@ -1,0 +1,15 @@
+func outer(n) {
+    func countdown(value) {
+        if (value <= 0) {
+            return 0
+        }
+
+        return countdown(value - 1)
+    }
+
+    return countdown(n)
+}
+
+let result = outer(5)
+
+print(result)

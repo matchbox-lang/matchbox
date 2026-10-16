@@ -1,0 +1,15 @@
+func factorial(n) {
+    if (n <= 1) {
+        return 1
+    }
+
+    return n * factorial(n - 1)
+}
+
+let zero = factorial(0)
+let one = factorial(1)
+let result = factorial(5)
+
+print(zero)
+print(one)
+print(result)

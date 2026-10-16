@@ -1,0 +1,6 @@
+print('\u{0}' < '\u{7F}')
+print('\u{7F}' < '\u{80}')
+print('\u{7FF}' < '\u{800}')
+print('\u{D7FF}' < '\u{E000}')
+print('\u{FFFF}' < '\u{10000}')
+print('\u{10000}' < '\u{10FFFF}')

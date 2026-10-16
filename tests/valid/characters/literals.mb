@@ -1,0 +1,7 @@
+let character: char = 'a'
+let inferred = '😀'
+print(character)
+print(inferred)
+print('é')
+print('中')
+print('\u{10FFFF}')

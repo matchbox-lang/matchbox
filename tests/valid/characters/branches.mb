@@ -1,0 +1,15 @@
+var value = '😀'
+let selected = if value == 'a' {
+    'b'
+} else {
+    value
+}
+
+let result = match selected {
+    case 'a' | 'b': 'c'
+    case '😀': 'é'
+    default: 'd'
+}
+
+print(selected)
+print(result)

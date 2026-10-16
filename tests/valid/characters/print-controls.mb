@@ -1,0 +1,7 @@
+print('\0')
+print('\n')
+print('\r')
+print('\t')
+print('\\')
+print('\'')
+print('\"')

@@ -1,0 +1,6 @@
+let c = if true {
+    'a'
+} else {
+    97
+}
+print(c)

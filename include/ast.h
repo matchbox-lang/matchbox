@@ -81,6 +81,7 @@ typedef struct ASTNode
         } builtinCall;
 
         struct {
+            uint32_t value;
             Token token;
         } characterLiteral;
 

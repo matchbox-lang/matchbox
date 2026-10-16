@@ -1,0 +1,12 @@
+func exclusive(value: ^char) {
+    print(value)
+}
+
+func display(value: &char) {
+    print(value)
+}
+
+var value = '\u{1F600}'
+
+exclusive(^value)
+display(&value)

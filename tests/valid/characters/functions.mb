@@ -1,0 +1,12 @@
+func echo(value: char) -> char {
+    return value
+}
+
+func inferred() {
+    return '😀'
+}
+
+let value = echo('中')
+
+print(value)
+print(inferred())

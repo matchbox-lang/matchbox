@@ -1,0 +1,4 @@
+let c = 'a'
+match c {
+    case 97: print(1)
+}

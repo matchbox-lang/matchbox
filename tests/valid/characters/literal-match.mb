@@ -1,0 +1,7 @@
+let result = match '\u{1F600}' {
+    case 'a' | 'b': 'c'
+    case '\u{1F600}': '\u{4E2D}'
+    default: 'd'
+}
+
+print(result)

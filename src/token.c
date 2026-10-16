@@ -192,7 +192,9 @@ bool isSignedIntegerTypeToken(TokenType type)
 bool isTypeToken(TokenType type)
 {
     return isIntegerTypeToken(type) || isFloatTypeToken(type)
-        || type == TOKEN_BOOL || type == TOKEN_VOID;
+        || type == TOKEN_BOOL
+        || type == TOKEN_CHAR
+        || type == TOKEN_VOID;
 }
 
 bool canImplicitlyWidenInteger(TokenType source, TokenType destination)

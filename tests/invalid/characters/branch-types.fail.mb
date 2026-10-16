@@ -3,4 +3,5 @@ let c = if true {
 } else {
     97
 }
+
 print(c)

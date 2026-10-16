@@ -1,4 +1,5 @@
 func take(c: char) {
     print(c)
 }
+
 take(97)

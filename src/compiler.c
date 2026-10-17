@@ -731,7 +731,7 @@ static Operand compileString(Compiler* compiler, ASTNode* ast)
     StringObject* string = copyStringObject(literal->chars, literal->length);
     Value value = POINTER_VALUE(string);
 
-    pushVectorItem(&compiler->module->strings, string);
+    pushVectorItem(&compiler->module->objects, string);
 
     size_t position = makeConstant(compiler, value);
     int reg = emitLdc(compiler, position);

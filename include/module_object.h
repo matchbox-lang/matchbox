@@ -11,7 +11,7 @@ typedef struct ModuleObject
     Object obj;
     ValueArray constants;
     Vector functions;
-    Vector strings;
+    Vector objects;
     size_t globalCount;
 } ModuleObject;
 

@@ -14,7 +14,7 @@ ModuleObject* createModuleObject()
 
     initValueArray(&module->constants);
     initVector(&module->functions);
-    initVector(&module->strings);
+    initVector(&module->objects);
     pushVectorItem(&module->functions, function);
     
     module->globalCount = 0;
@@ -31,15 +31,15 @@ void freeModuleObject(ModuleObject* module)
         freeFunctionObject(function);
     }
 
-    size_t stringCount = countVector(&module->strings);
+    size_t objectCount = countVector(&module->objects);
 
-    for (size_t i = 0; i < stringCount; i++) {
-        StringObject* string = getVectorAt(&module->strings, i);
+    for (size_t i = 0; i < objectCount; i++) {
+        StringObject* string = getVectorAt(&module->objects, i);
 
         freeStringObject(string);
     }
 
-    freeVector(&module->strings);
+    freeVector(&module->objects);
     freeVector(&module->functions);
     freeValueArray(&module->constants);
     free(module);

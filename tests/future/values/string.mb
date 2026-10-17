@@ -1,15 +1,17 @@
 let str = "Hello World!\n"
 
+let name = "Alice"
 let apples = 4
 let bananas = 3
 
-let str = "I have %d apples." % apples
-let str = "I have %d fruit." % (apples + bananas)
 let str = $"I have {apples} apples."
 let str = $"I have {apples + bananas} fruit."
 
+let str = $"Hello {{{name}}}." // Hello {Alice}
+
 let str = `C:\path\to\file`
 let str = `I have {apples} apples.`
+let str = $`I have {apples} apples.`
 
 let str = """Multi
 Line
@@ -17,3 +19,6 @@ String"""
 
 let str = """I have {apples} apples."""
 let str = ```I have {apples} apples.```
+
+let str = $"""I have {apples} apples.
+I have {bananas} bananas."""

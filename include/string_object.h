@@ -2,22 +2,23 @@
 #define STRING_OBJECT_H
 
 #include "object.h"
+#include "string_view.h"
 
 #define AS_STRING_OBJECT(value) ((StringObject*)AS_OBJECT(value))
 
 typedef struct StringObject
 {
     Object obj;
-    char* chars;
     size_t length;
     size_t hash;
+    char chars[];
 } StringObject;
 
-StringObject* createStringObject(char* chars, size_t length, size_t hash);
+StringObject* createStringObject(const char* chars, size_t length, size_t hash);
 StringObject* copyStringObject(const char* chars, size_t length);
+StringView getStringView(const StringObject* string);
 void freeStringObject(StringObject* string);
-bool compareStringObject(StringObject* a, StringObject* b);
-size_t hashStringObject(const char* chars, size_t length);
+bool compareStringObject(const StringObject* a, const StringObject* b);
 void printStringObject(StringObject* string);
 
 #endif

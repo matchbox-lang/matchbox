@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef bool (*VisitId)(StringObject* id, void* context);
+typedef bool (*VisitId)(StringView id, void* context);
 
 static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context);
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
@@ -41,7 +41,6 @@ typedef struct OwnershipState
 
 typedef struct ReferenceUse
 {
-    StringObject id;
     size_t last;
 } ReferenceUse;
 
@@ -254,7 +253,7 @@ static void applyLiteralType(ASTNode* expression, TokenType type)
     expression->floatLiteral.typeId = type;
 }
 
-static ASTNode* findSymbol(Analyzer* analyzer, StringObject* id)
+static ASTNode* findSymbol(Analyzer* analyzer, StringView id)
 {
     Scope* frame = analyzer->currentScope->frameScope;
 
@@ -460,13 +459,9 @@ static bool visitMatchUses(ASTNode* ast, VisitId visit, void* context)
 static bool visitAssignmentUses(ASTNode* ast, VisitId visit, void* context)
 {
     Token token = ast->assignment.token;
-    StringObject id = {0};
+    StringView id = createStringView(token.chars, token.length);
 
-    id.chars = token.chars;
-    id.length = token.length;
-    id.hash = hashStringObject(token.chars, token.length);
-
-    return visit(&id, context) || visitNodeUses(ast->assignment.expr, visit, context);
+    return visit(id, context) || visitNodeUses(ast->assignment.expr, visit, context);
 }
 
 static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
@@ -499,8 +494,11 @@ static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
             return visitNodeUses(ast->prefix.expr, visit, context);
         case AST_RETURN:
             return visitNodeUses(ast->returnStatement.expr, visit, context);
-        case AST_VARIABLE:
-            return visit(ast->variable.id, context);
+        case AST_VARIABLE: {
+            StringView id = getStringView(ast->variable.id);
+
+            return visit(id, context);
+        }
         case AST_VARIABLE_DEFINITION:
             return visitNodeUses(ast->variableDefinition.expr, visit, context);
         default:
@@ -508,12 +506,12 @@ static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
     }
 }
 
-static bool matchesReferenceId(StringObject* id, void* context)
+static bool matchesReferenceId(StringView id, void* context)
 {
-    return compareStringObject(id, context);
+    return compareStringView(id, *(StringView*)context);
 }
 
-static bool recordReferenceUse(StringObject* id, void* context)
+static bool recordReferenceUse(StringView id, void* context)
 {
     ReferenceLifetimes* lifetimes = context;
     ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
@@ -529,11 +527,9 @@ static bool recordReferenceUse(StringObject* id, void* context)
         outOfMemoryError();
     }
 
-    // Assignment visits provide a temporary identifier object
-    use->id = *id;
     use->last = lifetimes->position;
 
-    setTableAt(&lifetimes->lastUses, &use->id, use);
+    setTableAt(&lifetimes->lastUses, id, use);
 
     return false;
 }
@@ -565,7 +561,7 @@ static void scheduleReferenceRelease(ReferenceLifetimes* lifetimes, ASTNode* ast
         return;
     }
 
-    StringObject* id = ast->variableDefinition.id;
+    StringView id = getStringView(ast->variableDefinition.id);
     ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
 
     if (use) {
@@ -723,7 +719,10 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
     if (binding) {
         binding->variableDefinition.scope = analyzer->currentScope;
         binding->variableDefinition.position = getNextLocalPosition(analyzer->currentScope);
-        setLocalVariableSymbol(analyzer->currentScope, binding->variableDefinition.id, binding);
+        
+        StringView id = getStringView(binding->variableDefinition.id);
+
+        setLocalVariableSymbol(analyzer->currentScope, id, binding);
     }
 
     size_t count = countVector(&branch->compound.statements);
@@ -882,7 +881,9 @@ static bool branchUsesReference(ASTNode* branch, StringObject* id)
         return false;
     }
 
-    return visitNodeUses(branch, matchesReferenceId, id);
+    StringView view = getStringView(id);
+
+    return visitNodeUses(branch, matchesReferenceId, &view);
 }
 
 static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
@@ -892,7 +893,8 @@ static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
         return false;
     }
 
-    ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
+    StringView view = getStringView(id);
+    ReferenceUse* use = getTableAt(&lifetimes->lastUses, view);
 
     return use && use->last >= analyzer->nextNode;
 }
@@ -1452,7 +1454,8 @@ static void trackVariableRead(ASTNode* symbol)
 
 static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* symbol = findSymbol(analyzer, ast->variable.id);
+    StringView id = getStringView(ast->variable.id);
+    ASTNode* symbol = findSymbol(analyzer, id);
 
     if (!symbol || !isVariableType(symbol)) {
         symbolError("undefined", ast->variable.token);
@@ -1487,7 +1490,8 @@ static ASTNode* getReferenceVariable(ASTNode* ast)
 
 static ASTNode* findReferenceSymbol(Analyzer* analyzer, ASTNode* variable)
 {
-    ASTNode* symbol = findSymbol(analyzer, variable->variable.id);
+    StringView id = getStringView(variable->variable.id);
+    ASTNode* symbol = findSymbol(analyzer, id);
 
     if (!symbol || !isVariableType(symbol)) {
         symbolError("undefined", variable->variable.token);
@@ -1548,7 +1552,9 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 
 static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
 {
-    if (getLocalSymbol(analyzer->currentScope, ast->parameter.id)) {
+    StringView id = getStringView(ast->parameter.id);
+
+    if (getLocalSymbol(analyzer->currentScope, id)) {
         redefinitionError("Parameter", ast->parameter.token);
     }
 
@@ -1559,7 +1565,7 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
         addReferenceOrigin(origins, ast);
     }
 
-    setLocalSymbol(analyzer->currentScope, ast->parameter.id, ast);
+    setLocalSymbol(analyzer->currentScope, id, ast);
 }
 
 static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
@@ -1946,7 +1952,9 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeExpressionNodes(analyzer, &ast->functionCall.args);
 
-    ASTNode* symbol = findSymbol(analyzer, ast->functionCall.id);
+    StringView id = getStringView(ast->functionCall.id);
+    ASTNode* symbol = findSymbol(analyzer, id);
+    
     if (!symbol) {
         analyzeBuiltinCall(ast);
         return;
@@ -2041,7 +2049,9 @@ static void resolveFunctionReturnValueType(ASTNode* ast)
 
 static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 {
-    if (getLocalSymbol(analyzer->currentScope, ast->functionDefinition.id)) {
+    StringView id = getStringView(ast->functionDefinition.id);
+
+    if (getLocalSymbol(analyzer->currentScope, id)) {
         redefinitionError("Function", ast->functionDefinition.token);
     }
 
@@ -2056,10 +2066,10 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     analyzer->currentScope = scope;
     analyzer->function = ast;
 
-    setLocalSymbol(scope, ast->functionDefinition.id, ast);
+    setLocalSymbol(scope, id, ast);
     analyzeExpressionNodes(analyzer, &ast->functionDefinition.params);
     setParameterPositions(ast);
-    setLocalSymbol(parent, ast->functionDefinition.id, ast);
+    setLocalSymbol(parent, id, ast);
 
     FunctionPath path = {ast, analyzer->functionPath};
     analyzer->functionPath = &path;
@@ -2075,10 +2085,9 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 
 static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
 {
-    StringObject* id = copyStringObject(ast->assignment.token.chars, ast->assignment.token.length);
+    Token token = ast->assignment.token;
+    StringView id = createStringView(token.chars, token.length);
     ASTNode* symbol = findSymbol(analyzer, id);
-
-    freeStringObject(id);
 
     if (!symbol || !isVariableType(symbol)) {
         symbolError("undefined", ast->assignment.token);
@@ -2337,14 +2346,16 @@ static void trackVariableReference(ASTNode* ast)
 
 static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 {
-    if (getLocalSymbol(analyzer->currentScope, ast->variableDefinition.id)) {
+    StringView id = getStringView(ast->variableDefinition.id);
+
+    if (getLocalSymbol(analyzer->currentScope, id)) {
         redefinitionError("Variable", ast->variableDefinition.token);
     }
 
     initializeVariableDefinition(analyzer, ast);
     analyzeVariableInitializer(analyzer, ast);
     validateVariableType(ast);
-    setLocalVariableSymbol(analyzer->currentScope, ast->variableDefinition.id, ast);
+    setLocalVariableSymbol(analyzer->currentScope, id, ast);
     trackVariableReference(ast);
 }
 

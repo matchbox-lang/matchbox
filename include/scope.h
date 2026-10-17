@@ -24,9 +24,9 @@ size_t getMaxLocalCount(Scope* scope);
 size_t getNextLocalPosition(Scope* scope);
 size_t getScopeLevel(Scope* scope);
 bool isTopLevelScope(Scope* scope);
-ASTNode* setLocalSymbol(Scope* scope, StringObject* id, ASTNode* symbol);
-ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol);
-ASTNode* getLocalSymbol(Scope* scope, StringObject* id);
-ASTNode* getSymbol(Scope* scope, StringObject* id);
+ASTNode* setLocalSymbol(Scope* scope, StringView id, ASTNode* symbol);
+ASTNode* setLocalVariableSymbol(Scope* scope, StringView id, ASTNode* symbol);
+ASTNode* getLocalSymbol(Scope* scope, StringView id);
+ASTNode* getSymbol(Scope* scope, StringView id);
 
 #endif

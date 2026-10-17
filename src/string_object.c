@@ -2,52 +2,60 @@
 #include "object.h"
 #include "util.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-StringObject* createStringObject(char* chars, size_t length, size_t hash)
+StringObject* createStringObject(const char* chars, size_t length, size_t hash)
 {
-    StringObject* string = ALLOCATE_OBJECT(StringObject, OBJ_STRING);
-    string->chars = chars;
+    if (length > SIZE_MAX - sizeof(StringObject) - 1) {
+        outOfMemoryError();
+    }
+
+    size_t size = sizeof(StringObject) + length + 1;
+    StringObject* string = (StringObject*)allocateObject(size, OBJ_STRING);
+
     string->length = length;
     string->hash = hash;
+
+    if (length > 0) {
+        memcpy(string->chars, chars, length);
+    }
+
+    string->chars[length] = '\0';
 
     return string;
 }
 
 StringObject* copyStringObject(const char* chars, size_t length)
 {
-    size_t hash = hashStringObject(chars, length);
-    char* dst = strndup(chars, length);
+    size_t hash = hashStringView(chars, length);
 
-    return createStringObject(dst, length, hash);
+    return createStringObject(chars, length, hash);
+}
+
+StringView getStringView(const StringObject* string)
+{
+    StringView view;
+    view.chars = string->chars;
+    view.length = string->length;
+    view.hash = string->hash;
+
+    return view;
 }
 
 void freeStringObject(StringObject* string)
 {
-    free(string->chars);
     free(string);
 }
 
-bool compareStringObject(StringObject* a, StringObject* b)
+bool compareStringObject(const StringObject* a, const StringObject* b)
 {
-    if (a->length == b->length) {
-        return strncmp(a->chars, b->chars, b->length) == 0;
-    }
+    StringView left = getStringView(a);
+    StringView right = getStringView(b);
 
-    return false;
-}
-
-size_t hashStringObject(const char* chars, size_t length)
-{
-    size_t hash = 0;
-
-    for (size_t i = 0; i < length; i++) {
-        hash = chars[i] + 31 * hash;
-    }
-
-    return hash;
+    return compareStringView(left, right);
 }
 
 void printStringObject(StringObject* string)

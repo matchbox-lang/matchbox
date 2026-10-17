@@ -1,10 +1,10 @@
 #include "table.h"
-#include "string_object.h"
+#include "string_view.h"
 #include "util.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
-TableItem* createTableItem(StringObject* key, void* value, TableItem* next)
+TableItem* createTableItem(StringView key, void* value, TableItem* next)
 {
     TableItem* item = malloc(sizeof(TableItem));
     if (!item) {
@@ -60,16 +60,16 @@ size_t countTable(Table* table)
     return table->count;
 }
 
-void* getTableAt(Table* table, StringObject* key)
+void* getTableAt(Table* table, StringView key)
 {
     if (table->count == 0) {
         return NULL;
     }
 
-    size_t index = key->hash % table->capacity;
+    size_t index = key.hash % table->capacity;
     TableItem* current = table->data[index];
 
-    while (current && !compareStringObject(current->key, key)) {
+    while (current && !compareStringView(current->key, key)) {
         current = current->next;
     }
 
@@ -80,13 +80,13 @@ void* getTableAt(Table* table, StringObject* key)
     return NULL;
 }
 
-bool setTableAt(Table* table, StringObject* key, void* value)
+bool setTableAt(Table* table, StringView key, void* value)
 {
-    size_t index = key->hash % table->capacity;
+    size_t index = key.hash % table->capacity;
     TableItem* current = table->data[index];
 
     while (current) {
-        if (compareStringObject(current->key, key)) {
+        if (compareStringView(current->key, key)) {
             return false;
         }
 
@@ -100,13 +100,13 @@ bool setTableAt(Table* table, StringObject* key, void* value)
     return true;
 }
 
-bool deleteTableAt(Table* table, StringObject* key)
+bool deleteTableAt(Table* table, StringView key)
 {
-    size_t index = key->hash % table->capacity;
+    size_t index = key.hash % table->capacity;
     TableItem* prev = NULL;
     TableItem* current = table->data[index];
 
-    while (current && !compareStringObject(current->key, key)) {
+    while (current && !compareStringView(current->key, key)) {
         prev = current;
         current = current->next;
     }

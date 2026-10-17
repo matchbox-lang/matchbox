@@ -9,6 +9,7 @@
 #include "ast_optimizer.h"
 #include "bytecode_optimizer.h"
 #include "scope.h"
+#include "string_object.h"
 #include "token.h"
 #include "util.h"
 #include "value.h"

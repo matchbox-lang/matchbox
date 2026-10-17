@@ -82,7 +82,7 @@ bool isTopLevelScope(Scope* scope)
     return scope->level == 1;
 }
 
-ASTNode* setLocalSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
+ASTNode* setLocalSymbol(Scope* scope, StringView id, ASTNode* symbol)
 {
     if (setTableAt(&scope->symbols, id, symbol)) {
         return symbol;
@@ -91,7 +91,7 @@ ASTNode* setLocalSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
     return NULL;
 }
 
-ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
+ASTNode* setLocalVariableSymbol(Scope* scope, StringView id, ASTNode* symbol)
 {
     scope->localCount += getSymbolSlotCount(symbol);
     size_t localExtent = getNextLocalPosition(scope);
@@ -101,12 +101,12 @@ ASTNode* setLocalVariableSymbol(Scope* scope, StringObject* id, ASTNode* symbol)
     return setLocalSymbol(scope, id, symbol);
 }
 
-ASTNode* getLocalSymbol(Scope* scope, StringObject* id)
+ASTNode* getLocalSymbol(Scope* scope, StringView id)
 {
     return getTableAt(&scope->symbols, id);
 }
 
-ASTNode* getSymbol(Scope* scope, StringObject* id)
+ASTNode* getSymbol(Scope* scope, StringView id)
 {
     ASTNode* symbol = getTableAt(&scope->symbols, id);
 

@@ -1,0 +1,14 @@
+var condition = false
+
+let selected = if condition {
+    "First"
+} else {
+    "Second"
+}
+
+let result = match 2 {
+    case 1: "One"
+    default: selected
+}
+
+print(result)

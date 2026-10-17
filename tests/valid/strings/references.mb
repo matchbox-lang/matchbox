@@ -1,0 +1,12 @@
+func exclusive(value: ^string) {
+    print(value)
+}
+
+func display(value: &string) {
+    print(value)
+}
+
+var value = "Original"
+
+exclusive(^value)
+display(&value)

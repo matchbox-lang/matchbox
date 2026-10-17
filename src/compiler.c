@@ -725,6 +725,20 @@ static Operand compileFloat(Compiler* compiler, ASTNode* ast)
     return makeOperand(reg, true);
 }
 
+static Operand compileString(Compiler* compiler, ASTNode* ast)
+{
+    StringObject* literal = ast->stringLiteral.value;
+    StringObject* string = copyStringObject(literal->chars, literal->length);
+    Value value = POINTER_VALUE(string);
+
+    pushVectorItem(&compiler->module->strings, string);
+
+    size_t position = makeConstant(compiler, value);
+    int reg = emitLdc(compiler, position);
+
+    return makeOperand(reg, true);
+}
+
 static Operand compileCharacter(Compiler* compiler, ASTNode* ast)
 {
     uint32_t value = ast->characterLiteral.value;
@@ -2594,6 +2608,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
         case AST_CHARACTER:
         case AST_FLOAT:
         case AST_INTEGER:
+        case AST_STRING:
         case AST_VARIABLE:
             return true;
         case AST_BINARY:
@@ -2850,6 +2865,9 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
     switch (ast->type) {
         case AST_BINARY:
             result = compileBinary(compiler, ast);
+            break;
+        case AST_STRING:
+            result = compileString(compiler, ast);
             break;
         case AST_CHARACTER:
             result = compileCharacter(compiler, ast);

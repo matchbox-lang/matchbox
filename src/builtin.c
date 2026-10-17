@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "float_format.h"
+#include "string_object.h"
 #include "token.h"
 #include "unicode.h"
 #include "value.h"
@@ -21,6 +22,7 @@ Builtin builtins[BUILTINS_MAX] = {
     {"print",       builtinPrintF64,    1,  {TOKEN_F64},                        TOKEN_VOID},
     {"print",       builtinPrintBool,   1,  {TOKEN_BOOL},                       TOKEN_VOID},
     {"print",       builtinPrintChar,   1,  {TOKEN_CHAR},                       TOKEN_VOID},
+    {"print",       builtinPrintString, 1,  {TOKEN_STRING},                     TOKEN_VOID},
     {"clamp",       builtinClamp,       3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
     {"clamp",       builtinClampI64,    3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
     {"abs",         builtinAbs,         1,  {TOKEN_I32},                        TOKEN_I32},
@@ -161,6 +163,17 @@ void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame)
     formatShortestF64(buffer, sizeof(buffer), value);
 
     printf("%s\n", buffer);
+}
+
+void builtinPrintString(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    StringObject* string = AS_POINTER(frame[0]);
+
+    printStringObject(string);
+    putchar('\n');
 }
 
 void builtinPrintChar(VM* vm, FunctionObject* function, Value* frame)

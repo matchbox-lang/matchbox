@@ -194,6 +194,7 @@ bool isTypeToken(TokenType type)
     return isIntegerTypeToken(type) || isFloatTypeToken(type)
         || type == TOKEN_BOOL
         || type == TOKEN_CHAR
+        || type == TOKEN_STRING
         || type == TOKEN_VOID;
 }
 

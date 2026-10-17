@@ -171,6 +171,7 @@ typedef struct ASTNode
         } returnStatement;
 
         struct {
+            StringObject* value;
             Token token;
         } stringLiteral;
 

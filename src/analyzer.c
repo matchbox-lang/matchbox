@@ -1182,6 +1182,10 @@ static void analyzeMatchPatternNode(Analyzer* analyzer, ASTNode* ast, ASTNode* p
         applyIntegerLiteralType(pattern, expected);
     }
 
+    if (expected == TOKEN_STRING) {
+        semanticError("String match patterns are not supported ", ast->match.token);
+    }
+
     if (getTypeId(pattern) != expected) {
         semanticError("Match pattern type does not match subject ", ast->match.token);
     }
@@ -1409,6 +1413,10 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 
     if (leftType != rightType && !floatOperands) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
+    if (leftType == TOKEN_STRING) {
+        semanticError("Invalid operator for string operands ", ast->binary.operator);
     }
 
     if (leftType == TOKEN_CHAR && !isCharacterComparison(ast->binary.operator.type)) {
@@ -2176,6 +2184,10 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 
     TokenType bindingType = getTypeId(symbol);
 
+    if (bindingType == TOKEN_STRING && ast->assignment.operator.type != TOKEN_EQUAL) {
+        semanticError("Invalid operator for string assignment ", ast->assignment.operator);
+    }
+
     if (bindingType == TOKEN_CHAR && ast->assignment.operator.type != TOKEN_EQUAL) {
         semanticError("Invalid operator for char assignment ", ast->assignment.operator);
     }
@@ -2461,6 +2473,10 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     }
 
     TokenType type = getTypeId(ast->prefix.expr);
+
+    if (type == TOKEN_STRING) {
+        semanticError("Invalid prefix operator for string ", ast->prefix.operator);
+    }
 
     if (type == TOKEN_CHAR) {
         semanticError("Invalid prefix operator for char ", ast->prefix.operator);

@@ -2,6 +2,7 @@
 #include "bytecode.h"
 #include "function_object.h"
 #include "object.h"
+#include "string_object.h"
 #include "value.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@ ModuleObject* createModuleObject()
 
     initValueArray(&module->constants);
     initVector(&module->functions);
+    initVector(&module->strings);
     pushVectorItem(&module->functions, function);
     
     module->globalCount = 0;
@@ -29,6 +31,15 @@ void freeModuleObject(ModuleObject* module)
         freeFunctionObject(function);
     }
 
+    size_t stringCount = countVector(&module->strings);
+
+    for (size_t i = 0; i < stringCount; i++) {
+        StringObject* string = getVectorAt(&module->strings, i);
+
+        freeStringObject(string);
+    }
+
+    freeVector(&module->strings);
     freeVector(&module->functions);
     freeValueArray(&module->constants);
     free(module);

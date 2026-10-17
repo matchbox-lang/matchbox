@@ -54,6 +54,12 @@ static void expectedTokenError(TokenType type, Token token)
     exit(1);
 }
 
+static void invalidStringError(Token token)
+{
+    fprintf(stderr, "Error: Invalid UTF-8 or escape in string literal on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static void advance(Parser* parser)
 {
     parser->previousToken = parser->currentToken;
@@ -249,6 +255,48 @@ static ASTNode* parseCharacterLiteral(Parser* parser)
     return ast;
 }
 
+static StringObject* decodeStringLiteral(Token token)
+{
+    size_t length = token.length - 2;
+    char* bytes = malloc(length + 1);
+
+    if (!bytes) {
+        outOfMemoryError();
+    }
+
+    size_t count;
+    bool valid = decodeStringContents(token.chars + 1, length, bytes, &count);
+
+    if (!valid) {
+        free(bytes);
+        invalidStringError(token);
+    }
+
+    StringObject* value = copyStringObject(bytes, count);
+
+    free(bytes);
+
+    return value;
+}
+
+static ASTNode* parseStringLiteral(Parser* parser)
+{
+    Token token = parser->currentToken;
+
+    if (token.chars[0] != '"') {
+        expectedExpressionError(token);
+    }
+
+    StringObject* value = decodeStringLiteral(token);
+    ASTNode* ast = createASTNode(AST_STRING);
+    ast->stringLiteral.token = token;
+    ast->stringLiteral.value = value;
+
+    consume(parser, TOKEN_STRING_LITERAL);
+
+    return ast;
+}
+
 static ASTNode* parsePrimary(Parser* parser)
 {
     switch (parser->currentToken.type) {
@@ -265,6 +313,8 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseConditional(parser);
         case TOKEN_MATCH:
             return parseMatch(parser);
+        case TOKEN_STRING_LITERAL:
+            return parseStringLiteral(parser);
         case TOKEN_CHARACTER_LITERAL:
             return parseCharacterLiteral(parser);
         case TOKEN_INTEGER_LITERAL:

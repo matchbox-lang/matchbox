@@ -22,15 +22,21 @@ ModuleObject* createModuleObject()
     return module;
 }
 
-void freeModuleObject(ModuleObject* module)
+static void freeModuleFunctions(ModuleObject* module)
 {
     size_t functionCount = countVector(&module->functions);
 
     for (size_t i = 0; i < functionCount; i++) {
         FunctionObject* function = getVectorAt(&module->functions, i);
+
         freeFunctionObject(function);
     }
 
+    freeVector(&module->functions);
+}
+
+static void freeModuleObjects(ModuleObject* module)
+{
     size_t objectCount = countVector(&module->objects);
 
     for (size_t i = 0; i < objectCount; i++) {
@@ -40,7 +46,12 @@ void freeModuleObject(ModuleObject* module)
     }
 
     freeVector(&module->objects);
-    freeVector(&module->functions);
+}
+
+void freeModuleObject(ModuleObject* module)
+{
+    freeModuleFunctions(module);
+    freeModuleObjects(module);
     freeValueArray(&module->constants);
     free(module);
 }

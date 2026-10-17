@@ -52,5 +52,5 @@ size_t hashStringObject(const char* chars, size_t length)
 
 void printStringObject(StringObject* string)
 {
-    printf("%.*s", string->length, string->chars);
+    fwrite(string->chars, 1, string->length, stdout);
 }

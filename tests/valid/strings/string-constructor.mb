@@ -1,0 +1,11 @@
+func message(value: string) -> string {
+    return string("Count: ", value)
+}
+
+let count = 5
+let converted: string = string(count)
+let constructed: string = message(converted)
+let interpolated: string = $"Count: {count}"
+
+print(constructed)
+print(interpolated)

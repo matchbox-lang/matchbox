@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 23
+#define BUILTINS_MAX 22
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
 
@@ -43,7 +43,6 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPow(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
-void builtinConcat(VM* vm, FunctionObject* function, Value* frame);
-void builtinBuildString(VM* vm, FunctionObject* function, Value* frame);
+void builtinString(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

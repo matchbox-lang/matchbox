@@ -1587,15 +1587,12 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     setLocalSymbol(analyzer->currentScope, id, ast);
 }
 
-static void validateStringParts(Vector* args, Builtin* builtin, Token token)
+static void validateStringParts(Vector* args, Token token)
 {
     for (size_t i = 0; i < args->count; i++) {
         ASTNode* argument = args->data[i];
         TokenType type = getTypeId(argument);
-        bool text = type == TOKEN_STRING || type == TOKEN_CHAR;
-        bool textOnly = builtin->params[0] == TOKEN_STRING;
-        bool printable = isStringPartType(type);
-        bool valid = text || (!textOnly && printable);
+        bool valid = isStringPartType(type);
 
         if (!valid) {
             semanticError("Invalid value in string construction ", token);
@@ -1608,7 +1605,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
     size_t count = countVector(&ast->functionCall.args);
 
     if (builtin->paramCount == BUILTIN_VARIADIC) {
-        validateStringParts(&ast->functionCall.args, builtin, token);
+        validateStringParts(&ast->functionCall.args, token);
 
         return;
     }
@@ -2540,7 +2537,7 @@ static void analyzeResolvedBuiltinCall(Analyzer* analyzer, ASTNode* ast)
 
     Token token = ast->builtinCall.token;
 
-    validateStringParts(&ast->builtinCall.args, ast->builtinCall.builtin, token);
+    validateStringParts(&ast->builtinCall.args, token);
 }
 
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast)

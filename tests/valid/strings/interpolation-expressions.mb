@@ -4,7 +4,7 @@ func fruit(count: i32) -> string {
 
 print($"{fruit(4)}")
 print($"{if true { 4 } else { 3 }} fruit")
-print($"{concat("Hello ", "Alice")}")
+print($"{string("Hello ", "Alice")}")
 print($"Nested: {$"{2 + 3}"}")
 
 print($"""I have {4} apples.

@@ -2,4 +2,4 @@ func value() -> i32 {
     return 1
 }
 
-let result = concat(value)
+let result = string(value)

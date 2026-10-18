@@ -25,6 +25,7 @@ typedef struct StringReader
 
 static ASTNode* parseExpression(Parser* parser);
 static ASTNode* parseIdentifier(Parser* parser);
+static ASTNode* parseFunctionCall(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
 static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
 static ASTNode* parseConditional(Parser* parser);
@@ -393,7 +394,7 @@ static void appendStringPart(ASTNode* call, ASTNode* part)
         return;
     }
 
-    if (part->type == AST_BUILTIN_CALL && part->builtinCall.builtin->entry == builtinBuildString) {
+    if (part->type == AST_BUILTIN_CALL && part->builtinCall.builtin->entry == builtinString) {
         Vector* args = &part->builtinCall.args;
 
         for (size_t i = 0; i < args->count; i++) {
@@ -420,7 +421,7 @@ static ASTNode* parseStringLiteral(Parser* parser)
 
     if (reader.current.chars < reader.end) {
         ASTNode* call = createASTNode(AST_BUILTIN_CALL);
-        call->builtinCall.builtin = resolveBuiltin("buildString", NULL, 0);
+        call->builtinCall.builtin = resolveBuiltin("string", NULL, 0);
         call->builtinCall.token = token;
 
         appendStringPart(call, ast);
@@ -463,6 +464,10 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseConditional(parser);
         case TOKEN_MATCH:
             return parseMatch(parser);
+        case TOKEN_STRING:
+            consume(parser, TOKEN_STRING);
+
+            return parseFunctionCall(parser);
         case TOKEN_STRING_LITERAL:
             return parseStringLiteral(parser);
         case TOKEN_CHARACTER_LITERAL:

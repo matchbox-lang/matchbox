@@ -1709,10 +1709,7 @@ static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
     ASTNode* right = ast->binary.rightExpr;
     void* items[] = {left, right};
     Vector args = {.data = items, .capacity = 2, .count = 2};
-    TokenType leftType = getTypeId(left);
-    TokenType rightType = getTypeId(right);
-    TokenType argumentTypes[] = {leftType, rightType};
-    Builtin* builtin = resolveBuiltin("concat", argumentTypes, 2);
+    Builtin* builtin = resolveBuiltin("string", NULL, 0);
     uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 

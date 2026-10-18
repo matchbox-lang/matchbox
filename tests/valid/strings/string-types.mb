@@ -8,9 +8,9 @@ let wide: u64 = 18446744073709551615
 let single: f32 = 1.25
 let double: f64 = 1.25
 
-let signedParts = buildString(small, " ", medium, " ", large)
-let unsignedParts = buildString(byte, " ", word, " ", unsigned, " ", wide)
-let otherParts = buildString(single, " ", double, " ", true, " ", false, " ", '\u{1F600}')
+let signedParts = string(small, " ", medium, " ", large)
+let unsignedParts = string(byte, " ", word, " ", unsigned, " ", wide)
+let otherParts = string(single, " ", double, " ", true, " ", false, " ", '\u{1F600}')
 
 print(signedParts)
 print(unsignedParts)

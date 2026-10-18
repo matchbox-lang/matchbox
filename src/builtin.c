@@ -36,8 +36,7 @@ Builtin builtins[BUILTINS_MAX] = {
     {"pow",         builtinPow,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
     {"pow",         builtinPowI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
     {"byteorder",   builtinByteorder,           0,  {},                                 TOKEN_I32},
-    {"concat",      builtinConcat,             -1,  {TOKEN_STRING},                     TOKEN_STRING},
-    {"buildString", builtinBuildString,        -1,  {TOKEN_UNKNOWN},                    TOKEN_STRING}
+    {"string",      builtinString,             -1,  {TOKEN_UNKNOWN},                    TOKEN_STRING}
 };
 
 static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)
@@ -346,7 +345,7 @@ void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(*c == 0);
 }
 
-static void buildStringResult(VM* vm, FunctionObject* function, Value* frame)
+void builtinString(VM* vm, FunctionObject* function, Value* frame)
 {
     if (function->argumentCount == 1 && function->argumentTypes[0] == TOKEN_STRING) {
         frame[-2] = frame[0];
@@ -359,14 +358,4 @@ static void buildStringResult(VM* vm, FunctionObject* function, Value* frame)
     pushVectorItem(&vm->module->objects, string);
 
     frame[-2] = POINTER_VALUE(string);
-}
-
-void builtinConcat(VM* vm, FunctionObject* function, Value* frame)
-{
-    buildStringResult(vm, function, frame);
-}
-
-void builtinBuildString(VM* vm, FunctionObject* function, Value* frame)
-{
-    buildStringResult(vm, function, frame);
 }

@@ -78,6 +78,7 @@ typedef struct ASTNode
         struct {
             Vector args;
             Builtin* builtin;
+            Token token;
         } builtinCall;
 
         struct {

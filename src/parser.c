@@ -381,12 +381,33 @@ static ASTNode* parseStringInterpolation(Parser* parser, StringReader* reader)
     }
 
     reader->current = parser->lexer.current;
-    ASTNode* ast = createASTNode(AST_PREFIX);
-    ast->prefix.operator = reader->token;
-    ast->prefix.operator.type = TOKEN_DOLLAR;
-    ast->prefix.expr = expression;
 
-    return ast;
+    return expression;
+}
+
+static void appendStringPart(ASTNode* call, ASTNode* part)
+{
+    if (part->type == AST_STRING && part->stringLiteral.value->length == 0) {
+        freeASTNode(part);
+
+        return;
+    }
+
+    if (part->type == AST_BUILTIN_CALL && part->builtinCall.builtin->entry == builtinBuildString) {
+        Vector* args = &part->builtinCall.args;
+
+        for (size_t i = 0; i < args->count; i++) {
+            pushVectorItem(&call->builtinCall.args, args->data[i]);
+        }
+
+        args->count = 0;
+
+        freeASTNode(part);
+
+        return;
+    }
+
+    pushVectorItem(&call->builtinCall.args, part);
 }
 
 static ASTNode* parseStringLiteral(Parser* parser)
@@ -396,14 +417,25 @@ static ASTNode* parseStringLiteral(Parser* parser)
     Lexer lexer = parser->lexer;
     StringReader reader = createStringReader(token);
     ASTNode* ast = parseStringSegment(&reader);
-    Token plus = token;
-    plus.type = TOKEN_PLUS;
+
+    if (reader.current.chars < reader.end) {
+        ASTNode* call = createASTNode(AST_BUILTIN_CALL);
+        call->builtinCall.builtin = resolveBuiltin("buildString", NULL, 0);
+        call->builtinCall.token = token;
+
+        appendStringPart(call, ast);
+
+        ast = call;
+    }
 
     while (reader.current.chars < reader.end) {
         ASTNode* expression = parseStringInterpolation(parser, &reader);
-        ast = createBinaryNode(ast, expression, plus);
+
+        appendStringPart(ast, expression);
+
         ASTNode* segment = parseStringSegment(&reader);
-        ast = createBinaryNode(ast, segment, plus);
+
+        appendStringPart(ast, segment);
     }
 
     parser->lexer = lexer;

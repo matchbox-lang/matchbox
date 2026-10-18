@@ -1,0 +1,16 @@
+var count = 0
+
+func next() -> i32 {
+    count += 1
+    return count
+}
+
+let first = $"{next()} / {next()} / {next()}"
+
+print(first)
+print(count)
+
+let second = $"{count} / {next()} / {count}"
+
+print(second)
+print(count)

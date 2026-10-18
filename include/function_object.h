@@ -2,6 +2,7 @@
 #define FUNCTION_OBJECT_H
 
 #include "code_object.h"
+#include "token.h"
 
 #define AS_FUNCTION_OBJECT(value) ((FunctionObject*)AS_OBJECT(value))
 
@@ -30,6 +31,8 @@ typedef struct FunctionObject
     int maxStackCount;
     int paramCount;
     int returnCount;
+    TokenType* argumentTypes;
+    size_t argumentCount;
 } FunctionObject;
 
 FunctionObject* createFunctionObject();

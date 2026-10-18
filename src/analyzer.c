@@ -2,6 +2,7 @@
 #include "builtin.h"
 #include "scope.h"
 #include "string_object.h"
+#include "string_concatenation.h"
 #include "table.h"
 #include "token.h"
 #include "util.h"
@@ -1586,9 +1587,31 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     setLocalSymbol(analyzer->currentScope, id, ast);
 }
 
+static void validateStringParts(Vector* args, Builtin* builtin, Token token)
+{
+    for (size_t i = 0; i < args->count; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+        bool text = type == TOKEN_STRING || type == TOKEN_CHAR;
+        bool textOnly = builtin->params[0] == TOKEN_STRING;
+        bool printable = isStringPartType(type);
+        bool valid = text || (!textOnly && printable);
+
+        if (!valid) {
+            semanticError("Invalid value in string construction ", token);
+        }
+    }
+}
+
 static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 {
     size_t count = countVector(&ast->functionCall.args);
+
+    if (builtin->paramCount == BUILTIN_VARIADIC) {
+        validateStringParts(&ast->functionCall.args, builtin, token);
+
+        return;
+    }
 
     if (count != (size_t)builtin->paramCount) {
         semanticError("Invalid arguments to function ", token);
@@ -1611,16 +1634,24 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
 {
     Vector args = ast->functionCall.args;
+    Token token = ast->functionCall.token;
 
     freeStringObject(ast->functionCall.id);
 
     ast->type = AST_BUILTIN_CALL;
     ast->builtinCall.builtin = builtin;
     ast->builtinCall.args = args;
+    ast->builtinCall.token = token;
 }
 
 static Builtin* resolveBuiltinCall(ASTNode* ast)
 {
+    Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, NULL, 0);
+
+    if (builtin && builtin->paramCount == BUILTIN_VARIADIC) {
+        return builtin;
+    }
+
     size_t count = countVector(&ast->functionCall.args);
     if (count > BUILTIN_PARAMS_MAX) {
         return NULL;
@@ -2478,17 +2509,6 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
 
     analyzeNode(analyzer, ast->prefix.expr);
 
-    if (ast->prefix.operator.type == TOKEN_DOLLAR) {
-        TokenType type = getTypeId(ast->prefix.expr);
-        Builtin* builtin = getInterpolationBuiltin(type);
-
-        if (!builtin) {
-            semanticError("Invalid interpolated value ", ast->prefix.operator);
-        }
-
-        return;
-    }
-
     if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {
         semanticError("Logical not requires a bool operand ", ast->prefix.operator);
     }
@@ -2510,6 +2530,19 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
+static void analyzeResolvedBuiltinCall(Analyzer* analyzer, ASTNode* ast)
+{
+    analyzeExpressionNodes(analyzer, &ast->builtinCall.args);
+
+    if (ast->builtinCall.builtin->paramCount != BUILTIN_VARIADIC) {
+        return;
+    }
+
+    Token token = ast->builtinCall.token;
+
+    validateStringParts(&ast->builtinCall.args, ast->builtinCall.builtin, token);
+}
+
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
@@ -2518,7 +2551,7 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
         case AST_BINARY:
             analyzeBinary(analyzer, ast); break;
         case AST_BUILTIN_CALL:
-            analyzeExpressionNodes(analyzer, &ast->builtinCall.args); break;
+            analyzeResolvedBuiltinCall(analyzer, ast); break;
         case AST_CONDITIONAL:
             analyzeConditional(analyzer, ast); break;
         case AST_FUNCTION_CALL:

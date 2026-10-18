@@ -211,10 +211,6 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_VARIABLE_DEFINITION:
             return ast->variableDefinition.typeId;
         case AST_PREFIX:
-            if (ast->prefix.operator.type == TOKEN_DOLLAR) {
-                return TOKEN_STRING;
-            }
-
             return getTypeId(ast->prefix.expr);
         case AST_INTEGER:
             return ast->integerLiteral.typeId;

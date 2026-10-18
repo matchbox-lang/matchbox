@@ -1,0 +1,11 @@
+let empty = concat()
+let single = concat("Hello")
+let mixed = concat("a", 'b', "c", 'd', "e", '!')
+let zeros = concat("a\0", '\0', "b")
+let unicode = concat('\u{1F600}', " / ", '\u{E9}')
+
+print(empty)
+print(single)
+print(mixed)
+print(zeros)
+print(unicode)

@@ -72,7 +72,6 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
 static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
-static Operand compileInterpolation(Compiler* compiler, ASTNode* ast);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
@@ -1168,10 +1167,6 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
             compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getTypeId(ast)));
     }
 
-    if (ast->prefix.operator.type == TOKEN_DOLLAR) {
-        return compileInterpolation(compiler, ast);
-    }
-
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
 
     switch (ast->prefix.operator.type) {
@@ -1582,6 +1577,82 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
     return position;
 }
 
+static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, Vector* args)
+{
+    if (function->type != FUNCTION_BUILTIN || function->entry != builtin->entry
+        || function->argumentCount != args->count) {
+        return false;
+    }
+
+    for (size_t i = 0; i < args->count; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+
+        if (type != function->argumentTypes[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* args)
+{
+    FunctionObject* function = createBuiltinFunctionObject(builtin);
+    size_t count = args->count;
+
+    if (count > SIZE_MAX / sizeof(TokenType)) {
+        outOfMemoryError();
+    }
+
+    if (count > 0) {
+        function->argumentTypes = malloc(count * sizeof(TokenType));
+    }
+
+    if (count > 0 && !function->argumentTypes) {
+        outOfMemoryError();
+    }
+
+    function->argumentCount = count;
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+        function->argumentTypes[i] = type;
+        function->paramCount += getTypeSlotCount(type);
+    }
+
+    function->maxStackCount = 2 + getCallAreaCount(function);
+
+    return function;
+}
+
+static uint16_t getBuiltinCallPosition(Compiler* compiler, Builtin* builtin, Vector* args)
+{
+    if (builtin->paramCount != BUILTIN_VARIADIC) {
+        return getBuiltinFunctionPosition(compiler, builtin);
+    }
+
+    size_t count = compiler->module->functions.count;
+
+    for (size_t i = 0; i < count; i++) {
+        FunctionObject* function = compiler->module->functions.data[i];
+        bool matches = matchesBuiltinArguments(function, builtin, args);
+
+        if (matches) {
+            return makeFunctionPosition(i);
+        }
+    }
+
+    uint16_t position = makeFunctionPosition(count);
+    FunctionObject* function = createVariadicBuiltinFunction(builtin, args);
+
+    pushVectorItem(&compiler->module->functions, function);
+    pushVectorItem(&compiler->functionReferences, NULL);
+
+    return position;
+}
+
 static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
 {
     size_t functionCount = countVector(&compiler->functionReferences);
@@ -1642,20 +1713,7 @@ static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
     TokenType rightType = getTypeId(right);
     TokenType argumentTypes[] = {leftType, rightType};
     Builtin* builtin = resolveBuiltin("concat", argumentTypes, 2);
-    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
-
-    return compileCall(compiler, function, position, &args, NULL, false);
-}
-
-static Operand compileInterpolation(Compiler* compiler, ASTNode* ast)
-{
-    ASTNode* expression = ast->prefix.expr;
-    TokenType type = getTypeId(expression);
-    void* items[] = {expression};
-    Vector args = {.data = items, .capacity = 1, .count = 1};
-    Builtin* builtin = getInterpolationBuiltin(type);
-    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
+    uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return compileCall(compiler, function, position, &args, NULL, false);
@@ -1691,7 +1749,7 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
 
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.builtin);
+    uint16_t position = getBuiltinCallPosition(compiler, ast->builtinCall.builtin, &ast->builtinCall.args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);

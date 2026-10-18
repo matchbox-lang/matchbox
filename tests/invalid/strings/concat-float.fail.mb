@@ -1,0 +1,1 @@
+let result = concat("Value: ", 1.25)

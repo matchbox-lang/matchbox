@@ -5,8 +5,9 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 25
+#define BUILTINS_MAX 23
 #define BUILTIN_PARAMS_MAX 4
+#define BUILTIN_VARIADIC -1
 
 typedef struct Builtin
 {
@@ -19,7 +20,6 @@ typedef struct Builtin
 
 extern Builtin builtins[BUILTINS_MAX];
 
-Builtin* getInterpolationBuiltin(TokenType type);
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 bool isBuiltinName(const char* name);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
@@ -43,9 +43,7 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPow(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
-void builtinConcatStrings(VM* vm, FunctionObject* function, Value* frame);
-void builtinConcatStringChar(VM* vm, FunctionObject* function, Value* frame);
-void builtinConcatCharString(VM* vm, FunctionObject* function, Value* frame);
-void builtinConcatChars(VM* vm, FunctionObject* function, Value* frame);
+void builtinConcat(VM* vm, FunctionObject* function, Value* frame);
+void builtinBuildString(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

@@ -1,0 +1,10 @@
+func buildString(left: i32, right: i32) -> i32 {
+    return left + right
+}
+
+let count = 4
+let message = $"Count: {count + 1}"
+let sum = buildString(2, 3)
+
+print(message)
+print(sum)

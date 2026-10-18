@@ -207,7 +207,9 @@ static bool foldConcatenation(ASTNode* ast)
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
     Token token = ast->binary.operator;
-    StringObject* string = concatenateStringValues(left, right, leftType, rightType);
+    Value values[] = {left, right};
+    TokenType types[] = {leftType, rightType};
+    StringObject* string = concatenateStringParts(values, types, 2);
 
     freeASTNode(ast->binary.leftExpr);
     freeASTNode(ast->binary.rightExpr);

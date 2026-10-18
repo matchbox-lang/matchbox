@@ -10,10 +10,10 @@
 
 bool isStringPartType(TokenType type)
 {
-    bool integer = isIntegerTypeToken(type);
-    bool floating = isFloatTypeToken(type);
-
-    return integer || floating || type == TOKEN_BOOL || type == TOKEN_CHAR || type == TOKEN_STRING;
+    return isIntegerTypeToken(type) || isFloatTypeToken(type)
+        || type == TOKEN_BOOL
+        || type == TOKEN_CHAR
+        || type == TOKEN_STRING;
 }
 
 static size_t stringPartCapacity(Value* values, TokenType type)

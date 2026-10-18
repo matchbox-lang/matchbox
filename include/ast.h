@@ -78,6 +78,7 @@ typedef struct ASTNode
         struct {
             Vector args;
             Builtin* builtin;
+            Token token;
         } builtinCall;
 
         struct {
@@ -171,6 +172,7 @@ typedef struct ASTNode
         } returnStatement;
 
         struct {
+            StringObject* value;
             Token token;
         } stringLiteral;
 

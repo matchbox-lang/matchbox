@@ -5,8 +5,9 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 20
+#define BUILTINS_MAX 22
 #define BUILTIN_PARAMS_MAX 4
+#define BUILTIN_VARIADIC -1
 
 typedef struct Builtin
 {
@@ -17,8 +18,6 @@ typedef struct Builtin
     TokenType returnTypeId;
 } Builtin;
 
-extern Builtin builtins[BUILTINS_MAX];
-
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 bool isBuiltinName(const char* name);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
@@ -28,6 +27,7 @@ void builtinPrintU32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintU64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintString(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintChar(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintBool(VM* vm, FunctionObject* function, Value* frame);
 void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
@@ -41,5 +41,6 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPow(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
+void builtinString(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

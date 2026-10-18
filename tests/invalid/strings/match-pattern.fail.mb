@@ -1,0 +1,6 @@
+match "Hello" {
+    case "Hello":
+        print(1)
+    default:
+        print(2)
+}

@@ -1,0 +1,7 @@
+let str = "Hello World!\n"
+let typed: string = "Hello World!"
+
+print(str)
+print(typed)
+print("")
+print("café 中 😀 👩‍💻")

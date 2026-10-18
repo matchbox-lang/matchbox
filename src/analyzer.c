@@ -2,6 +2,7 @@
 #include "builtin.h"
 #include "scope.h"
 #include "string_object.h"
+#include "string_concatenation.h"
 #include "table.h"
 #include "token.h"
 #include "util.h"
@@ -1182,6 +1183,10 @@ static void analyzeMatchPatternNode(Analyzer* analyzer, ASTNode* ast, ASTNode* p
         applyIntegerLiteralType(pattern, expected);
     }
 
+    if (expected == TOKEN_STRING) {
+        semanticError("String match patterns are not supported ", ast->match.token);
+    }
+
     if (getTypeId(pattern) != expected) {
         semanticError("Match pattern type does not match subject ", ast->match.token);
     }
@@ -1382,6 +1387,15 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
 
+    bool leftText = leftType == TOKEN_CHAR || leftType == TOKEN_STRING;
+    bool rightText = rightType == TOKEN_CHAR || rightType == TOKEN_STRING;
+
+    if (ast->binary.operator.type == TOKEN_PLUS && leftText && rightText) {
+        ast->binary.typeId = TOKEN_STRING;
+
+        return;
+    }
+
     if (isFloatTypeToken(leftType)) {
         applyIntegerLiteralType(ast->binary.rightExpr, leftType);
         rightType = getTypeId(ast->binary.rightExpr);
@@ -1405,10 +1419,15 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
     bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);
     bool floatOperands = isFloatTypeToken(leftType) && isFloatTypeToken(rightType);
+    
     floatOperands = floatOperands || leftConvertsToRight || rightConvertsToLeft;
 
     if (leftType != rightType && !floatOperands) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
+    }
+
+    if (leftType == TOKEN_STRING) {
+        semanticError("Invalid operator for string operands ", ast->binary.operator);
     }
 
     if (leftType == TOKEN_CHAR && !isCharacterComparison(ast->binary.operator.type)) {
@@ -1568,9 +1587,28 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     setLocalSymbol(analyzer->currentScope, id, ast);
 }
 
+static void validateStringParts(Vector* args, Token token)
+{
+    for (size_t i = 0; i < args->count; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+        bool valid = isStringPartType(type);
+
+        if (!valid) {
+            semanticError("Invalid value in string construction ", token);
+        }
+    }
+}
+
 static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 {
     size_t count = countVector(&ast->functionCall.args);
+
+    if (builtin->paramCount == BUILTIN_VARIADIC) {
+        validateStringParts(&ast->functionCall.args, token);
+
+        return;
+    }
 
     if (count != (size_t)builtin->paramCount) {
         semanticError("Invalid arguments to function ", token);
@@ -1593,16 +1631,24 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
 {
     Vector args = ast->functionCall.args;
+    Token token = ast->functionCall.token;
 
     freeStringObject(ast->functionCall.id);
 
     ast->type = AST_BUILTIN_CALL;
     ast->builtinCall.builtin = builtin;
     ast->builtinCall.args = args;
+    ast->builtinCall.token = token;
 }
 
 static Builtin* resolveBuiltinCall(ASTNode* ast)
 {
+    Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, NULL, 0);
+
+    if (builtin && builtin->paramCount == BUILTIN_VARIADIC) {
+        return builtin;
+    }
+
     size_t count = countVector(&ast->functionCall.args);
     if (count > BUILTIN_PARAMS_MAX) {
         return NULL;
@@ -2176,6 +2222,10 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 
     TokenType bindingType = getTypeId(symbol);
 
+    if (bindingType == TOKEN_STRING && ast->assignment.operator.type != TOKEN_EQUAL) {
+        semanticError("Invalid operator for string assignment ", ast->assignment.operator);
+    }
+
     if (bindingType == TOKEN_CHAR && ast->assignment.operator.type != TOKEN_EQUAL) {
         semanticError("Invalid operator for char assignment ", ast->assignment.operator);
     }
@@ -2462,6 +2512,10 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
 
     TokenType type = getTypeId(ast->prefix.expr);
 
+    if (type == TOKEN_STRING) {
+        semanticError("Invalid prefix operator for string ", ast->prefix.operator);
+    }
+
     if (type == TOKEN_CHAR) {
         semanticError("Invalid prefix operator for char ", ast->prefix.operator);
     }
@@ -2473,6 +2527,19 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
+static void analyzeResolvedBuiltinCall(Analyzer* analyzer, ASTNode* ast)
+{
+    analyzeExpressionNodes(analyzer, &ast->builtinCall.args);
+
+    if (ast->builtinCall.builtin->paramCount != BUILTIN_VARIADIC) {
+        return;
+    }
+
+    Token token = ast->builtinCall.token;
+
+    validateStringParts(&ast->builtinCall.args, token);
+}
+
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
@@ -2481,7 +2548,7 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
         case AST_BINARY:
             analyzeBinary(analyzer, ast); break;
         case AST_BUILTIN_CALL:
-            analyzeExpressionNodes(analyzer, &ast->builtinCall.args); break;
+            analyzeResolvedBuiltinCall(analyzer, ast); break;
         case AST_CONDITIONAL:
             analyzeConditional(analyzer, ast); break;
         case AST_FUNCTION_CALL:

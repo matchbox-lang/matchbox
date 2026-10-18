@@ -1,0 +1,10 @@
+func echo(value: string) -> string {
+    return value
+}
+
+func inferred() {
+    return "\u{1F600}"
+}
+
+print(echo("Hello"))
+print(inferred())

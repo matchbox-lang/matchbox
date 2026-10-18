@@ -284,7 +284,7 @@ static bool updateBuiltinCallLiveness(ModuleObject* module, OptimizationWord* wo
         return false;
     }
 
-    // Native builtins only read their argument slots and write their result slots
+    // Built-in functions only read their argument slots and write their result slots
     for (int i = 0; i < function->returnCount; i++) {
         int result = (int)word->a - 2 + i;
 
@@ -320,9 +320,9 @@ static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live)
 static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* live,
     size_t persistentRegisters)
 {
-    bool builtin = updateBuiltinCallLiveness(module, word, live);
+    bool isBuiltinCall = updateBuiltinCallLiveness(module, word, live);
 
-    if (builtin) {
+    if (isBuiltinCall) {
         return;
     }
 

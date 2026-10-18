@@ -1,0 +1,5 @@
+print("line\nnext\tcolumn\rreturn")
+print("\"quoted\" \\path \'apostrophe\'")
+print("before\0after")
+print("\u{0}\u{7F}\u{80}\u{7FF}\u{800}\u{FFFF}\u{10000}\u{10FFFF}")
+print("\u{1F600}")

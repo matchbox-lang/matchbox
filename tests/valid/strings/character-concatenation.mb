@@ -1,0 +1,9 @@
+let a: string = 'H' + 'i'
+let b: string = "Hell" + 'o'
+let c: string = 'H' + "ello"
+let d: string = '🌍' + '🌎'
+
+print(a)
+print(b)
+print(c)
+print(d)

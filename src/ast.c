@@ -137,6 +137,9 @@ void freeASTNode(ASTNode* ast)
         case AST_RETURN:
             freeASTNode(ast->returnStatement.expr);
             break;
+        case AST_STRING:
+            freeStringObject(ast->stringLiteral.value);
+            break;
         case AST_VARIABLE_DEFINITION:
             freeStringObject(ast->variableDefinition.id);
             freeASTNode(ast->variableDefinition.expr);

@@ -1,0 +1,10 @@
+var leftChar: char = '🌍'
+var rightChar: char = '🌎'
+var leftString: string = "🌍"
+var rightString: string = "🌎"
+
+print(leftChar + rightChar)
+print(leftString + rightChar)
+print(leftChar + rightString)
+print(leftString + rightString)
+print(leftChar + rightString + '!' + "!")

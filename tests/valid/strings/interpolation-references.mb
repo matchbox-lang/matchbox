@@ -1,0 +1,9 @@
+func display(number: &i64, text: &string) -> string {
+    return $"{text}: {number}"
+}
+
+var number: i64 = -9223372036854775808
+var text = "Value"
+let result = display(&number, &text)
+
+print(result)

@@ -13,8 +13,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct StringReader
+{
+    Token token;
+    Position current;
+    const char* end;
+    size_t width;
+    bool raw;
+    bool interpolated;
+} StringReader;
+
 static ASTNode* parseExpression(Parser* parser);
 static ASTNode* parseIdentifier(Parser* parser);
+static ASTNode* parseFunctionCall(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
 static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
 static ASTNode* parseConditional(Parser* parser);
@@ -51,6 +62,12 @@ static void expectedTokenError(TokenType type, Token token)
     fprintf(stderr, "Error: Expected %s but found ", getTokenTypeName(type));
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void invalidStringError(Token token)
+{
+    fprintf(stderr, "Error: Invalid UTF-8 or escape in string literal on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
@@ -249,6 +266,188 @@ static ASTNode* parseCharacterLiteral(Parser* parser)
     return ast;
 }
 
+static void advanceStringReader(StringReader* reader, size_t length)
+{
+    for (size_t i = 0; i < length; i++) {
+        char c = *reader->current.chars++;
+        reader->current.column++;
+
+        if (c == '\n') {
+            reader->current.line++;
+            reader->current.column = 1;
+        }
+    }
+}
+
+static StringReader createStringReader(Token token)
+{
+    StringReader reader = {.token = token, .current = {token.chars, token.line, token.column}, .width = 1};
+    reader.interpolated = token.chars[0] == '$';
+
+    if (reader.interpolated) {
+        advanceStringReader(&reader, 1);
+    }
+
+    char delimiter = *reader.current.chars;
+    size_t run = 0;
+    reader.raw = delimiter == '`';
+
+    while (reader.current.chars[run] == delimiter) {
+        run++;
+    }
+
+    if (run >= 3) {
+        reader.width = run;
+    }
+
+    advanceStringReader(&reader, reader.width);
+
+    reader.end = token.chars + token.length - reader.width;
+
+    return reader;
+}
+
+static ASTNode* parseStringSegment(StringReader* reader)
+{
+    size_t capacity = reader->end - reader->current.chars;
+    char* bytes = malloc(capacity + 1);
+    size_t count = 0;
+
+    if (!bytes) {
+        outOfMemoryError();
+    }
+
+    while (reader->current.chars < reader->end) {
+        const char* chars = reader->current.chars;
+        size_t length = reader->end - chars;
+        char c = *chars;
+        bool bracePair = reader->interpolated && length >= 2 && chars[1] == c && (c == '{' || c == '}');
+
+        if (reader->interpolated && c == '{' && !bracePair) {
+            break;
+        }
+
+        if (bracePair) {
+            bytes[count++] = c;
+
+            advanceStringReader(reader, 2);
+            continue;
+        }
+
+        DecodedScalar scalar;
+        bool valid;
+
+        if (reader->raw) {
+            valid = decodeUtf8(chars, length, &scalar);
+        } else {
+            valid = decodeLiteralScalar(chars, length, &scalar);
+        }
+
+        if (!valid) {
+            free(bytes);
+            invalidStringError(reader->token);
+        }
+
+        size_t encodedLength = encodeUtf8(scalar.value, bytes + count);
+        count += encodedLength;
+
+        advanceStringReader(reader, scalar.length);
+    }
+
+    ASTNode* ast = createASTNode(AST_STRING);
+    ast->stringLiteral.token = reader->token;
+    ast->stringLiteral.value = copyStringObject(bytes, count);
+
+    free(bytes);
+
+    return ast;
+}
+
+static ASTNode* parseStringInterpolation(Parser* parser, StringReader* reader)
+{
+    advanceStringReader(reader, 1);
+
+    parser->lexer.current = reader->current;
+
+    advance(parser);
+
+    ASTNode* expression = parseExpression(parser);
+
+    if (!expression) {
+        expectedExpressionError(parser->currentToken);
+    }
+
+    if (parser->currentToken.type != TOKEN_RBRACE) {
+        expectedTokenError(TOKEN_RBRACE, parser->currentToken);
+    }
+
+    reader->current = parser->lexer.current;
+
+    return expression;
+}
+
+static void appendStringPart(ASTNode* call, ASTNode* part)
+{
+    if (part->type == AST_STRING && part->stringLiteral.value->length == 0) {
+        freeASTNode(part);
+
+        return;
+    }
+
+    if (part->type == AST_BUILTIN_CALL && part->builtinCall.builtin->entry == builtinString) {
+        Vector* args = &part->builtinCall.args;
+
+        for (size_t i = 0; i < args->count; i++) {
+            pushVectorItem(&call->builtinCall.args, args->data[i]);
+        }
+
+        args->count = 0;
+
+        freeASTNode(part);
+
+        return;
+    }
+
+    pushVectorItem(&call->builtinCall.args, part);
+}
+
+static ASTNode* parseStringLiteral(Parser* parser)
+{
+    Token token = parser->currentToken;
+    Token previous = parser->previousToken;
+    Lexer lexer = parser->lexer;
+    StringReader reader = createStringReader(token);
+    ASTNode* ast = parseStringSegment(&reader);
+
+    if (reader.current.chars < reader.end) {
+        ASTNode* call = createASTNode(AST_BUILTIN_CALL);
+        call->builtinCall.builtin = resolveBuiltin("string", NULL, 0);
+        call->builtinCall.token = token;
+
+        appendStringPart(call, ast);
+
+        ast = call;
+    }
+
+    while (reader.current.chars < reader.end) {
+        ASTNode* expression = parseStringInterpolation(parser, &reader);
+
+        appendStringPart(ast, expression);
+
+        ASTNode* segment = parseStringSegment(&reader);
+
+        appendStringPart(ast, segment);
+    }
+
+    parser->lexer = lexer;
+    parser->currentToken = token;
+    parser->previousToken = previous;
+
+    consume(parser, TOKEN_STRING_LITERAL);
+
+    return ast;
+}
+
 static ASTNode* parsePrimary(Parser* parser)
 {
     switch (parser->currentToken.type) {
@@ -265,6 +464,12 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseConditional(parser);
         case TOKEN_MATCH:
             return parseMatch(parser);
+        case TOKEN_STRING:
+            consume(parser, TOKEN_STRING);
+
+            return parseFunctionCall(parser);
+        case TOKEN_STRING_LITERAL:
+            return parseStringLiteral(parser);
         case TOKEN_CHARACTER_LITERAL:
             return parseCharacterLiteral(parser);
         case TOKEN_INTEGER_LITERAL:

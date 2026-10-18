@@ -518,31 +518,133 @@ static Token scanCharacterLiteral(Lexer* lexer)
     return endCharacterLiteral(lexer);
 }
 
-static Token scanStringLiteral(Lexer* lexer, char delimiter, TokenType type)
+static size_t delimiterLength(const char* chars, char delimiter)
 {
-    bool escaped = false;
+    size_t count = 0;
 
-    while (!isEndOfFile(lexer)) {
-        if (delimiter == '"' && isNewline(peek(lexer))) {
-            unterminatedLiteralError(lexer, delimiter);
+    while (chars[count] == delimiter) {
+        count++;
+    }
+
+    return count;
+}
+
+static bool scanInterpolationExpression(Lexer* lexer)
+{
+    size_t depth = 1;
+
+    while (depth > 0) {
+        Token token = scanToken(lexer);
+
+        if (token.type == TOKEN_EOF || token.type == TOKEN_INCOMPLETE_INPUT) {
+            return false;
         }
 
-        char c = advance(lexer);
-
-        if (c == delimiter && !escaped) {
-            return makeToken(lexer, type);
+        if (token.type == TOKEN_LBRACE) {
+            depth++;
         }
 
-        if (c == '\\') {
-            escaped = !escaped;
-        } else {
-            escaped = false;
+        if (token.type == TOKEN_RBRACE) {
+            depth--;
         }
     }
 
+    return true;
+}
+
+static void scanStringEscape(Lexer* lexer)
+{
+    const char* chars = lexer->current.chars - 1;
+    size_t length = characterSourceLength(chars);
+    DecodedScalar scalar;
+    bool valid = decodeLiteralScalar(chars, length, &scalar);
+
+    if (!valid) {
+        advance(lexer);
+
+        return;
+    }
+
+    advanceCharacters(lexer, scalar.length - 1);
+}
+
+static Token scanStringLiteral(Lexer* lexer, char delimiter, bool interpolated)
+{
+    Position start = lexer->start;
+    size_t run = delimiterLength(lexer->current.chars, delimiter) + 1;
+    size_t width = 1;
+
+    if (run >= 3) {
+        width = run;
+        advanceCharacters(lexer, width - 1);
+    }
+
+    while (!isEndOfFile(lexer)) {
+        char c = peek(lexer);
+        size_t closing = delimiterLength(lexer->current.chars, delimiter);
+
+        if (closing >= width) {
+            advanceCharacters(lexer, width);
+            lexer->start = start;
+
+            return makeToken(lexer, TOKEN_STRING_LITERAL);
+        }
+
+        if (delimiter == '"' && width == 1 && isNewline(c)) {
+            lexer->start = start;
+
+            unterminatedLiteralError(lexer, delimiter);
+        }
+
+        advance(lexer);
+
+        if (delimiter == '"' && c == '\\' && !isEndOfFile(lexer)) {
+            scanStringEscape(lexer);
+            continue;
+        }
+
+        if (!interpolated || (c != '{' && c != '}')) {
+            continue;
+        }
+
+        if (peek(lexer) == c) {
+            advance(lexer);
+            continue;
+        }
+
+        if (c == '}') {
+            fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n",
+                start.line, start.column);
+            exit(1);
+        }
+
+        if (!scanInterpolationExpression(lexer)) {
+            break;
+        }
+    }
+
+    lexer->start = start;
+
+    if (width >= 3 || delimiter == '`' || interpolated) {
+        return makeToken(lexer, TOKEN_INCOMPLETE_INPUT);
+    }
+
     unterminatedLiteralError(lexer, delimiter);
-    
+
     return makeToken(lexer, TOKEN_UNKNOWN);
+}
+
+static Token scanInterpolatedString(Lexer* lexer)
+{
+    char delimiter = peek(lexer);
+
+    if (delimiter != '"' && delimiter != '`') {
+        return makeToken(lexer, TOKEN_DOLLAR);
+    }
+
+    advance(lexer);
+
+    return scanStringLiteral(lexer, delimiter, true);
 }
 
 static Token scanIdentifier(Lexer* lexer)
@@ -591,7 +693,7 @@ Token scanToken(Lexer* lexer)
 
     switch (c) {
         case '"':
-        case '`':   return scanStringLiteral(lexer, c, TOKEN_STRING_LITERAL);
+        case '`':   return scanStringLiteral(lexer, c, false);
         case '\'':  return scanCharacterLiteral(lexer);
         case '(':   return makeToken(lexer, TOKEN_LPAREN);
         case ')':   return makeToken(lexer, TOKEN_RPAREN);
@@ -602,7 +704,7 @@ Token scanToken(Lexer* lexer)
         case ':':   return makeToken(lexer, TOKEN_COLON);
         case ';':   return makeToken(lexer, TOKEN_SEMICOLON);
         case ',':   return makeToken(lexer, TOKEN_COMMA);
-        case '$':   return makeToken(lexer, TOKEN_DOLLAR);
+        case '$':   return scanInterpolatedString(lexer);
         case '~':   return makeToken(lexer, TOKEN_TILDE);
         case '%':
             return makeToken(lexer, 

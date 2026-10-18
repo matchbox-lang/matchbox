@@ -108,3 +108,24 @@ bool decodeLiteralScalar(const char* chars, size_t length, DecodedScalar* scalar
 
     return decodeUtf8(chars, length, scalar);
 }
+
+bool decodeStringContents(const char* chars, size_t length, char* bytes, size_t* count)
+{
+    *count = 0;
+
+    while (length > 0) {
+        DecodedScalar scalar;
+        bool valid = decodeLiteralScalar(chars, length, &scalar);
+
+        if (!valid) {
+            return false;
+        }
+
+        size_t encodedLength = encodeUtf8(scalar.value, bytes + *count);
+        *count += encodedLength;
+        chars += scalar.length;
+        length -= scalar.length;
+    }
+
+    return true;
+}

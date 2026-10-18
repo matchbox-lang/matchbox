@@ -1,0 +1,12 @@
+func join(left: char, right: string) -> string {
+    return left + right
+}
+
+let letter = 'H'
+let word = "ello"
+let joined = join(letter, word)
+
+print(joined)
+print((letter + 'i') + '!' + " " + word)
+print("" + letter)
+print(letter + "")

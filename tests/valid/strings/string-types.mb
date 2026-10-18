@@ -1,0 +1,17 @@
+let small: i8 = -128
+let medium: i16 = -32768
+let large: i64 = -9223372036854775808
+let byte: u8 = 255
+let word: u16 = 65535
+let unsigned: u32 = 4294967295
+let wide: u64 = 18446744073709551615
+let single: f32 = 1.25
+let double: f64 = 1.25
+
+let signedParts = string(small, " ", medium, " ", large)
+let unsignedParts = string(byte, " ", word, " ", unsigned, " ", wide)
+let otherParts = string(single, " ", double, " ", true, " ", false, " ", '\u{1F600}')
+
+print(signedParts)
+print(unsignedParts)
+print(otherParts)

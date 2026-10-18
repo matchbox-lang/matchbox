@@ -71,6 +71,7 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
+static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
@@ -725,6 +726,20 @@ static Operand compileFloat(Compiler* compiler, ASTNode* ast)
     return makeOperand(reg, true);
 }
 
+static Operand compileString(Compiler* compiler, ASTNode* ast)
+{
+    StringObject* literal = ast->stringLiteral.value;
+    StringObject* string = copyStringObject(literal->chars, literal->length);
+    Value value = POINTER_VALUE(string);
+
+    pushVectorItem(&compiler->module->objects, string);
+
+    size_t position = makeConstant(compiler, value);
+    int reg = emitLdc(compiler, position);
+
+    return makeOperand(reg, true);
+}
+
 static Operand compileCharacter(Compiler* compiler, ASTNode* ast)
 {
     uint32_t value = ast->characterLiteral.value;
@@ -1092,6 +1107,12 @@ static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
+    TokenType resultType = getTypeId(ast);
+
+    if (resultType == TOKEN_STRING) {
+        return compileConcatenation(compiler, ast);
+    }
+
     if (ast->binary.operator.type == TOKEN_POWER) {
         return compilePower(compiler, ast->binary.leftExpr, ast->binary.rightExpr);
     }
@@ -1556,6 +1577,82 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
     return position;
 }
 
+static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, Vector* args)
+{
+    if (function->type != FUNCTION_BUILTIN || function->entry != builtin->entry
+        || function->argumentCount != args->count) {
+        return false;
+    }
+
+    for (size_t i = 0; i < args->count; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+
+        if (type != function->argumentTypes[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* args)
+{
+    FunctionObject* function = createBuiltinFunctionObject(builtin);
+    size_t count = args->count;
+
+    if (count > SIZE_MAX / sizeof(TokenType)) {
+        outOfMemoryError();
+    }
+
+    if (count > 0) {
+        function->argumentTypes = malloc(count * sizeof(TokenType));
+    }
+
+    if (count > 0 && !function->argumentTypes) {
+        outOfMemoryError();
+    }
+
+    function->argumentCount = count;
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+        function->argumentTypes[i] = type;
+        function->paramCount += getTypeSlotCount(type);
+    }
+
+    function->maxStackCount = 2 + getCallAreaCount(function);
+
+    return function;
+}
+
+static uint16_t getBuiltinCallPosition(Compiler* compiler, Builtin* builtin, Vector* args)
+{
+    if (builtin->paramCount != BUILTIN_VARIADIC) {
+        return getBuiltinFunctionPosition(compiler, builtin);
+    }
+
+    size_t count = compiler->module->functions.count;
+
+    for (size_t i = 0; i < count; i++) {
+        FunctionObject* function = compiler->module->functions.data[i];
+        bool matches = matchesBuiltinArguments(function, builtin, args);
+
+        if (matches) {
+            return makeFunctionPosition(i);
+        }
+    }
+
+    uint16_t position = makeFunctionPosition(count);
+    FunctionObject* function = createVariadicBuiltinFunction(builtin, args);
+
+    pushVectorItem(&compiler->module->functions, function);
+    pushVectorItem(&compiler->functionReferences, NULL);
+
+    return position;
+}
+
 static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
 {
     size_t functionCount = countVector(&compiler->functionReferences);
@@ -1606,6 +1703,19 @@ static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode
     return compileCall(compiler, function, position, &args, NULL, false);
 }
 
+static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode* left = ast->binary.leftExpr;
+    ASTNode* right = ast->binary.rightExpr;
+    void* items[] = {left, right};
+    Vector args = {.data = items, .capacity = 2, .count = 2};
+    Builtin* builtin = resolveBuiltin("string", NULL, 0);
+    uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+
+    return compileCall(compiler, function, position, &args, NULL, false);
+}
+
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast)
 {
     ASTNode left = {.type = AST_VARIABLE};
@@ -1636,7 +1746,7 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
 
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    uint16_t position = getBuiltinFunctionPosition(compiler, ast->builtinCall.builtin);
+    uint16_t position = getBuiltinCallPosition(compiler, ast->builtinCall.builtin, &ast->builtinCall.args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
@@ -2594,6 +2704,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
         case AST_CHARACTER:
         case AST_FLOAT:
         case AST_INTEGER:
+        case AST_STRING:
         case AST_VARIABLE:
             return true;
         case AST_BINARY:
@@ -2850,6 +2961,9 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
     switch (ast->type) {
         case AST_BINARY:
             result = compileBinary(compiler, ast);
+            break;
+        case AST_STRING:
+            result = compileString(compiler, ast);
             break;
         case AST_CHARACTER:
             result = compileCharacter(compiler, ast);

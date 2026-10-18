@@ -1,5 +1,8 @@
 #include "builtin.h"
 #include "float_format.h"
+#include "string_object.h"
+#include "string_concatenation.h"
+#include "vm.h"
 #include "token.h"
 #include "unicode.h"
 #include "value.h"
@@ -12,26 +15,28 @@
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {
-    {"exit",        builtinExit,        0,  {},                                 TOKEN_VOID},
-    {"print",       builtinPrintI32,    1,  {TOKEN_I32},                        TOKEN_VOID},
-    {"print",       builtinPrintI64,    1,  {TOKEN_I64},                        TOKEN_VOID},
-    {"print",       builtinPrintU32,    1,  {TOKEN_U32},                        TOKEN_VOID},
-    {"print",       builtinPrintU64,    1,  {TOKEN_U64},                        TOKEN_VOID},
-    {"print",       builtinPrintF32,    1,  {TOKEN_F32},                        TOKEN_VOID},
-    {"print",       builtinPrintF64,    1,  {TOKEN_F64},                        TOKEN_VOID},
-    {"print",       builtinPrintBool,   1,  {TOKEN_BOOL},                       TOKEN_VOID},
-    {"print",       builtinPrintChar,   1,  {TOKEN_CHAR},                       TOKEN_VOID},
-    {"clamp",       builtinClamp,       3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
-    {"clamp",       builtinClampI64,    3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
-    {"abs",         builtinAbs,         1,  {TOKEN_I32},                        TOKEN_I32},
-    {"abs",         builtinAbsI64,      1,  {TOKEN_I64},                        TOKEN_I64},
-    {"min",         builtinMin,         2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
-    {"min",         builtinMinI64,      2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
-    {"max",         builtinMax,         2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
-    {"max",         builtinMaxI64,      2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
-    {"pow",         builtinPow,         2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
-    {"pow",         builtinPowI64,      2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
-    {"byteorder",   builtinByteorder,   0,  {},                                 TOKEN_I32}
+    {"exit",        builtinExit,                0,  {},                                 TOKEN_VOID},
+    {"print",       builtinPrintI32,            1,  {TOKEN_I32},                        TOKEN_VOID},
+    {"print",       builtinPrintI64,            1,  {TOKEN_I64},                        TOKEN_VOID},
+    {"print",       builtinPrintU32,            1,  {TOKEN_U32},                        TOKEN_VOID},
+    {"print",       builtinPrintU64,            1,  {TOKEN_U64},                        TOKEN_VOID},
+    {"print",       builtinPrintF32,            1,  {TOKEN_F32},                        TOKEN_VOID},
+    {"print",       builtinPrintF64,            1,  {TOKEN_F64},                        TOKEN_VOID},
+    {"print",       builtinPrintBool,           1,  {TOKEN_BOOL},                       TOKEN_VOID},
+    {"print",       builtinPrintChar,           1,  {TOKEN_CHAR},                       TOKEN_VOID},
+    {"print",       builtinPrintString,         1,  {TOKEN_STRING},                     TOKEN_VOID},
+    {"clamp",       builtinClamp,               3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
+    {"clamp",       builtinClampI64,            3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
+    {"abs",         builtinAbs,                 1,  {TOKEN_I32},                        TOKEN_I32},
+    {"abs",         builtinAbsI64,              1,  {TOKEN_I64},                        TOKEN_I64},
+    {"min",         builtinMin,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"min",         builtinMinI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"max",         builtinMax,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"max",         builtinMaxI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"pow",         builtinPow,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"pow",         builtinPowI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"byteorder",   builtinByteorder,           0,  {},                                 TOKEN_I32},
+    {"string",      builtinString,             -1,  {TOKEN_UNKNOWN},                    TOKEN_STRING}
 };
 
 static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)
@@ -46,6 +51,10 @@ static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, s
 
 static bool builtinMatches(Builtin* builtin, TokenType* argumentTypes, size_t argumentCount)
 {
+    if (builtin->paramCount == BUILTIN_VARIADIC) {
+        return true;
+    }
+
     if ((size_t)builtin->paramCount != argumentCount) {
         return false;
     }
@@ -161,6 +170,17 @@ void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame)
     formatShortestF64(buffer, sizeof(buffer), value);
 
     printf("%s\n", buffer);
+}
+
+void builtinPrintString(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    StringObject* string = AS_POINTER(frame[0]);
+
+    printStringObject(string);
+    putchar('\n');
 }
 
 void builtinPrintChar(VM* vm, FunctionObject* function, Value* frame)
@@ -323,4 +343,19 @@ void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
     char* c = (char*)&i;
     
     frame[-2] = SIGNED_VALUE(*c == 0);
+}
+
+void builtinString(VM* vm, FunctionObject* function, Value* frame)
+{
+    if (function->argumentCount == 1 && function->argumentTypes[0] == TOKEN_STRING) {
+        frame[-2] = frame[0];
+
+        return;
+    }
+
+    StringObject* string = concatenateStringParts(frame, function->argumentTypes, function->argumentCount);
+
+    pushVectorItem(&vm->module->objects, string);
+
+    frame[-2] = POINTER_VALUE(string);
 }

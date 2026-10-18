@@ -1,0 +1,8 @@
+var value: string
+value = "First"
+
+let copy: string = value
+value = "Second"
+
+print(copy)
+print(value)

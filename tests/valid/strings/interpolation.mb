@@ -1,0 +1,11 @@
+let name = "Alice"
+let apples = 4
+let bananas = 3
+
+print($"I have {apples} apples.")
+print($"I have {apples + bananas} fruit.")
+print($"Hello {{{name}}}.")
+print($`C:\path\{name}\`)
+print($"{{}} {name}{apples}")
+print($"\u{1F600} {name}")
+print($"")

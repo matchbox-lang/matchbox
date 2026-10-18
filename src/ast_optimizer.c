@@ -1,6 +1,7 @@
 #include "ast_optimizer.h"
 #include "scope.h"
 #include "string_object.h"
+#include "string_concatenation.h"
 #include "token.h"
 #include "vector.h"
 #include <math.h>
@@ -173,8 +174,57 @@ static bool foldBooleanBinary(ASTNode* ast)
     return true;
 }
 
+static bool getTextLiteral(ASTNode* ast, Value* value)
+{
+    if (ast->type == AST_STRING) {
+        *value = POINTER_VALUE(ast->stringLiteral.value);
+
+        return true;
+    }
+
+    if (ast->type == AST_CHARACTER) {
+        *value = U32_VALUE(ast->characterLiteral.value);
+
+        return true;
+    }
+
+    return false;
+}
+
+static bool foldConcatenation(ASTNode* ast)
+{
+    Value left;
+    Value right;
+
+    if (ast->binary.typeId != TOKEN_STRING || ast->binary.operator.type != TOKEN_PLUS) {
+        return false;
+    }
+
+    if (!getTextLiteral(ast->binary.leftExpr, &left) || !getTextLiteral(ast->binary.rightExpr, &right)) {
+        return false;
+    }
+
+    TokenType leftType = getTypeId(ast->binary.leftExpr);
+    TokenType rightType = getTypeId(ast->binary.rightExpr);
+    Token token = ast->binary.operator;
+    StringObject* string = concatenateStringValues(left, right, leftType, rightType);
+
+    freeASTNode(ast->binary.leftExpr);
+    freeASTNode(ast->binary.rightExpr);
+
+    ast->type = AST_STRING;
+    ast->stringLiteral.value = string;
+    ast->stringLiteral.token = token;
+
+    return true;
+}
+
 static void foldBinary(ASTNode* ast)
 {
+    if (foldConcatenation(ast)) {
+        return;
+    }
+
     if (foldBooleanBinary(ast)) {
         return;
     }

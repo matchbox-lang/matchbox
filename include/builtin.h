@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 21
+#define BUILTINS_MAX 25
 #define BUILTIN_PARAMS_MAX 4
 
 typedef struct Builtin
@@ -42,5 +42,9 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPow(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
+void builtinConcatStrings(VM* vm, FunctionObject* function, Value* frame);
+void builtinConcatStringChar(VM* vm, FunctionObject* function, Value* frame);
+void builtinConcatCharString(VM* vm, FunctionObject* function, Value* frame);
+void builtinConcatChars(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

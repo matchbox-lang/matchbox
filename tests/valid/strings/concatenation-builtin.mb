@@ -1,0 +1,9 @@
+let chars = concat('H', 'i')
+let stringChar = concat("Hell", 'o')
+let charString = concat('H', "ello")
+let strings = concat("H", "ello")
+
+print(chars)
+print(stringChar)
+print(charString)
+print(strings)

@@ -1386,6 +1386,15 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
 
+    bool leftText = leftType == TOKEN_CHAR || leftType == TOKEN_STRING;
+    bool rightText = rightType == TOKEN_CHAR || rightType == TOKEN_STRING;
+
+    if (ast->binary.operator.type == TOKEN_PLUS && leftText && rightText) {
+        ast->binary.typeId = TOKEN_STRING;
+
+        return;
+    }
+
     if (isFloatTypeToken(leftType)) {
         applyIntegerLiteralType(ast->binary.rightExpr, leftType);
         rightType = getTypeId(ast->binary.rightExpr);
@@ -1409,6 +1418,7 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
     bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);
     bool floatOperands = isFloatTypeToken(leftType) && isFloatTypeToken(rightType);
+    
     floatOperands = floatOperands || leftConvertsToRight || rightConvertsToLeft;
 
     if (leftType != rightType && !floatOperands) {

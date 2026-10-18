@@ -71,6 +71,7 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
+static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
@@ -1106,6 +1107,12 @@ static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
+    TokenType resultType = getTypeId(ast);
+
+    if (resultType == TOKEN_STRING) {
+        return compileConcatenation(compiler, ast);
+    }
+
     if (ast->binary.operator.type == TOKEN_POWER) {
         return compilePower(compiler, ast->binary.leftExpr, ast->binary.rightExpr);
     }
@@ -1614,6 +1621,22 @@ static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode
     Vector args = {.data = items, .capacity = 2, .count = 2};
     TokenType argumentTypes[] = {TOKEN_I32, TOKEN_I32};
     Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
+    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+
+    return compileCall(compiler, function, position, &args, NULL, false);
+}
+
+static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode* left = ast->binary.leftExpr;
+    ASTNode* right = ast->binary.rightExpr;
+    void* items[] = {left, right};
+    Vector args = {.data = items, .capacity = 2, .count = 2};
+    TokenType leftType = getTypeId(left);
+    TokenType rightType = getTypeId(right);
+    TokenType argumentTypes[] = {leftType, rightType};
+    Builtin* builtin = resolveBuiltin("concat", argumentTypes, 2);
     uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 

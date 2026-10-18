@@ -18,8 +18,6 @@ typedef struct Builtin
     TokenType returnTypeId;
 } Builtin;
 
-extern Builtin builtins[BUILTINS_MAX];
-
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 bool isBuiltinName(const char* name);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);

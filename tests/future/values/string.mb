@@ -1,24 +1,32 @@
-let str = "Hello World!\n"
+let str1 = "Hello World!\n"
 
 let name = "Alice"
 let apples = 4
 let bananas = 3
 
-let str = $"I have {apples} apples."
-let str = $"I have {apples + bananas} fruit."
+let str2 = $"I have {apples} apples."
+let str3 = $"I have {apples + bananas} fruit."
 
-let str = $"Hello {{{name}}}." // Hello {Alice}
+let str4 = $"Hello {{{name}}}." // Hello {Alice}
 
-let str = `C:\path\to\file`
-let str = `I have {apples} apples.`
-let str = $`I have {apples} apples.`
+let str5 = `C:\path\to\file`
+let str6 = `I have {apples} apples.`
+let str7 = $`I have {apples} apples.`
 
-let str = """Multi
+let str8 = """Multi
 Line
 String"""
 
-let str = """I have {apples} apples."""
-let str = ```I have {apples} apples.```
+let str9 = ```Multi
+Line
+String```
 
-let str = $"""I have {apples} apples.
+let str10 = """I have {apples} apples."""
+let str11 = ```I have {apples} apples.```
+
+let str12 = """Hello "Alice"!"""
+let str13 = """"Hello """Alice"""!""""
+let str14 = """""Hello """"Alice""""!"""""
+
+let str15 = $"""I have {apples} apples.
 I have {bananas} bananas."""

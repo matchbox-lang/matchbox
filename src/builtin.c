@@ -14,6 +14,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void interpolateI8(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateI16(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateI32(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateI64(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateU8(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateU16(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateU32(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateU64(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateF32(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateF64(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateBool(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateChar(VM* vm, FunctionObject* function, Value* frame);
+static void interpolateString(VM* vm, FunctionObject* function, Value* frame);
+
 Builtin builtins[BUILTINS_MAX] = {
     {"exit",        builtinExit,                0,  {},                                 TOKEN_VOID},
     {"print",       builtinPrintI32,            1,  {TOKEN_I32},                        TOKEN_VOID},
@@ -379,4 +393,200 @@ void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
     char* c = (char*)&i;
     
     frame[-2] = SIGNED_VALUE(*c == 0);
+}
+
+static size_t formatInterpolatedValue(char* bytes, size_t capacity, Value* frame, TokenType type)
+{
+    switch (type) {
+        case TOKEN_I8:
+        case TOKEN_I16:
+        case TOKEN_I32: {
+            int32_t value = AS_I32(frame[0]);
+
+            return snprintf(bytes, capacity, "%" PRId32, value);
+        }
+        case TOKEN_I64: {
+            int64_t value = readI64(frame, 0);
+
+            return snprintf(bytes, capacity, "%" PRId64, value);
+        }
+        case TOKEN_U8:
+        case TOKEN_U16:
+        case TOKEN_U32: {
+            uint32_t value = AS_U32(frame[0]);
+
+            return snprintf(bytes, capacity, "%" PRIu32, value);
+        }
+        case TOKEN_U64: {
+            uint64_t value = readU64(frame, 0);
+
+            return snprintf(bytes, capacity, "%" PRIu64, value);
+        }
+        case TOKEN_F32: {
+            float value = AS_F32(frame[0]);
+
+            formatShortestF32(bytes, capacity, value);
+
+            return strlen(bytes);
+        }
+        case TOKEN_F64: {
+            double value = readF64(frame, 0);
+
+            formatShortestF64(bytes, capacity, value);
+
+            return strlen(bytes);
+        }
+        case TOKEN_BOOL: {
+            const char* value = "false";
+
+            if (AS_BOOL(frame[0])) {
+                value = "true";
+            }
+
+            return snprintf(bytes, capacity, "%s", value);
+        }
+        case TOKEN_CHAR: {
+            uint32_t value = AS_U32(frame[0]);
+
+            return encodeUtf8(value, bytes);
+        }
+        default:
+            return 0;
+    }
+}
+
+static void interpolateValue(VM* vm, Value* frame, TokenType type)
+{
+    if (type == TOKEN_STRING) {
+        frame[-2] = frame[0];
+
+        return;
+    }
+
+    char bytes[64];
+    size_t length = formatInterpolatedValue(bytes, sizeof(bytes), frame, type);
+    StringObject* string = copyStringObject(bytes, length);
+
+    pushVectorItem(&vm->module->objects, string);
+
+    frame[-2] = POINTER_VALUE(string);
+}
+
+static void interpolateI8(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_I8);
+}
+
+static void interpolateI16(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_I16);
+}
+
+static void interpolateI32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_I32);
+}
+
+static void interpolateI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_I64);
+}
+
+static void interpolateU8(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_U8);
+}
+
+static void interpolateU16(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_U16);
+}
+
+static void interpolateU32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_U32);
+}
+
+static void interpolateU64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_U64);
+}
+
+static void interpolateF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_F32);
+}
+
+static void interpolateF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_F64);
+}
+
+static void interpolateBool(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_BOOL);
+}
+
+static void interpolateChar(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_CHAR);
+}
+
+static void interpolateString(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    interpolateValue(vm, frame, TOKEN_STRING);
+}
+
+Builtin* getInterpolationBuiltin(TokenType type)
+{
+    static Builtin conversions[] = {
+        {"interpolation", interpolateI8, 1, {TOKEN_I8}, TOKEN_STRING},
+        {"interpolation", interpolateI16, 1, {TOKEN_I16}, TOKEN_STRING},
+        {"interpolation", interpolateI32, 1, {TOKEN_I32}, TOKEN_STRING},
+        {"interpolation", interpolateI64, 1, {TOKEN_I64}, TOKEN_STRING},
+        {"interpolation", interpolateU8, 1, {TOKEN_U8}, TOKEN_STRING},
+        {"interpolation", interpolateU16, 1, {TOKEN_U16}, TOKEN_STRING},
+        {"interpolation", interpolateU32, 1, {TOKEN_U32}, TOKEN_STRING},
+        {"interpolation", interpolateU64, 1, {TOKEN_U64}, TOKEN_STRING},
+        {"interpolation", interpolateF32, 1, {TOKEN_F32}, TOKEN_STRING},
+        {"interpolation", interpolateF64, 1, {TOKEN_F64}, TOKEN_STRING},
+        {"interpolation", interpolateBool, 1, {TOKEN_BOOL}, TOKEN_STRING},
+        {"interpolation", interpolateChar, 1, {TOKEN_CHAR}, TOKEN_STRING},
+        {"interpolation", interpolateString, 1, {TOKEN_STRING}, TOKEN_STRING}
+    };
+    size_t count = sizeof(conversions) / sizeof(conversions[0]);
+
+    for (size_t i = 0; i < count; i++) {
+        if (conversions[i].params[0] == type) {
+            return &conversions[i];
+        }
+    }
+
+    return NULL;
 }

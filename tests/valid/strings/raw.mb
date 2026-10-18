@@ -1,0 +1,4 @@
+print(`C:\path\to\file`)
+print(`trailing\`)
+print(`\n\u{1F600} {literal}`)
+print(``)

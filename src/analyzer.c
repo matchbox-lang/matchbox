@@ -2478,6 +2478,17 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
 
     analyzeNode(analyzer, ast->prefix.expr);
 
+    if (ast->prefix.operator.type == TOKEN_DOLLAR) {
+        TokenType type = getTypeId(ast->prefix.expr);
+        Builtin* builtin = getInterpolationBuiltin(type);
+
+        if (!builtin) {
+            semanticError("Invalid interpolated value ", ast->prefix.operator);
+        }
+
+        return;
+    }
+
     if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {
         semanticError("Logical not requires a bool operand ", ast->prefix.operator);
     }

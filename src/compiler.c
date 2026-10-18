@@ -72,6 +72,7 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
 static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
+static Operand compileInterpolation(Compiler* compiler, ASTNode* ast);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
@@ -1167,6 +1168,10 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
             compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getTypeId(ast)));
     }
 
+    if (ast->prefix.operator.type == TOKEN_DOLLAR) {
+        return compileInterpolation(compiler, ast);
+    }
+
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
 
     switch (ast->prefix.operator.type) {
@@ -1637,6 +1642,19 @@ static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
     TokenType rightType = getTypeId(right);
     TokenType argumentTypes[] = {leftType, rightType};
     Builtin* builtin = resolveBuiltin("concat", argumentTypes, 2);
+    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
+    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+
+    return compileCall(compiler, function, position, &args, NULL, false);
+}
+
+static Operand compileInterpolation(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode* expression = ast->prefix.expr;
+    TokenType type = getTypeId(expression);
+    void* items[] = {expression};
+    Vector args = {.data = items, .capacity = 1, .count = 1};
+    Builtin* builtin = getInterpolationBuiltin(type);
     uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 

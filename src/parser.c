@@ -13,6 +13,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct StringReader
+{
+    Token token;
+    Position current;
+    const char* end;
+    size_t width;
+    bool raw;
+    bool interpolated;
+} StringReader;
+
 static ASTNode* parseExpression(Parser* parser);
 static ASTNode* parseIdentifier(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
@@ -255,42 +265,150 @@ static ASTNode* parseCharacterLiteral(Parser* parser)
     return ast;
 }
 
-static StringObject* decodeStringLiteral(Token token)
+static void advanceStringReader(StringReader* reader, size_t length)
 {
-    size_t length = token.length - 2;
-    char* bytes = malloc(length + 1);
+    for (size_t i = 0; i < length; i++) {
+        char c = *reader->current.chars++;
+        reader->current.column++;
+
+        if (c == '\n') {
+            reader->current.line++;
+            reader->current.column = 1;
+        }
+    }
+}
+
+static StringReader createStringReader(Token token)
+{
+    StringReader reader = {.token = token, .current = {token.chars, token.line, token.column}, .width = 1};
+    reader.interpolated = token.chars[0] == '$';
+
+    if (reader.interpolated) {
+        advanceStringReader(&reader, 1);
+    }
+
+    char delimiter = *reader.current.chars;
+    size_t run = 0;
+    reader.raw = delimiter == '`';
+
+    while (reader.current.chars[run] == delimiter) {
+        run++;
+    }
+
+    if (run >= 3) {
+        reader.width = run;
+    }
+
+    advanceStringReader(&reader, reader.width);
+
+    reader.end = token.chars + token.length - reader.width;
+
+    return reader;
+}
+
+static ASTNode* parseStringSegment(StringReader* reader)
+{
+    size_t capacity = reader->end - reader->current.chars;
+    char* bytes = malloc(capacity + 1);
+    size_t count = 0;
 
     if (!bytes) {
         outOfMemoryError();
     }
 
-    size_t count;
-    bool valid = decodeStringContents(token.chars + 1, length, bytes, &count);
+    while (reader->current.chars < reader->end) {
+        const char* chars = reader->current.chars;
+        size_t length = reader->end - chars;
+        char c = *chars;
+        bool bracePair = reader->interpolated && length >= 2 && chars[1] == c && (c == '{' || c == '}');
 
-    if (!valid) {
-        free(bytes);
-        invalidStringError(token);
+        if (reader->interpolated && c == '{' && !bracePair) {
+            break;
+        }
+
+        if (bracePair) {
+            bytes[count++] = c;
+
+            advanceStringReader(reader, 2);
+            continue;
+        }
+
+        DecodedScalar scalar;
+        bool valid;
+
+        if (reader->raw) {
+            valid = decodeUtf8(chars, length, &scalar);
+        } else {
+            valid = decodeLiteralScalar(chars, length, &scalar);
+        }
+
+        if (!valid) {
+            free(bytes);
+            invalidStringError(reader->token);
+        }
+
+        size_t encodedLength = encodeUtf8(scalar.value, bytes + count);
+        count += encodedLength;
+
+        advanceStringReader(reader, scalar.length);
     }
 
-    StringObject* value = copyStringObject(bytes, count);
+    ASTNode* ast = createASTNode(AST_STRING);
+    ast->stringLiteral.token = reader->token;
+    ast->stringLiteral.value = copyStringObject(bytes, count);
 
     free(bytes);
 
-    return value;
+    return ast;
+}
+
+static ASTNode* parseStringInterpolation(Parser* parser, StringReader* reader)
+{
+    advanceStringReader(reader, 1);
+
+    parser->lexer.current = reader->current;
+
+    advance(parser);
+
+    ASTNode* expression = parseExpression(parser);
+
+    if (!expression) {
+        expectedExpressionError(parser->currentToken);
+    }
+
+    if (parser->currentToken.type != TOKEN_RBRACE) {
+        expectedTokenError(TOKEN_RBRACE, parser->currentToken);
+    }
+
+    reader->current = parser->lexer.current;
+    ASTNode* ast = createASTNode(AST_PREFIX);
+    ast->prefix.operator = reader->token;
+    ast->prefix.operator.type = TOKEN_DOLLAR;
+    ast->prefix.expr = expression;
+
+    return ast;
 }
 
 static ASTNode* parseStringLiteral(Parser* parser)
 {
     Token token = parser->currentToken;
+    Token previous = parser->previousToken;
+    Lexer lexer = parser->lexer;
+    StringReader reader = createStringReader(token);
+    ASTNode* ast = parseStringSegment(&reader);
+    Token plus = token;
+    plus.type = TOKEN_PLUS;
 
-    if (token.chars[0] != '"') {
-        expectedExpressionError(token);
+    while (reader.current.chars < reader.end) {
+        ASTNode* expression = parseStringInterpolation(parser, &reader);
+        ast = createBinaryNode(ast, expression, plus);
+        ASTNode* segment = parseStringSegment(&reader);
+        ast = createBinaryNode(ast, segment, plus);
     }
 
-    StringObject* value = decodeStringLiteral(token);
-    ASTNode* ast = createASTNode(AST_STRING);
-    ast->stringLiteral.token = token;
-    ast->stringLiteral.value = value;
+    parser->lexer = lexer;
+    parser->currentToken = token;
+    parser->previousToken = previous;
 
     consume(parser, TOKEN_STRING_LITERAL);
 

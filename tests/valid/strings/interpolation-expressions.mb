@@ -1,0 +1,14 @@
+func fruit(count: i32) -> string {
+    return $"{count} apples"
+}
+
+print($"{fruit(4)}")
+print($"{if true { 4 } else { 3 }} fruit")
+print($"{concat("Hello ", "Alice")}")
+print($"Nested: {$"{2 + 3}"}")
+
+print($"""I have {4} apples.
+I have {3} bananas.""")
+
+print($```Raw\n{4}
+{3}```)

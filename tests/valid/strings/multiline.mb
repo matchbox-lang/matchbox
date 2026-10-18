@@ -1,0 +1,13 @@
+print("""Multi
+Line
+String\n""")
+
+print(```Multi
+Line
+String
+```)
+
+print("""Hello "Alice"!""")
+print(""""Hello """Alice"""!"""")
+print("""""Hello """"Alice""""!""""")
+print("""I have {apples} apples.""")

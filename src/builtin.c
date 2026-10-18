@@ -36,8 +36,8 @@ Builtin builtins[BUILTINS_MAX] = {
     {"pow",         builtinPow,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
     {"pow",         builtinPowI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
     {"byteorder",   builtinByteorder,           0,  {},                                 TOKEN_I32},
-    {"concat",      builtinConcat,             -1,  {TOKEN_STRING},       TOKEN_STRING},
-    {"buildString", builtinBuildString,        -1,  {TOKEN_UNKNOWN},      TOKEN_STRING}
+    {"concat",      builtinConcat,             -1,  {TOKEN_STRING},                     TOKEN_STRING},
+    {"buildString", builtinBuildString,        -1,  {TOKEN_UNKNOWN},                    TOKEN_STRING}
 };
 
 static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)

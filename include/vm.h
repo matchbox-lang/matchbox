@@ -3,7 +3,6 @@
 
 #include "module_object.h"
 #include "opcode.h"
-#include <stdint.h>
 
 #define STACK_MAX 1024
 

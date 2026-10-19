@@ -2,7 +2,6 @@
 #define CONVERSION_H
 
 #include "token.h"
-#include <stddef.h>
 #include <stdint.h>
 
 uint64_t integerLiteralToValue(Token token);

@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "ast.h"
+#include "builtin.h"
 #include "conversion.h"
 #include "lexer.h"
 #include "literal.h"

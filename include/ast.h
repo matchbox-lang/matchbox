@@ -1,7 +1,6 @@
 #ifndef AST_H
 #define AST_H
 
-#include "builtin.h"
 #include "token.h"
 #include "vector.h"
 #include <stdbool.h>

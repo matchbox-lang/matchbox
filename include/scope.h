@@ -1,7 +1,6 @@
 #ifndef SCOPE_H
 #define SCOPE_H
 
-#include "object.h"
 #include "table.h"
 
 typedef struct ASTNode ASTNode;

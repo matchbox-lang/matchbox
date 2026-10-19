@@ -568,63 +568,100 @@ static void scanStringEscape(Lexer* lexer)
     advanceCharacters(lexer, scalar.length - 1);
 }
 
-static Token scanStringLiteral(Lexer* lexer, char delimiter, bool interpolated)
+static size_t scanStringDelimiter(Lexer* lexer, char delimiter)
 {
-    Position start = lexer->start;
     size_t run = delimiterLength(lexer->current.chars, delimiter) + 1;
-    size_t width = 1;
 
-    if (run >= 3) {
-        width = run;
-        advanceCharacters(lexer, width - 1);
+    if (run < 3) {
+        return 1;
     }
 
-    while (!isEndOfFile(lexer)) {
-        char c = peek(lexer);
-        size_t closing = delimiterLength(lexer->current.chars, delimiter);
+    advanceCharacters(lexer, run - 1);
 
-        if (closing >= width) {
-            advanceCharacters(lexer, width);
-            lexer->start = start;
+    return run;
+}
 
-            return makeToken(lexer, TOKEN_STRING_LITERAL);
-        }
-
-        if (delimiter == '"' && width == 1 && isNewline(c)) {
-            lexer->start = start;
-
-            unterminatedLiteralError(lexer, delimiter);
-        }
-
+static bool scanStringInterpolation(Lexer* lexer, char c, Position start)
+{
+    if (peek(lexer) == c) {
         advance(lexer);
 
-        if (delimiter == '"' && c == '\\' && !isEndOfFile(lexer)) {
-            scanStringEscape(lexer);
-            continue;
-        }
+        return true;
+    }
 
-        if (!interpolated || (c != '{' && c != '}')) {
-            continue;
-        }
+    if (c == '}') {
+        fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n",
+            start.line, start.column);
+        exit(1);
+    }
 
-        if (peek(lexer) == c) {
-            advance(lexer);
-            continue;
-        }
+    return scanInterpolationExpression(lexer);
+}
 
-        if (c == '}') {
-            fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n",
-                start.line, start.column);
-            exit(1);
-        }
+static bool scanStringEnd(Lexer* lexer, char delimiter, size_t width)
+{
+    size_t closing = delimiterLength(lexer->current.chars, delimiter);
 
-        if (!scanInterpolationExpression(lexer)) {
-            break;
-        }
+    if (closing < width) {
+        return false;
+    }
+
+    advanceCharacters(lexer, width);
+
+    return true;
+}
+
+static void validateStringNewline(Lexer* lexer, char delimiter, size_t width, Position start)
+{
+    char c = peek(lexer);
+
+    if (delimiter != '"' || width != 1 || !isNewline(c)) {
+        return;
     }
 
     lexer->start = start;
 
+    unterminatedLiteralError(lexer, delimiter);
+}
+
+static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool interpolated, Position start)
+{
+    validateStringNewline(lexer, delimiter, width, start);
+
+    char c = advance(lexer);
+
+    if (delimiter == '"' && c == '\\' && !isEndOfFile(lexer)) {
+        scanStringEscape(lexer);
+
+        return true;
+    }
+
+    if (!interpolated || (c != '{' && c != '}')) {
+        return true;
+    }
+
+    return scanStringInterpolation(lexer, c, start);
+}
+
+static bool scanStringContents(Lexer* lexer, char delimiter, size_t width, bool interpolated)
+{
+    Position start = lexer->start;
+
+    while (!isEndOfFile(lexer)) {
+        if (scanStringEnd(lexer, delimiter, width)) {
+            return true;
+        }
+
+        if (!scanStringCharacter(lexer, delimiter, width, interpolated, start)) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+static Token incompleteStringLiteral(Lexer* lexer, char delimiter, size_t width, bool interpolated)
+{
     if (width >= 3 || delimiter == '`' || interpolated) {
         return makeToken(lexer, TOKEN_INCOMPLETE_INPUT);
     }
@@ -632,6 +669,21 @@ static Token scanStringLiteral(Lexer* lexer, char delimiter, bool interpolated)
     unterminatedLiteralError(lexer, delimiter);
 
     return makeToken(lexer, TOKEN_UNKNOWN);
+}
+
+static Token scanStringLiteral(Lexer* lexer, char delimiter, bool interpolated)
+{
+    Position start = lexer->start;
+    size_t width = scanStringDelimiter(lexer, delimiter);
+    bool complete = scanStringContents(lexer, delimiter, width, interpolated);
+
+    lexer->start = start;
+
+    if (complete) {
+        return makeToken(lexer, TOKEN_STRING_LITERAL);
+    }
+
+    return incompleteStringLiteral(lexer, delimiter, width, interpolated);
 }
 
 static Token scanInterpolatedString(Lexer* lexer)

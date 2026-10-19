@@ -1,6 +1,6 @@
 #include "analyzer.h"
 #include "builtin.h"
-#include "value_format.h"
+#include "output.h"
 #include "scope.h"
 #include "string_object.h"
 #include "table.h"

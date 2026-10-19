@@ -1,5 +1,5 @@
-#ifndef VALUE_FORMAT_H
-#define VALUE_FORMAT_H
+#ifndef OUTPUT_H
+#define OUTPUT_H
 
 #include "token.h"
 #include "value.h"

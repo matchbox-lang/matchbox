@@ -1,6 +1,6 @@
 #include "builtin.h"
 #include "float_format.h"
-#include "value_format.h"
+#include "output.h"
 #include "string_object.h"
 #include "string_concatenation.h"
 #include "vm.h"

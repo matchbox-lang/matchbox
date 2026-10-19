@@ -26,7 +26,7 @@ Builtin builtins[BUILTINS_MAX] = {
     {"print",       builtinPrintBool,           1,  {TOKEN_BOOL},                       TOKEN_VOID},
     {"print",       builtinPrintChar,           1,  {TOKEN_CHAR},                       TOKEN_VOID},
     {"print",       builtinPrintString,         1,  {TOKEN_STRING},                     TOKEN_VOID},
-    {"print",       builtinPrintVariadic, BUILTIN_VARIADIC, {TOKEN_UNKNOWN},               TOKEN_VOID},
+    {"print",       builtinPrint,              -1,  {TOKEN_UNKNOWN},                    TOKEN_VOID},
     {"clamp",       builtinClamp,               3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
     {"clamp",       builtinClampI64,            3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
     {"abs",         builtinAbs,                 1,  {TOKEN_I32},                        TOKEN_I32},
@@ -120,7 +120,7 @@ void builtinExit(VM* vm, FunctionObject* function, Value* frame)
     exit(0);
 }
 
-void builtinPrintVariadic(VM* vm, FunctionObject* function, Value* frame)
+void builtinPrint(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
 

@@ -21,7 +21,7 @@ typedef struct Builtin
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 bool isBuiltinName(const char* name);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
-void builtinPrintVariadic(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrint(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintU32(VM* vm, FunctionObject* function, Value* frame);

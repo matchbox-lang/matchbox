@@ -1590,7 +1590,7 @@ static void validateVariadicArguments(Vector* args, Builtin* builtin, Token toke
 {
     char* message = "Invalid value in string construction ";
 
-    if (builtin->entry == builtinPrintVariadic) {
+    if (builtin->entry == builtinPrint) {
         message = "Invalid value in print ";
     }
 

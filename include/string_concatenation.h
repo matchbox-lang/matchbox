@@ -5,7 +5,6 @@
 #include "token.h"
 #include "value.h"
 
-bool isStringPartType(TokenType type);
 StringObject* concatenateStringParts(Value* values, const TokenType* types, size_t count);
 
 #endif

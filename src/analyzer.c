@@ -1,8 +1,8 @@
 #include "analyzer.h"
 #include "builtin.h"
+#include "value_format.h"
 #include "scope.h"
 #include "string_object.h"
-#include "string_concatenation.h"
 #include "table.h"
 #include "token.h"
 #include "util.h"
@@ -1586,15 +1586,21 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     setLocalSymbol(analyzer->currentScope, id, ast);
 }
 
-static void validateStringParts(Vector* args, Token token)
+static void validateVariadicArguments(Vector* args, Builtin* builtin, Token token)
 {
+    char* message = "Invalid value in string construction ";
+
+    if (builtin->entry == builtinPrintVariadic) {
+        message = "Invalid value in print ";
+    }
+
     for (size_t i = 0; i < args->count; i++) {
         ASTNode* argument = args->data[i];
         TokenType type = getTypeId(argument);
-        bool valid = isStringPartType(type);
+        bool valid = isPrintableType(type);
 
         if (!valid) {
-            semanticError("Invalid value in string construction ", token);
+            semanticError(message, token);
         }
     }
 }
@@ -1604,7 +1610,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
     size_t count = countVector(&ast->functionCall.args);
 
     if (builtin->paramCount == BUILTIN_VARIADIC) {
-        validateStringParts(&ast->functionCall.args, token);
+        validateVariadicArguments(&ast->functionCall.args, builtin, token);
 
         return;
     }
@@ -1642,15 +1648,10 @@ static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
 
 static Builtin* resolveBuiltinCall(ASTNode* ast)
 {
-    Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, NULL, 0);
-
-    if (builtin && builtin->paramCount == BUILTIN_VARIADIC) {
-        return builtin;
-    }
-
     size_t count = countVector(&ast->functionCall.args);
+
     if (count > BUILTIN_PARAMS_MAX) {
-        return NULL;
+        return resolveBuiltin(ast->functionCall.id->chars, NULL, count);
     }
 
     TokenType argumentTypes[BUILTIN_PARAMS_MAX];
@@ -2536,7 +2537,7 @@ static void analyzeResolvedBuiltinCall(Analyzer* analyzer, ASTNode* ast)
 
     Token token = ast->builtinCall.token;
 
-    validateStringParts(&ast->builtinCall.args, token);
+    validateVariadicArguments(&ast->builtinCall.args, ast->builtinCall.builtin, token);
 }
 
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast)

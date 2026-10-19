@@ -1,0 +1,6 @@
+print()
+print("Score: ", 42, ", active: ", true)
+print("a", 'b', 3, '\n', false, 1.25, "!")
+print("a\0", '\0', "b")
+print("", "")
+print("\u{1F600}", '\u{1F600}')

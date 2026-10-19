@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "float_format.h"
+#include "value_format.h"
 #include "string_object.h"
 #include "string_concatenation.h"
 #include "vm.h"
@@ -25,6 +26,7 @@ Builtin builtins[BUILTINS_MAX] = {
     {"print",       builtinPrintBool,           1,  {TOKEN_BOOL},                       TOKEN_VOID},
     {"print",       builtinPrintChar,           1,  {TOKEN_CHAR},                       TOKEN_VOID},
     {"print",       builtinPrintString,         1,  {TOKEN_STRING},                     TOKEN_VOID},
+    {"print",       builtinPrintVariadic, BUILTIN_VARIADIC, {TOKEN_UNKNOWN},               TOKEN_VOID},
     {"clamp",       builtinClamp,               3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
     {"clamp",       builtinClampI64,            3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
     {"abs",         builtinAbs,                 1,  {TOKEN_I32},                        TOKEN_I32},
@@ -77,15 +79,25 @@ static bool builtinCallMatches(
 
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount)
 {
+    Builtin* variadic = NULL;
+
     for (int i = 0; i < BUILTINS_MAX; i++) {
         Builtin* builtin = &builtins[i];
 
-        if (builtinCallMatches(builtin, name, argumentTypes, argumentCount)) {
-            return builtin;
+        if (!builtinCallMatches(builtin, name, argumentTypes, argumentCount)) {
+            continue;
         }
+
+        if (builtin->paramCount == BUILTIN_VARIADIC) {
+            variadic = builtin;
+
+            continue;
+        }
+
+        return builtin;
     }
 
-    return NULL;
+    return variadic;
 }
 
 bool isBuiltinName(const char* name)
@@ -106,6 +118,14 @@ void builtinExit(VM* vm, FunctionObject* function, Value* frame)
     (void)frame;
 
     exit(0);
+}
+
+void builtinPrintVariadic(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+
+    printValues(frame, function->argumentTypes, function->argumentCount);
+    putchar('\n');
 }
 
 void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame)

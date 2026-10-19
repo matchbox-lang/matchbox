@@ -1,20 +1,8 @@
 #include "string_concatenation.h"
-#include "float_format.h"
 #include "object.h"
-#include "unicode.h"
+#include "value_format.h"
 #include "util.h"
-#include <inttypes.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-
-bool isStringPartType(TokenType type)
-{
-    return isIntegerTypeToken(type) || isFloatTypeToken(type)
-        || type == TOKEN_BOOL
-        || type == TOKEN_CHAR
-        || type == TOKEN_STRING;
-}
 
 static size_t stringPartCapacity(Value* values, TokenType type)
 {
@@ -71,73 +59,6 @@ static size_t stringPartsCapacity(Value* values, const TokenType* types, size_t 
     return capacity;
 }
 
-static size_t writeStringPart(char* bytes, size_t capacity, Value* frame, TokenType type)
-{
-    switch (type) {
-        case TOKEN_I8:
-        case TOKEN_I16:
-        case TOKEN_I32: {
-            int32_t value = AS_I32(frame[0]);
-
-            return snprintf(bytes, capacity, "%" PRId32, value);
-        }
-        case TOKEN_I64: {
-            int64_t value = readI64(frame, 0);
-
-            return snprintf(bytes, capacity, "%" PRId64, value);
-        }
-        case TOKEN_U8:
-        case TOKEN_U16:
-        case TOKEN_U32: {
-            uint32_t value = AS_U32(frame[0]);
-
-            return snprintf(bytes, capacity, "%" PRIu32, value);
-        }
-        case TOKEN_U64: {
-            uint64_t value = readU64(frame, 0);
-
-            return snprintf(bytes, capacity, "%" PRIu64, value);
-        }
-        case TOKEN_F32: {
-            float value = AS_F32(frame[0]);
-
-            formatShortestF32(bytes, capacity, value);
-
-            return strlen(bytes);
-        }
-        case TOKEN_F64: {
-            double value = readF64(frame, 0);
-
-            formatShortestF64(bytes, capacity, value);
-
-            return strlen(bytes);
-        }
-        case TOKEN_BOOL: {
-            const char* value = "false";
-
-            if (AS_BOOL(frame[0])) {
-                value = "true";
-            }
-
-            return snprintf(bytes, capacity, "%s", value);
-        }
-        case TOKEN_CHAR: {
-            uint32_t value = AS_U32(frame[0]);
-
-            return encodeUtf8(value, bytes);
-        }
-        case TOKEN_STRING: {
-            StringObject* string = AS_POINTER(frame[0]);
-
-            memcpy(bytes, string->chars, string->length);
-
-            return string->length;
-        }
-        default:
-            return 0;
-    }
-}
-
 StringObject* concatenateStringParts(Value* values, const TokenType* types, size_t count)
 {
     // Reserve bounded space so each value is written directly into the result once
@@ -149,7 +70,7 @@ StringObject* concatenateStringParts(Value* values, const TokenType* types, size
 
     for (size_t i = 0; i < count; i++) {
         TokenType type = types[i];
-        size_t written = writeStringPart(string->chars + length, capacity - length + 1, values + offset, type);
+        size_t written = writeValue(string->chars + length, capacity - length + 1, values + offset, type);
         length += written;
         offset += getTypeSlotCount(type);
     }

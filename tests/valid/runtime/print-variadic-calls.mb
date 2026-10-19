@@ -1,0 +1,12 @@
+func report(value: i64) {
+    print("value: ", value)
+
+    let text = string("value: ", value)
+    print(text)
+}
+
+report(5000000000)
+report(-5000000000)
+
+print(1, 2)
+print(3, 4)

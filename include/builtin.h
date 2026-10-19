@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 22
+#define BUILTINS_MAX 23
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
 
@@ -21,6 +21,7 @@ typedef struct Builtin
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 bool isBuiltinName(const char* name);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
+void builtinPrintVariadic(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintU32(VM* vm, FunctionObject* function, Value* frame);

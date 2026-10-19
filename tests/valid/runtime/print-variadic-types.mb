@@ -1,0 +1,16 @@
+let small: i8 = -128
+let medium: i16 = -32768
+let signed: i32 = -2147483648
+let large: i64 = -9223372036854775808
+
+let byte: u8 = 255
+let word: u16 = 65535
+let unsigned: u32 = 4294967295
+let wide: u64 = 18446744073709551615
+
+let single: f32 = 1.25
+let double: f64 = 3.5
+
+print(small, " ", medium, " ", signed, " ", large)
+print(byte, " ", word, " ", unsigned, " ", wide)
+print(single, " ", double, " ", true, " ", false)

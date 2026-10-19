@@ -701,6 +701,24 @@ static ASTNode* createMatchNode(Token token)
     return ast;
 }
 
+static bool parseMatchDefault(Parser* parser, ASTNode* ast)
+{
+    if (parser->currentToken.type != TOKEN_DEFAULT) {
+        return true;
+    }
+
+    consume(parser, TOKEN_DEFAULT);
+
+    if (isEndOfFile(parser)) {
+        return false;
+    }
+
+    consume(parser, TOKEN_COLON);
+    ast->match.defaultBranch = parseMatchBranch(parser);
+
+    return ast->match.defaultBranch != NULL;
+}
+
 static ASTNode* parseMatch(Parser* parser)
 {
     Token token = parser->currentToken;
@@ -727,23 +745,10 @@ static ASTNode* parseMatch(Parser* parser)
         }
     }
 
-    if (parser->currentToken.type == TOKEN_DEFAULT) {
-        consume(parser, TOKEN_DEFAULT);
+    if (!parseMatchDefault(parser, ast)) {
+        freeASTNode(ast);
 
-        if (isEndOfFile(parser)) {
-            freeASTNode(ast);
-
-            return NULL;
-        }
-
-        consume(parser, TOKEN_COLON);
-        ast->match.defaultBranch = parseMatchBranch(parser);
-
-        if (!ast->match.defaultBranch) {
-            freeASTNode(ast);
-
-            return NULL;
-        }
+        return NULL;
     }
 
     if (isEndOfFile(parser)) {
@@ -1279,20 +1284,20 @@ static void parseVariableType(Parser* parser, ASTNode* ast)
 
 static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
 {
-    if (parser->currentToken.type != TOKEN_EQUAL) {
-        ast->variableDefinition.expr = createASTNode(AST_NONE);
+    if (parser->currentToken.type == TOKEN_EQUAL) {
+        consume(parser, TOKEN_EQUAL);
+        ast->variableDefinition.expr = parseExpression(parser);
 
-        if (ast->variableDefinition.typeId == TOKEN_UNKNOWN) {
-            ast->variableDefinition.typeId = TOKEN_I32;
-        }
-
-        return true;
+        return ast->variableDefinition.expr != NULL;
     }
 
-    consume(parser, TOKEN_EQUAL);
-    ast->variableDefinition.expr = parseExpression(parser);
+    ast->variableDefinition.expr = createASTNode(AST_NONE);
 
-    return ast->variableDefinition.expr != NULL;
+    if (ast->variableDefinition.typeId == TOKEN_UNKNOWN) {
+        ast->variableDefinition.typeId = TOKEN_I32;
+    }
+
+    return true;
 }
 
 static ASTNode* parseVariableDefinition(Parser* parser)

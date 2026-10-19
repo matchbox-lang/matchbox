@@ -1,4 +1,5 @@
 #include "buffer.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +43,21 @@ size_t putFileContents(const char* filename, const void* data)
     return size;
 }
 
+static bool growStreamBuffer(char** lineptr, size_t* capacity)
+{
+    size_t newCapacity = *capacity * 2;
+    char* resized = realloc(*lineptr, newCapacity);
+
+    if (!resized) {
+        return false;
+    }
+
+    *lineptr = resized;
+    *capacity = newCapacity;
+
+    return true;
+}
+
 int getStreamContents(char **lineptr, size_t *n, FILE *stream)
 {
     if (lineptr == NULL || n == NULL || stream == NULL) {
@@ -54,23 +70,15 @@ int getStreamContents(char **lineptr, size_t *n, FILE *stream)
     if (*lineptr == NULL) {
         *n = 256;
         *lineptr = malloc(*n);
+    }
 
-        if (*lineptr == NULL) {
-            return -1;
-        }
+    if (*lineptr == NULL) {
+        return -1;
     }
 
     while ((c = fgetc(stream)) != EOF) {
-        if (length + 1 >= *n) {
-            *n *= 2;
-            
-            char *tmp = realloc(*lineptr, *n);
-
-            if (tmp == NULL) {
-                return -1;
-            }
-
-            *lineptr = tmp;
+        if (length + 1 >= *n && !growStreamBuffer(lineptr, n)) {
+            return -1;
         }
 
         (*lineptr)[length++] = c;

@@ -2338,11 +2338,11 @@ static void resolveVariableType(ASTNode* ast, ASTNode* expression)
         return;
     }
 
-    if (type == TOKEN_UNKNOWN) {
-        if (expression->type == AST_FLOAT) {
-            floatLiteralRequiresTypeError(expression->floatLiteral.token);
-        }
+    if (type == TOKEN_UNKNOWN && expression->type == AST_FLOAT) {
+        floatLiteralRequiresTypeError(expression->floatLiteral.token);
+    }
 
+    if (type == TOKEN_UNKNOWN) {
         integerLiteralRequiresTypeError(ast->variableDefinition.token);
     }
 

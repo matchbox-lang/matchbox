@@ -3,3 +3,9 @@ let tiny: f32 = 1.0e-50
 
 print(narrow == 16777216.0)
 print(tiny == 0.0)
+
+let widened: f64 = narrow
+let widenedTiny: f64 = tiny
+
+print(widened == 16777216.0)
+print(widenedTiny == 0.0)

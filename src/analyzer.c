@@ -1378,6 +1378,32 @@ static bool isCharacterComparison(TokenType type)
     }
 }
 
+static void applyBinaryIntegerLiteralTypes(ASTNode* left, ASTNode* right)
+{
+    TokenType leftType = getTypeId(left);
+    TokenType rightType = getTypeId(right);
+    bool negative;
+    ASTNode* leftLiteral = getIntegerLiteral(left, &negative);
+    ASTNode* rightLiteral = getIntegerLiteral(right, &negative);
+    bool widenLeft = canImplicitlyWidenInteger(leftType, rightType);
+
+    if (leftLiteral && rightLiteral && widenLeft) {
+        applyIntegerLiteralType(left, rightType);
+
+        leftType = rightType;
+    }
+
+    if (isIntegerTypeToken(leftType)) {
+        applyIntegerLiteralType(right, leftType);
+
+        rightType = getTypeId(right);
+    }
+
+    if (isIntegerTypeToken(rightType)) {
+        applyIntegerLiteralType(left, rightType);
+    }
+}
+
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -1417,15 +1443,10 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         leftType = getTypeId(ast->binary.leftExpr);
     }
 
-    if (isIntegerTypeToken(leftType)) {
-        applyIntegerLiteralType(ast->binary.rightExpr, leftType);
-        rightType = getTypeId(ast->binary.rightExpr);
-    }
+    applyBinaryIntegerLiteralTypes(ast->binary.leftExpr, ast->binary.rightExpr);
 
-    if (isIntegerTypeToken(rightType)) {
-        applyIntegerLiteralType(ast->binary.leftExpr, rightType);
-        leftType = getTypeId(ast->binary.leftExpr);
-    }
+    leftType = getTypeId(ast->binary.leftExpr);
+    rightType = getTypeId(ast->binary.rightExpr);
 
     bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
     bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);

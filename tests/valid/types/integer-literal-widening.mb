@@ -1,0 +1,16 @@
+let negative: i32 = -25
+let folded = 1 - 26
+let positive: u32 = 4294967295
+let widenedNegative: i64 = negative
+let widenedFolded: i64 = folded
+let widenedPositive: u64 = positive
+
+print(widenedNegative == -25)
+print(widenedFolded == -25)
+print(widenedPositive == 4294967295)
+
+func widen(value: i64) -> i64 {
+    return value
+}
+
+print(widen(negative) == -25)

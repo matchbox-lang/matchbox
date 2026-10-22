@@ -656,8 +656,9 @@ static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
 static Operand compileWideNumber(Compiler* compiler, uint64_t value)
 {
     size_t position = makeI64Constant(compiler, value);
+    int reg = emitLdcI64(compiler, position);
 
-    return makeWideOperand(emitLdcI64(compiler, position), true);
+    return makeWideOperand(reg, true);
 }
 
 static bool isNarrowIntegerImmediate(uint64_t value, TokenType type)
@@ -709,11 +710,9 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
     return makeOperand(emitLdi(compiler, (int16_t)value), true);
 }
 
-static Operand compileFloat(Compiler* compiler, ASTNode* ast)
+static Operand compileFloatValue(Compiler* compiler, double value, TokenType type)
 {
-    double value = ast->floatLiteral.value;
-
-    if (getTypeId(ast) == TOKEN_F64) {
+    if (type == TOKEN_F64) {
         size_t position = makeF64Constant(compiler, value);
         int reg = emitLdcI64(compiler, position);
 
@@ -724,6 +723,14 @@ static Operand compileFloat(Compiler* compiler, ASTNode* ast)
     int reg = emitLdc(compiler, position);
 
     return makeOperand(reg, true);
+}
+
+static Operand compileFloat(Compiler* compiler, ASTNode* ast)
+{
+    double value = ast->floatLiteral.value;
+    TokenType type = getTypeId(ast);
+
+    return compileFloatValue(compiler, value, type);
 }
 
 static Operand compileString(Compiler* compiler, ASTNode* ast)
@@ -1505,16 +1512,52 @@ static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
     return makeOperand(destinationRegister, true);
 }
 
+static uint64_t getWidenedIntegerLiteralValue(ASTNode* ast, TokenType source)
+{
+    uint64_t value = ast->integerLiteral.value;
+
+    switch (source) {
+        case TOKEN_I8:
+            return (uint64_t)(int64_t)(int8_t)value;
+        case TOKEN_I16:
+            return (uint64_t)(int64_t)(int16_t)value;
+        case TOKEN_I32:
+            return (uint64_t)(int64_t)(int32_t)value;
+        case TOKEN_U8:
+            return (uint8_t)value;
+        case TOKEN_U16:
+            return (uint16_t)value;
+        case TOKEN_U32:
+            return (uint32_t)value;
+        default:
+            return value;
+    }
+}
+
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
     TokenType destination, bool reference)
 {
+    TokenType source = getTypeId(ast);
+    bool wideInteger = destination == TOKEN_I64 || destination == TOKEN_U64;
+
+    if (!reference && ast->type == AST_INTEGER && wideInteger && canImplicitlyWidenInteger(source, destination)) {
+        uint64_t value = getWidenedIntegerLiteralValue(ast, source);
+
+        return compileWideNumber(compiler, value);
+    }
+
+    if (!reference && ast->type == AST_FLOAT && source == TOKEN_F32 && destination == TOKEN_F64) {
+        double value = (float)ast->floatLiteral.value;
+
+        return compileFloatValue(compiler, value, destination);
+    }
+
     Operand operand = compileReferenceAwareExpression(compiler, ast, reference);
 
     if (reference) {
         return operand;
     }
 
-    TokenType source = getTypeId(ast);
     operand = widenIntegerOperand(compiler, operand, source, destination);
     operand = convertIntegerToFloatOperand(compiler, operand, source, destination);
 

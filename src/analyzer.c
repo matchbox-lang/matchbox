@@ -1386,6 +1386,18 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
 
+    TokenType operatorType = ast->binary.operator.type;
+    bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
+    bool integerLeft = isIntegerTypeToken(leftType);
+    bool integerRight = isIntegerTypeToken(rightType);
+    bool floatLeft = isFloatTypeToken(leftType);
+    bool floatRight = isFloatTypeToken(rightType);
+    bool mixedNumeric = (integerLeft && floatRight) || (floatLeft && integerRight);
+
+    if (comparison && mixedNumeric) {
+        semanticError("Comparison operators cannot mix integer and float operands ", ast->binary.operator);
+    }
+
     bool leftText = leftType == TOKEN_CHAR || leftType == TOKEN_STRING;
     bool rightText = rightType == TOKEN_CHAR || rightType == TOKEN_STRING;
 
@@ -1437,8 +1449,8 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Logical operators require bool operands ", ast->binary.operator);
     }
 
-    if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType) && leftType != TOKEN_CHAR) {
-        semanticError("Comparison operators require integer or char operands ", ast->binary.operator);
+    if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType) && !floatOperands && leftType != TOKEN_CHAR) {
+        semanticError("Comparison operators require numeric or char operands ", ast->binary.operator);
     }
 
     if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
@@ -1446,7 +1458,8 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     }
 
     if (floatOperands && !isTermToken(ast->binary.operator.type)
-        && !isFactorToken(ast->binary.operator.type)) {
+        && !isFactorToken(ast->binary.operator.type) && !isComparisonToken(ast->binary.operator.type)
+        && !isEqualityToken(ast->binary.operator.type)) {
         semanticError("Invalid operands to binary ", ast->binary.operator);
     }
 
@@ -1454,6 +1467,10 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         ast->binary.typeId = getFloatBinaryType(leftType, rightType);
     } else {
         ast->binary.typeId = leftType;
+    }
+
+    if (ast->binary.operator.type == TOKEN_SPACESHIP) {
+        ast->binary.typeId = TOKEN_I32;
     }
 
     if (isBoolOperatorToken(ast->binary.operator.type)) {

@@ -234,6 +234,40 @@ case OP_RET_64: {
     break;
 }
 
+case OP_CMP_I64: {
+    int64_t left = (int64_t)READ_U64(vm->fp, b);
+    int64_t right = (int64_t)READ_U64(vm->fp, c);
+    int32_t result = (left > right) - (left < right);
+
+    vm->fp[a] = I32_VALUE(result);
+    break;
+}
+case OP_CMP_U64: {
+    uint64_t left = (uint64_t)READ_U64(vm->fp, b);
+    uint64_t right = (uint64_t)READ_U64(vm->fp, c);
+    int32_t result = (left > right) - (left < right);
+
+    vm->fp[a] = I32_VALUE(result);
+    break;
+}
+case OP_CMPL_F64:
+case OP_CMPG_F64: {
+    double left;
+    double right;
+
+    READ_F64(vm->fp, b, left);
+    READ_F64(vm->fp, c, right);
+
+    int32_t result = (left > right) - (left < right);
+
+    if (isnan(left) || isnan(right)) {
+        result = opcode == OP_CMPL_F64 ? -1 : 1;
+    }
+
+    vm->fp[a] = I32_VALUE(result);
+    break;
+}
+
 #undef READ_U64
 #undef WRITE_U64
 #undef READ_F64

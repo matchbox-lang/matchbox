@@ -1,0 +1,21 @@
+func compare(left: u64, right: u64) {
+    print(left == right)
+    print(left != right)
+
+    if left == right {
+        print(0)
+    } else {
+        print(1)
+    }
+
+    match left {
+        case 4294967296:
+            print(2)
+        case 0:
+            print(3)
+        default:
+            print(4)
+    }
+}
+
+compare(4294967296, 0)

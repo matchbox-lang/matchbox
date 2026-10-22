@@ -1,0 +1,15 @@
+func compare(left: f32, right: f32) {
+    print(left == right)
+    print(left != right)
+    print(left < right)
+    print(left <= right)
+    print(left > right)
+    print(left >= right)
+    
+    let ordering: i32 = left <=> right
+    print(ordering)
+}
+
+compare(-1.5, 1.5)
+compare(1.5, -1.5)
+compare(1.5, 1.5)

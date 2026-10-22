@@ -1,0 +1,12 @@
+func compare(value: f64) {
+    print(value == value)
+    print(value != value)
+    print(value < 0.0)
+    print(value <= 0.0)
+    print(value > 0.0)
+    print(value >= 0.0)
+    print(value <=> 0.0)
+}
+
+compare(0.0 / 0.0)
+compare(-0.0)

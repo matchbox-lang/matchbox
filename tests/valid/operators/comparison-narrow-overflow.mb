@@ -1,0 +1,24 @@
+func signed8(value: i8) {
+    print(value + 1 < 0)
+    print(value + 1 <=> 0)
+}
+
+func unsigned8(value: u8) {
+    print(value + 0 > 0)
+    print(value + 0 == 255)
+}
+
+func signed16(value: i16) {
+    print(value + 1 < 0)
+    print(value + 1 <=> 0)
+}
+
+func unsigned16(value: u16) {
+    print(value + 0 > 0)
+    print(value + 0 == 65535)
+}
+
+signed8(127)
+unsigned8(255)
+signed16(32767)
+unsigned16(65535)

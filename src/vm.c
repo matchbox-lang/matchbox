@@ -427,77 +427,106 @@ static void run(VM* vm)
             case OP_NEG_I8:
                 vm->fp[a] = I8_VALUE(-AS_I8(vm->fp[b]));
                 break;
+            case OP_CMP_I32: {
+                int32_t left = AS_I32(vm->fp[b]);
+                int32_t right = AS_I32(vm->fp[c]);
+                int32_t result = (left > right) - (left < right);
+
+                vm->fp[a] = I32_VALUE(result);
+                break;
+            }
+            case OP_CMP_U32: {
+                uint32_t left = AS_U32(vm->fp[b]);
+                uint32_t right = AS_U32(vm->fp[c]);
+                int32_t result = (left > right) - (left < right);
+
+                vm->fp[a] = I32_VALUE(result);
+                break;
+            }
+            case OP_CMPL_F32:
+            case OP_CMPG_F32: {
+                float left = AS_F32(vm->fp[b]);
+                float right = AS_F32(vm->fp[c]);
+                int32_t result = (left > right) - (left < right);
+
+                if (isnan(left) || isnan(right)) {
+                    result = opcode == OP_CMPL_F32 ? -1 : 1;
+                }
+
+                vm->fp[a] = I32_VALUE(result);
+                break;
+            }
             case OP_EQ:
-                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) == AS_UNSIGNED(vm->fp[c]));
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) == AS_U32(vm->fp[c]));
                 break;
             case OP_EQI:
-                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) == (int8_t)c);
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) == (int8_t)c);
                 break;
             case OP_NE:
-                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) != AS_UNSIGNED(vm->fp[c]));
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) != AS_U32(vm->fp[c]));
                 break;
             case OP_NEI:
-                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) != (int8_t)c);
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) != (int8_t)c);
                 break;
-            case OP_LT_INT:
-                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) < AS_SIGNED(vm->fp[c]));
+            case OP_LT_I32:
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) < AS_I32(vm->fp[c]));
                 break;
-            case OP_LT_UINT:
-                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) < AS_UNSIGNED(vm->fp[c]));
+            case OP_LT_U32:
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) < AS_U32(vm->fp[c]));
                 break;
-            case OP_LE_INT:
-                vm->fp[a] = BOOL_VALUE(AS_SIGNED(vm->fp[b]) <= AS_SIGNED(vm->fp[c]));
+            case OP_LE_I32:
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) <= AS_I32(vm->fp[c]));
                 break;
-            case OP_LE_UINT:
-                vm->fp[a] = BOOL_VALUE(AS_UNSIGNED(vm->fp[b]) <= AS_UNSIGNED(vm->fp[c]));
+            case OP_LE_U32:
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) <= AS_U32(vm->fp[c]));
                 break;
             case OP_BZ:
-                if (!AS_UNSIGNED(vm->fp[a])) {
+                if (!AS_U32(vm->fp[a])) {
                     vm->ip += (int16_t)OPERAND_BC(inst);
                 }
                 break;
             case OP_BNZ:
-                if (AS_UNSIGNED(vm->fp[a])) {
+                if (AS_U32(vm->fp[a])) {
                     vm->ip += (int16_t)OPERAND_BC(inst);
                 }
                 break;
             case OP_BEQ:
-                if (AS_UNSIGNED(vm->fp[a]) == AS_UNSIGNED(vm->fp[b])) {
+                if (AS_U32(vm->fp[a]) == AS_U32(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
             case OP_BEQI:
-                if (AS_SIGNED(vm->fp[a]) == (int8_t)b) {
+                if (AS_I32(vm->fp[a]) == (int8_t)b) {
                     vm->ip += (int8_t)c;
                 }
                 break;
             case OP_BNE:
-                if (AS_UNSIGNED(vm->fp[a]) != AS_UNSIGNED(vm->fp[b])) {
+                if (AS_U32(vm->fp[a]) != AS_U32(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
             case OP_BNEI:
-                if (AS_SIGNED(vm->fp[a]) != (int8_t)b) {
+                if (AS_I32(vm->fp[a]) != (int8_t)b) {
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_BLT_INT:
-                if (AS_SIGNED(vm->fp[a]) < AS_SIGNED(vm->fp[b])) {
+            case OP_BLT_I32:
+                if (AS_I32(vm->fp[a]) < AS_I32(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_BLT_UINT:
-                if (AS_UNSIGNED(vm->fp[a]) < AS_UNSIGNED(vm->fp[b])) {
+            case OP_BLT_U32:
+                if (AS_U32(vm->fp[a]) < AS_U32(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_BLE_INT:
-                if (AS_SIGNED(vm->fp[a]) <= AS_SIGNED(vm->fp[b])) {
+            case OP_BLE_I32:
+                if (AS_I32(vm->fp[a]) <= AS_I32(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;
-            case OP_BLE_UINT:
-                if (AS_UNSIGNED(vm->fp[a]) <= AS_UNSIGNED(vm->fp[b])) {
+            case OP_BLE_U32:
+                if (AS_U32(vm->fp[a]) <= AS_U32(vm->fp[b])) {
                     vm->ip += (int8_t)c;
                 }
                 break;

@@ -219,10 +219,19 @@ typedef enum Opcode
     OP_EQI,
     OP_NE,
     OP_NEI,
-    OP_LT_INT,
-    OP_LT_UINT,
-    OP_LE_INT,
-    OP_LE_UINT,
+    OP_LT_I32,
+    OP_LT_U32,
+    OP_LE_I32,
+    OP_LE_U32,
+
+    OP_CMP_I32,
+    OP_CMP_U32,
+    OP_CMP_I64,
+    OP_CMP_U64,
+    OP_CMPL_F32,
+    OP_CMPG_F32,
+    OP_CMPL_F64,
+    OP_CMPG_F64,
 
     // Branching
     OP_BZ,
@@ -231,10 +240,10 @@ typedef enum Opcode
     OP_BEQI,
     OP_BNE,
     OP_BNEI,
-    OP_BLT_INT,
-    OP_BLT_UINT,
-    OP_BLE_INT,
-    OP_BLE_UINT,
+    OP_BLT_I32,
+    OP_BLT_U32,
+    OP_BLE_I32,
+    OP_BLE_U32,
     OP_JMP,
 
     // Functions

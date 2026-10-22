@@ -1,0 +1,15 @@
+func compare(left: u16, right: u16) {
+    print(left == right)
+    print(left != right)
+    print(left < right)
+    print(left <= right)
+    print(left > right)
+    print(left >= right)
+    
+    let ordering: i32 = left <=> right
+    print(ordering)
+}
+
+compare(0, 65535)
+compare(65535, 0)
+compare(65535, 65535)

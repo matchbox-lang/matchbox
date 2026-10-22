@@ -970,10 +970,10 @@ static Operand emitReversedComparison(Compiler* compiler, Opcode opcode, Operand
 static Opcode getComparisonOpcode(TokenType type, bool orEqual)
 {
     if (isSignedIntegerTypeToken(type)) {
-        return orEqual ? OP_LE_INT : OP_LT_INT;
+        return orEqual ? OP_LE_I32 : OP_LT_I32;
     }
 
-    return orEqual ? OP_LE_UINT : OP_LT_UINT;
+    return orEqual ? OP_LE_U32 : OP_LT_U32;
 }
 
 static Opcode getFloatOpcode(TokenType type, TokenType operatorType)
@@ -1060,7 +1060,39 @@ static Operand emitOrderedComparison(Compiler* compiler, TokenType type,
     return emitComparison(compiler, opcode, left, right);
 }
 
-static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
+static Opcode getThreeWayOpcode(TokenType type, TokenType operatorType)
+{
+    switch (type) {
+        case TOKEN_I64:
+            return OP_CMP_I64;
+        case TOKEN_U64:
+            return OP_CMP_U64;
+        case TOKEN_F32:
+            return operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL ? OP_CMPG_F32 : OP_CMPL_F32;
+        case TOKEN_F64:
+            return operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL ? OP_CMPG_F64 : OP_CMPL_F64;
+        default:
+            break;
+    }
+
+    bool signedType = isSignedIntegerTypeToken(type);
+
+    return signedType ? OP_CMP_I32 : OP_CMP_U32;
+}
+
+static Operand emitThreeWayComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+{
+    releaseOperand(compiler, right);
+    releaseOperand(compiler, left);
+
+    int destination = allocateRegister(compiler);
+
+    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
+
+    return makeOperand(destination, true);
+}
+
+static Operand emitIntegerComparison(Compiler* compiler, TokenType operatorType,
     TokenType type, Operand left, Operand right)
 {
     switch (operatorType) {
@@ -1074,8 +1106,94 @@ static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
             return emitOrderedComparison(compiler, type, left, right, true, false);
         case TOKEN_GREATER:
             return emitOrderedComparison(compiler, type, left, right, false, true);
-        case TOKEN_GREATER_EQUAL:
+        default:
             return emitOrderedComparison(compiler, type, left, right, true, true);
+    }
+}
+
+static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
+    TokenType type, Operand left, Operand right)
+{
+    bool floating = isFloatTypeToken(type);
+    bool wide = type == TOKEN_I64 || type == TOKEN_U64;
+
+    if (!floating && !wide && operatorType != TOKEN_SPACESHIP) {
+        return emitIntegerComparison(compiler, operatorType, type, left, right);
+    }
+
+    Opcode opcode = getThreeWayOpcode(type, operatorType);
+    Operand ordering = emitThreeWayComparison(compiler, opcode, left, right);
+
+    if (operatorType == TOKEN_SPACESHIP) {
+        return ordering;
+    }
+
+    int zeroRegister = allocateRegister(compiler);
+    Operand zero = makeOperand(zeroRegister, true);
+
+    emitInstruction(compiler, OP_LDI, zeroRegister, 0, 0);
+
+    return emitNumericComparison(compiler, operatorType, TOKEN_I32, ordering, zero);
+}
+
+static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenType type)
+{
+    Operand value = compileConvertedExpression(compiler, ast, type, false);
+    int shift = 0;
+
+    if (type == TOKEN_I8 || type == TOKEN_U8) {
+        shift = 24;
+    }
+
+    if (type == TOKEN_I16 || type == TOKEN_U16) {
+        shift = 16;
+    }
+
+    if (!shift) {
+        return value;
+    }
+
+    value = materializeOperand(compiler, value);
+    bool signedType = isSignedIntegerTypeToken(type);
+    Opcode opcode = signedType ? OP_ASRI_I32 : OP_LSRI_I32;
+
+    emitInstruction(compiler, OP_LSLI_I32, value.reg, value.reg, shift);
+    emitInstruction(compiler, opcode, value.reg, value.reg, shift);
+
+    return value;
+}
+
+static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
+{
+    TokenType type = getTypeId(ast->binary.leftExpr);
+    TokenType rightType = getTypeId(ast->binary.rightExpr);
+    TokenType leftType = type;
+    bool floating = isFloatTypeToken(type) || isFloatTypeToken(rightType);
+
+    if (floating) {
+        type = TOKEN_F32;
+    }
+
+    if (floating && (leftType == TOKEN_F64 || rightType == TOKEN_F64)) {
+        type = TOKEN_F64;
+    }
+
+    Operand left = compileComparisonOperand(compiler, ast->binary.leftExpr, type);
+    bool direct = isDirectVariable(compiler, ast->binary.rightExpr);
+
+    if (!left.temporary && !direct) {
+        left = materializeOperand(compiler, left);
+    }
+
+    Operand right = compileComparisonOperand(compiler, ast->binary.rightExpr, type);
+
+    return emitNumericComparison(compiler, ast->binary.operator.type, type, left, right);
+}
+
+static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
+    TokenType type, Operand left, Operand right)
+{
+    switch (operatorType) {
         case TOKEN_AND:
             return emitComparison(compiler, OP_AND, left, right);
         case TOKEN_OR:
@@ -1115,6 +1233,13 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 
     if (ast->binary.operator.type == TOKEN_POWER) {
         return compilePower(compiler, ast->binary.leftExpr, ast->binary.rightExpr);
+    }
+
+    TokenType operatorType = ast->binary.operator.type;
+    bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
+
+    if (comparison) {
+        return compileNumericComparison(compiler, ast);
     }
 
     if (isFloatTypeToken(getTypeId(ast))) {
@@ -2017,7 +2142,7 @@ static void checkJumpOffset(Opcode opcode, size_t offset)
         maximum = INT16_MAX;
     }
 
-    if (opcode >= OP_BEQ && opcode <= OP_BLE_UINT) {
+    if (opcode >= OP_BEQ && opcode <= OP_BLE_U32) {
         maximum = INT8_MAX;
     }
 
@@ -2052,7 +2177,7 @@ static void patchJump(Compiler* compiler, size_t position)
         return;
     }
 
-    if (opcode >= OP_BEQ && opcode <= OP_BLE_UINT) {
+    if (opcode >= OP_BEQ && opcode <= OP_BLE_U32) {
         setByteAt(code, position + 3, offset);
 
         return;
@@ -2192,7 +2317,8 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
 
 static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
 {
-    Operand value = compileExpression(compiler, subject, false);
+    TokenType type = getTypeId(subject);
+    Operand value = compileComparisonOperand(compiler, subject, type);
     value.temporary = false;
 
     return value;
@@ -2206,9 +2332,10 @@ static bool isMatchAlternative(ASTNode* pattern)
 static Operand compileSubjectMatchCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
     if (!isMatchAlternative(pattern)) {
-        Operand value = compileExpression(compiler, pattern, false);
+        TokenType type = getTypeId(pattern);
+        Operand value = compileComparisonOperand(compiler, pattern, type);
 
-        return emitComparison(compiler, OP_EQ, subject, value);
+        return emitNumericComparison(compiler, TOKEN_EQUAL_EQUAL, type, subject, value);
     }
 
     Operand left = compileSubjectMatchCondition(compiler, pattern->binary.leftExpr, subject);
@@ -2329,7 +2456,14 @@ static size_t compileMatchAlternativeJumps(
     }
 
     Operand value = compileExpression(compiler, pattern, false);
-    Operand condition = emitComparison(compiler, opcode, subject, value);
+    TokenType operatorType = TOKEN_NOT_EQUAL;
+
+    if (opcode == OP_EQ) {
+        operatorType = TOKEN_EQUAL_EQUAL;
+    }
+
+    TokenType type = getTypeId(pattern);
+    Operand condition = emitNumericComparison(compiler, operatorType, type, subject, value);
     size_t jump = emitConditionJump(compiler, condition);
 
     releaseOperand(compiler, condition);
@@ -2362,11 +2496,15 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
     }
 
     if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
-        && isLiteralMatchPattern(arm->pattern)) {
+        && isLiteralMatchPattern(arm->pattern) && getTypeId(ast->match.subject) != TOKEN_I64
+        && getTypeId(ast->match.subject) != TOKEN_U64) {
         return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
     }
 
-    if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm)) {
+    TokenType patternType = getTypeId(arm->pattern);
+    bool numericCompare = patternType == TOKEN_I64 || patternType == TOKEN_U64 || isFloatTypeToken(patternType);
+
+    if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm) || numericCompare) {
         Operand condition = compileMatchCondition(compiler, ast, arm, subject);
         size_t nextJump = emitConditionJump(compiler, condition);
         releaseOperand(compiler, condition);

@@ -303,7 +303,7 @@ bool isLogicalToken(TokenType type)
 
 bool isBoolOperatorToken(TokenType type)
 {
-    return isComparisonToken(type) || isEqualityToken(type) || isLogicalToken(type);
+    return (isComparisonToken(type) && type != TOKEN_SPACESHIP) || isEqualityToken(type) || isLogicalToken(type);
 }
 
 bool isShiftToken(TokenType type)

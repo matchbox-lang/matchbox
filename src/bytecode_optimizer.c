@@ -28,6 +28,10 @@ typedef struct KnownConstant
 static bool usesRegisterPairs(Opcode opcode)
 {
     switch (opcode) {
+        case OP_CMP_I64:
+        case OP_CMP_U64:
+        case OP_CMPL_F64:
+        case OP_CMPG_F64:
         case OP_MOV_64:
         case OP_LDC_64:
         case OP_LDG_64:

@@ -159,3 +159,33 @@ case OP_RET_64: {
     vm->fp = returnFp;
     break;
 }
+
+case OP_CMP_I64: {
+    int64_t left = AS_SIGNED(vm->fp[b]);
+    int64_t right = AS_SIGNED(vm->fp[c]);
+    int32_t result = (left > right) - (left < right);
+
+    vm->fp[a] = I32_VALUE(result);
+    break;
+}
+case OP_CMP_U64: {
+    uint64_t left = AS_UNSIGNED(vm->fp[b]);
+    uint64_t right = AS_UNSIGNED(vm->fp[c]);
+    int32_t result = (left > right) - (left < right);
+
+    vm->fp[a] = I32_VALUE(result);
+    break;
+}
+case OP_CMPL_F64:
+case OP_CMPG_F64: {
+    double left = AS_F64(vm->fp[b]);
+    double right = AS_F64(vm->fp[c]);
+    int32_t result = (left > right) - (left < right);
+
+    if (isnan(left) || isnan(right)) {
+        result = opcode == OP_CMPL_F64 ? -1 : 1;
+    }
+
+    vm->fp[a] = I32_VALUE(result);
+    break;
+}

@@ -1,0 +1,17 @@
+func compare(left: i64, right: i64) {
+    print(left == right)
+    print(left != right)
+    print(left < right)
+    print(left <= right)
+    print(left > right)
+    print(left >= right)
+
+    let ordering: i32 = left <=> right
+    print(ordering)
+}
+
+let minimum: i64 = -9223372036854775808
+
+compare(minimum, 9223372036854775807)
+compare(9223372036854775807, minimum)
+compare(9223372036854775807, 9223372036854775807)

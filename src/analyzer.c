@@ -2513,6 +2513,22 @@ static void analyzeReturn(Analyzer* analyzer, ASTNode* ast)
     trackReturnReferenceOrigin(analyzer, ast);
 }
 
+static void inferNegatedIntegerLiteralType(ASTNode* ast)
+{
+    bool negative;
+    ASTNode* literal = getIntegerLiteral(ast, &negative);
+
+    if (!literal || !negative) {
+        return;
+    }
+
+    if (literal->integerLiteral.typeId != TOKEN_UNKNOWN) {
+        return;
+    }
+
+    applyIntegerLiteralType(ast, TOKEN_I64);
+}
+
 static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
 {
     if (getReferenceType(ast) != REFERENCE_NONE) {
@@ -2521,6 +2537,7 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
+    inferNegatedIntegerLiteralType(ast);
     analyzeNode(analyzer, ast->prefix.expr);
 
     if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {

@@ -1,0 +1,5 @@
+func consume(value: i64) {
+    print(value)
+}
+
+consume(-9223372036854775809)

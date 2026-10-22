@@ -1,0 +1,5 @@
+let result = min(-9223372036854775808, 0)
+
+print(result)
+print(-9223372036854775808)
+print("minimum:", -9223372036854775808)

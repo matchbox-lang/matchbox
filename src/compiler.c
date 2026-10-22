@@ -1733,6 +1733,15 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
     return position;
 }
 
+static TokenType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
+{
+    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
+        return builtin->params[0];
+    }
+
+    return getTypeId(argument);
+}
+
 static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, Vector* args)
 {
     if (function->type != FUNCTION_BUILTIN || function->entry != builtin->entry
@@ -1742,7 +1751,7 @@ static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, 
 
     for (size_t i = 0; i < args->count; i++) {
         ASTNode* argument = args->data[i];
-        TokenType type = getTypeId(argument);
+        TokenType type = getBuiltinArgumentType(builtin, argument);
 
         if (type != function->argumentTypes[i]) {
             return false;
@@ -1773,7 +1782,7 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* argument = args->data[i];
-        TokenType type = getTypeId(argument);
+        TokenType type = getBuiltinArgumentType(builtin, argument);
         function->argumentTypes[i] = type;
         function->paramCount += getTypeSlotCount(type);
     }
@@ -1785,7 +1794,7 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
 
 static uint16_t getBuiltinCallPosition(Compiler* compiler, Builtin* builtin, Vector* args)
 {
-    if (builtin->paramCount != BUILTIN_VARIADIC) {
+    if (builtin->paramCount >= 0) {
         return getBuiltinFunctionPosition(compiler, builtin);
     }
 
@@ -1900,6 +1909,27 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
     releaseOperand(compiler, argument);
 }
 
+static Operand compileTypedVariadicCall(Compiler* compiler, ASTNode* ast, FunctionObject* function,
+    uint16_t position, bool discard)
+{
+    ASTNode parameter = {.type = AST_PARAMETER};
+    parameter.parameter.typeId = ast->builtinCall.builtin->params[0];
+    parameter.parameter.referenceType = REFERENCE_NONE;
+    Vector params;
+
+    initVector(&params);
+
+    for (size_t i = 0; i < ast->builtinCall.args.count; i++) {
+        pushVectorItem(&params, &parameter);
+    }
+
+    Operand result = compileCall(compiler, function, position, &ast->builtinCall.args, &params, discard);
+
+    freeVector(&params);
+
+    return result;
+}
+
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
     Builtin* builtin = ast->builtinCall.builtin;
@@ -1908,6 +1938,10 @@ static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard
 
     if (builtin->paramCount == BUILTIN_VARIADIC) {
         return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
+    }
+
+    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
+        return compileTypedVariadicCall(compiler, ast, function, position, discard);
     }
 
     ASTNode parameters[BUILTIN_PARAMS_MAX] = {0};

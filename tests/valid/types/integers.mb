@@ -30,3 +30,17 @@ let returned64 = preserveWide(unsigned64)
 let preserved = preservePositions(signed64, inferred, returned64)
 
 print(preserved)
+
+let promotedSum: i32 = sum(signed8, 1)
+let wideSum: u64 = sum(unsigned64, 1)
+let lowest: i32 = min(signed8, minimum8, 0)
+let highest: u64 = max(unsigned64, 0, 1)
+
+print(promotedSum)
+print(wideSum)
+print(lowest)
+print(highest)
+
+let mixedSum: i64 = sum(signed8, unsigned32, 1)
+
+print(mixedSum)

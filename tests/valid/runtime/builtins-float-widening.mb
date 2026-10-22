@@ -3,8 +3,8 @@ let wide: f64 = 2.25
 let low: f64 = 1.0000000000000002
 
 let clamped: f64 = clamp(narrow, low, wide)
-let minimum: f64 = min(wide, narrow)
-let maximum: f64 = max(narrow, wide)
+let minimum: f64 = min(wide, narrow, low, 1.0, 5.0)
+let maximum: f64 = max(narrow, wide, 1.0, 4.5, 3.0)
 let power: f64 = pow(wide, narrow)
 let upper: f64 = clamp(wide, low, narrow)
 
@@ -24,3 +24,17 @@ print(absolute)
 print(angle)
 print(hypotenuse)
 print(scaled)
+
+let total: f32 = sum(narrow, 1, 2, 3, 4)
+let mean: f64 = avg(wide, 1, 2, 3, 4)
+let single: f32 = min(narrow)
+
+print(total)
+print(mean)
+print(single)
+
+let mixedTotal: f64 = sum(narrow, wide, narrow, wide, 1.0)
+let mixedMean: f64 = avg(narrow, wide)
+
+print(mixedTotal)
+print(mixedMean)

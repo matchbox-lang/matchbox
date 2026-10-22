@@ -2,7 +2,10 @@ func report(value: i64) {
     print("value: ", value)
 
     let text = string("value: ", value)
+    let total: i64 = sum(value, 1, 2, 3, 4)
+
     print(text)
+    print("total: ", total)
 }
 
 report(5000000000)

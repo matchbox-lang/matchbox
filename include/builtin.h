@@ -5,9 +5,10 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 83
+#define BUILTINS_MAX 95
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
+#define BUILTIN_TYPED_VARIADIC -2
 
 typedef struct Builtin
 {
@@ -20,6 +21,7 @@ typedef struct Builtin
 
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
 bool isBuiltinName(const char* name);
+void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrint(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintI32(VM* vm, FunctionObject* function, Value* frame);
@@ -101,7 +103,16 @@ void builtinTanF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinTanF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinTanhF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinTanhF64(VM* vm, FunctionObject* function, Value* frame);
-void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
+void builtinMinU32(VM* vm, FunctionObject* function, Value* frame);
+void builtinMinU64(VM* vm, FunctionObject* function, Value* frame);
+void builtinMaxU32(VM* vm, FunctionObject* function, Value* frame);
+void builtinMaxU64(VM* vm, FunctionObject* function, Value* frame);
+void builtinSumI32(VM* vm, FunctionObject* function, Value* frame);
+void builtinSumI64(VM* vm, FunctionObject* function, Value* frame);
+void builtinSumF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinSumF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAvgF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAvgF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinString(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

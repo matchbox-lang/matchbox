@@ -1810,8 +1810,36 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     setLocalSymbol(analyzer->currentScope, id, ast);
 }
 
+static void validateTypedVariadicArgument(ASTNode* argument, TokenType type, Token token)
+{
+    applyLiteralType(argument, type);
+
+    TokenType argumentType = getTypeId(argument);
+
+    if (argumentType != type && !canImplicitlyWidenType(argumentType, type)) {
+        semanticError("Variadic arguments must convert losslessly to the parameter type ", token);
+    }
+}
+
+static void validateTypedVariadicArguments(Vector* args, Builtin* builtin, Token token)
+{
+    if (!args->count) {
+        semanticError("Numeric variadic builtins require at least one argument ", token);
+    }
+
+    for (size_t i = 0; i < args->count; i++) {
+        validateTypedVariadicArgument(args->data[i], builtin->params[0], token);
+    }
+}
+
 static void validateVariadicArguments(Vector* args, Builtin* builtin, Token token)
 {
+    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
+        validateTypedVariadicArguments(args, builtin, token);
+
+        return;
+    }
+
     char* message = "Invalid value in string construction ";
 
     if (builtin->entry == builtinPrint) {
@@ -1833,7 +1861,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 {
     size_t count = countVector(&ast->functionCall.args);
 
-    if (builtin->paramCount == BUILTIN_VARIADIC) {
+    if (builtin->paramCount < 0) {
         validateVariadicArguments(&ast->functionCall.args, builtin, token);
 
         return;
@@ -1870,23 +1898,133 @@ static void convertBuiltinCall(ASTNode* ast, Builtin* builtin)
     ast->builtinCall.token = token;
 }
 
+static bool isNumericLiteralArgument(ASTNode* argument)
+{
+    bool negative;
+    ASTNode* integer = getIntegerLiteral(argument, &negative);
+    ASTNode* floating = getFloatLiteral(argument);
+
+    return integer || floating;
+}
+
+static TokenType getNonliteralArgumentType(ASTNode* argument)
+{
+    bool literal = isNumericLiteralArgument(argument);
+
+    if (literal) {
+        return TOKEN_UNKNOWN;
+    }
+
+    return getTypeId(argument);
+}
+
+static bool variadicArgumentFitsType(ASTNode* argument, TokenType type)
+{
+    bool negative;
+    ASTNode* integer = getIntegerLiteral(argument, &negative);
+
+    if (integer) {
+        bool fitsInteger = integerLiteralFitsType(integer->integerLiteral.value, negative, type);
+        bool fitsFloat = integerLiteralFitsFloat(integer->integerLiteral.value, type);
+
+        return fitsInteger || fitsFloat;
+    }
+
+    ASTNode* floating = getFloatLiteral(argument);
+
+    if (floating) {
+        bool numeric = isFloatTypeToken(type);
+        bool fits = type == TOKEN_F64 || floating->floatLiteral.value <= FLT_MAX;
+
+        return numeric && fits;
+    }
+
+    TokenType argumentType = getTypeId(argument);
+
+    return argumentType == type || canImplicitlyWidenType(argumentType, type);
+}
+
+static bool typedVariadicCallMatches(Vector* args, Builtin* builtin)
+{
+    if (!builtin || builtin->paramCount != BUILTIN_TYPED_VARIADIC) {
+        return false;
+    }
+
+    bool matches = true;
+
+    for (size_t i = 0; i < args->count && matches; i++) {
+        matches = variadicArgumentFitsType(args->data[i], builtin->params[0]);
+    }
+
+    return matches;
+}
+
+static Builtin* resolveContextualVariadicCall(ASTNode* ast)
+{
+    Vector* args = &ast->functionCall.args;
+    TokenType type = TOKEN_UNKNOWN;
+
+    for (size_t i = 0; i < args->count && type == TOKEN_UNKNOWN; i++) {
+        type = getNonliteralArgumentType(args->data[i]);
+    }
+
+    if (type == TOKEN_UNKNOWN) {
+        return NULL;
+    }
+
+    Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, &type, 1);
+    bool matches = typedVariadicCallMatches(args, builtin);
+
+    if (!matches) {
+        return NULL;
+    }
+
+    return builtin;
+}
+
+static TokenType getBuiltinArgumentType(ASTNode* argument)
+{
+    TokenType type = getTypeId(argument);
+
+    if (type == TOKEN_UNKNOWN) {
+        return TOKEN_U64;
+    }
+
+    return type;
+}
+
 static Builtin* resolveBuiltinCall(ASTNode* ast)
 {
-    size_t count = countVector(&ast->functionCall.args);
+    Builtin* contextual = resolveContextualVariadicCall(ast);
 
-    if (count > BUILTIN_PARAMS_MAX) {
-        return resolveBuiltin(ast->functionCall.id->chars, NULL, count);
+    if (contextual) {
+        return contextual;
     }
 
-    TokenType argumentTypes[BUILTIN_PARAMS_MAX];
+    size_t count = ast->functionCall.args.count;
+    TokenType* argumentTypes = NULL;
+
+    if (count > SIZE_MAX / sizeof(TokenType)) {
+        outOfMemoryError();
+    }
+
+    if (count) {
+        argumentTypes = malloc(count * sizeof(TokenType));
+    }
+
+    if (count && !argumentTypes) {
+        outOfMemoryError();
+    }
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* argument = getVectorAt(&ast->functionCall.args, i);
-
-        argumentTypes[i] = getTypeId(argument);
+        argumentTypes[i] = getBuiltinArgumentType(ast->functionCall.args.data[i]);
     }
 
-    return resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
+    Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
+
+    free(argumentTypes);
+
+    return builtin;
 }
 
 static void unresolvedBuiltinCallError(ASTNode* ast)
@@ -2878,7 +3016,7 @@ static void analyzeResolvedBuiltinCall(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeExpressionNodes(analyzer, &ast->builtinCall.args);
 
-    if (ast->builtinCall.builtin->paramCount != BUILTIN_VARIADIC) {
+    if (ast->builtinCall.builtin->paramCount >= 0) {
         return;
     }
 

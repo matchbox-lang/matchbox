@@ -1145,7 +1145,7 @@ static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
 
 static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenType type)
 {
-    Operand value = compileConvertedExpression(compiler, ast, type, false);
+    Operand value = compileExpression(compiler, ast, false);
     int shift = 0;
 
     if (type == TOKEN_I8 || type == TOKEN_U8) {
@@ -1173,18 +1173,6 @@ static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenT
 static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
 {
     TokenType type = getTypeId(ast->binary.leftExpr);
-    TokenType rightType = getTypeId(ast->binary.rightExpr);
-    TokenType leftType = type;
-    bool floating = isFloatTypeToken(type) || isFloatTypeToken(rightType);
-
-    if (floating) {
-        type = TOKEN_F32;
-    }
-
-    if (floating && (leftType == TOKEN_F64 || rightType == TOKEN_F64)) {
-        type = TOKEN_F64;
-    }
-
     Operand left = compileComparisonOperand(compiler, ast->binary.leftExpr, type);
     bool direct = isDirectVariable(compiler, ast->binary.rightExpr);
 

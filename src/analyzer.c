@@ -243,13 +243,28 @@ static bool applyIntegerLiteralType(ASTNode* expression, TokenType type)
     return true;
 }
 
+static ASTNode* getFloatLiteral(ASTNode* expression)
+{
+    if (expression->type == AST_PREFIX && expression->prefix.operator.type == TOKEN_MINUS) {
+        expression = expression->prefix.expr;
+    }
+
+    if (expression->type != AST_FLOAT) {
+        return NULL;
+    }
+
+    return expression;
+}
+
 static void applyLiteralType(ASTNode* expression, TokenType type)
 {
     if (isIntegerTypeToken(type) || isFloatTypeToken(type)) {
         applyIntegerLiteralType(expression, type);
     }
 
-    if (expression->type != AST_FLOAT || !isFloatTypeToken(type)) {
+    expression = getFloatLiteral(expression);
+
+    if (!expression || !isFloatTypeToken(type)) {
         return;
     }
 
@@ -1444,6 +1459,29 @@ static TokenType getFloatBinaryType(TokenType leftType, TokenType rightType)
     return TOKEN_F32;
 }
 
+static void applyBinaryFloatLiteralTypes(ASTNode* left, ASTNode* right)
+{
+    TokenType leftType = getTypeId(left);
+    TokenType rightType = getTypeId(right);
+
+    if (!isFloatTypeToken(leftType) || !isFloatTypeToken(rightType)) {
+        return;
+    }
+
+    TokenType type = getFloatBinaryType(leftType, rightType);
+
+    if (!getFloatLiteral(left)) {
+        type = leftType;
+    }
+
+    if (!getFloatLiteral(right)) {
+        type = rightType;
+    }
+
+    applyLiteralType(left, type);
+    applyLiteralType(right, type);
+}
+
 static bool isCharacterComparison(TokenType type)
 {
     switch (type) {
@@ -1495,14 +1533,9 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     TokenType operatorType = ast->binary.operator.type;
 
     bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
-    bool integerLeft = isIntegerTypeToken(leftType);
-    bool integerRight = isIntegerTypeToken(rightType);
-    bool floatLeft = isFloatTypeToken(leftType);
-    bool floatRight = isFloatTypeToken(rightType);
-    bool mixedNumeric = (integerLeft && floatRight) || (floatLeft && integerRight);
 
-    if (comparison && mixedNumeric) {
-        semanticErrorAt("Comparison operators require compatible operand types", ast->binary.operator);
+    if (comparison) {
+        applyBinaryFloatLiteralTypes(ast->binary.leftExpr, ast->binary.rightExpr);
     }
 
     bool leftText = leftType == TOKEN_CHAR || leftType == TOKEN_STRING;
@@ -1514,12 +1547,12 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    if (isFloatTypeToken(leftType)) {
+    if (!comparison && isFloatTypeToken(leftType)) {
         applyIntegerLiteralType(ast->binary.rightExpr, leftType);
         rightType = getTypeId(ast->binary.rightExpr);
     }
 
-    if (isFloatTypeToken(rightType)) {
+    if (!comparison && isFloatTypeToken(rightType)) {
         applyIntegerLiteralType(ast->binary.leftExpr, rightType);
         leftType = getTypeId(ast->binary.leftExpr);
     }
@@ -1528,6 +1561,10 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 
     leftType = getTypeId(ast->binary.leftExpr);
     rightType = getTypeId(ast->binary.rightExpr);
+
+    if (comparison && leftType != rightType) {
+        semanticErrorAt("Cannot compare operands of nonmatching types", ast->binary.operator);
+    }
 
     bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
     bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);

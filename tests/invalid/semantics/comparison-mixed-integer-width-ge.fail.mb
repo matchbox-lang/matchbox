@@ -1,0 +1,4 @@
+let left: i16 = 20
+let right: i32 = 20
+
+print(left >= right)

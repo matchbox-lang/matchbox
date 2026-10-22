@@ -1,0 +1,3 @@
+let wide: u64 = 100
+
+print(-100 == wide)

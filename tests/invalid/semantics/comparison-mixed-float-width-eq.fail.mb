@@ -1,0 +1,4 @@
+let left: f32 = 20.5
+let right: f64 = 20.5
+
+print(left == right)

@@ -1,0 +1,4 @@
+let left: i64 = 100
+let right: u64 = 100
+
+print(left <=> right)

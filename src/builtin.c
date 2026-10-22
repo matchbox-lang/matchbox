@@ -27,18 +27,26 @@ Builtin builtins[BUILTINS_MAX] = {
     {"print",       builtinPrintChar,           1,  {TOKEN_CHAR},                       TOKEN_VOID},
     {"print",       builtinPrintString,         1,  {TOKEN_STRING},                     TOKEN_VOID},
     {"print",       builtinPrint,              -1,  {TOKEN_UNKNOWN},                    TOKEN_VOID},
-    {"clamp",       builtinClamp,               3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
+    {"clamp",       builtinClampI32,            3,  {TOKEN_I32, TOKEN_I32, TOKEN_I32},  TOKEN_I32},
     {"clamp",       builtinClampI64,            3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
-    {"abs",         builtinAbs,                 1,  {TOKEN_I32},                        TOKEN_I32},
+    {"clamp",       builtinClampF32,            3,  {TOKEN_F32, TOKEN_F32, TOKEN_F32},  TOKEN_F32},
+    {"clamp",       builtinClampF64,            3,  {TOKEN_F64, TOKEN_F64, TOKEN_F64},  TOKEN_F64},
+    {"abs",         builtinAbsI32,              1,  {TOKEN_I32},                        TOKEN_I32},
     {"abs",         builtinAbsI64,              1,  {TOKEN_I64},                        TOKEN_I64},
     {"abs",         builtinAbsF32,              1,  {TOKEN_F32},                        TOKEN_F32},
     {"abs",         builtinAbsF64,              1,  {TOKEN_F64},                        TOKEN_F64},
-    {"min",         builtinMin,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"min",         builtinMinI32,              2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
     {"min",         builtinMinI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
-    {"max",         builtinMax,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"min",         builtinMinF32,              2,  {TOKEN_F32, TOKEN_F32},             TOKEN_F32},
+    {"min",         builtinMinF64,              2,  {TOKEN_F64, TOKEN_F64},             TOKEN_F64},
+    {"max",         builtinMaxI32,              2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
     {"max",         builtinMaxI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
-    {"pow",         builtinPow,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
+    {"max",         builtinMaxF32,              2,  {TOKEN_F32, TOKEN_F32},             TOKEN_F32},
+    {"max",         builtinMaxF64,              2,  {TOKEN_F64, TOKEN_F64},             TOKEN_F64},
+    {"pow",         builtinPowI32,              2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
     {"pow",         builtinPowI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
+    {"pow",         builtinPowF32,              2,  {TOKEN_F32, TOKEN_F32},             TOKEN_F32},
+    {"pow",         builtinPowF64,              2,  {TOKEN_F64, TOKEN_F64},             TOKEN_F64},
     {"byteorder",   builtinByteorder,           0,  {},                                 TOKEN_I32},
     {"string",      builtinString,             -1,  {TOKEN_UNKNOWN},                    TOKEN_STRING}
 };
@@ -262,7 +270,7 @@ void builtinPrintBool(VM* vm, FunctionObject* function, Value* frame)
     printf("%s\n", AS_BOOL(frame[0]) ? "true" : "false");
 }
 
-void builtinClamp(VM* vm, FunctionObject* function, Value* frame)
+void builtinClampI32(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -280,7 +288,7 @@ void builtinClamp(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(num);
 }
 
-void builtinAbs(VM* vm, FunctionObject* function, Value* frame)
+void builtinAbsI32(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -342,7 +350,7 @@ void builtinAbsF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinMin(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinI32(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -366,7 +374,7 @@ void builtinMinI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, x);
 }
 
-void builtinMax(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxI32(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -390,7 +398,7 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, x);
 }
 
-void builtinPow(VM* vm, FunctionObject* function, Value* frame)
+void builtinPowI32(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -412,6 +420,116 @@ void builtinPowI64(VM* vm, FunctionObject* function, Value* frame)
     int64_t x = pow(a, b);
 
     writeI64(frame, x);
+}
+
+void builtinClampF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float c = AS_F32(frame[2]);
+    float x = a;
+
+    if (a < b) {
+        x = b;
+    } else if (a > c) {
+        x = c;
+    }
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinClampF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double b = readF64(frame, 2);
+    double c = readF64(frame, 4);
+    double x = a;
+
+    if (a < b) {
+        x = b;
+    } else if (a > c) {
+        x = c;
+    }
+
+    writeF64(frame, x);
+}
+
+void builtinMinF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float x = fminf(a, b);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinMinF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double b = readF64(frame, 2);
+    double x = fmin(a, b);
+
+    writeF64(frame, x);
+}
+
+void builtinMaxF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float x = fmaxf(a, b);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinMaxF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double b = readF64(frame, 2);
+    double x = fmax(a, b);
+
+    writeF64(frame, x);
+}
+
+void builtinPowF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float x = powf(a, b);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinPowF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double b = readF64(frame, 2);
+    double x = pow(a, b);
+
+    writeF64(frame, x);
 }
 
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)

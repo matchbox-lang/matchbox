@@ -1,0 +1,10 @@
+let low: f64 = -1.0000000000000002
+let high: f64 = -0.5
+
+let forward: f64 = min(low, high)
+let reverse: f64 = min(high, low)
+let equal: f64 = min(low, low)
+
+print(forward)
+print(reverse)
+print(equal)

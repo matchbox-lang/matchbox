@@ -1,0 +1,15 @@
+let low: f32 = 1.25
+let high: f32 = 2.5
+let below: f32 = -4.5
+let inside: f32 = 1.5
+let above: f32 = 8.75
+
+let lower: f32 = clamp(below, low, high)
+let middle: f32 = clamp(inside, low, high)
+let upper: f32 = clamp(above, low, high)
+let boundary: f32 = clamp(high, low, high)
+
+print(lower)
+print(middle)
+print(upper)
+print(boundary)

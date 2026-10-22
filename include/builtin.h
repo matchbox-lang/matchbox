@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 25
+#define BUILTINS_MAX 33
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
 
@@ -31,18 +31,26 @@ void builtinPrintF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintString(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintChar(VM* vm, FunctionObject* function, Value* frame);
 void builtinPrintBool(VM* vm, FunctionObject* function, Value* frame);
-void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
+void builtinClampI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinClampI64(VM* vm, FunctionObject* function, Value* frame);
-void builtinAbs(VM* vm, FunctionObject* function, Value* frame);
+void builtinClampF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinClampF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAbsI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbsF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbsF64(VM* vm, FunctionObject* function, Value* frame);
-void builtinMin(VM* vm, FunctionObject* function, Value* frame);
+void builtinMinI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinMinI64(VM* vm, FunctionObject* function, Value* frame);
-void builtinMax(VM* vm, FunctionObject* function, Value* frame);
+void builtinMinF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinMinF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinMaxI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame);
-void builtinPow(VM* vm, FunctionObject* function, Value* frame);
+void builtinMaxF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinMaxF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinPowI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
+void builtinPowF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinPowF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 void builtinString(VM* vm, FunctionObject* function, Value* frame);
 

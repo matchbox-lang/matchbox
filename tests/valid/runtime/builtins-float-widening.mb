@@ -1,0 +1,15 @@
+let narrow: f32 = 1.5
+let wide: f64 = 2.25
+let low: f64 = 1.0000000000000002
+
+let clamped: f64 = clamp(narrow, low, wide)
+let minimum: f64 = min(wide, narrow)
+let maximum: f64 = max(narrow, wide)
+let power: f64 = pow(wide, narrow)
+let upper: f64 = clamp(wide, low, narrow)
+
+print(clamped)
+print(minimum)
+print(maximum)
+print(power)
+print(upper)

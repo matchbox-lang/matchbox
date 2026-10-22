@@ -1,0 +1,15 @@
+let low: f64 = 1.0000000000000002
+let high: f64 = 2.0000000000000004
+let below: f64 = -4.5
+let inside: f64 = 1.5
+let above: f64 = 8.75
+
+let lower: f64 = clamp(below, low, high)
+let middle: f64 = clamp(inside, low, high)
+let upper: f64 = clamp(above, low, high)
+let boundary: f64 = clamp(high, low, high)
+
+print(lower)
+print(middle)
+print(upper)
+print(boundary)

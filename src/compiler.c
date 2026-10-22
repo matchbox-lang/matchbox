@@ -1902,10 +1902,27 @@ static void compileCallWithArgument(Compiler* compiler, FunctionObject* function
 
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    uint16_t position = getBuiltinCallPosition(compiler, ast->builtinCall.builtin, &ast->builtinCall.args);
+    Builtin* builtin = ast->builtinCall.builtin;
+    uint16_t position = getBuiltinCallPosition(compiler, builtin, &ast->builtinCall.args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
-    return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
+    if (builtin->paramCount == BUILTIN_VARIADIC) {
+        return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
+    }
+
+    ASTNode parameters[BUILTIN_PARAMS_MAX] = {0};
+    void* items[BUILTIN_PARAMS_MAX];
+    size_t count = builtin->paramCount;
+    Vector params = {.data = items, .capacity = count, .count = count};
+
+    for (size_t i = 0; i < count; i++) {
+        parameters[i].type = AST_PARAMETER;
+        parameters[i].parameter.typeId = builtin->params[i];
+        parameters[i].parameter.referenceType = REFERENCE_NONE;
+        items[i] = &parameters[i];
+    }
+
+    return compileCall(compiler, function, position, &ast->builtinCall.args, &params, discard);
 }
 
 static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)

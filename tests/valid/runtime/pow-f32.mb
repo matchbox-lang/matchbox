@@ -1,0 +1,14 @@
+let base: f32 = 2.25
+let half: f32 = 0.5
+let two: f32 = 2.0
+let negative: f32 = -3.0
+let large: f32 = 10.0
+let exponent: f32 = 20.0
+
+let root: f32 = pow(base, half)
+let fraction: f32 = pow(two, negative)
+let power: f32 = pow(large, exponent)
+
+print(root)
+print(fraction)
+print(power)

@@ -1,0 +1,8 @@
+let value = 10
+let result = match value {
+    case n if n == 20: 0
+    case n if n == 10: n + 1
+    default: 0
+}
+
+print(result)

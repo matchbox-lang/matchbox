@@ -1,0 +1,6 @@
+let result = match true {
+    case true if true: 1
+    case false: 0
+}
+
+print(result)

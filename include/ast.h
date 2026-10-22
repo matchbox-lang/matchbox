@@ -15,6 +15,8 @@ typedef struct MatchArm
 {
     ASTNode* pattern;
     ASTNode* binding;
+    ASTNode* guard;
+    Token guardToken;
     ASTNode* branch;
 } MatchArm;
 

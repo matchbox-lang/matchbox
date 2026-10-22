@@ -1,0 +1,12 @@
+var checked = false
+
+match {
+    case false if true:
+        print(0)
+    case true if checked:
+        print(0)
+    case true if not checked:
+        print(1)
+    default:
+        print(0)
+}

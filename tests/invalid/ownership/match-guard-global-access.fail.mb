@@ -1,0 +1,15 @@
+var value = 10
+
+func check() {
+    match true {
+        case _ if value == 10:
+            print(1)
+        default:
+            print(0)
+    }
+}
+
+let exclusive = ^value
+
+check()
+print(exclusive)

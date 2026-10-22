@@ -1,0 +1,10 @@
+let value: u64 = 4294967296
+
+match value {
+    case n if n == 0:
+        print(0)
+    case n if n == value:
+        print(n)
+    default:
+        print(0)
+}

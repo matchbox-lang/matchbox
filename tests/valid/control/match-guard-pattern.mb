@@ -1,0 +1,13 @@
+func guard() -> bool {
+    print(99)
+    return true
+}
+
+match 10 {
+    case 0 if guard():
+        print(0)
+    case 5 | 10 if guard():
+        print(1)
+    default:
+        print(0)
+}

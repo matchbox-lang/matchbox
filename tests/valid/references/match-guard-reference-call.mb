@@ -1,0 +1,13 @@
+func guard(value: ^i32) -> bool {
+    return value == 20
+}
+
+var value = 10
+let exclusive = ^value
+
+match true {
+    case _ if guard(exclusive):
+        print(0)
+    default:
+        print(exclusive)
+}

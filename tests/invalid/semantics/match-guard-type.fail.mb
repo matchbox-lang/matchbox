@@ -1,0 +1,6 @@
+match 10 {
+    case n if n:
+        print(0)
+    default:
+        print(0)
+}

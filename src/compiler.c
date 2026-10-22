@@ -2616,6 +2616,20 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
     compiler->registerCount = MAX(compiler->registerCount, bindingRegisterCount);
 }
 
+static size_t compileMatchGuard(Compiler* compiler, MatchArm* arm)
+{
+    if (!arm->guard) {
+        return 0;
+    }
+
+    Operand condition = compileExpression(compiler, arm->guard, false);
+    size_t nextJump = emitConditionJump(compiler, condition);
+
+    releaseOperand(compiler, condition);
+
+    return nextJump;
+}
+
 static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
     bool needsEndJump, bool reference)
 {
@@ -2624,6 +2638,9 @@ static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, O
     TokenType type = getTypeId(ast);
 
     storeMatchBinding(compiler, arm->binding, subject);
+
+    size_t guardJump = compileMatchGuard(compiler, arm);
+
     compileConditionalBranch(compiler, arm->branch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
 
@@ -2637,13 +2654,17 @@ static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, O
         patchJump(compiler, nextJump);
     }
 
+    if (arm->guard) {
+        patchJump(compiler, guardJump);
+    }
+
     return endJump;
 }
 
 static bool compileNextMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
     bool hasFollowingArm, Vector* endJumps, bool reference)
 {
-    bool unconditional = !arm->pattern;
+    bool unconditional = !arm->pattern && !arm->guard;
     bool needsEndJump = !unconditional && hasFollowingArm;
     size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, needsEndJump, reference);
 
@@ -2774,6 +2795,10 @@ static bool evaluateLiteralMatchPattern(ASTNode* pattern, uint64_t subjectValue,
 static LiteralMatchArmResult selectLiteralMatchArm(
     MatchArm* arm, uint64_t subjectValue, ASTNode** branch, ASTNode** binding)
 {
+    if (arm->guard) {
+        return LITERAL_MATCH_ARM_UNAVAILABLE;
+    }
+
     if (!arm->pattern) {
         *branch = arm->branch;
         *binding = arm->binding;
@@ -3066,6 +3091,7 @@ static void markCalledFunctions(ASTNode* ast)
             for (size_t i = 0; i < count; i++) {
                 MatchArm* arm = getVectorAt(&ast->match.arms, i);
                 markCalledFunctions(arm->pattern);
+                markCalledFunctions(arm->guard);
                 markCalledFunctions(arm->branch);
             }
             
@@ -3102,6 +3128,8 @@ static void resetMatchFunctionCallCounts(ASTNode* ast)
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        resetFunctionCallCounts(arm->pattern);
+        resetFunctionCallCounts(arm->guard);
         resetFunctionCallCounts(arm->branch);
     }
 

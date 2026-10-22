@@ -542,6 +542,19 @@ static void optimizeMatchPattern(ASTNode* pattern)
     optimizeMatchPattern(pattern->binary.rightExpr);
 }
 
+static void optimizeMatchArm(MatchArm* arm)
+{
+    if (arm->pattern) {
+        optimizeMatchPattern(arm->pattern);
+    }
+
+    if (arm->guard) {
+        optimizeNode(arm->guard);
+    }
+
+    optimizeConditionalBranch(arm->branch);
+}
+
 static void optimizeMatch(ASTNode* ast)
 {
     if (ast->match.subject) {
@@ -552,11 +565,8 @@ static void optimizeMatch(ASTNode* ast)
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        if (arm->pattern) {
-            optimizeMatchPattern(arm->pattern);
-        }
 
-        optimizeConditionalBranch(arm->branch);
+        optimizeMatchArm(arm);
     }
 
     optimizeConditionalBranch(ast->match.defaultBranch);

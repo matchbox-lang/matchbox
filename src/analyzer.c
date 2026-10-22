@@ -468,7 +468,7 @@ static bool visitMatchUses(ASTNode* ast, VisitId visit, void* context)
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
         bool found = visitNodeUses(arm->pattern, visit, context)
-            || visitNodeUses(arm->branch, visit, context);
+            || visitNodeUses(arm->guard, visit, context) || visitNodeUses(arm->branch, visit, context);
 
         if (found) {
             return true;
@@ -735,7 +735,7 @@ static void mergeBranchReference(
     mergeReferenceOrigins(expressionOrigins, origins);
 }
 
-static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, TokenType type)
+static Scope* enterBranchScope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
 {
     Scope* previousScope = analyzer->currentScope;
     branch->compound.scope = createScope(previousScope);
@@ -750,6 +750,11 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
         setLocalVariableSymbol(analyzer->currentScope, id, binding);
     }
 
+    return previousScope;
+}
+
+static TokenType analyzeBranchContents(Analyzer* analyzer, ASTNode* branch, TokenType type)
+{
     size_t count = countVector(&branch->compound.statements);
 
     if (count && isIntegerTypeToken(type)) {
@@ -758,7 +763,6 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
     }
 
     analyzeExpressionNodes(analyzer, &branch->compound.statements);
-    analyzer->currentScope = previousScope;
 
     if (!count) {
         return TOKEN_VOID;
@@ -770,6 +774,15 @@ static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNod
     if (resultType == type || canImplicitlyWidenType(resultType, type)) {
         return type;
     }
+
+    return resultType;
+}
+
+static TokenType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, TokenType type)
+{
+    Scope* previousScope = enterBranchScope(analyzer, branch, binding);
+    TokenType resultType = analyzeBranchContents(analyzer, branch, type);
+    analyzer->currentScope = previousScope;
 
     return resultType;
 }
@@ -1166,7 +1179,7 @@ static bool matchHasWildcard(ASTNode* ast)
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        if (!arm->pattern) {
+        if (!arm->pattern && !arm->guard) {
             return true;
         }
     }
@@ -1191,6 +1204,10 @@ static bool updateAlternativeBooleanCoverage(ASTNode* pattern, bool* coversFalse
 
 static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue)
 {
+    if (arm->guard) {
+        return;
+    }
+
     ASTNode* pattern = arm->pattern;
     if (!pattern) {
         return;
@@ -1315,8 +1332,37 @@ static void mergeMatchResult(ASTNode* ast, ASTNode* branch, TokenType branchType
     mergeMatchBranchType(ast, branchType, resultType);
 }
 
+static void analyzeMatchGuard(Analyzer* analyzer, MatchArm* arm, Vector* fallthroughStates)
+{
+    if (!arm->guard) {
+        return;
+    }
+
+    analyzeNode(analyzer, arm->guard);
+
+    if (getTypeId(arm->guard) != TOKEN_BOOL) {
+        semanticErrorAt("Match guard requires a bool operand", arm->guardToken);
+    }
+
+    Vector guardStates;
+
+    copyOwnershipState(&guardStates, fallthroughStates);
+    updateOwnershipStates(&guardStates);
+
+    if (arm->pattern) {
+        mergeOwnershipStates(fallthroughStates, &guardStates);
+        updateOwnershipStates(fallthroughStates);
+        applyOwnershipStates(&guardStates);
+    } else {
+        updateOwnershipStates(fallthroughStates);
+    }
+
+    releaseReferencesDeadOnBranch(analyzer, &guardStates, arm->branch);
+    freeOwnershipStates(&guardStates);
+}
+
 static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vector* continuationNodes,
-    size_t continuationStart, TokenType* resultType)
+    size_t continuationStart, TokenType* resultType, Vector* fallthroughStates)
 {
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
     analyzeMatchPattern(analyzer, ast, arm);
@@ -1325,7 +1371,13 @@ static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vec
         arm->binding->variableDefinition.typeId = getTypeId(ast->match.subject);
     }
 
-    TokenType branchType = analyzeScopedBranch(analyzer, arm->branch, arm->binding, ast->match.typeId);
+    Scope* previousScope = enterBranchScope(analyzer, arm->branch, arm->binding);
+
+    analyzeMatchGuard(analyzer, arm, fallthroughStates);
+
+    TokenType branchType = analyzeBranchContents(analyzer, arm->branch, ast->match.typeId);
+    analyzer->currentScope = previousScope;
+
     mergeMatchResult(ast, arm->branch, branchType, resultType);
 }
 
@@ -1336,8 +1388,12 @@ static void analyzeMatchArmOwnership(Analyzer* analyzer, ASTNode* ast, MatchArm*
     Vector states;
     copyOwnershipState(&states, initialStates);
     applyOwnershipStates(&states);
-    releaseReferencesDeadOnBranch(analyzer, &states, arm->branch);
-    analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType);
+
+    if (!arm->guard) {
+        releaseReferencesDeadOnBranch(analyzer, &states, arm->branch);
+    }
+
+    analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType, initialStates);
     updateOwnershipStates(&states);
     mergeOwnershipOutcome(mergedStates, &states, mergedInitialized);
     freeOwnershipStates(&states);
@@ -1980,6 +2036,36 @@ static void validateBranchGlobalAccess(Analyzer* analyzer, ASTNode* branch)
     validateGlobalAccessInNodes(analyzer, &branch->compound.statements);
 }
 
+static void validateMatchArmGlobalAccess(Analyzer* analyzer, MatchArm* arm)
+{
+    if (arm->pattern) {
+        validateNodeGlobalAccess(analyzer, arm->pattern);
+    }
+
+    if (arm->guard) {
+        validateNodeGlobalAccess(analyzer, arm->guard);
+    }
+
+    validateBranchGlobalAccess(analyzer, arm->branch);
+}
+
+static void validateMatchGlobalAccess(Analyzer* analyzer, ASTNode* ast)
+{
+    if (ast->match.subject) {
+        validateNodeGlobalAccess(analyzer, ast->match.subject);
+    }
+
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+
+        validateMatchArmGlobalAccess(analyzer, arm);
+    }
+
+    validateBranchGlobalAccess(analyzer, ast->match.defaultBranch);
+}
+
 static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
@@ -2004,6 +2090,9 @@ static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
             validateNodeGlobalAccess(analyzer, ast->conditional.condition);
             validateBranchGlobalAccess(analyzer, ast->conditional.thenBranch);
             validateBranchGlobalAccess(analyzer, ast->conditional.elseBranch);
+            break;
+        case AST_MATCH:
+            validateMatchGlobalAccess(analyzer, ast);
             break;
         case AST_FUNCTION_CALL:
             validateGlobalAccessInNodes(analyzer, &ast->functionCall.args);

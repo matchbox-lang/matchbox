@@ -1,0 +1,11 @@
+let value: f64 = 20.5
+let other: f64 = 20.5
+
+match value {
+    case n if n != other:
+        print(0)
+    case n if n == other:
+        print(n)
+    default:
+        print(0)
+}

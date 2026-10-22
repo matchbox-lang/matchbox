@@ -668,6 +668,21 @@ static ASTNode* parseMatchBinding(Parser* parser)
     return binding;
 }
 
+static bool parseMatchGuard(Parser* parser, MatchArm* arm)
+{
+    if (parser->currentToken.type != TOKEN_IF) {
+        return true;
+    }
+
+    arm->guardToken = parser->currentToken;
+
+    consume(parser, TOKEN_IF);
+
+    arm->guard = parseExpression(parser);
+
+    return arm->guard != NULL;
+}
+
 static bool parseMatchArm(Parser* parser, ASTNode* ast)
 {
     consume(parser, TOKEN_CASE);
@@ -688,6 +703,10 @@ static bool parseMatchArm(Parser* parser, ASTNode* ast)
     }
 
     if (isEndOfFile(parser)) {
+        return false;
+    }
+
+    if (!parseMatchGuard(parser, arm)) {
         return false;
     }
 

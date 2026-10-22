@@ -1,0 +1,6 @@
+match 10 {
+    case _ if false:
+        print(0)
+    case _:
+        print(1)
+}

@@ -1,0 +1,8 @@
+let other: i64 = 20
+
+match 10 {
+    case n if n == other:
+        print(0)
+    default:
+        print(0)
+}

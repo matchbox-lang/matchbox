@@ -1,0 +1,4 @@
+match 10 {
+    case n if:
+        print(n)
+}

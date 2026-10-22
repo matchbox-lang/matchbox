@@ -1,0 +1,6 @@
+match 10 {
+    case n if true:
+        print(n)
+    default:
+        print(n)
+}

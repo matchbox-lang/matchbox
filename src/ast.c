@@ -74,6 +74,7 @@ static void freeMatchArms(Vector* arms)
 
         freeASTNode(arm->pattern);
         freeASTNode(arm->binding);
+        freeASTNode(arm->guard);
         freeASTNode(arm->branch);
         free(arm);
     }

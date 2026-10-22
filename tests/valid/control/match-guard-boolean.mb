@@ -1,0 +1,10 @@
+let value = true
+
+match value {
+    case true if false:
+        print(0)
+    case true:
+        print(1)
+    case false:
+        print(0)
+}

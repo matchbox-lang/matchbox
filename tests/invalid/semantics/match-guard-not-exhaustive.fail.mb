@@ -1,0 +1,5 @@
+let result = match 10 {
+    case n if true: n
+}
+
+print(result)

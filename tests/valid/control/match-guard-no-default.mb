@@ -1,0 +1,6 @@
+match 10 {
+    case n if n == 20:
+        print(0)
+}
+
+print(1)

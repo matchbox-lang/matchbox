@@ -1,0 +1,7 @@
+func first() -> bool {
+    while true {
+        return 42
+    }
+}
+
+print(first())

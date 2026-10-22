@@ -1,0 +1,12 @@
+var count = 0
+
+func advance() -> bool {
+    count += 1
+    return count < 5
+}
+
+while advance() {
+    print(count)
+}
+
+print(count)

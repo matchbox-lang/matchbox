@@ -576,6 +576,10 @@ static void optimizeNode(ASTNode* ast)
         case AST_BUILTIN_CALL:
             optimizeNodes(&ast->builtinCall.args);
             break;
+        case AST_WHILE:
+            optimizeNode(ast->whileStatement.condition);
+            optimizeNodes(&ast->whileStatement.body->compound.statements);
+            break;
         case AST_CONDITIONAL:
             optimizeConditional(ast, true);
             break;

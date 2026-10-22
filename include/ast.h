@@ -45,6 +45,7 @@ typedef enum ASTNodeType
     AST_STRING,
     AST_VARIABLE,
     AST_VARIABLE_DEFINITION,
+    AST_WHILE,
     AST_NONE
 } ASTNodeType;
 
@@ -53,6 +54,12 @@ typedef struct ASTNode
     ASTNodeType type;
 
     union {
+        struct {
+            Token token;
+            ASTNode* condition;
+            ASTNode* body;
+        } whileStatement;
+
         struct {
             Scope* scope;
             Token operator;

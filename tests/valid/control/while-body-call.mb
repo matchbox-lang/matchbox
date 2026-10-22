@@ -1,0 +1,10 @@
+func show(value) {
+    print(value)
+}
+
+var count = 0
+
+while count < 2 {
+    show(count)
+    count += 1
+}

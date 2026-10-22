@@ -1,0 +1,7 @@
+func first() -> i8 {
+    while true {
+        return 42
+    }
+}
+
+print(first())

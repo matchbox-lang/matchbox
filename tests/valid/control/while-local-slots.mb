@@ -1,0 +1,17 @@
+func sum() {
+    var count = 0
+    var total = 0
+
+    while count != 3 {
+        let value: i64 = 10000000000
+        total += count
+        print(value)
+        count += 1
+    }
+
+    let after = 7
+
+    return total + after
+}
+
+print(sum())

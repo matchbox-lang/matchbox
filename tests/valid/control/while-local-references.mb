@@ -1,0 +1,8 @@
+var count = 0
+
+while count < 5 {
+    let shared = &count
+    
+    print(shared)
+    count += 1
+}

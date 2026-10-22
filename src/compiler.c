@@ -2358,6 +2358,37 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
     return result;
 }
 
+static void emitLoopJump(Compiler* compiler, size_t target)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t position = countCodeObject(code);
+    size_t distance = (position + INSTRUCTION_SIZE - target) / INSTRUCTION_SIZE;
+
+    checkJumpOffset(OP_JMP, distance);
+
+    int offset = -(int)distance;
+
+    emitInstruction(compiler, OP_JMP, (offset >> 16) & 255, (offset >> 8) & 255, offset & 255);
+}
+
+static void compileWhile(Compiler* compiler, ASTNode* ast)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    size_t start = countCodeObject(code);
+    int registerCount = compiler->registerCount;
+    compiler->peepholeBarrier = start;
+
+    Operand condition = compileExpression(compiler, ast->whileStatement.condition, false);
+    size_t exitJump = emitConditionJump(compiler, condition);
+
+    releaseOperand(compiler, condition);
+    compileScopedConditionalBranch(compiler, ast->whileStatement.body, TOKEN_VOID, 0, false);
+    emitLoopJump(compiler, start);
+    patchJump(compiler, exitJump);
+
+    compiler->registerCount = registerCount;
+}
+
 static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
 {
     TokenType type = getTypeId(subject);
@@ -3025,6 +3056,10 @@ static void markCalledFunctions(ASTNode* ast)
         case AST_BUILTIN_CALL:
             markCalledFunctionsInVector(&ast->builtinCall.args);
             break;
+        case AST_WHILE:
+            markCalledFunctions(ast->whileStatement.condition);
+            markCalledFunctions(ast->whileStatement.body);
+            break;
         case AST_COMPOUND:
             markCalledFunctionsInVector(&ast->compound.statements);
             break;
@@ -3107,6 +3142,13 @@ static void resetFunctionCallCounts(ASTNode* ast)
     if (ast->type == AST_CONDITIONAL) {
         resetFunctionCallCounts(ast->conditional.thenBranch);
         resetFunctionCallCounts(ast->conditional.elseBranch);
+
+        return;
+    }
+
+    if (ast->type == AST_WHILE) {
+        resetFunctionCallCounts(ast->whileStatement.condition);
+        resetFunctionCallCounts(ast->whileStatement.body);
 
         return;
     }
@@ -3199,6 +3241,10 @@ static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard)
             return compileFunctionCall(compiler, ast, discard);
         case AST_FUNCTION_DEFINITION:
             compileFunctionDefinition(compiler, ast);
+            return noOperand();
+        case AST_WHILE:
+            compileWhile(compiler, ast);
+
             return noOperand();
         case AST_RETURN:
             compileReturnStatement(compiler, ast);

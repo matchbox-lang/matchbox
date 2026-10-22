@@ -1,0 +1,9 @@
+var first = 1
+var second = 2
+var shared = &first
+
+while false {
+    shared = &second
+}
+
+print(shared)

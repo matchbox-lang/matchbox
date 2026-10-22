@@ -1,0 +1,6 @@
+var running = true
+
+while running {
+    print("once")
+    running = false
+}

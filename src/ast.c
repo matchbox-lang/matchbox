@@ -132,6 +132,10 @@ void freeASTNode(ASTNode* ast)
             freeASTNode(ast->prefix.expr);
             freeVector(&ast->prefix.referenceOrigins);
             break;
+        case AST_WHILE:
+            freeASTNode(ast->whileStatement.condition);
+            freeASTNode(ast->whileStatement.body);
+            break;
         case AST_RETURN:
             freeASTNode(ast->returnStatement.expr);
             break;

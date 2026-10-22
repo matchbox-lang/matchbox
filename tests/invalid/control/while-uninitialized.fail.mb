@@ -1,0 +1,7 @@
+var value: i32
+
+while false {
+    value = 1
+}
+
+print(value)

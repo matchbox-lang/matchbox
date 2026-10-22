@@ -6,6 +6,7 @@
 
 typedef struct ReferenceLifetimes ReferenceLifetimes;
 typedef struct FunctionPath FunctionPath;
+typedef struct LoopPath LoopPath;
 
 typedef struct Analyzer
 {
@@ -16,6 +17,7 @@ typedef struct Analyzer
     size_t nextNode;
     ReferenceLifetimes* referenceLifetimes;
     FunctionPath* functionPath;
+    LoopPath* loopPath;
 } Analyzer;
 
 void initAnalyzer(Analyzer* analyzer, ASTNode* ast);

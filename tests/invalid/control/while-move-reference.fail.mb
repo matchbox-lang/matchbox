@@ -1,0 +1,7 @@
+var value = 1
+let reference = ^value
+
+while true {
+    let moved = reference
+    print(moved)
+}

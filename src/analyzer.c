@@ -21,12 +21,19 @@ static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
 static void transferExclusiveReference(ASTNode* expression);
 static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue);
+static ASTNode* findNodeReturn(ASTNode* ast);
 
 typedef struct FunctionPath
 {
     ASTNode* function;
     struct FunctionPath* previous;
 } FunctionPath;
+
+typedef struct LoopPath
+{
+    ASTNode* ast;
+    struct LoopPath* previous;
+} LoopPath;
 
 typedef struct OwnershipState
 {
@@ -480,6 +487,9 @@ static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
             return visitNodeListUses(&ast->builtinCall.args, visit, context);
         case AST_COMPOUND:
             return visitNodeListUses(&ast->compound.statements, visit, context);
+        case AST_WHILE:
+            return visitNodeUses(ast->whileStatement.condition, visit, context)
+                || visitNodeUses(ast->whileStatement.body, visit, context);
         case AST_CONDITIONAL:
             return visitNodeUses(ast->conditional.condition, visit, context)
                 || visitNodeUses(ast->conditional.thenBranch, visit, context)
@@ -888,7 +898,18 @@ static bool branchUsesReference(ASTNode* branch, StringObject* id)
 
 static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
 {
+    LoopPath* loop = analyzer->loopPath;
+
+    while (loop) {
+        if (branchUsesReference(loop->ast, id)) {
+            return true;
+        }
+
+        loop = loop->previous;
+    }
+
     ReferenceLifetimes* lifetimes = analyzer->referenceLifetimes;
+
     if (!lifetimes) {
         return false;
     }
@@ -954,6 +975,66 @@ static void mergeOwnershipStates(Vector* thenStates, Vector* elseStates)
     for (size_t i = 0; i < count; i++) {
         mergeOwnershipState(getVectorAt(thenStates, i), getVectorAt(elseStates, i));
     }
+}
+
+static void validateLoopReferenceOrigins(OwnershipState* entry, Token token)
+{
+    Vector* origins = getReferenceOrigins(entry->symbol);
+    size_t count = countVector(origins);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* origin = getVectorAt(origins, i);
+        bool existing = containsReferenceOrigin(&entry->referenceOrigins, origin);
+
+        if (!existing) {
+            semanticErrorAt("While loop cannot change the origin of an outer reference", token);
+        }
+    }
+}
+
+static void validateLoopOwnership(Vector* entryStates, Token token)
+{
+    size_t count = countVector(entryStates);
+
+    for (size_t i = 0; i < count; i++) {
+        OwnershipState* entry = getVectorAt(entryStates, i);
+        ASTNode* symbol = entry->symbol;
+        bool moved = isMoved(symbol);
+
+        if (moved && !entry->moved) {
+            semanticErrorAt("While loop cannot move an outer reference across iterations", token);
+        }
+
+        validateLoopReferenceOrigins(entry, token);
+    }
+}
+
+static void analyzeWhile(Analyzer* analyzer, ASTNode* ast)
+{
+    Vector entryStates;
+    Vector bodyStates;
+    LoopPath path = {ast, analyzer->loopPath};
+    analyzer->loopPath = &path;
+
+    captureOwnershipState(&entryStates, analyzer->currentScope);
+    copyOwnershipState(&bodyStates, &entryStates);
+    analyzeNode(analyzer, ast->whileStatement.condition);
+
+    TokenType type = getTypeId(ast->whileStatement.condition);
+
+    if (type != TOKEN_BOOL) {
+        semanticErrorAt("While condition must have type bool", ast->whileStatement.token);
+    }
+
+    analyzeScopedBranch(analyzer, ast->whileStatement.body, NULL, TOKEN_VOID);
+    validateLoopOwnership(&entryStates, ast->whileStatement.token);
+    updateOwnershipStates(&bodyStates);
+
+    analyzer->loopPath = path.previous;
+
+    mergeOwnershipStates(&entryStates, &bodyStates);
+    freeOwnershipStates(&entryStates);
+    freeOwnershipStates(&bodyStates);
 }
 
 static void validateExpressionBranch(ASTNode* branch, Token token)
@@ -1878,6 +1959,10 @@ static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
         case AST_BUILTIN_CALL:
             validateGlobalAccessInNodes(analyzer, &ast->builtinCall.args);
             break;
+        case AST_WHILE:
+            validateNodeGlobalAccess(analyzer, ast->whileStatement.condition);
+            validateBranchGlobalAccess(analyzer, ast->whileStatement.body);
+            break;
         case AST_CONDITIONAL:
             validateNodeGlobalAccess(analyzer, ast->conditional.condition);
             validateBranchGlobalAccess(analyzer, ast->conditional.thenBranch);
@@ -2057,19 +2142,80 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     setCallReferenceOrigins(ast, symbol);
 }
 
-static TokenType getFunctionReturnValueType(Vector* statements)
+static ASTNode* findFunctionReturn(Vector* statements)
 {
     size_t count = countVector(statements);
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* statement = getVectorAt(statements, i);
+        ASTNode* result = findNodeReturn(statement);
 
-        if (statement->type == AST_RETURN) {
-            return getTypeId(statement->returnStatement.expr);
+        if (result) {
+            return result;
         }
     }
 
-    return TOKEN_VOID;
+    return NULL;
+}
+
+static ASTNode* findConditionalReturn(ASTNode* ast)
+{
+    ASTNode* result = findNodeReturn(ast->conditional.thenBranch);
+
+    if (result) {
+        return result;
+    }
+
+    return findNodeReturn(ast->conditional.elseBranch);
+}
+
+static ASTNode* findMatchReturn(ASTNode* ast)
+{
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        ASTNode* result = findNodeReturn(arm->branch);
+
+        if (result) {
+            return result;
+        }
+    }
+
+    return findNodeReturn(ast->match.defaultBranch);
+}
+
+static ASTNode* findNodeReturn(ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    switch (ast->type) {
+        case AST_RETURN:
+            return ast;
+        case AST_COMPOUND:
+            return findFunctionReturn(&ast->compound.statements);
+        case AST_WHILE:
+            return findNodeReturn(ast->whileStatement.body);
+        case AST_CONDITIONAL:
+            return findConditionalReturn(ast);
+        case AST_MATCH:
+            return findMatchReturn(ast);
+        default:
+            return NULL;
+    }
+}
+
+static TokenType getFunctionReturnValueType(Vector* statements)
+{
+    ASTNode* result = findFunctionReturn(statements);
+
+    if (!result) {
+        return TOKEN_VOID;
+    }
+
+    return getTypeId(result->returnStatement.expr);
 }
 
 static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
@@ -2098,28 +2244,8 @@ static void setParameterPositions(ASTNode* ast)
     }
 }
 
-static void applyFunctionReturnLiteralType(ASTNode* ast)
-{
-    if (!ast->functionDefinition.hasExplicitReturnType) {
-        return;
-    }
-
-    Vector* statements = &ast->functionDefinition.body->compound.statements;
-    size_t count = countVector(statements);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* statement = getVectorAt(statements, i);
-
-        if (statement->type == AST_RETURN) {
-            applyLiteralType(
-                statement->returnStatement.expr, ast->functionDefinition.returnTypeId);
-        }
-    }
-}
-
 static void resolveFunctionReturnValueType(ASTNode* ast)
 {
-    applyFunctionReturnLiteralType(ast);
     TokenType type = getFunctionReturnValueType(
         &ast->functionDefinition.body->compound.statements);
 
@@ -2141,6 +2267,7 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 
     Scope* parent = analyzer->currentScope;
     ASTNode* previousFunction = analyzer->function;
+    LoopPath* previousLoop = analyzer->loopPath;
     Scope* scope = createScope(parent);
     scope->frameScope = scope;
     scope->localOffset = 0;
@@ -2149,6 +2276,7 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     ast->functionDefinition.body->compound.scope = scope;
     analyzer->currentScope = scope;
     analyzer->function = ast;
+    analyzer->loopPath = NULL;
 
     setLocalSymbol(scope, id, ast);
     analyzeExpressionNodes(analyzer, &ast->functionDefinition.params);
@@ -2163,6 +2291,7 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     analyzer->functionPath = path.previous;
     analyzer->currentScope = parent;
     analyzer->function = previousFunction;
+    analyzer->loopPath = previousLoop;
 
     resolveFunctionReturnValueType(ast);
 }
@@ -2525,6 +2654,13 @@ static void trackReturnReferenceOrigin(Analyzer* analyzer, ASTNode* ast)
 static void analyzeReturn(Analyzer* analyzer, ASTNode* ast)
 {
     validateReturnScope(analyzer, ast);
+
+    ASTNode* function = analyzer->function;
+
+    if (function->functionDefinition.hasExplicitReturnType) {
+        applyLiteralType(ast->returnStatement.expr, function->functionDefinition.returnTypeId);
+    }
+
     analyzeNode(analyzer, ast->returnStatement.expr);
 
     if (validateReturnReferenceType(analyzer, ast) == REFERENCE_NONE) {
@@ -2604,6 +2740,9 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
             analyzeBinary(analyzer, ast); break;
         case AST_BUILTIN_CALL:
             analyzeResolvedBuiltinCall(analyzer, ast); break;
+        case AST_WHILE:
+            analyzeWhile(analyzer, ast);
+            break;
         case AST_CONDITIONAL:
             analyzeConditional(analyzer, ast); break;
         case AST_FUNCTION_CALL:
@@ -2635,6 +2774,7 @@ void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
     analyzer->nextNode = 0;
     analyzer->referenceLifetimes = NULL;
     analyzer->functionPath = NULL;
+    analyzer->loopPath = NULL;
 }
 
 bool analyze(Analyzer* analyzer, size_t start)

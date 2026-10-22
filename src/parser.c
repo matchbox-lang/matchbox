@@ -1357,6 +1357,32 @@ static ASTNode* parseIdentifier(Parser* parser)
     return createVariableNode(parser->previousToken);
 }
 
+static ASTNode* parseWhileStatement(Parser* parser)
+{
+    Token token = parser->currentToken;
+    consume(parser, TOKEN_WHILE);
+    ASTNode* condition = parseExpression(parser);
+
+    if (!condition) {
+        return NULL;
+    }
+
+    ASTNode* body = parseConditionalBranch(parser);
+
+    if (!body) {
+        freeASTNode(condition);
+
+        return NULL;
+    }
+
+    ASTNode* ast = createASTNode(AST_WHILE);
+    ast->whileStatement.token = token;
+    ast->whileStatement.condition = condition;
+    ast->whileStatement.body = body;
+
+    return ast;
+}
+
 static ASTNode* parseStatement(Parser* parser)
 {
     switch (parser->currentToken.type) {
@@ -1367,6 +1393,8 @@ static ASTNode* parseStatement(Parser* parser)
             return parseVariableDefinition(parser);
         case TOKEN_RETURN:
             return parseReturnStatement(parser);
+        case TOKEN_WHILE:
+            return parseWhileStatement(parser);
         case TOKEN_IF: {
             ASTNode* ast = parseConditional(parser);
 

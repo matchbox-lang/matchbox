@@ -1,0 +1,13 @@
+var count = 0
+var value = 1
+let shared = &value
+
+while count < 2 {
+    if count == 0 {
+        print(shared)
+    } else {
+        value = 2
+    }
+    
+    count += 1
+}

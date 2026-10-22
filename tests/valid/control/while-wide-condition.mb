@@ -1,0 +1,6 @@
+var count: i64 = 0
+
+while count < 5 {
+    print(count)
+    count += 1
+}

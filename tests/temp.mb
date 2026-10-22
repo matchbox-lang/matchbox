@@ -1,5 +1,0 @@
-let a: u16 = 12345
-let b: i64 = a
-
-print(a)
-print(b)

@@ -1,0 +1,17 @@
+let negative: f64 = -1.0000000000000002
+let positive: f64 = 3.25
+let zero: f64 = -0.0
+let large: f64 = -1.0e100
+let tiny: f64 = -1.0e-100
+
+let absolute: f64 = abs(negative)
+let unchanged: f64 = abs(positive)
+let positiveZero: f64 = abs(zero)
+let big: f64 = abs(large)
+let small: f64 = abs(tiny)
+
+print(absolute)
+print(unchanged)
+print(positiveZero)
+print(big)
+print(small)

@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 23
+#define BUILTINS_MAX 25
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
 
@@ -35,6 +35,8 @@ void builtinClamp(VM* vm, FunctionObject* function, Value* frame);
 void builtinClampI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbs(VM* vm, FunctionObject* function, Value* frame);
 void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAbsF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAbsF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinMin(VM* vm, FunctionObject* function, Value* frame);
 void builtinMinI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinMax(VM* vm, FunctionObject* function, Value* frame);

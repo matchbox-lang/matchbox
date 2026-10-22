@@ -31,6 +31,8 @@ Builtin builtins[BUILTINS_MAX] = {
     {"clamp",       builtinClampI64,            3,  {TOKEN_I64, TOKEN_I64, TOKEN_I64},  TOKEN_I64},
     {"abs",         builtinAbs,                 1,  {TOKEN_I32},                        TOKEN_I32},
     {"abs",         builtinAbsI64,              1,  {TOKEN_I64},                        TOKEN_I64},
+    {"abs",         builtinAbsF32,              1,  {TOKEN_F32},                        TOKEN_F32},
+    {"abs",         builtinAbsF64,              1,  {TOKEN_F64},                        TOKEN_F64},
     {"min",         builtinMin,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
     {"min",         builtinMinI64,              2,  {TOKEN_I64, TOKEN_I64},             TOKEN_I64},
     {"max",         builtinMax,                 2,  {TOKEN_I32, TOKEN_I32},             TOKEN_I32},
@@ -316,6 +318,28 @@ void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame)
     int64_t x = ABS(n);
 
     writeI64(frame, x);
+}
+
+void builtinAbsF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float n = AS_F32(frame[0]);
+    float x = fabsf(n);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAbsF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double n = readF64(frame, 0);
+    double x = fabs(n);
+
+    writeF64(frame, x);
 }
 
 void builtinMin(VM* vm, FunctionObject* function, Value* frame)

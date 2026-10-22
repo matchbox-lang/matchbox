@@ -60,6 +60,20 @@ void writeI64(Value* frame, int64_t value)
 #endif
 }
 
+void writeF64(Value* frame, double value)
+{
+#if UINTPTR_MAX == UINT32_MAX
+    uint64_t bits;
+
+    memcpy(&bits, &value, sizeof(value));
+
+    frame[-2] = U32_VALUE(bits);
+    frame[-1] = U32_VALUE(bits >> 32);
+#else
+    frame[-2] = F64_VALUE(value);
+#endif
+}
+
 size_t countValueArray(ValueArray* array)
 {
     return array->count;

@@ -47,6 +47,56 @@ Builtin builtins[BUILTINS_MAX] = {
     {"pow",         builtinPowI64,              2,  {TOKEN_I64, TOKEN_I64},                 TOKEN_I64},
     {"pow",         builtinPowF32,              2,  {TOKEN_F32, TOKEN_F32},                 TOKEN_F32},
     {"pow",         builtinPowF64,              2,  {TOKEN_F64, TOKEN_F64},                 TOKEN_F64},
+    {"acos",        builtinAcosF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"acos",        builtinAcosF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"acosh",       builtinAcoshF32,            1,  {TOKEN_F32},                            TOKEN_F32},
+    {"acosh",       builtinAcoshF64,            1,  {TOKEN_F64},                            TOKEN_F64},
+    {"asin",        builtinAsinF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"asin",        builtinAsinF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"asinh",       builtinAsinhF32,            1,  {TOKEN_F32},                            TOKEN_F32},
+    {"asinh",       builtinAsinhF64,            1,  {TOKEN_F64},                            TOKEN_F64},
+    {"atan",        builtinAtanF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"atan",        builtinAtanF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"atan2",       builtinAtan2F32,            2,  {TOKEN_F32, TOKEN_F32},                 TOKEN_F32},
+    {"atan2",       builtinAtan2F64,            2,  {TOKEN_F64, TOKEN_F64},                 TOKEN_F64},
+    {"atanh",       builtinAtanhF32,            1,  {TOKEN_F32},                            TOKEN_F32},
+    {"atanh",       builtinAtanhF64,            1,  {TOKEN_F64},                            TOKEN_F64},
+    {"cbrt",        builtinCbrtF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"cbrt",        builtinCbrtF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"ceil",        builtinCeilF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"ceil",        builtinCeilF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"cos",         builtinCosF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"cos",         builtinCosF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"cosh",        builtinCoshF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"cosh",        builtinCoshF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"deg",         builtinDegF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"deg",         builtinDegF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"exp",         builtinExpF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"exp",         builtinExpF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"floor",       builtinFloorF32,            1,  {TOKEN_F32},                            TOKEN_F32},
+    {"floor",       builtinFloorF64,            1,  {TOKEN_F64},                            TOKEN_F64},
+    {"hypot",       builtinHypotF32,            2,  {TOKEN_F32, TOKEN_F32},                 TOKEN_F32},
+    {"hypot",       builtinHypotF64,            2,  {TOKEN_F64, TOKEN_F64},                 TOKEN_F64},
+    {"ldexp",       builtinLdexpF32,            2,  {TOKEN_F32, TOKEN_I32},                 TOKEN_F32},
+    {"ldexp",       builtinLdexpF64,            2,  {TOKEN_F64, TOKEN_I32},                 TOKEN_F64},
+    {"log",         builtinLogF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"log",         builtinLogF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"log10",       builtinLog10F32,            1,  {TOKEN_F32},                            TOKEN_F32},
+    {"log10",       builtinLog10F64,            1,  {TOKEN_F64},                            TOKEN_F64},
+    {"log2",        builtinLog2F32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"log2",        builtinLog2F64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"rad",         builtinRadF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"rad",         builtinRadF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"sin",         builtinSinF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"sin",         builtinSinF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"sinh",        builtinSinhF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"sinh",        builtinSinhF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"sqrt",        builtinSqrtF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"sqrt",        builtinSqrtF64,             1,  {TOKEN_F64},                            TOKEN_F64},
+    {"tan",         builtinTanF32,              1,  {TOKEN_F32},                            TOKEN_F32},
+    {"tan",         builtinTanF64,              1,  {TOKEN_F64},                            TOKEN_F64},
+    {"tanh",        builtinTanhF32,             1,  {TOKEN_F32},                            TOKEN_F32},
+    {"tanh",        builtinTanhF64,             1,  {TOKEN_F64},                            TOKEN_F64},
     {"byteorder",   builtinByteorder,           0,  {},                                     TOKEN_I32},
     {"string",      builtinString,             -1,  {TOKEN_UNKNOWN},                        TOKEN_STRING}
 };
@@ -528,6 +578,562 @@ void builtinPowF64(VM* vm, FunctionObject* function, Value* frame)
     double a = readF64(frame, 0);
     double b = readF64(frame, 2);
     double x = pow(a, b);
+
+    writeF64(frame, x);
+}
+
+void builtinAcosF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = acosf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAcosF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = acos(a);
+
+    writeF64(frame, x);
+}
+
+void builtinAcoshF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = acoshf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAcoshF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = acosh(a);
+
+    writeF64(frame, x);
+}
+
+void builtinAsinF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = asinf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAsinF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = asin(a);
+
+    writeF64(frame, x);
+}
+
+void builtinAsinhF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = asinhf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAsinhF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = asinh(a);
+
+    writeF64(frame, x);
+}
+
+void builtinAtanF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = atanf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAtanF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = atan(a);
+
+    writeF64(frame, x);
+}
+
+void builtinAtan2F32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float x = atan2f(a, b);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAtan2F64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double b = readF64(frame, 2);
+    double x = atan2(a, b);
+
+    writeF64(frame, x);
+}
+
+void builtinAtanhF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = atanhf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinAtanhF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = atanh(a);
+
+    writeF64(frame, x);
+}
+
+void builtinCbrtF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = cbrtf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinCbrtF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = cbrt(a);
+
+    writeF64(frame, x);
+}
+
+void builtinCeilF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = ceilf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinCeilF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = ceil(a);
+
+    writeF64(frame, x);
+}
+
+void builtinCosF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = cosf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinCosF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = cos(a);
+
+    writeF64(frame, x);
+}
+
+void builtinCoshF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = coshf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinCoshF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = cosh(a);
+
+    writeF64(frame, x);
+}
+
+void builtinDegF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = a * 57.2957795130823208768f;
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinDegF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = a * 57.2957795130823208768;
+
+    writeF64(frame, x);
+}
+
+void builtinExpF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = expf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinExpF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = exp(a);
+
+    writeF64(frame, x);
+}
+
+void builtinFloorF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = floorf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinFloorF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = floor(a);
+
+    writeF64(frame, x);
+}
+
+void builtinHypotF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float x = hypotf(a, b);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinHypotF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double b = readF64(frame, 2);
+    double x = hypot(a, b);
+
+    writeF64(frame, x);
+}
+
+void builtinLdexpF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    int32_t exponent = AS_I32(frame[1]);
+    float x = ldexpf(a, exponent);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinLdexpF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    int32_t exponent = AS_I32(frame[2]);
+    double x = ldexp(a, exponent);
+
+    writeF64(frame, x);
+}
+
+void builtinLogF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = logf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinLogF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = log(a);
+
+    writeF64(frame, x);
+}
+
+void builtinLog10F32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = log10f(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinLog10F64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = log10(a);
+
+    writeF64(frame, x);
+}
+
+void builtinLog2F32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = log2f(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinLog2F64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = log2(a);
+
+    writeF64(frame, x);
+}
+
+void builtinRadF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = a * 0.01745329251994329577f;
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinRadF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = a * 0.01745329251994329577;
+
+    writeF64(frame, x);
+}
+
+void builtinSinF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = sinf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinSinF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = sin(a);
+
+    writeF64(frame, x);
+}
+
+void builtinSinhF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = sinhf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinSinhF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = sinh(a);
+
+    writeF64(frame, x);
+}
+
+void builtinSqrtF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = sqrtf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinSqrtF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = sqrt(a);
+
+    writeF64(frame, x);
+}
+
+void builtinTanF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = tanf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinTanF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = tan(a);
+
+    writeF64(frame, x);
+}
+
+void builtinTanhF32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = tanhf(a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtinTanhF64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = readF64(frame, 0);
+    double x = tanh(a);
 
     writeF64(frame, x);
 }

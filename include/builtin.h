@@ -5,7 +5,7 @@
 #include "token.h"
 #include "value.h"
 
-#define BUILTINS_MAX 33
+#define BUILTINS_MAX 83
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
 
@@ -51,6 +51,56 @@ void builtinPowI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowI64(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinPowF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAcosF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAcosF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAcoshF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAcoshF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAsinF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAsinF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAsinhF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAsinhF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAtanF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAtanF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAtan2F32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAtan2F64(VM* vm, FunctionObject* function, Value* frame);
+void builtinAtanhF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinAtanhF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinCbrtF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinCbrtF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinCeilF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinCeilF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinCosF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinCosF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinCoshF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinCoshF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinDegF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinDegF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinExpF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinExpF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinFloorF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinFloorF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinHypotF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinHypotF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinLdexpF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinLdexpF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinLogF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinLogF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinLog10F32(VM* vm, FunctionObject* function, Value* frame);
+void builtinLog10F64(VM* vm, FunctionObject* function, Value* frame);
+void builtinLog2F32(VM* vm, FunctionObject* function, Value* frame);
+void builtinLog2F64(VM* vm, FunctionObject* function, Value* frame);
+void builtinRadF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinRadF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinSinF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinSinF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinSinhF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinSinhF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinSqrtF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinSqrtF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinTanF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinTanF64(VM* vm, FunctionObject* function, Value* frame);
+void builtinTanhF32(VM* vm, FunctionObject* function, Value* frame);
+void builtinTanhF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 void builtinString(VM* vm, FunctionObject* function, Value* frame);
 

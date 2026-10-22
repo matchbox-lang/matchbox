@@ -14,7 +14,6 @@
 typedef struct TestRun {
     TestOutput output;
     const char* executablePath;
-    bool excludeFuture;
     int passed;
     int failed;
     int found;
@@ -26,7 +25,7 @@ typedef struct TestRun {
 #endif
 
 static void runDirectoryTests(TestRun* run, const char* path);
-static int countDirectoryTests(const TestRun* run, const char* path);
+static int countDirectoryTests(const char* path);
 
 static void expectedFileError(const char* path)
 {
@@ -194,23 +193,12 @@ static char* getDirectoryEntryPath(const char* path, const char* name)
     return joinPath(path, name);
 }
 
-static bool shouldExcludeDirectory(const TestRun* run, const char* path, const char* name)
-{
-    return run->excludeFuture && strcmp(path, TEST_DEFAULT_PATH) == 0 && strcmp(name, "future") == 0;
-}
-
-static int countDirectoryEntryTests(const TestRun* run, const char* path, const char* name)
+static int countDirectoryEntryTests(const char* path, const char* name)
 {
     char* child = getDirectoryEntryPath(path, name);
     int count;
 
     if (!child) {
-        return 0;
-    }
-
-    if (shouldExcludeDirectory(run, path, name)) {
-        freePath(child);
-
         return 0;
     }
 
@@ -221,19 +209,19 @@ static int countDirectoryEntryTests(const TestRun* run, const char* path, const 
         return count;
     }
 
-    count = countDirectoryTests(run, child);
+    count = countDirectoryTests(child);
     freePath(child);
 
     return count;
 }
 
-static int countDirectoryEntries(const TestRun* run, DIR* directory, const char* path)
+static int countDirectoryEntries(DIR* directory, const char* path)
 {
     struct dirent* entry;
     int count = 0;
 
     while ((entry = readdir(directory))) {
-        int entryCount = countDirectoryEntryTests(run, path, entry->d_name);
+        int entryCount = countDirectoryEntryTests(path, entry->d_name);
 
         if (entryCount < 0) {
             return -1;
@@ -245,7 +233,7 @@ static int countDirectoryEntries(const TestRun* run, DIR* directory, const char*
     return count;
 }
 
-static int countDirectoryTests(const TestRun* run, const char* path)
+static int countDirectoryTests(const char* path)
 {
     DIR* directory = opendir(path);
     int count;
@@ -256,7 +244,7 @@ static int countDirectoryTests(const TestRun* run, const char* path)
         return -1;
     }
 
-    count = countDirectoryEntries(run, directory, path);
+    count = countDirectoryEntries(directory, path);
     closedir(directory);
 
     return count;
@@ -267,12 +255,6 @@ static void runDirectoryEntry(TestRun* run, const char* path, const char* name)
     char* child = getDirectoryEntryPath(path, name);
 
     if (!child) {
-        return;
-    }
-
-    if (shouldExcludeDirectory(run, path, name)) {
-        freePath(child);
-
         return;
     }
 
@@ -344,15 +326,13 @@ static const char* configureTestRun(TestRun* run, const Options* options)
         return TEST_DEFAULT_PATH;
     }
 
-    run->excludeFuture = false;
-
     return options->testPath;
 }
 
-static int countTests(const TestRun* run, const char* path)
+static int countTests(const char* path)
 {
     if (pathIsDirectory(path)) {
-        return countDirectoryTests(run, path);
+        return countDirectoryTests(path);
     }
 
     return 1;
@@ -387,7 +367,7 @@ static void printTestSummary(const TestRun* run)
 
 bool runTests(Options* options)
 {
-    TestRun run = {options->testOutput, PROGRAM_COMMAND, true, 0, 0, 0};
+    TestRun run = {options->testOutput, PROGRAM_COMMAND, 0, 0, 0};
     const char* path = configureTestRun(&run, options);
     int testCount;
 
@@ -395,7 +375,7 @@ bool runTests(Options* options)
         return false;
     }
 
-    testCount = countTests(&run, path);
+    testCount = countTests(path);
 
     if (!validateTestCount(path, testCount)) {
         return false;

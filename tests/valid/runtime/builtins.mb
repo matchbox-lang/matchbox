@@ -1,4 +1,0 @@
-let order = byteorder()
-
-print(order)
-exit()

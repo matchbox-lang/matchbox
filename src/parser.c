@@ -134,7 +134,13 @@ static TokenType inferIntegerLiteralType(uint64_t value)
 
 static TokenType inferFloatLiteralType(double value)
 {
-    if (value <= FLT_MAX) {
+    if (value > FLT_MAX) {
+        return TOKEN_F64;
+    }
+
+    float narrowed = (float)value;
+
+    if ((double)narrowed == value) {
         return TOKEN_F32;
     }
 

@@ -5,9 +5,7 @@ func compare(left: i64, right: i64) {
     print(left <= right)
     print(left > right)
     print(left >= right)
-
-    let ordering: i32 = left <=> right
-    print(ordering)
+    print(left <=> right)
 }
 
 let minimum: i64 = -9223372036854775808

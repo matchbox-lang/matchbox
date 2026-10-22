@@ -5,9 +5,7 @@ func compare(left: i8, right: i8) {
     print(left <= right)
     print(left > right)
     print(left >= right)
-
-    let ordering: i32 = left <=> right
-    print(ordering)
+    print(left <=> right)
 }
 
 compare(-1, 1)

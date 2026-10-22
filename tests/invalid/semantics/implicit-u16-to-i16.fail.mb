@@ -1,0 +1,2 @@
+let source: u16 = 65535
+let destination: i16 = source

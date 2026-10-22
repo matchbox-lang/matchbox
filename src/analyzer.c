@@ -73,6 +73,17 @@ static void semanticErrorAt(char* message, Token token)
     exit(1);
 }
 
+static void implicitConversionError(Token token, TokenType source, TokenType destination)
+{
+    const char* sourceName = getTokenTypeName(source);
+    const char* destinationName = getTokenTypeName(destination);
+
+    fprintf(stderr, "Error: Cannot implicitly convert %s to %s for binding ", sourceName, destinationName);
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static void symbolError(char* message, Token token)
 {
     fprintf(stderr, "Error: ");
@@ -1560,7 +1571,8 @@ static void applyBinaryIntegerLiteralTypes(ASTNode* left, ASTNode* right)
     bool negative;
     ASTNode* leftLiteral = getIntegerLiteral(left, &negative);
     ASTNode* rightLiteral = getIntegerLiteral(right, &negative);
-    bool widenLeft = canImplicitlyWidenInteger(leftType, rightType);
+    bool sameSignedness = isSignedIntegerTypeToken(leftType) == isSignedIntegerTypeToken(rightType);
+    bool widenLeft = sameSignedness && canImplicitlyWidenInteger(leftType, rightType);
 
     if (leftLiteral && rightLiteral && widenLeft) {
         applyIntegerLiteralType(left, rightType);
@@ -2467,9 +2479,18 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
             && getReferenceType(expression) == REFERENCE_NONE
             && canImplicitlyWidenType(expressionType, bindingType));
 
-    if (!compatibleValue || getReferenceType(symbol) != getReferenceType(expression)) {
-        semanticError("Assignment type does not match binding ", ast->assignment.token);
+    ReferenceType bindingReferenceType = getReferenceType(symbol);
+    ReferenceType expressionReferenceType = getReferenceType(expression);
+
+    if (compatibleValue && bindingReferenceType == expressionReferenceType) {
+        return;
     }
+
+    if (bindingReferenceType == REFERENCE_NONE && expressionReferenceType == REFERENCE_NONE) {
+        implicitConversionError(ast->assignment.token, expressionType, bindingType);
+    }
+
+    semanticError("Assignment type does not match binding ", ast->assignment.token);
 }
 
 static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializesBinding)
@@ -2615,9 +2636,18 @@ static bool variableTypesMatch(ASTNode* ast, TokenType type, ReferenceType refer
 
 static void validateVariableTypeMatch(ASTNode* ast, TokenType type, ReferenceType referenceType)
 {
-    if (!variableTypesMatch(ast, type, referenceType)) {
-        semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
+    if (variableTypesMatch(ast, type, referenceType)) {
+        return;
     }
+
+    TokenType declaredType = ast->variableDefinition.typeId;
+    ReferenceType declaredReferenceType = ast->variableDefinition.referenceType;
+
+    if (declaredReferenceType == REFERENCE_NONE && referenceType == REFERENCE_NONE) {
+        implicitConversionError(ast->variableDefinition.token, type, declaredType);
+    }
+
+    semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
 }
 
 static void resolveVariableType(ASTNode* ast, ASTNode* expression)

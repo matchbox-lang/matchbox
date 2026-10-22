@@ -77,8 +77,44 @@ static bool builtinCallMatches(
         && builtinMatches(builtin, argumentTypes, argumentCount);
 }
 
+static Builtin* matchExactBuiltin(Builtin* builtin, const char* name, TokenType* argumentTypes, size_t argumentCount)
+{
+    if (strcmp(name, builtin->name) != 0 || (size_t)builtin->paramCount != argumentCount) {
+        return NULL;
+    }
+
+    bool matches = true;
+
+    for (size_t i = 0; i < argumentCount && matches; i++) {
+        matches = argumentTypes[i] == builtin->params[i];
+    }
+
+    if (!matches) {
+        return NULL;
+    }
+
+    return builtin;
+}
+
+static Builtin* resolveExactBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount)
+{
+    Builtin* exact = NULL;
+
+    for (int i = 0; i < BUILTINS_MAX && !exact; i++) {
+        exact = matchExactBuiltin(&builtins[i], name, argumentTypes, argumentCount);
+    }
+
+    return exact;
+}
+
 Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount)
 {
+    Builtin* exact = resolveExactBuiltin(name, argumentTypes, argumentCount);
+
+    if (exact) {
+        return exact;
+    }
+
     Builtin* variadic = NULL;
 
     for (int i = 0; i < BUILTINS_MAX; i++) {

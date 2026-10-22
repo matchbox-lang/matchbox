@@ -1,0 +1,8 @@
+let source: u8 = 255
+let signed16: i16 = source
+let signed32: i32 = source
+let signed64: i64 = source
+
+print(signed16)
+print(signed32)
+print(signed64)

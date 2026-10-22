@@ -1,0 +1,15 @@
+func accept(value: i64) -> i64 {
+    return value
+}
+
+func widen(value: u32) -> i64 {
+    return value
+}
+
+let source: u32 = 4294967295
+var assigned: i64 = 0
+assigned = source
+
+print(assigned)
+print(accept(source))
+print(widen(source))

@@ -1,2 +1,2 @@
-let wide: i32 = 25
-let narrow: i8 = wide
+let a: i16 = 12345
+let b: i8 = a

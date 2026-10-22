@@ -1,0 +1,6 @@
+let source: u16 = 65535
+let signed32: i32 = source
+let signed64: i64 = source
+
+print(signed32)
+print(signed64)

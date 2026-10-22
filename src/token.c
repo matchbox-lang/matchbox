@@ -204,7 +204,7 @@ bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
         return false;
     }
 
-    if (isSignedIntegerTypeToken(source) != isSignedIntegerTypeToken(destination)) {
+    if (isSignedIntegerTypeToken(source) && !isSignedIntegerTypeToken(destination)) {
         return false;
     }
 

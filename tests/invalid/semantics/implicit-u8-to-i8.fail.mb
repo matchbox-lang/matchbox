@@ -1,0 +1,2 @@
+let source: u8 = 255
+let destination: i8 = source

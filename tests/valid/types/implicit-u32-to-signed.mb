@@ -1,0 +1,4 @@
+let source: u32 = 4294967295
+let signed64: i64 = source
+
+print(signed64)

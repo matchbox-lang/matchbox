@@ -59,18 +59,18 @@ static void semanticError(char* message, Token token)
     exit(1);
 }
 
+static void semanticErrorAt(char* message, Token token)
+{
+    fprintf(stderr, "Error: %s", message);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static void symbolError(char* message, Token token)
 {
     fprintf(stderr, "Error: ");
     printTokenValue(token);
     fprintf(stderr, " is %s on line %d:%d\n", message, token.line, token.column);
-    exit(1);
-}
-
-static void semanticErrorAt(char* message, Token token)
-{
-    fprintf(stderr, "Error: %s", message);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
@@ -1385,8 +1385,8 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 
     TokenType leftType = getTypeId(ast->binary.leftExpr);
     TokenType rightType = getTypeId(ast->binary.rightExpr);
-
     TokenType operatorType = ast->binary.operator.type;
+
     bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
     bool integerLeft = isIntegerTypeToken(leftType);
     bool integerRight = isIntegerTypeToken(rightType);
@@ -1395,7 +1395,7 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     bool mixedNumeric = (integerLeft && floatRight) || (floatLeft && integerRight);
 
     if (comparison && mixedNumeric) {
-        semanticError("Comparison operators cannot mix integer and float operands ", ast->binary.operator);
+        semanticErrorAt("Comparison operators require compatible operand types", ast->binary.operator);
     }
 
     bool leftText = leftType == TOKEN_CHAR || leftType == TOKEN_STRING;
@@ -1434,33 +1434,33 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     floatOperands = floatOperands || leftConvertsToRight || rightConvertsToLeft;
 
     if (leftType != rightType && !floatOperands) {
-        semanticError("Invalid operands to binary ", ast->binary.operator);
+        semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
     }
 
     if (leftType == TOKEN_STRING) {
-        semanticError("Invalid operator for string operands ", ast->binary.operator);
+        semanticErrorAt("Invalid operator for string operands", ast->binary.operator);
     }
 
     if (leftType == TOKEN_CHAR && !isCharacterComparison(ast->binary.operator.type)) {
-        semanticError("Invalid operator for char operands ", ast->binary.operator);
+        semanticErrorAt("Invalid operator for char operands", ast->binary.operator);
     }
 
     if (isLogicalToken(ast->binary.operator.type) && leftType != TOKEN_BOOL) {
-        semanticError("Logical operators require bool operands ", ast->binary.operator);
+        semanticErrorAt("Logical operators require bool operands", ast->binary.operator);
     }
 
     if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType) && !floatOperands && leftType != TOKEN_CHAR) {
-        semanticError("Comparison operators require numeric or char operands ", ast->binary.operator);
+        semanticErrorAt("Comparison operators require compatible operand types", ast->binary.operator);
     }
 
     if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
-        semanticError("Invalid operands to binary ", ast->binary.operator);
+        semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
     }
 
     if (floatOperands && !isTermToken(ast->binary.operator.type)
         && !isFactorToken(ast->binary.operator.type) && !isComparisonToken(ast->binary.operator.type)
         && !isEqualityToken(ast->binary.operator.type)) {
-        semanticError("Invalid operands to binary ", ast->binary.operator);
+        semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
     }
 
     if (floatOperands) {
@@ -1517,7 +1517,7 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 static ASTNode* getReferenceVariable(ASTNode* ast)
 {
     if (!isVariable(ast->prefix.expr)) {
-        semanticError("References require a binding for ", ast->prefix.operator);
+        semanticErrorAt("References require a binding", ast->prefix.operator);
     }
 
     return ast->prefix.expr;
@@ -1549,7 +1549,7 @@ static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* sy
     ReferenceType existing = getReferenceType(symbol);
 
     if (existing != REFERENCE_NONE) {
-        semanticError("Cannot create a reference to another reference ", ast->prefix.operator);
+        semanticErrorAt("Cannot create a reference to another reference", ast->prefix.operator);
     }
 
     if (requested == REFERENCE_SHARED && hasExclusiveAccess(symbol)) {
@@ -2240,20 +2240,20 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     TokenType bindingType = getTypeId(symbol);
 
     if (bindingType == TOKEN_STRING && ast->assignment.operator.type != TOKEN_EQUAL) {
-        semanticError("Invalid operator for string assignment ", ast->assignment.operator);
+        semanticErrorAt("Invalid operator for string assignment", ast->assignment.operator);
     }
 
     if (bindingType == TOKEN_CHAR && ast->assignment.operator.type != TOKEN_EQUAL) {
-        semanticError("Invalid operator for char assignment ", ast->assignment.operator);
+        semanticErrorAt("Invalid operator for char assignment", ast->assignment.operator);
     }
 
     if (isFloatTypeToken(getTypeId(symbol))
         && !isFloatAssignmentToken(ast->assignment.operator.type)) {
-        semanticError("Invalid operands to assignment ", ast->assignment.operator);
+        semanticErrorAt("Invalid operands for assignment", ast->assignment.operator);
     }
 
     if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getTypeId(symbol) != TOKEN_I32) {
-        semanticError("Invalid operands to assignment ", ast->assignment.operator);
+        semanticErrorAt("Invalid operands for assignment", ast->assignment.operator);
     }
 
     ast->assignment.scope = analyzer->currentScope;
@@ -2524,23 +2524,23 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     analyzeNode(analyzer, ast->prefix.expr);
 
     if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {
-        semanticError("Logical not requires a bool operand ", ast->prefix.operator);
+        semanticErrorAt("Logical not requires a bool operand", ast->prefix.operator);
     }
 
     TokenType type = getTypeId(ast->prefix.expr);
 
     if (type == TOKEN_STRING) {
-        semanticError("Invalid prefix operator for string ", ast->prefix.operator);
+        semanticErrorAt("Invalid prefix operator for string operands", ast->prefix.operator);
     }
 
     if (type == TOKEN_CHAR) {
-        semanticError("Invalid prefix operator for char ", ast->prefix.operator);
+        semanticErrorAt("Invalid prefix operator for char operands", ast->prefix.operator);
     }
 
     bool numeric = isSignedIntegerTypeToken(type) || isFloatTypeToken(type);
 
     if (ast->prefix.operator.type == TOKEN_MINUS && !numeric) {
-        semanticError("Negation requires a signed numeric operand ", ast->prefix.operator);
+        semanticErrorAt("Negation requires a signed numeric operand", ast->prefix.operator);
     }
 }
 

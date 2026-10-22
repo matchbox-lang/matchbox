@@ -5,3 +5,22 @@ func printValue() -> void {
 }
 
 printValue()
+
+let inverseHyperbolicCosine: f32 = acosh(2.0)
+let inverseHyperbolicSine: f64 = asinh(1.0)
+let inverseHyperbolicTangent: f32 = atanh(0.5)
+let cubeRoot: f64 = cbrt(-8.0)
+let roundedUp: f32 = ceil(1.25)
+let roundedDown: f64 = floor(1.75)
+let squareRoot: f32 = sqrt(9.0)
+let order: i32 = byteorder()
+
+print(inverseHyperbolicCosine)
+print(inverseHyperbolicSine)
+print(inverseHyperbolicTangent)
+print(cubeRoot)
+print(roundedUp)
+print(roundedDown)
+print(squareRoot)
+print(order)
+exit()

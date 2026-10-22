@@ -13,3 +13,14 @@ print(minimum)
 print(maximum)
 print(power)
 print(upper)
+
+let absolute: f64 = abs(-narrow)
+let angle: f64 = atan2(narrow, wide)
+let hypotenuse: f64 = hypot(wide, narrow)
+let exponent: i8 = -2
+let scaled: f64 = ldexp(wide, exponent)
+
+print(absolute)
+print(angle)
+print(hypotenuse)
+print(scaled)

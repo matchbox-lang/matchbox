@@ -58,7 +58,7 @@ make clean
 
 ## Getting Started
 
-Create a file named `main.mb` and add the following code:
+Create a file named `hello.mb` and add the following code:
 
 ```mb
 print("Hello World!")
@@ -67,7 +67,7 @@ print("Hello World!")
 Compile and run the program:
 
 ```sh
-matchbox main.mb
+matchbox hello.mb
 ```
 
 ## Development

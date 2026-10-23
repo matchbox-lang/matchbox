@@ -28,7 +28,25 @@ To build from source:
 make
 ```
 
-This creates the executable at `build/matchbox`.
+This builds the debug executable at `build/matchbox.exe`, with optimizations disabled and debug symbols enabled. Use `make debug` to select this target explicitly.
+
+To build the release executable:
+
+```sh
+make release
+```
+
+The release target optimizes for size (`-Os`), removes unused sections, and strips symbols. It writes to the same `build/matchbox.exe` path as the debug target.
+
+To build the static library for embedding Matchbox:
+
+```sh
+make lib-release
+```
+
+This creates `build/libmatchbox.a` using the release compilation flags. Use `make lib` or `make lib-debug` for a library with debug symbols and optimizations disabled. The public API is declared in `include/matchbox.h`.
+
+Debug and release targets keep their object files in separate directories, so switching targets does not require `make clean`. Executable targets share one output path, and library targets share another; the most recently built target determines the configuration at each path.
 
 For the commands below, `matchbox` refers to either an installed binary or a locally built binary made available on your `PATH`.
 
@@ -43,12 +61,7 @@ make clean
 Create a file named `main.mb` and add the following code:
 
 ```mb
-func add(a, b) {
-    return a + b
-}
-
-let result = add(10, 20)
-print(result)
+print("Hello World!")
 ```
 
 Compile and run the program:

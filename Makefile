@@ -5,7 +5,7 @@ BUILD_DIR := build
 INCLUDE_DIR := include
 SRC_DIR := src
 
-SRCS := $(sort $(wildcard $(SRC_DIR)/*.c))
+SRCS := $(sort $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/builtin/*.c))
 EXE := $(BUILD_DIR)/matchbox.exe
 CC := gcc
 CPPFLAGS += -I$(INCLUDE_DIR)
@@ -32,13 +32,13 @@ debug: $(DEBUG_OBJECTS) | $(BUILD_DIR)
 release: $(RELEASE_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(RELEASE_LDFLAGS) $^ -o $(EXE) $(LDLIBS)
 
-$(DEBUG_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(DEBUG_OBJ_DIR)
+$(DEBUG_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(DEBUG_OBJ_DIR) $(DEBUG_OBJ_DIR)/builtin
 	$(CC) $(CPPFLAGS) $(DEBUG_CFLAGS) -MMD -MP -c $< -o $@
 
-$(RELEASE_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(RELEASE_OBJ_DIR)
+$(RELEASE_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(RELEASE_OBJ_DIR) $(RELEASE_OBJ_DIR)/builtin
 	$(CC) $(CPPFLAGS) $(RELEASE_CFLAGS) -MMD -MP -c $< -o $@
 
-$(BUILD_DIR) $(DEBUG_OBJ_DIR) $(RELEASE_OBJ_DIR):
+$(BUILD_DIR) $(DEBUG_OBJ_DIR) $(RELEASE_OBJ_DIR) $(DEBUG_OBJ_DIR)/builtin $(RELEASE_OBJ_DIR)/builtin:
 	$(call MKDIR,$@)
 
 clean:

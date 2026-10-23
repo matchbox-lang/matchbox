@@ -1,5 +1,6 @@
 #include "analyzer.h"
 #include "builtin.h"
+#include "builtin/io.h"
 #include "output.h"
 #include "scope.h"
 #include "string_object.h"

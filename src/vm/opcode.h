@@ -214,7 +214,7 @@ typedef enum Opcode
     OP_NEG_I16,
     OP_NEG_I8,
 
-    // Comparisons
+    // Boolean comparisons
     OP_EQ,
     OP_EQI,
     OP_NE,
@@ -224,6 +224,7 @@ typedef enum Opcode
     OP_LE_I32,
     OP_LE_U32,
 
+    // Three-way comparisons
     OP_CMP_I32,
     OP_CMP_U32,
     OP_CMP_I64,

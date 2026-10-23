@@ -1,6 +1,6 @@
 #include "vm.h"
-#include "function_object.h"
-#include "opcode.h"
+#include "vm/opcode.h"
+#include "runtime/function_object.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

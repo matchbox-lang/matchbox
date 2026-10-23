@@ -1,8 +1,8 @@
 #include "builtin/io.h"
-#include "float_format.h"
-#include "output.h"
-#include "string_object.h"
-#include "unicode.h"
+#include "common/float_format.h"
+#include "runtime/output.h"
+#include "runtime/string_object.h"
+#include "common/unicode.h"
 #include <inttypes.h>
 #include <stdio.h>
 

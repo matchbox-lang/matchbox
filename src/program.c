@@ -1,10 +1,10 @@
 #include "program.h"
-#include "buffer.h"
+#include "program/buffer.h"
 #include "compiler.h"
-#include "module_object.h"
-#include "options.h"
-#include "repl.h"
-#include "test_runner.h"
+#include "runtime/module_object.h"
+#include "program/options.h"
+#include "program/repl.h"
+#include "program/test_runner.h"
 #include "vm.h"
 #include <errno.h>
 #include <stdbool.h>

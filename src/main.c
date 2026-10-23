@@ -1,5 +1,5 @@
-#include "command_line.h"
-#include "options.h"
+#include "program/command_line.h"
+#include "program/options.h"
 #include "program.h"
 #include <stdio.h>
 

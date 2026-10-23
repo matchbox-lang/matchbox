@@ -1,0 +1,22 @@
+#ifndef VM_H
+#define VM_H
+
+#include "runtime/module_object.h"
+#include "vm/opcode.h"
+
+#define STACK_MAX 1024
+
+typedef struct VM
+{
+    Value stack[STACK_MAX];
+    Instruction* ip;
+    Value* fp;
+    ValueArray globals;
+    ModuleObject* module;
+} VM;
+
+void initVM(VM* vm, ModuleObject* module);
+void freeVM(VM* vm);
+void interpret(VM* vm);
+
+#endif

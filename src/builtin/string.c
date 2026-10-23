@@ -1,5 +1,5 @@
 #include "builtin/string.h"
-#include "string_concatenation.h"
+#include "runtime/string_concatenation.h"
 #include "vm.h"
 
 void builtinString(VM* vm, FunctionObject* function, Value* frame)

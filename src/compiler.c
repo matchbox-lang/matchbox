@@ -1761,6 +1761,21 @@ static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
     return compileIntegerCast(compiler, operand, TOKEN_U32, destination);
 }
 
+static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, TokenType destination)
+{
+    Operand operand = compileExpression(compiler, expression, false);
+
+    operand = materializeOperand(compiler, operand);
+
+    emitInstruction(compiler, OP_BANDI_I32, operand.reg, operand.reg, 1);
+
+    if (getTypeSlotCount(destination) == 2) {
+        return extendIntegerOperand(compiler, operand, TOKEN_U32);
+    }
+
+    return operand;
+}
+
 static Operand compileExplicitConversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
@@ -1769,6 +1784,10 @@ static Operand compileExplicitConversion(Compiler* compiler, ASTNode* ast)
 
     if (source == destination || canImplicitlyWidenType(source, destination)) {
         return compileConvertedExpression(compiler, expression, destination, false);
+    }
+
+    if (source == TOKEN_BOOL) {
+        return compileBooleanToInteger(compiler, expression, destination);
     }
 
     if (source == TOKEN_CHAR || destination == TOKEN_CHAR) {

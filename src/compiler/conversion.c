@@ -141,6 +141,10 @@ bool canExplicitlyConvertType(TokenType source, TokenType destination)
     bool sourceNumeric = isIntegerTypeToken(source) || isFloatTypeToken(source);
     bool destinationNumeric = isIntegerTypeToken(destination) || isFloatTypeToken(destination);
 
+    if (source == TOKEN_BOOL && isIntegerTypeToken(destination)) {
+        return true;
+    }
+
     if (sourceNumeric && destinationNumeric) {
         return true;
     }
@@ -254,6 +258,12 @@ static bool getNumericConstant(ASTNode* ast, NumericConstant* value)
 
     if (ast->type == AST_FLOAT) {
         value->floating = roundedFloatConstant(ast->floatLiteral.value, type);
+
+        return true;
+    }
+
+    if (ast->type == AST_BOOLEAN) {
+        value->integer = ast->booleanLiteral.value;
 
         return true;
     }

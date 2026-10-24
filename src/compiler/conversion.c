@@ -30,7 +30,7 @@ static void floatOutsideSupportedRangeError(Token token)
     exit(1);
 }
 
-static void invalidConstantConversion(Token token, TokenType destination)
+static void invalidConstantConversionError(Token token, TokenType destination)
 {
     const char* name = getTokenTypeName(destination);
 
@@ -308,7 +308,7 @@ static uint64_t floatConstantToInteger(double value, TokenType destination, Toke
     }
 
     if (!isfinite(truncated) || truncated < lower || truncated >= upper) {
-        invalidConstantConversion(token, destination);
+        invalidConstantConversionError(token, destination);
     }
 
     if (signedType) {
@@ -405,7 +405,7 @@ void foldExplicitConversion(ASTNode* ast)
     }
 
     if (destination == TOKEN_CHAR && (value.integer > UINT32_MAX || !isUnicodeScalar((uint32_t)value.integer))) {
-        invalidConstantConversion(token, destination);
+        invalidConstantConversionError(token, destination);
     }
 
     if (destination != TOKEN_CHAR) {

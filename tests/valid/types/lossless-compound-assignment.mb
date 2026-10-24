@@ -1,0 +1,16 @@
+func combine(small: u8, medium: i16, single: f32) {
+    var integer: i64 = 1000
+    var floating: f64 = 1000.0
+
+    integer += small
+    integer -= medium
+    floating += single
+    floating -= medium
+    floating *= small
+    floating /= small
+
+    print(integer)
+    print(floating)
+}
+
+combine(200, -100, 2.5)

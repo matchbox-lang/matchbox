@@ -1,4 +1,5 @@
 #include "compiler.h"
+#include "compiler/conversion.h"
 #include "compiler/ast.h"
 #include "builtin.h"
 #include "runtime/code_object.h"
@@ -1145,7 +1146,7 @@ static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
 
 static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenType type)
 {
-    Operand value = compileExpression(compiler, ast, false);
+    Operand value = compileConvertedExpression(compiler, ast, type, false);
     int shift = 0;
 
     if (type == TOKEN_I8 || type == TOKEN_U8) {
@@ -1172,7 +1173,7 @@ static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenT
 
 static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
 {
-    TokenType type = getTypeId(ast->binary.leftExpr);
+    TokenType type = ast->binary.operandType;
     Operand left = compileComparisonOperand(compiler, ast->binary.leftExpr, type);
     bool direct = isDirectVariable(compiler, ast->binary.rightExpr);
 
@@ -1241,14 +1242,14 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
         return compileFloatBinary(compiler, ast);
     }
 
-    TokenType type = getTypeId(ast->binary.leftExpr);
-    Operand left = compileExpression(compiler, ast->binary.leftExpr, false);
+    TokenType type = ast->binary.operandType;
+    Operand left = compileConvertedExpression(compiler, ast->binary.leftExpr, type, false);
 
     if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
         left = materializeOperand(compiler, left);
     }
 
-    Operand right = compileExpression(compiler, ast->binary.rightExpr, false);
+    Operand right = compileConvertedExpression(compiler, ast->binary.rightExpr, type, false);
 
     return emitBinaryOperator(compiler, ast->binary.operator.type, type, left, right);
 }
@@ -1418,18 +1419,37 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
     return compileExpression(compiler, ast, false);
 }
 
-static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
-    TokenType source, TokenType destination)
+static Operand normalizeUnsignedOperand(Compiler* compiler, Operand operand, TokenType source)
 {
-    if (!canImplicitlyWidenInteger(source, destination)
-        || getTypeSlotCount(destination) == operand.slots) {
+    int shift = 0;
+
+    if (source == TOKEN_U8) {
+        shift = 24;
+    }
+
+    if (source == TOKEN_U16) {
+        shift = 16;
+    }
+
+    if (!shift) {
         return operand;
     }
 
+    operand = materializeOperand(compiler, operand);
+
+    emitInstruction(compiler, OP_LSLI_I32, operand.reg, operand.reg, shift);
+    emitInstruction(compiler, OP_LSRI_I32, operand.reg, operand.reg, shift);
+
+    return operand;
+}
+
+static Operand extendIntegerOperand(Compiler* compiler, Operand operand, TokenType source)
+{
     int destinationRegister = operand.reg;
 
     if (!operand.temporary) {
         destinationRegister = allocateRegister(compiler);
+
         emitMov(compiler, destinationRegister, operand.reg);
     }
 
@@ -1442,7 +1462,19 @@ static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
     }
 
     emitInstruction(compiler, OP_LDI, highRegister, 0, 0);
+
     return makeWideOperand(destinationRegister, true);
+}
+
+static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
+    TokenType source, TokenType destination)
+{
+    if (!canImplicitlyWidenInteger(source, destination)
+        || getTypeSlotCount(destination) == operand.slots) {
+        return operand;
+    }
+
+    return extendIntegerOperand(compiler, operand, source);
 }
 
 static Operand widenFloatOperand(Compiler* compiler, Operand operand,
@@ -1522,16 +1554,47 @@ static uint64_t getWidenedIntegerLiteralValue(ASTNode* ast, TokenType source)
     }
 }
 
+static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, TokenType destination)
+{
+    TokenType source = getTypeId(ast);
+    ASTNode literal = *ast;
+
+    literal.integerLiteral.value = getWidenedIntegerLiteralValue(ast, source);
+    literal.integerLiteral.typeId = destination;
+
+    return compileNumber(compiler, &literal);
+}
+
+static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, TokenType destination)
+{
+    TokenType source = getTypeId(ast);
+    uint64_t integer = getWidenedIntegerLiteralValue(ast, source);
+    double number = integer;
+
+    if (isSignedIntegerTypeToken(source)) {
+        number = (int64_t)integer;
+    }
+
+    if (source == TOKEN_F32) {
+        number = (float)number;
+    }
+
+    return compileFloatValue(compiler, number, destination);
+}
+
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
     TokenType destination, bool reference)
 {
     TokenType source = getTypeId(ast);
-    bool wideInteger = destination == TOKEN_I64 || destination == TOKEN_U64;
+    bool integerToFloat = canImplicitlyConvertIntegerToFloat(source, destination);
+    bool floatWidening = canImplicitlyWidenFloat(source, destination);
 
-    if (!reference && ast->type == AST_INTEGER && wideInteger && canImplicitlyWidenInteger(source, destination)) {
-        uint64_t value = getWidenedIntegerLiteralValue(ast, source);
+    if (!reference && ast->type == AST_INTEGER && (integerToFloat || floatWidening)) {
+        return compileIntegerLiteralAsFloat(compiler, ast, destination);
+    }
 
-        return compileWideNumber(compiler, value);
+    if (!reference && ast->type == AST_INTEGER && canImplicitlyWidenInteger(source, destination)) {
+        return compileWidenedIntegerLiteral(compiler, ast, destination);
     }
 
     if (!reference && ast->type == AST_FLOAT && source == TOKEN_F32 && destination == TOKEN_F64) {
@@ -1546,10 +1609,183 @@ static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
         return operand;
     }
 
+    if (source != destination && canImplicitlyWidenType(source, destination)) {
+        operand = normalizeUnsignedOperand(compiler, operand, source);
+    }
+
     operand = widenIntegerOperand(compiler, operand, source, destination);
     operand = convertIntegerToFloatOperand(compiler, operand, source, destination);
 
     return widenFloatOperand(compiler, operand, source, destination);
+}
+
+static Operand shrinkIntegerOperand(Compiler* compiler, Operand operand)
+{
+    if (operand.slots == 1) {
+        return operand;
+    }
+
+    if (!operand.temporary) {
+        return makeOperand(operand.reg, false);
+    }
+
+    releaseOperand(compiler, operand);
+
+    int result = allocateRegister(compiler);
+
+    return makeOperand(result, true);
+}
+
+// Integer casts retain low destination bits and interpret signed results as two's complement
+static Operand compileIntegerCast(Compiler* compiler, Operand operand, TokenType source, TokenType destination)
+{
+    operand = normalizeUnsignedOperand(compiler, operand, source);
+
+    if (getTypeSlotCount(destination) == 2 && operand.slots == 1) {
+        return extendIntegerOperand(compiler, operand, source);
+    }
+
+    if (getTypeSlotCount(destination) == 2) {
+        return operand;
+    }
+
+    operand = shrinkIntegerOperand(compiler, operand);
+    operand = materializeOperand(compiler, operand);
+
+    size_t size = getIntegerTypeSize(destination);
+    int shift = 32 - size * 8;
+    Opcode opcode = OP_LSRI_I32;
+
+    if (isSignedIntegerTypeToken(destination)) {
+        opcode = OP_ASRI_I32;
+    }
+
+    if (shift) {
+        emitInstruction(compiler, OP_LSLI_I32, operand.reg, operand.reg, shift);
+    }
+
+    emitInstruction(compiler, opcode, operand.reg, operand.reg, shift);
+
+    return operand;
+}
+
+static Opcode getFloatToIntegerOpcode(TokenType source, TokenType destination)
+{
+    static const Opcode opcodes[2][4] = {
+        {OP_F32_TO_I32, OP_F32_TO_U32, OP_F32_TO_I64, OP_F32_TO_U64},
+        {OP_F64_TO_I32, OP_F64_TO_U32, OP_F64_TO_I64, OP_F64_TO_U64}
+    };
+    int index = 0;
+
+    if (!isSignedIntegerTypeToken(destination)) {
+        index++;
+    }
+
+    if (getTypeSlotCount(destination) == 2) {
+        index += 2;
+    }
+
+    return opcodes[source == TOKEN_F64][index];
+}
+
+static Opcode getIntegerToFloatOpcode(TokenType source, TokenType destination)
+{
+    static const Opcode signedOpcodes[2][2] = {
+        {OP_INT_TO_F32, OP_INT_TO_F64},
+        {OP_I64_TO_F32, OP_I64_TO_F64}
+    };
+    static const Opcode unsignedOpcodes[2][2] = {
+        {OP_UINT_TO_F32, OP_UINT_TO_F64},
+        {OP_U64_TO_F32, OP_U64_TO_F64}
+    };
+    bool wideSource = getTypeSlotCount(source) == 2;
+    bool wideDestination = destination == TOKEN_F64;
+
+    if (isSignedIntegerTypeToken(source)) {
+        return signedOpcodes[wideSource][wideDestination];
+    }
+
+    return unsignedOpcodes[wideSource][wideDestination];
+}
+
+static Opcode getNumericConversionOpcode(TokenType source, TokenType destination)
+{
+    if (isIntegerTypeToken(destination)) {
+        return getFloatToIntegerOpcode(source, destination);
+    }
+
+    if (isIntegerTypeToken(source)) {
+        return getIntegerToFloatOpcode(source, destination);
+    }
+
+    return OP_F64_TO_F32;
+}
+
+static Operand emitConversionOperand(Compiler* compiler, Operand operand, TokenType destination, Opcode opcode)
+{
+    size_t slots = getTypeSlotCount(destination);
+
+    releaseOperand(compiler, operand);
+
+    int result = allocateRegisters(compiler, slots);
+
+    emitInstruction(compiler, opcode, result, operand.reg, 0);
+
+    if (slots == 2) {
+        return makeWideOperand(result, true);
+    }
+
+    return makeOperand(result, true);
+}
+
+static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode* expression = ast->conversion.expr;
+    TokenType source = getTypeId(expression);
+    TokenType destination = ast->conversion.typeId;
+
+    if (destination == TOKEN_CHAR && source != TOKEN_U8) {
+        Token token = ast->conversion.token;
+
+        fprintf(stderr, "Error: Integer-to-char conversion requires a constant or u8 source");
+        fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+        exit(1);
+    }
+
+    Operand operand = compileExpression(compiler, expression, false);
+
+    if (destination == TOKEN_CHAR) {
+        return normalizeUnsignedOperand(compiler, operand, source);
+    }
+
+    return compileIntegerCast(compiler, operand, TOKEN_U32, destination);
+}
+
+static Operand compileExplicitConversion(Compiler* compiler, ASTNode* ast)
+{
+    ASTNode* expression = ast->conversion.expr;
+    TokenType source = getTypeId(expression);
+    TokenType destination = ast->conversion.typeId;
+
+    if (source == destination || canImplicitlyWidenType(source, destination)) {
+        return compileConvertedExpression(compiler, expression, destination, false);
+    }
+
+    if (source == TOKEN_CHAR || destination == TOKEN_CHAR) {
+        return compileCharacterConversion(compiler, ast);
+    }
+
+    Operand operand = compileExpression(compiler, expression, false);
+
+    if (isIntegerTypeToken(source) && isIntegerTypeToken(destination)) {
+        return compileIntegerCast(compiler, operand, source, destination);
+    }
+
+    operand = normalizeUnsignedOperand(compiler, operand, source);
+
+    Opcode opcode = getNumericConversionOpcode(source, destination);
+
+    return emitConversionOperand(compiler, operand, destination, opcode);
 }
 
 static bool requiresReservedArgument(Vector* args, Vector* params, size_t position)
@@ -1840,7 +2076,7 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function, uint16_
 
     if (function->type == FUNCTION_BUILTIN && !function->returnCount && argumentCount == 1) {
         int previousRegisterCount = compiler->registerCount;
-        Operand argument = compileExpression(compiler, args->data[0], false);
+        Operand argument = compileArgumentExpression(compiler, args, params, 0);
 
         emitCallInstruction(compiler, argument.reg, functionPosition);
         releaseOperand(compiler, argument);
@@ -3132,6 +3368,9 @@ static void markCalledFunctions(ASTNode* ast)
             markCalledFunctions(ast->conditional.thenBranch);
             markCalledFunctions(ast->conditional.elseBranch);
             break;
+        case AST_CONVERSION:
+            markCalledFunctions(ast->conversion.expr);
+            break;
         case AST_FUNCTION_CALL:
             markCalledFunction(ast);
             break;
@@ -3268,6 +3507,9 @@ static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
             break;
         case AST_MATCH:
             result = compileMatch(compiler, ast, false);
+            break;
+        case AST_CONVERSION:
+            result = compileExplicitConversion(compiler, ast);
             break;
         case AST_FUNCTION_CALL:
             return compileFunctionCall(compiler, ast, discard);

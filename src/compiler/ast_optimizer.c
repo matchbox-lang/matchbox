@@ -1,4 +1,5 @@
 #include "compiler/ast_optimizer.h"
+#include "compiler/conversion.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 #include "runtime/string_concatenation.h"
@@ -572,6 +573,26 @@ static void optimizeMatch(ASTNode* ast)
     optimizeConditionalBranch(ast->match.defaultBranch);
 }
 
+static void optimizeConversion(ASTNode* ast)
+{
+    optimizeNode(ast->conversion.expr);
+    foldExplicitConversion(ast);
+
+    ASTNode* expression = ast->conversion.expr;
+    bool literal = expression->type == AST_INTEGER || expression->type == AST_FLOAT
+        || expression->type == AST_CHARACTER;
+
+    if (!literal) {
+        return;
+    }
+
+    ASTNode replacement = *expression;
+
+    freeASTNode(expression);
+
+    *ast = replacement;
+}
+
 static void optimizeNode(ASTNode* ast)
 {
     switch (ast->type) {
@@ -592,6 +613,9 @@ static void optimizeNode(ASTNode* ast)
             break;
         case AST_CONDITIONAL:
             optimizeConditional(ast, true);
+            break;
+        case AST_CONVERSION:
+            optimizeConversion(ast);
             break;
         case AST_FUNCTION_CALL:
             optimizeNodes(&ast->functionCall.args);

@@ -1,0 +1,7 @@
+func convert(value: u16) -> char {
+    return char(value)
+}
+
+let result = convert(97)
+
+print(result)

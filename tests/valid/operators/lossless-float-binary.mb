@@ -1,0 +1,18 @@
+func combine(left: f32, right: f64) {
+    print(left + right)
+    print(right + left)
+    print(left - right)
+    print(right - left)
+    print(left * right)
+    print(right * left)
+    print(left / right)
+    print(right / left)
+    print(left < right)
+    print(right > left)
+    print(left == right)
+    print(right == left)
+    print(left <=> right)
+    print(right <=> left)
+}
+
+combine(2.5, 5.0)

@@ -1,4 +1,5 @@
 #include "compiler/analyzer.h"
+#include "compiler/conversion.h"
 #include "builtin.h"
 #include "builtin/io.h"
 #include "runtime/output.h"
@@ -521,6 +522,8 @@ static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
             return visitNodeUses(ast->conditional.condition, visit, context)
                 || visitNodeUses(ast->conditional.thenBranch, visit, context)
                 || visitNodeUses(ast->conditional.elseBranch, visit, context);
+        case AST_CONVERSION:
+            return visitNodeUses(ast->conversion.expr, visit, context);
         case AST_FUNCTION_CALL:
             return visitNodeListUses(&ast->functionCall.args, visit, context);
         case AST_FUNCTION_DEFINITION:
@@ -1592,6 +1595,16 @@ static void applyBinaryIntegerLiteralTypes(ASTNode* left, ASTNode* right)
     }
 }
 
+static void binaryTypeError(Token token, TokenType left, TokenType right)
+{
+    const char* leftName = getTokenTypeName(left);
+    const char* rightName = getTokenTypeName(right);
+
+    fprintf(stderr, "Error: No lossless common numeric type for %s and %s", leftName, rightName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -1616,34 +1629,22 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    if (!comparison && isFloatTypeToken(leftType)) {
-        applyIntegerLiteralType(ast->binary.rightExpr, leftType);
-        rightType = getTypeId(ast->binary.rightExpr);
-    }
-
-    if (!comparison && isFloatTypeToken(rightType)) {
-        applyIntegerLiteralType(ast->binary.leftExpr, rightType);
-        leftType = getTypeId(ast->binary.leftExpr);
-    }
-
     applyBinaryIntegerLiteralTypes(ast->binary.leftExpr, ast->binary.rightExpr);
 
     leftType = getTypeId(ast->binary.leftExpr);
     rightType = getTypeId(ast->binary.rightExpr);
+    TokenType commonType = getCommonNumericType(leftType, rightType);
+    bool floatOperands = isFloatTypeToken(commonType);
 
-    if (comparison && leftType != rightType) {
-        semanticErrorAt("Cannot compare operands of nonmatching types", ast->binary.operator);
+    if (leftType != rightType && commonType == TOKEN_UNKNOWN) {
+        binaryTypeError(ast->binary.operator, leftType, rightType);
     }
 
-    bool leftConvertsToRight = canImplicitlyConvertIntegerToFloat(leftType, rightType);
-    bool rightConvertsToLeft = canImplicitlyConvertIntegerToFloat(rightType, leftType);
-    bool floatOperands = isFloatTypeToken(leftType) && isFloatTypeToken(rightType);
-    
-    floatOperands = floatOperands || leftConvertsToRight || rightConvertsToLeft;
-
-    if (leftType != rightType && !floatOperands) {
-        semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
+    if (commonType == TOKEN_UNKNOWN) {
+        commonType = leftType;
     }
+
+    ast->binary.operandType = commonType;
 
     if (leftType == TOKEN_STRING) {
         semanticErrorAt("Invalid operator for string operands", ast->binary.operator);
@@ -1671,11 +1672,7 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
     }
 
-    if (floatOperands) {
-        ast->binary.typeId = getFloatBinaryType(leftType, rightType);
-    } else {
-        ast->binary.typeId = leftType;
-    }
+    ast->binary.typeId = commonType;
 
     if (ast->binary.operator.type == TOKEN_SPACESHIP) {
         ast->binary.typeId = TOKEN_I32;
@@ -2245,6 +2242,9 @@ static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
         case AST_MATCH:
             validateMatchGlobalAccess(analyzer, ast);
             break;
+        case AST_CONVERSION:
+            validateNodeGlobalAccess(analyzer, ast->conversion.expr);
+            break;
         case AST_FUNCTION_CALL:
             validateGlobalAccessInNodes(analyzer, &ast->functionCall.args);
             validateFunctionGlobalAccess(analyzer, ast->functionCall.symbol);
@@ -2394,9 +2394,75 @@ static void setCallReferenceOrigins(ASTNode* caller, ASTNode* callee)
     }
 }
 
+static void inferConversionLiteral(ASTNode* ast)
+{
+    TokenType type = ast->functionCall.token.type;
+    size_t count = countVector(&ast->functionCall.args);
+
+    if (type < TOKEN_I8 || type > TOKEN_CHAR || count != 1) {
+        return;
+    }
+
+    ASTNode* expression = ast->functionCall.args.data[0];
+    TokenType source = getTypeId(expression);
+
+    if (source == TOKEN_UNKNOWN && expression->type == AST_INTEGER) {
+        applyIntegerLiteralType(expression, TOKEN_U64);
+    }
+}
+
+static void analyzeTypeConversion(ASTNode* ast)
+{
+    Token token = ast->functionCall.token;
+    TokenType destination = token.type;
+    size_t count = countVector(&ast->functionCall.args);
+
+    if (count != 1) {
+        semanticErrorAt("Explicit type conversion requires exactly one argument", token);
+    }
+
+    ASTNode* expression = ast->functionCall.args.data[0];
+    TokenType source = getTypeId(expression);
+    bool supported = canExplicitlyConvertType(source, destination);
+    ReferenceType reference = getReferenceType(expression);
+
+    if (!supported) {
+        const char* sourceName = getTokenTypeName(source);
+        const char* destinationName = getTokenTypeName(destination);
+
+        fprintf(stderr, "Error: Unsupported explicit conversion from %s to %s", sourceName, destinationName);
+        fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+        exit(1);
+    }
+
+    if (reference != REFERENCE_NONE) {
+        semanticErrorAt("Explicit type conversions require a value", token);
+    }
+
+    freeStringObject(ast->functionCall.id);
+    freeVector(&ast->functionCall.args);
+    freeVector(&ast->functionCall.referenceOrigins);
+
+    ast->type = AST_CONVERSION;
+    ast->conversion.expr = expression;
+    ast->conversion.token = token;
+    ast->conversion.typeId = destination;
+
+    foldExplicitConversion(ast);
+}
+
 static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
 {
+    inferConversionLiteral(ast);
     analyzeExpressionNodes(analyzer, &ast->functionCall.args);
+
+    TokenType calledType = ast->functionCall.token.type;
+
+    if (calledType >= TOKEN_I8 && calledType <= TOKEN_CHAR) {
+        analyzeTypeConversion(ast);
+
+        return;
+    }
 
     StringView id = getStringView(ast->functionCall.id);
     ASTNode* symbol = findSymbol(analyzer, id);
@@ -3040,6 +3106,8 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
             break;
         case AST_CONDITIONAL:
             analyzeConditional(analyzer, ast); break;
+        case AST_CONVERSION:
+            analyzeNode(analyzer, ast->conversion.expr); break;
         case AST_FUNCTION_CALL:
             analyzeFunctionCall(analyzer, ast); break;
         case AST_FUNCTION_DEFINITION:

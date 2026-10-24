@@ -7,7 +7,7 @@ let product: f64 = narrow * wide
 let quotient: f64 = wide / narrow
 let remainder32: f32 = 5.5 % 2.0
 let remainder64: f64 = wide % narrow
-let literalProduct: f32 = narrow * 4
+let literalProduct: f64 = narrow * 4
 
 let signed16: i16 = -4
 let unsigned16: u16 = 4

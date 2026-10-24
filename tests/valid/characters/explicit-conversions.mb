@@ -1,0 +1,25 @@
+func take(value: char) {
+    print(value)
+}
+
+func convert(value: u8) -> char {
+    return char(value)
+}
+
+let letter = convert(97)
+let identity = char(letter)
+let number = i32(letter)
+let wide = i64(letter)
+let unsigned = u64(letter)
+
+take(letter)
+take(identity)
+print(number)
+print(wide)
+print(unsigned)
+
+let constant = char(97)
+let narrowed = u8(letter)
+
+print(constant)
+print(narrowed)

@@ -1,6 +1,7 @@
 #ifndef VALUE_H
 #define VALUE_H
 
+#include "compiler/token.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -65,6 +66,8 @@ typedef struct ValueArray
 
 void initValueArray(ValueArray* array);
 void freeValueArray(ValueArray* array);
+int32_t readSignedValue(Value value, TokenType type);
+uint32_t readUnsignedValue(Value value, TokenType type);
 int64_t readI64(Value* frame, size_t position);
 uint64_t readU64(Value* frame, size_t position);
 double readF64(Value* frame, size_t position);

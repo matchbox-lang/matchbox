@@ -21,7 +21,7 @@ size_t writeValue(char* bytes, size_t capacity, Value* frame, TokenType type)
         case TOKEN_I8:
         case TOKEN_I16:
         case TOKEN_I32: {
-            int32_t value = AS_I32(frame[0]);
+            int32_t value = readSignedValue(frame[0], type);
 
             return snprintf(bytes, capacity, "%" PRId32, value);
         }
@@ -33,7 +33,7 @@ size_t writeValue(char* bytes, size_t capacity, Value* frame, TokenType type)
         case TOKEN_U8:
         case TOKEN_U16:
         case TOKEN_U32: {
-            uint32_t value = AS_U32(frame[0]);
+            uint32_t value = readUnsignedValue(frame[0], type);
 
             return snprintf(bytes, capacity, "%" PRIu32, value);
         }

@@ -1,4 +1,5 @@
 #include "builtin.h"
+#include "compiler/conversion.h"
 #include "builtin/io.h"
 #include "builtin/math.h"
 #include "builtin/string.h"

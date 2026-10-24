@@ -1,0 +1,15 @@
+func widen(value: f32) -> f64 {
+    return f64(value)
+}
+
+func preserve(value: f64) -> f64 {
+    return f64(value)
+}
+
+let widened = widen(2.5)
+let identity = preserve(3.5)
+let constant = f64(4.5)
+
+print(widened)
+print(identity)
+print(constant)

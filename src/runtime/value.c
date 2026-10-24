@@ -15,6 +15,32 @@ void freeValueArray(ValueArray* array)
     free(array->data);
 }
 
+int32_t readSignedValue(Value value, TokenType type)
+{
+    if (type == TOKEN_I8) {
+        return AS_I8(value);
+    }
+
+    if (type == TOKEN_I16) {
+        return AS_I16(value);
+    }
+
+    return AS_I32(value);
+}
+
+uint32_t readUnsignedValue(Value value, TokenType type)
+{
+    if (type == TOKEN_U8) {
+        return AS_U8(value);
+    }
+
+    if (type == TOKEN_U16) {
+        return AS_U16(value);
+    }
+
+    return AS_U32(value);
+}
+
 int64_t readI64(Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX

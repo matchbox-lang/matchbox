@@ -1,0 +1,3 @@
+let value: i32 = 1
+let other: f32 = 1.0
+let narrow: f32 = value + other

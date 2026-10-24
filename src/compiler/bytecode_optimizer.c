@@ -38,6 +38,17 @@ static bool usesRegisterPairs(Opcode opcode)
         case OP_STG_64:
         case OP_LDR_64:
         case OP_STR_64:
+        case OP_F64_TO_F32:
+        case OP_F64_TO_I32:
+        case OP_F64_TO_U32:
+        case OP_F32_TO_I64:
+        case OP_F32_TO_U64:
+        case OP_F64_TO_I64:
+        case OP_F64_TO_U64:
+        case OP_I64_TO_F32:
+        case OP_U64_TO_F32:
+        case OP_I64_TO_F64:
+        case OP_U64_TO_F64:
         case OP_F32_TO_F64:
         case OP_INT_TO_F64:
         case OP_UINT_TO_F64:

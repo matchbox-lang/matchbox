@@ -472,8 +472,19 @@ static ASTNode* parsePrimary(Parser* parser)
             return parseConditional(parser);
         case TOKEN_MATCH:
             return parseMatch(parser);
+        case TOKEN_I8:
+        case TOKEN_I16:
+        case TOKEN_I32:
+        case TOKEN_I64:
+        case TOKEN_U8:
+        case TOKEN_U16:
+        case TOKEN_U32:
+        case TOKEN_U64:
+        case TOKEN_F32:
+        case TOKEN_F64:
+        case TOKEN_CHAR:
         case TOKEN_STRING:
-            consume(parser, TOKEN_STRING);
+            consume(parser, parser->currentToken.type);
 
             return parseFunctionCall(parser);
         case TOKEN_STRING_LITERAL:

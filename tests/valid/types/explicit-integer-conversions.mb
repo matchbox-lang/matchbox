@@ -1,0 +1,29 @@
+func convert(value: u8) {
+    let signed16 = i16(value)
+    let signed32 = i32(value)
+    let signed64 = i64(value)
+    let unsigned16 = u16(value)
+    let unsigned32 = u32(value)
+    let unsigned64 = u64(value)
+    let float32 = f32(value)
+    let float64 = f64(value)
+
+    print(signed16)
+    print(signed32)
+    print(signed64)
+    print(unsigned16)
+    print(unsigned32)
+    print(unsigned64)
+    print(float32)
+    print(float64)
+}
+
+convert(200)
+
+let identity = i32(-97)
+let widened = i64(-97)
+let maximum = u64(18446744073709551615)
+
+print(identity)
+print(widened)
+print(maximum)

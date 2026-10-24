@@ -89,6 +89,9 @@ void freeASTNode(ASTNode* ast)
     }
 
     switch (ast->type) {
+        case AST_CONVERSION:
+            freeASTNode(ast->conversion.expr);
+            break;
         case AST_ASSIGNMENT:
             freeASTNode(ast->assignment.expr);
             break;
@@ -191,6 +194,8 @@ TokenType getTypeId(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case AST_CONVERSION:
+            return ast->conversion.typeId;
         case AST_BINARY:
             return ast->binary.typeId;
         case AST_CONDITIONAL:
@@ -323,6 +328,7 @@ bool isExpressionStatement(const ASTNode* ast)
         case AST_BUILTIN_CALL:
         case AST_CHARACTER:
         case AST_CONDITIONAL:
+        case AST_CONVERSION:
         case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:
@@ -369,6 +375,7 @@ bool isPrefixOperand(const ASTNode* ast)
         case AST_BUILTIN_CALL:
         case AST_CHARACTER:
         case AST_CONDITIONAL:
+        case AST_CONVERSION:
         case AST_FLOAT:
         case AST_FUNCTION_CALL:
         case AST_INTEGER:

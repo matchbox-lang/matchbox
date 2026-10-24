@@ -1,0 +1,2 @@
+let value: i8 = 1
+let narrowed: i8 = value + i64(1)

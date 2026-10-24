@@ -36,6 +36,7 @@ typedef enum ASTNodeType
     AST_CHARACTER,
     AST_COMPOUND,
     AST_CONDITIONAL,
+    AST_CONVERSION,
     AST_FLOAT,
     AST_FUNCTION_CALL,
     AST_FUNCTION_DEFINITION,
@@ -57,6 +58,12 @@ typedef struct ASTNode
 
     union {
         struct {
+            ASTNode* expr;
+            Token token;
+            TokenType typeId;
+        } conversion;
+
+        struct {
             Token token;
             ASTNode* condition;
             ASTNode* body;
@@ -76,6 +83,7 @@ typedef struct ASTNode
             ASTNode* leftExpr;
             ASTNode* rightExpr;
             TokenType typeId;
+            TokenType operandType;
         } binary;
 
         struct {

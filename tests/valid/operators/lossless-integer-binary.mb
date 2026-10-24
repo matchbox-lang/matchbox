@@ -1,0 +1,23 @@
+func combine(left: i8, right: u8) {
+    print(left + right)
+    print(right + left)
+    print(left - right)
+    print(right - left)
+    print(left * right)
+    print(right * left)
+    print(left / right)
+    print(right / left)
+    print(left < right)
+    print(right > left)
+    print(left == right)
+    print(right == left)
+    print(left <=> right)
+    print(right <=> left)
+}
+
+combine(-100, 200)
+
+let wide: u64 = 100
+
+print(wide == 100)
+print(100 == wide)

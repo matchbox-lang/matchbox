@@ -115,15 +115,15 @@ static void unresolvedReplExpressionTypeError(void)
     exit(1);
 }
 
-static void registerIndexOverflowError(ASTNode* function)
+static void topLevelRegisterIndexOverflowError(void)
 {
-    if (!function) {
-        fprintf(stderr, "Error: Top-level code requires more than %u virtual registers\n", UINT16_MAX + 1u);
-        exit(1);
-    }
+    fprintf(stderr, "Error: Top-level code requires more than %u virtual registers\n", UINT16_MAX + 1u);
+    exit(1);
+}
 
-    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n",
-        function->functionDefinition.id->chars, UINT16_MAX + 1u);
+static void functionRegisterIndexOverflowError(const char* name)
+{
+    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n", name, UINT16_MAX + 1u);
     exit(1);
 }
 
@@ -147,8 +147,11 @@ static void checkRegisterCount(Compiler* compiler, int count)
     }
 
     ASTNode* function = getCurrentFunctionDefinition(compiler);
+    if (!function) {
+        topLevelRegisterIndexOverflowError();
+    }
 
-    registerIndexOverflowError(function);
+    functionRegisterIndexOverflowError(function->functionDefinition.id->chars);
 }
 
 static CodeObject* currentCodeObject(Compiler* compiler)
@@ -1958,7 +1961,7 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     int base = getCallAreaCount(function);
 
     if (base > (int)UINT16_MAX + 1) {
-        registerIndexOverflowError(ast);
+        functionRegisterIndexOverflowError(ast->functionDefinition.id->chars);
     }
 
     function->maxStackCount = base + 2;

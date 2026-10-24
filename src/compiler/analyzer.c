@@ -175,13 +175,12 @@ static void binaryTypeError(Token token, TokenType left, TokenType right)
     exit(1);
 }
 
-static void unresolvedBuiltinCallError(ASTNode* ast)
+static void invalidBuiltinArgumentsError(Token token)
 {
-    if (isBuiltinName(ast->functionCall.id->chars)) {
-        semanticError("Invalid arguments to builtin ", ast->functionCall.token);
-    }
-
-    symbolError("undefined", ast->functionCall.token);
+    fprintf(stderr, "Error: Invalid arguments to builtin ");
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
 }
 
 static void unsupportedExplicitConversionError(Token token, TokenType source, TokenType destination)
@@ -2045,13 +2044,24 @@ static Builtin* resolveBuiltinCall(ASTNode* ast)
     return builtin;
 }
 
+static void validateBuiltinResolution(ASTNode* ast, Builtin* builtin)
+{
+    if (builtin) {
+        return;
+    }
+
+    if (isBuiltinName(ast->functionCall.id->chars)) {
+        invalidBuiltinArgumentsError(ast->functionCall.token);
+    }
+
+    symbolError("undefined", ast->functionCall.token);
+}
+
 static void analyzeBuiltinCall(ASTNode* ast)
 {
     Builtin* builtin = resolveBuiltinCall(ast);
-    if (!builtin) {
-        unresolvedBuiltinCallError(ast);
-    }
 
+    validateBuiltinResolution(ast, builtin);
     validateBuiltinCall(ast, builtin, ast->functionCall.token);
     convertBuiltinCall(ast, builtin);
 }

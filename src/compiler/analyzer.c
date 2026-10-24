@@ -60,7 +60,7 @@ typedef struct ReferenceLifetimes
     Vector* releases;
 } ReferenceLifetimes;
 
-static void semanticError(char* message, Token token)
+static void semanticTokenError(char* message, Token token)
 {
     fprintf(stderr, "Error: %s", message);
     printTokenValue(token);
@@ -68,7 +68,7 @@ static void semanticError(char* message, Token token)
     exit(1);
 }
 
-static void semanticErrorAt(char* message, Token token)
+static void semanticError(char* message, Token token)
 {
     fprintf(stderr, "Error: %s", message);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
@@ -771,7 +771,7 @@ static void mergeBranchReference(
     if (first && !hasExpectedType) {
         setExpressionReferenceType(ast, type);
     } else if (getReferenceType(ast) != type) {
-        semanticError("Expression branches have incompatible reference types ", token);
+        semanticTokenError("Expression branches have incompatible reference types ", token);
     }
 
     Vector* origins = referenceOriginsFromExpression(result);
@@ -1059,7 +1059,7 @@ static void validateLoopReferenceOrigins(OwnershipState* entry, Token token)
         bool existing = containsReferenceOrigin(&entry->referenceOrigins, origin);
 
         if (!existing) {
-            semanticErrorAt("While loop cannot change the origin of an outer reference", token);
+            semanticError("While loop cannot change the origin of an outer reference", token);
         }
     }
 }
@@ -1074,7 +1074,7 @@ static void validateLoopOwnership(Vector* entryStates, Token token)
         bool moved = isMoved(symbol);
 
         if (moved && !entry->moved) {
-            semanticErrorAt("While loop cannot move an outer reference across iterations", token);
+            semanticError("While loop cannot move an outer reference across iterations", token);
         }
 
         validateLoopReferenceOrigins(entry, token);
@@ -1095,7 +1095,7 @@ static void analyzeWhile(Analyzer* analyzer, ASTNode* ast)
     TokenType type = getTypeId(ast->whileStatement.condition);
 
     if (type != TOKEN_BOOL) {
-        semanticErrorAt("While condition must have type bool", ast->whileStatement.token);
+        semanticError("While condition must have type bool", ast->whileStatement.token);
     }
 
     analyzeScopedBranch(analyzer, ast->whileStatement.body, NULL, TOKEN_VOID);
@@ -1117,12 +1117,12 @@ static void validateExpressionBranch(ASTNode* branch, Token token)
 
     Vector* statements = &branch->compound.statements;
     if (countVector(statements) != 1) {
-        semanticError("Expression branch must contain exactly one expression ", token);
+        semanticTokenError("Expression branch must contain exactly one expression ", token);
     }
 
     ASTNode* expression = getVectorAt(statements, 0);
     if (!isExpressionStatement(expression)) {
-        semanticError("Expression branch must contain exactly one expression ", token);
+        semanticTokenError("Expression branch must contain exactly one expression ", token);
     }
 }
 
@@ -1161,7 +1161,7 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     analyzeNode(analyzer, ast->conditional.condition);
 
     if (getTypeId(ast->conditional.condition) != TOKEN_BOOL) {
-        semanticErrorAt("If condition must have type bool", ast->conditional.token);
+        semanticError("If condition must have type bool", ast->conditional.token);
     }
 
     Vector thenStates;
@@ -1196,15 +1196,15 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     }
 
     if (!ast->conditional.elseBranch) {
-        semanticError("If expression requires an else branch ", ast->conditional.token);
+        semanticTokenError("If expression requires an else branch ", ast->conditional.token);
     }
 
     if (thenType == TOKEN_VOID || elseType == TOKEN_VOID) {
-        semanticError("If expression branch must produce a value ", ast->conditional.token);
+        semanticTokenError("If expression branch must produce a value ", ast->conditional.token);
     }
 
     if (thenType != elseType) {
-        semanticError("If expression branches have incompatible types ", ast->conditional.token);
+        semanticTokenError("If expression branches have incompatible types ", ast->conditional.token);
     }
 
     bool hasExpectedType = ast->conditional.typeId != TOKEN_UNKNOWN
@@ -1309,7 +1309,7 @@ static bool matchIsExhaustive(ASTNode* ast)
 static void mergeMatchBranchType(ASTNode* ast, TokenType branchType, TokenType* resultType)
 {
     if (branchType == TOKEN_VOID) {
-        semanticError("Match expression arm must produce a value ", ast->match.token);
+        semanticTokenError("Match expression arm must produce a value ", ast->match.token);
     }
 
     if (*resultType == TOKEN_UNKNOWN) {
@@ -1319,7 +1319,7 @@ static void mergeMatchBranchType(ASTNode* ast, TokenType branchType, TokenType* 
     }
 
     if (*resultType != branchType) {
-        semanticError("Match expression arms have incompatible types ", ast->match.token);
+        semanticTokenError("Match expression arms have incompatible types ", ast->match.token);
     }
 }
 
@@ -1340,11 +1340,11 @@ static void analyzeMatchPatternNode(Analyzer* analyzer, ASTNode* ast, ASTNode* p
     }
 
     if (expected == TOKEN_STRING) {
-        semanticError("String match patterns are not supported ", ast->match.token);
+        semanticTokenError("String match patterns are not supported ", ast->match.token);
     }
 
     if (getTypeId(pattern) != expected) {
-        semanticError("Match pattern type does not match subject ", ast->match.token);
+        semanticTokenError("Match pattern type does not match subject ", ast->match.token);
     }
 }
 
@@ -1385,7 +1385,7 @@ static void analyzeMatchGuard(Analyzer* analyzer, MatchArm* arm, Vector* fallthr
     analyzeNode(analyzer, arm->guard);
 
     if (getTypeId(arm->guard) != TOKEN_BOOL) {
-        semanticErrorAt("Match guard requires a bool operand", arm->guardToken);
+        semanticError("Match guard requires a bool operand", arm->guardToken);
     }
 
     Vector guardStates;
@@ -1493,7 +1493,7 @@ static void finalizeMatchType(ASTNode* ast, TokenType resultType)
     }
 
     if (!matchIsExhaustive(ast)) {
-        semanticError("Match expression must be exhaustive ", ast->match.token);
+        semanticTokenError("Match expression must be exhaustive ", ast->match.token);
     }
 
     ast->match.typeId = resultType;
@@ -1666,29 +1666,29 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
     ast->binary.operandType = commonType;
 
     if (leftType == TOKEN_STRING) {
-        semanticErrorAt("Invalid operator for string operands", ast->binary.operator);
+        semanticError("Invalid operator for string operands", ast->binary.operator);
     }
 
     if (leftType == TOKEN_CHAR && !isCharacterComparison(ast->binary.operator.type)) {
-        semanticErrorAt("Invalid operator for char operands", ast->binary.operator);
+        semanticError("Invalid operator for char operands", ast->binary.operator);
     }
 
     if (isLogicalToken(ast->binary.operator.type) && leftType != TOKEN_BOOL) {
-        semanticErrorAt("Logical operators require bool operands", ast->binary.operator);
+        semanticError("Logical operators require bool operands", ast->binary.operator);
     }
 
     if (isComparisonToken(ast->binary.operator.type) && !isIntegerTypeToken(leftType) && !floatOperands && leftType != TOKEN_CHAR) {
-        semanticErrorAt("Comparison operators require compatible operand types", ast->binary.operator);
+        semanticError("Comparison operators require compatible operand types", ast->binary.operator);
     }
 
     if (ast->binary.operator.type == TOKEN_POWER && leftType != TOKEN_I32) {
-        semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
+        semanticError("Invalid operands for binary operator", ast->binary.operator);
     }
 
     if (floatOperands && !isTermToken(ast->binary.operator.type)
         && !isFactorToken(ast->binary.operator.type) && !isComparisonToken(ast->binary.operator.type)
         && !isEqualityToken(ast->binary.operator.type)) {
-        semanticErrorAt("Invalid operands for binary operator", ast->binary.operator);
+        semanticError("Invalid operands for binary operator", ast->binary.operator);
     }
 
     ast->binary.typeId = commonType;
@@ -1741,7 +1741,7 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 static ASTNode* getReferenceVariable(ASTNode* ast)
 {
     if (!isVariable(ast->prefix.expr)) {
-        semanticErrorAt("References require a binding", ast->prefix.operator);
+        semanticError("References require a binding", ast->prefix.operator);
     }
 
     return ast->prefix.expr;
@@ -1773,7 +1773,7 @@ static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* sy
     ReferenceType existing = getReferenceType(symbol);
 
     if (existing != REFERENCE_NONE) {
-        semanticErrorAt("Cannot create a reference to another reference", ast->prefix.operator);
+        semanticError("Cannot create a reference to another reference", ast->prefix.operator);
     }
 
     if (requested == REFERENCE_SHARED && hasExclusiveAccess(symbol)) {
@@ -1834,14 +1834,14 @@ static void validateTypedVariadicArgument(ASTNode* argument, TokenType type, Tok
     TokenType argumentType = getTypeId(argument);
 
     if (argumentType != type && !canImplicitlyWidenType(argumentType, type)) {
-        semanticError("Variadic arguments must convert losslessly to the parameter type ", token);
+        semanticTokenError("Variadic arguments must convert losslessly to the parameter type ", token);
     }
 }
 
 static void validateTypedVariadicArguments(Vector* args, Builtin* builtin, Token token)
 {
     if (!args->count) {
-        semanticError("Numeric variadic builtins require at least one argument ", token);
+        semanticTokenError("Numeric variadic builtins require at least one argument ", token);
     }
 
     for (size_t i = 0; i < args->count; i++) {
@@ -1869,7 +1869,7 @@ static void validateVariadicArguments(Vector* args, Builtin* builtin, Token toke
         bool valid = isPrintableType(type);
 
         if (!valid) {
-            semanticError(message, token);
+            semanticTokenError(message, token);
         }
     }
 }
@@ -1885,7 +1885,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
     }
 
     if (count != (size_t)builtin->paramCount) {
-        semanticError("Invalid arguments to function ", token);
+        semanticTokenError("Invalid arguments to function ", token);
     }
 
     for (size_t i = 0; i < count; i++) {
@@ -1897,7 +1897,7 @@ static void validateBuiltinCall(ASTNode* ast, Builtin* builtin, Token token)
 
         if (argumentType != parameterType
             && !canImplicitlyWidenType(argumentType, parameterType)) {
-            semanticError("Invalid arguments to function ", token);
+            semanticTokenError("Invalid arguments to function ", token);
         }
     }
 }
@@ -2072,7 +2072,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
     size_t paramCount = countVector(&callee->functionDefinition.params);
 
     if (count != paramCount) {
-        semanticError("Invalid arguments to function ", token);
+        semanticTokenError("Invalid arguments to function ", token);
     }
 
     for (size_t i = 0; i < count; i++) {
@@ -2097,7 +2097,7 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
                 && canImplicitlyWidenType(argumentValueType, parameterValueType));
 
         if (!compatibleValue || !compatibleReference) {
-            semanticError("Invalid arguments to function ", token);
+            semanticTokenError("Invalid arguments to function ", token);
         }
     }
 }
@@ -2148,7 +2148,7 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
         }
 
         if (!origin && referenceArgumentRequiresBinding(type)) {
-            semanticError("Reference access requires a binding for ", token);
+            semanticTokenError("Reference access requires a binding for ", token);
         }
 
         validateGlobalBindingAccess(origin, type, token);
@@ -2346,7 +2346,7 @@ static void validateArgumentOriginAccess(Vector* arguments, Vector* parameters,
             continue;
         }
 
-        semanticError("Conflicting reference access in call ", token);
+        semanticTokenError("Conflicting reference access in call ", token);
     }
 }
 
@@ -2439,7 +2439,7 @@ static void analyzeTypeConversion(ASTNode* ast)
     size_t count = countVector(&ast->functionCall.args);
 
     if (count != 1) {
-        semanticErrorAt("Explicit type conversion requires exactly one argument", token);
+        semanticError("Explicit type conversion requires exactly one argument", token);
     }
 
     ASTNode* expression = ast->functionCall.args.data[0];
@@ -2452,7 +2452,7 @@ static void analyzeTypeConversion(ASTNode* ast)
     }
 
     if (reference != REFERENCE_NONE) {
-        semanticErrorAt("Explicit type conversions require a value", token);
+        semanticError("Explicit type conversions require a value", token);
     }
 
     freeStringObject(ast->functionCall.id);
@@ -2585,7 +2585,7 @@ static void validateFunctionReturnValueType(ASTNode* ast, TokenType type)
 
     if (returnType != type
         && (!valueReturn || !canImplicitlyWidenType(type, returnType))) {
-        semanticError("Invalid return type for function ", ast->functionDefinition.token);
+        semanticTokenError("Invalid return type for function ", ast->functionDefinition.token);
     }
 }
 
@@ -2686,7 +2686,7 @@ static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
 
     if (getReferenceType(symbol) == REFERENCE_NONE && isVariableDefinition(symbol)
         && symbol->variableDefinition.fixed && isInitialized(symbol)) {
-        semanticError("Cannot reassign fixed binding ", token);
+        semanticTokenError("Cannot reassign fixed binding ", token);
     }
 }
 
@@ -2711,7 +2711,7 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
         implicitConversionError(ast->assignment.token, expressionType, bindingType);
     }
 
-    semanticError("Assignment type does not match binding ", ast->assignment.token);
+    semanticTokenError("Assignment type does not match binding ", ast->assignment.token);
 }
 
 static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializesBinding)
@@ -2758,20 +2758,20 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     TokenType bindingType = getTypeId(symbol);
 
     if (bindingType == TOKEN_STRING && ast->assignment.operator.type != TOKEN_EQUAL) {
-        semanticErrorAt("Invalid operator for string assignment", ast->assignment.operator);
+        semanticError("Invalid operator for string assignment", ast->assignment.operator);
     }
 
     if (bindingType == TOKEN_CHAR && ast->assignment.operator.type != TOKEN_EQUAL) {
-        semanticErrorAt("Invalid operator for char assignment", ast->assignment.operator);
+        semanticError("Invalid operator for char assignment", ast->assignment.operator);
     }
 
     if (isFloatTypeToken(getTypeId(symbol))
         && !isFloatAssignmentToken(ast->assignment.operator.type)) {
-        semanticErrorAt("Invalid operands for assignment", ast->assignment.operator);
+        semanticError("Invalid operands for assignment", ast->assignment.operator);
     }
 
     if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getTypeId(symbol) != TOKEN_I32) {
-        semanticErrorAt("Invalid operands for assignment", ast->assignment.operator);
+        semanticError("Invalid operands for assignment", ast->assignment.operator);
     }
 
     ast->assignment.scope = analyzer->currentScope;
@@ -2868,7 +2868,7 @@ static void validateVariableTypeMatch(ASTNode* ast, TokenType type, ReferenceTyp
         implicitConversionError(ast->variableDefinition.token, type, declaredType);
     }
 
-    semanticError("Initializer type does not match variable ", ast->variableDefinition.token);
+    semanticTokenError("Initializer type does not match variable ", ast->variableDefinition.token);
 }
 
 static void resolveVariableType(ASTNode* ast, ASTNode* expression)
@@ -2914,7 +2914,7 @@ static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
 static void validateVariableType(ASTNode* ast)
 {
     if (ast->variableDefinition.typeId == TOKEN_VOID) {
-        semanticError("Invalid type for variable ", ast->variableDefinition.token);
+        semanticTokenError("Invalid type for variable ", ast->variableDefinition.token);
     }
 }
 
@@ -2987,7 +2987,7 @@ static ReferenceType validateReturnReferenceType(Analyzer* analyzer, ASTNode* as
     ReferenceType expected = getExpectedReturnReferenceType(analyzer);
 
     if (getReferenceType(ast->returnStatement.expr) != expected) {
-        semanticError("Invalid reference return from function ", ast->returnStatement.token);
+        semanticTokenError("Invalid reference return from function ", ast->returnStatement.token);
     }
 
     return expected;
@@ -2996,7 +2996,7 @@ static ReferenceType validateReturnReferenceType(Analyzer* analyzer, ASTNode* as
 static void trackReturnOrigin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
 {
     if (!canReturnReferenceOrigin(origin)) {
-        semanticError("Reference to local binding cannot escape function ",
+        semanticTokenError("Reference to local binding cannot escape function ",
             ast->returnStatement.token);
     }
 
@@ -3004,7 +3004,7 @@ static void trackReturnOrigin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
     ASTNode* previous = function->functionDefinition.returnReferenceOrigin;
 
     if (previous && previous != origin) {
-        semanticError("Reference returns must share one lifetime in function ",
+        semanticTokenError("Reference returns must share one lifetime in function ",
             ast->returnStatement.token);
     }
 
@@ -3075,23 +3075,23 @@ static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
     analyzeNode(analyzer, ast->prefix.expr);
 
     if (ast->prefix.operator.type == TOKEN_NOT && getTypeId(ast->prefix.expr) != TOKEN_BOOL) {
-        semanticErrorAt("Logical not requires a bool operand", ast->prefix.operator);
+        semanticError("Logical not requires a bool operand", ast->prefix.operator);
     }
 
     TokenType type = getTypeId(ast->prefix.expr);
 
     if (type == TOKEN_STRING) {
-        semanticErrorAt("Invalid prefix operator for string operands", ast->prefix.operator);
+        semanticError("Invalid prefix operator for string operands", ast->prefix.operator);
     }
 
     if (type == TOKEN_CHAR) {
-        semanticErrorAt("Invalid prefix operator for char operands", ast->prefix.operator);
+        semanticError("Invalid prefix operator for char operands", ast->prefix.operator);
     }
 
     bool numeric = isSignedIntegerTypeToken(type) || isFloatTypeToken(type);
 
     if (ast->prefix.operator.type == TOKEN_MINUS && !numeric) {
-        semanticErrorAt("Negation requires a signed numeric operand", ast->prefix.operator);
+        semanticError("Negation requires a signed numeric operand", ast->prefix.operator);
     }
 }
 

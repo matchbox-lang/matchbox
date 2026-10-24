@@ -55,3 +55,13 @@ print(binaryLogarithm)
 print(sine)
 print(cosine)
 print(tangent)
+
+let whole32: f32 = 25.0
+let whole64: f64 = 25.0
+
+print(25.0)
+print(whole32)
+print(whole64)
+print(0.0)
+print(-0.0)
+print(-25.0)

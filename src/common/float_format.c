@@ -5,6 +5,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void appendFloatFraction(char* buffer, size_t size)
+{
+    if (size == 0) {
+        return;
+    }
+
+    size_t length = strlen(buffer);
+    size_t integerLength = strspn(buffer, "-0123456789");
+
+    if (length == 0 || integerLength != length) {
+        return;
+    }
+
+    snprintf(buffer + length, size - length, ".0");
+}
+
 static bool sameF32Bits(float left, float right)
 {
     uint32_t leftBits;
@@ -49,6 +65,8 @@ void formatShortestF32(char* buffer, size_t size, float value)
         shortest = length;
         snprintf(buffer, size, "%s", candidate);
     }
+
+    appendFloatFraction(buffer, size);
 }
 
 void formatShortestF64(char* buffer, size_t size, double value)
@@ -73,4 +91,6 @@ void formatShortestF64(char* buffer, size_t size, double value)
         shortest = length;
         snprintf(buffer, size, "%s", candidate);
     }
+
+    appendFloatFraction(buffer, size);
 }

@@ -81,51 +81,51 @@ static const Keyword keywords[] = {
     {"yield",       5, TOKEN_YIELD}
 };
 
-static void unterminatedLiteralError(const Lexer* lexer, char c)
+static void unterminatedLiteralError(Position start, char c)
 {
     fprintf(stderr, "Error: Missing terminating %c character", c);
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
-static void invalidNumberError(const Lexer* lexer)
+static void invalidNumberError(Position start)
 {
     fprintf(stderr, "Error: Invalid number literal");
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
-static void emptyCharacterError(const Lexer* lexer)
+static void emptyCharacterError(Position start)
 {
     fprintf(stderr, "Error: Empty character literal");
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
-static void invalidCharacterEscapeError(const Lexer* lexer)
+static void invalidCharacterEscapeError(Position start)
 {
-    fprintf(stderr, "Error: Invalid character escape on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, "Error: Invalid character escape on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
-static void multipleCharacterError(const Lexer* lexer)
+static void multipleCharacterError(Position start)
 {
     fprintf(stderr, "Error: Character literal contains multiple characters");
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
-static void newlineCharacterError(const Lexer* lexer)
+static void newlineCharacterError(Position start)
 {
     fprintf(stderr, "Error: Newline in character literal");
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
-static void invalidUtf8CharacterError(const Lexer* lexer)
+static void invalidUtf8CharacterError(Position start)
 {
     fprintf(stderr, "Error: Invalid UTF-8 character literal");
-    fprintf(stderr, " on line %d:%d\n", lexer->start.line, lexer->start.column);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
@@ -240,7 +240,7 @@ static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
         advance(lexer);
 
         if (!isValidDigit(peek(lexer))) {
-            invalidNumberError(lexer);
+            invalidNumberError(lexer->start);
         }
     }
 }
@@ -251,7 +251,7 @@ static void validateNumberEnd(Lexer* lexer)
 
     if (isAlpha(peek(lexer)) || isDigit(peek(lexer)) || peek(lexer) == '_'
         || adjacentDecimal) {
-        invalidNumberError(lexer);
+        invalidNumberError(lexer->start);
     }
 }
 
@@ -356,7 +356,7 @@ static void scanExponent(Lexer* lexer)
     }
 
     if (!isDigit(peek(lexer))) {
-        invalidNumberError(lexer);
+        invalidNumberError(lexer->start);
     }
 
     scanDigits(lexer, isDigit);
@@ -403,7 +403,7 @@ static Token scanIntegerLiteral(Lexer* lexer)
 static Token scanPrefixedIntegerLiteral(Lexer* lexer, bool (*isValidDigit)(char), TokenType type)
 {
     if (!isValidDigit(peek(lexer))) {
-        invalidNumberError(lexer);
+        invalidNumberError(lexer->start);
     }
 
     scanDigits(lexer, isValidDigit);
@@ -443,14 +443,14 @@ static Token endCharacterLiteral(Lexer* lexer)
     }
 
     if (isNewline(peek(lexer))) {
-        newlineCharacterError(lexer);
+        newlineCharacterError(lexer->start);
     }
 
     if (isEndOfFile(lexer)) {
-        unterminatedLiteralError(lexer, '\'');
+        unterminatedLiteralError(lexer->start, '\'');
     }
 
-    multipleCharacterError(lexer);
+    multipleCharacterError(lexer->start);
 
     return makeToken(lexer, TOKEN_UNKNOWN);
 }
@@ -471,11 +471,11 @@ static Token escapedCharacterLiteral(Lexer* lexer)
     advance(lexer);
 
     if (isEndOfFile(lexer)) {
-        unterminatedLiteralError(lexer, '\'');
+        unterminatedLiteralError(lexer->start, '\'');
     }
 
     if (isNewline(*lexer->current.chars)) {
-        newlineCharacterError(lexer);
+        newlineCharacterError(lexer->start);
     }
 
     const char* chars = lexer->current.chars - 1;
@@ -484,7 +484,7 @@ static Token escapedCharacterLiteral(Lexer* lexer)
     bool valid = decodeLiteralScalar(chars, length, &scalar);
 
     if (!valid) {
-        invalidCharacterEscapeError(lexer);
+        invalidCharacterEscapeError(lexer->start);
     }
 
     advanceCharacters(lexer, scalar.length - 1);
@@ -495,15 +495,15 @@ static Token escapedCharacterLiteral(Lexer* lexer)
 static Token scanCharacterLiteral(Lexer* lexer)
 {
     if (isEndOfFile(lexer)) {
-        unterminatedLiteralError(lexer, '\'');
+        unterminatedLiteralError(lexer->start, '\'');
     }
 
     if (isNewline(peek(lexer))) {
-        newlineCharacterError(lexer);
+        newlineCharacterError(lexer->start);
     }
 
     if (peek(lexer) == '\'') {
-        emptyCharacterError(lexer);
+        emptyCharacterError(lexer->start);
     }
 
     if (peek(lexer) == '\\') {
@@ -516,7 +516,7 @@ static Token scanCharacterLiteral(Lexer* lexer)
     bool valid = decodeLiteralScalar(chars, length, &scalar);
 
     if (!valid) {
-        invalidUtf8CharacterError(lexer);
+        invalidUtf8CharacterError(lexer->start);
     }
 
     advanceCharacters(lexer, scalar.length);
@@ -625,7 +625,7 @@ static void validateStringNewline(Lexer* lexer, char delimiter, size_t width, Po
 
     lexer->start = start;
 
-    unterminatedLiteralError(lexer, delimiter);
+    unterminatedLiteralError(lexer->start, delimiter);
 }
 
 static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool interpolated, Position start)
@@ -670,7 +670,7 @@ static Token incompleteStringLiteral(Lexer* lexer, char delimiter, size_t width,
         return makeToken(lexer, TOKEN_INCOMPLETE_INPUT);
     }
 
-    unterminatedLiteralError(lexer, delimiter);
+    unterminatedLiteralError(lexer->start, delimiter);
 
     return makeToken(lexer, TOKEN_UNKNOWN);
 }

@@ -1,4 +1,5 @@
 #include "compiler/lexer.h"
+#include "compiler/diagnostics.h"
 #include "compiler/literal.h"
 #include "compiler/token.h"
 #include <stdbool.h>
@@ -81,58 +82,44 @@ static const Keyword keywords[] = {
     {"yield",       5, TOKEN_YIELD}
 };
 
-static void emptyCharacterError(Position start)
+static _Noreturn void emptyCharacterError(Position start)
 {
-    fprintf(stderr, "Error: Empty character literal");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Empty character literal");
 }
 
-static void invalidCharacterEscapeError(Position start)
+static _Noreturn void invalidCharacterEscapeError(Position start)
 {
-    fprintf(stderr, "Error: Invalid character escape on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Invalid character escape");
 }
 
-static void invalidNumberError(Position start)
+static _Noreturn void invalidNumberError(Position start)
 {
-    fprintf(stderr, "Error: Invalid number literal");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Invalid number literal");
 }
 
-static void invalidUtf8CharacterError(Position start)
+static _Noreturn void invalidUtf8CharacterError(Position start)
 {
-    fprintf(stderr, "Error: Invalid UTF-8 character literal");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Invalid UTF-8 character literal");
 }
 
-static void multipleCharacterError(Position start)
+static _Noreturn void multipleCharacterError(Position start)
 {
-    fprintf(stderr, "Error: Character literal contains multiple characters");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Character literal contains multiple characters");
 }
 
-static void newlineCharacterError(Position start)
+static _Noreturn void newlineCharacterError(Position start)
 {
-    fprintf(stderr, "Error: Newline in character literal");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Newline in character literal");
 }
 
-static void unescapedInterpolationBraceError(Position start)
+static _Noreturn void unescapedInterpolationBraceError(Position start)
 {
-    fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Unescaped } in interpolated string");
 }
 
-static void unterminatedLiteralError(Position start, char c)
+static _Noreturn void unterminatedLiteralError(Position start, char c)
 {
-    fprintf(stderr, "Error: Missing terminating %c character", c);
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
+    fatalSourceError(start.line, start.column, "Missing terminating %c character", c);
 }
 
 static char peek(const Lexer* lexer)

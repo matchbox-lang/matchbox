@@ -1,4 +1,5 @@
 #include "runtime/string_concatenation.h"
+#include "common/errors.h"
 #include "runtime/object.h"
 #include "runtime/output.h"
 #include "common/util.h"

@@ -1,15 +1,8 @@
 #include "common/util.h"
 #include <limits.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-void outOfMemoryError()
-{
-    fprintf(stderr, "Error: Out of memory\n");
-    exit(1);
-}
 
 bool isLargerThan8BitSigned(int n)
 {

@@ -1,4 +1,5 @@
 #include "program/path.h"
+#include "common/errors.h"
 #include "common/util.h"
 #include <stdbool.h>
 #include <stdio.h>

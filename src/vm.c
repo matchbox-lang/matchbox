@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "common/errors.h"
 #include "vm/opcode.h"
 #include "runtime/function_object.h"
 #include <math.h>
@@ -14,16 +15,14 @@
 #error Unsupported pointer width
 #endif
 
-static void divisionByZeroError(void)
+static _Noreturn void divisionByZeroError(void)
 {
-    fprintf(stderr, "Error: Division by zero\n");
-    exit(1);
+    fatalError("Division by zero");
 }
 
-static void stackOverflowError(void)
+static _Noreturn void stackOverflowError(void)
 {
-    fprintf(stderr, "Error: Stack overflow\n");
-    exit(1);
+    fatalError("Stack overflow");
 }
 
 static void testFrameOverflow(VM* vm, Value* frame, int maxStackCount)

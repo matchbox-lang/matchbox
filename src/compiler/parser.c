@@ -1,4 +1,6 @@
 #include "compiler/parser.h"
+#include "common/errors.h"
+#include "compiler/diagnostics.h"
 #include "compiler/ast.h"
 #include "builtin.h"
 #include "builtin/string.h"
@@ -35,42 +37,31 @@ static ASTNode* parseMatch(Parser* parser);
 static ASTNode* parseStatement(Parser* parser);
 static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
 
-static void expectedExpressionError(Token token)
+static _Noreturn void expectedExpressionError(Token token)
 {
-    fprintf(stderr, "Error: Expected expression but found ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, "", "Expected expression but found ");
 }
 
-static void expectedOperandError(Token token)
+static _Noreturn void expectedOperandError(Token token)
 {
-    fprintf(stderr, "Error: Expected operand but found ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, "", "Expected operand but found ");
 }
 
-static void expectedTokenError(TokenType type, Token token)
+static _Noreturn void expectedTokenError(TokenType type, Token token)
 {
-    fprintf(stderr, "Error: Expected %s but found ", getTokenTypeName(type));
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    const char* typeName = getTokenTypeName(type);
+
+    fatalTokenError(token, "", "Expected %s but found ", typeName);
 }
 
-static void expectedTypeError(Token token)
+static _Noreturn void expectedTypeError(Token token)
 {
-    fprintf(stderr, "Error: Expected type but found ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, "", "Expected type but found ");
 }
 
-static void invalidStringError(Token token)
+static _Noreturn void invalidStringError(Token token)
 {
-    fprintf(stderr, "Error: Invalid UTF-8 or escape in string literal on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Invalid UTF-8 or escape in string literal");
 }
 
 static void advance(Parser* parser)

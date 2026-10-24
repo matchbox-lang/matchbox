@@ -1,4 +1,6 @@
 #include "program/repl.h"
+#include "common/errors.h"
+#include "compiler/diagnostics.h"
 #include "program/buffer.h"
 #include "compiler.h"
 #include "runtime/module_object.h"
@@ -10,12 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static void unexpectedEndError(Token token)
-{
-    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
 
 static bool resizeSource(char** source, size_t* size, size_t required)
 {

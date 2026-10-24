@@ -1,4 +1,5 @@
 #include "common/vector.h"
+#include "common/errors.h"
 #include "common/util.h"
 #include <stdint.h>
 #include <stdlib.h>

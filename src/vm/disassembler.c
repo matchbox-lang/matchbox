@@ -1,4 +1,5 @@
 #include "vm/disassembler.h"
+#include "common/errors.h"
 #include "runtime/code_object.h"
 #include "vm/opcode.h"
 #include <stdint.h>
@@ -14,10 +15,9 @@
 static uint8_t* ptr;
 static uint16_t registerHigh[3];
 
-static void unknownOpcodeError(int opcode)
+static _Noreturn void unknownOpcodeError(int opcode)
 {
-    fprintf(stderr, "Error: Unknown opcode %d\n", opcode);
-    exit(1);
+    fatalError("Unknown opcode %d", opcode);
 }
 
 static uint16_t readRegister(int field)

@@ -1,4 +1,6 @@
 #include "compiler.h"
+#include "compiler/diagnostics.h"
+#include "common/errors.h"
 #include "compiler/conversion.h"
 #include "compiler/ast.h"
 #include "builtin.h"
@@ -85,59 +87,49 @@ static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
 
-static void branchOffsetOverflowError(void)
+static _Noreturn void branchOffsetOverflowError(void)
 {
-    fprintf(stderr, "Error: Branch offset exceeds instruction range\n");
-    exit(1);
+    fatalError("Branch offset exceeds instruction range");
 }
 
-static void constantIndexOverflowError(void)
+static _Noreturn void constantIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than %u constants\n", UINT16_MAX + 1u);
-    exit(1);
+    fatalError("Cannot create more than %u constants", UINT16_MAX + 1u);
 }
 
-static void functionIndexOverflowError(void)
+static _Noreturn void functionIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than %u functions\n", UINT16_MAX + 1u);
-    exit(1);
+    fatalError("Cannot create more than %u functions", UINT16_MAX + 1u);
 }
 
-static void functionNotFoundError(ASTNode* ast)
+static _Noreturn void functionNotFoundError(ASTNode* ast)
 {
-    fprintf(stderr, "Error: Could not find function %s\n", ast->functionDefinition.id->chars);
-    exit(1);
+    fatalError("Could not find function %s", ast->functionDefinition.id->chars);
 }
 
-static void functionRegisterIndexOverflowError(const char* name)
+static _Noreturn void functionRegisterIndexOverflowError(const char* name)
 {
-    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n", name, UINT16_MAX + 1u);
-    exit(1);
+    fatalError("Function %s requires more than %u virtual registers", name, UINT16_MAX + 1u);
 }
 
-static void globalIndexOverflowError(void)
+static _Noreturn void globalIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than %u globals\n", UINT16_MAX + 1u);
-    exit(1);
+    fatalError("Cannot create more than %u globals", UINT16_MAX + 1u);
 }
 
-static void integerToCharacterConversionError(Token token)
+static _Noreturn void integerToCharacterConversionError(Token token)
 {
-    fprintf(stderr, "Error: Integer-to-char conversion requires a constant or u8 source");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Integer-to-char conversion requires a constant or u8 source");
 }
 
-static void topLevelRegisterIndexOverflowError(void)
+static _Noreturn void topLevelRegisterIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Top-level code requires more than %u virtual registers\n", UINT16_MAX + 1u);
-    exit(1);
+    fatalError("Top-level code requires more than %u virtual registers", UINT16_MAX + 1u);
 }
 
-static void unresolvedReplExpressionTypeError(void)
+static _Noreturn void unresolvedReplExpressionTypeError(void)
 {
-    fprintf(stderr, "Error: Cannot display expression with an unresolved type\n");
-    exit(1);
+    fatalError("Cannot display expression with an unresolved type");
 }
 
 static void checkRegisterCount(Compiler* compiler, int count)

@@ -1,4 +1,6 @@
 #include "compiler/analyzer.h"
+#include "common/errors.h"
+#include "compiler/diagnostics.h"
 #include "compiler/conversion.h"
 #include "builtin.h"
 #include "builtin/io.h"
@@ -60,137 +62,100 @@ typedef struct ReferenceLifetimes
     Vector* releases;
 } ReferenceLifetimes;
 
-static void binaryTypeError(Token token, TokenType left, TokenType right)
+static _Noreturn void binaryTypeError(Token token, TokenType left, TokenType right)
 {
     const char* leftName = getTokenTypeName(left);
     const char* rightName = getTokenTypeName(right);
 
-    fprintf(stderr, "Error: No lossless common numeric type for %s and %s", leftName, rightName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "No lossless common numeric type for %s and %s", leftName, rightName);
 }
 
-static void bindingAccessError(char* message, Token token, char* detail)
+static _Noreturn void bindingAccessError(char* message, Token token, char* detail)
 {
-    fprintf(stderr, "Error: %s", message);
-    printTokenValue(token);
-    fprintf(stderr, "%s on line %d:%d\n", detail, token.line, token.column);
-    exit(1);
+    fatalTokenError(token, detail, "%s", message);
 }
 
-static void floatLiteralOutOfRangeError(Token token, TokenType type)
+static _Noreturn void floatLiteralOutOfRangeError(Token token, TokenType type)
 {
     const char* typeName = getTokenTypeName(type);
 
-    fprintf(stderr, "Error: Float literal is outside the range of %s", typeName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Float literal is outside the range of %s", typeName);
 }
 
-static void floatLiteralRequiresTypeError(Token token)
+static _Noreturn void floatLiteralRequiresTypeError(Token token)
 {
-    fprintf(stderr, "Error: Float literal requires an explicit type");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Float literal requires an explicit type");
 }
 
-static void implicitConversionError(Token token, TokenType source, TokenType destination)
+static _Noreturn void implicitConversionError(Token token, TokenType source, TokenType destination)
 {
     const char* sourceName = getTokenTypeName(source);
     const char* destinationName = getTokenTypeName(destination);
 
-    fprintf(stderr, "Error: Cannot implicitly convert %s to %s for binding ", sourceName, destinationName);
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, "", "Cannot implicitly convert %s to %s for binding ", sourceName, destinationName);
 }
 
-static void integerLiteralNotRepresentableError(Token token, TokenType type)
+static _Noreturn void integerLiteralNotRepresentableError(Token token, TokenType type)
 {
     const char* typeName = getTokenTypeName(type);
 
-    fprintf(stderr, "Error: Integer literal cannot be represented as %s", typeName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Integer literal cannot be represented as %s", typeName);
 }
 
-static void integerLiteralOutOfRangeError(Token token, TokenType type)
+static _Noreturn void integerLiteralOutOfRangeError(Token token, TokenType type)
 {
     const char* typeName = getTokenTypeName(type);
 
-    fprintf(stderr, "Error: Integer literal is outside the range of %s", typeName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Integer literal is outside the range of %s", typeName);
 }
 
-static void integerLiteralRequiresTypeError(Token token)
+static _Noreturn void integerLiteralRequiresTypeError(Token token)
 {
-    fprintf(stderr, "Error: Integer literal requires an explicit type");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Integer literal requires an explicit type");
 }
 
-static void invalidBuiltinArgumentsError(Token token)
+static _Noreturn void invalidBuiltinArgumentsError(Token token)
 {
-    fprintf(stderr, "Error: Invalid arguments to builtin ");
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, "", "Invalid arguments to builtin ");
 }
 
-static void negativeUnsignedIntegerError(Token token)
+static _Noreturn void negativeUnsignedIntegerError(Token token)
 {
-    fprintf(stderr, "Error: Negative integer literal cannot have an unsigned type");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Negative integer literal cannot have an unsigned type");
 }
 
-static void redefinitionError(char* kind, Token token)
+static _Noreturn void redefinitionError(char* kind, Token token)
 {
-    fprintf(stderr, "Error: %s ", kind);
-    printTokenValue(token);
-    fprintf(stderr, " is already defined on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, " is already defined", "%s ", kind);
 }
 
-static void returnOutsideFunctionError(Token token)
+static _Noreturn void returnOutsideFunctionError(Token token)
 {
-    fprintf(stderr, "Error: Return statement is only valid inside a function");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Return statement is only valid inside a function");
 }
 
-static void semanticError(char* message, Token token)
+static _Noreturn void semanticError(char* message, Token token)
 {
-    fprintf(stderr, "Error: %s", message);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "%s", message);
 }
 
-static void semanticTokenError(char* message, Token token)
+static _Noreturn void semanticTokenError(char* message, Token token)
 {
-    fprintf(stderr, "Error: %s", message);
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalTokenError(token, "", "%s", message);
 }
 
-static void symbolError(char* message, Token token)
+static _Noreturn void symbolError(const char* detail, Token token)
 {
-    fprintf(stderr, "Error: ");
-    printTokenValue(token);
-    fprintf(stderr, " is %s on line %d:%d\n", message, token.line, token.column);
-    exit(1);
+    fatalTokenError(token, detail, "");
 }
 
-static void unsupportedExplicitConversionError(Token token, TokenType source, TokenType destination)
+static _Noreturn void unsupportedExplicitConversionError(Token token, TokenType source, TokenType destination)
 {
     const char* sourceName = getTokenTypeName(source);
     const char* destinationName = getTokenTypeName(destination);
 
-    fprintf(stderr, "Error: Unsupported explicit conversion from %s to %s", sourceName, destinationName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Unsupported explicit conversion from %s to %s",
+        sourceName, destinationName);
 }
 
 static ASTNode* getIntegerLiteral(ASTNode* expression, bool* negative)
@@ -1717,15 +1682,15 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
     ASTNode* symbol = findSymbol(analyzer, id);
 
     if (!symbol || !isVariableType(symbol)) {
-        symbolError("undefined", ast->variable.token);
+        symbolError(" is undefined", ast->variable.token);
     }
 
     if (!isInitialized(symbol)) {
-        symbolError("uninitialized", ast->variable.token);
+        symbolError(" is uninitialized", ast->variable.token);
     }
 
     if (isMoved(symbol)) {
-        symbolError("moved", ast->variable.token);
+        symbolError(" is moved", ast->variable.token);
     }
 
     if (getReferenceType(symbol) == REFERENCE_NONE
@@ -1753,15 +1718,15 @@ static ASTNode* findReferenceSymbol(Analyzer* analyzer, ASTNode* variable)
     ASTNode* symbol = findSymbol(analyzer, id);
 
     if (!symbol || !isVariableType(symbol)) {
-        symbolError("undefined", variable->variable.token);
+        symbolError(" is undefined", variable->variable.token);
     }
 
     if (!isInitialized(symbol)) {
-        symbolError("uninitialized", variable->variable.token);
+        symbolError(" is uninitialized", variable->variable.token);
     }
 
     if (isMoved(symbol)) {
-        symbolError("moved", variable->variable.token);
+        symbolError(" is moved", variable->variable.token);
     }
 
     return symbol;
@@ -2054,7 +2019,7 @@ static void validateBuiltinResolution(ASTNode* ast, Builtin* builtin)
         invalidBuiltinArgumentsError(ast->functionCall.token);
     }
 
-    symbolError("undefined", ast->functionCall.token);
+    symbolError(" is undefined", ast->functionCall.token);
 }
 
 static void analyzeBuiltinCall(ASTNode* ast)
@@ -2489,7 +2454,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     }
 
     if (!isFunctionDefinition(symbol)) {
-        symbolError("undefined", ast->functionCall.token);
+        symbolError(" is undefined", ast->functionCall.token);
     }
 
     ast->functionCall.scope = analyzer->currentScope;
@@ -2662,7 +2627,7 @@ static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
     ASTNode* symbol = findSymbol(analyzer, id);
 
     if (!symbol || !isVariableType(symbol)) {
-        symbolError("undefined", ast->assignment.token);
+        symbolError(" is undefined", ast->assignment.token);
     }
 
     return symbol;
@@ -2673,7 +2638,7 @@ static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
     Token token = ast->assignment.token;
 
     if (isMoved(symbol)) {
-        symbolError("moved", token);
+        symbolError(" is moved", token);
     }
 
     if (getReferenceType(symbol) == REFERENCE_NONE && hasExclusiveAccess(symbol)) {

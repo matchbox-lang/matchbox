@@ -1,4 +1,5 @@
 #include "runtime/object.h"
+#include "common/errors.h"
 #include "common/util.h"
 #include <stdlib.h>
 

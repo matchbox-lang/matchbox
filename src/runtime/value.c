@@ -1,4 +1,5 @@
 #include "runtime/value.h"
+#include "common/errors.h"
 #include "common/util.h"
 #include <stdlib.h>
 #include <string.h>

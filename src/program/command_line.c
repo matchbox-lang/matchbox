@@ -1,4 +1,5 @@
 #include "program/command_line.h"
+#include "common/errors.h"
 #include "program/options.h"
 #include "program.h"
 #include <stdbool.h>
@@ -8,22 +9,22 @@
 
 static void disassembleDoesNotSupportTestError()
 {
-    fprintf(stderr, "Error: Cannot disassemble tests\n");
+    reportError("Cannot disassemble tests");
 }
 
 static void disassembleRequiresFileError()
 {
-    fprintf(stderr, "Error: Cannot disassemble without a file\n");
+    reportError("Cannot disassemble without a file");
 }
 
 static void unexpectedArgumentError(char* arg)
 {
-    fprintf(stderr, "Error: Unexpected argument: %s\n", arg);
+    reportError("Unexpected argument: %s", arg);
 }
 
 static void unknownOptionError(char* arg)
 {
-    fprintf(stderr, "Error: Unknown option: %s\n", arg);
+    reportError("Unknown option: %s", arg);
 }
 
 static bool parseOption(Options* options, char* arg)

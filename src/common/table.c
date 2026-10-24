@@ -1,4 +1,5 @@
 #include "common/table.h"
+#include "common/errors.h"
 #include "common/string_view.h"
 #include "common/util.h"
 #include <stdbool.h>

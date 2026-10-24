@@ -1,4 +1,5 @@
 #include "runtime/string_object.h"
+#include "common/errors.h"
 #include "runtime/object.h"
 #include "common/util.h"
 #include <stdbool.h>

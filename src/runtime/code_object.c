@@ -1,4 +1,5 @@
 #include "runtime/code_object.h"
+#include "common/errors.h"
 #include "common/util.h"
 #include <stddef.h>
 #include <stdint.h>

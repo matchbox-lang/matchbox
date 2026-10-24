@@ -1,4 +1,5 @@
 #include "program/test_runner.h"
+#include "common/errors.h"
 #include "program/options.h"
 #include "program/path.h"
 #include "program.h"
@@ -29,27 +30,27 @@ static int countDirectoryTests(const char* path);
 
 static void expectedFileError(const char* path)
 {
-    fprintf(stderr, "Error: Expected .mb file but found %s\n", path);
+    reportError("Expected .mb file but found %s", path);
 }
 
 static void runTestError(const char* path)
 {
-    fprintf(stderr, "Error: Could not run %s\n", path);
+    reportError("Could not run %s", path);
 }
 
 static void testDirectoryError(const char* path)
 {
-    fprintf(stderr, "Error: Could not read directory %s\n", path);
+    reportError("Could not read directory %s", path);
 }
 
 static void testPathError(const char* path)
 {
-    fprintf(stderr, "Error: Could not find path %s\n", path);
+    reportError("Could not find path %s", path);
 }
 
 static void testsNotFoundError(const char* path)
 {
-    fprintf(stderr, "Error: Could not find tests in %s\n", path);
+    reportError("Could not find tests in %s", path);
 }
 
 static char* quoteArgument(const char* argument)

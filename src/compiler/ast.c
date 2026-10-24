@@ -1,4 +1,5 @@
 #include "compiler/ast.h"
+#include "common/errors.h"
 #include "builtin.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"

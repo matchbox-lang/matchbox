@@ -1,4 +1,5 @@
 #include "compiler/conversion.h"
+#include "compiler/diagnostics.h"
 #include "common/util.h"
 #include "common/unicode.h"
 #include <errno.h>
@@ -16,27 +17,21 @@ typedef struct NumericConstant
 
 static bool getNumericConstant(ASTNode* ast, NumericConstant* value);
 
-static void floatOutsideSupportedRangeError(Token token)
+static _Noreturn void floatOutsideSupportedRangeError(Token token)
 {
-    fprintf(stderr, "Error: Float is outside the supported range");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Float is outside the supported range");
 }
 
-static void integerExceedsMaximumSizeError(Token token)
+static _Noreturn void integerExceedsMaximumSizeError(Token token)
 {
-    fprintf(stderr, "Error: Integer exceeds the maximum supported size");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Integer exceeds the maximum supported size");
 }
 
-static void invalidConstantConversionError(Token token, TokenType destination)
+static _Noreturn void invalidConstantConversionError(Token token, TokenType destination)
 {
     const char* name = getTokenTypeName(destination);
 
-    fprintf(stderr, "Error: Constant is outside the supported domain of conversion to %s", name);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalSourceError(token.line, token.column, "Constant is outside the supported domain of conversion to %s", name);
 }
 
 static uint64_t integerLiteralToValueInBase(Token token, size_t offset, int base)

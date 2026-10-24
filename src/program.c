@@ -1,4 +1,6 @@
 #include "program.h"
+#include "compiler/diagnostics.h"
+#include "common/errors.h"
 #include "program/buffer.h"
 #include "compiler.h"
 #include "runtime/module_object.h"
@@ -11,16 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void readFileError(const char* filename)
+static _Noreturn void readFileError(const char* filename)
 {
-    fprintf(stderr, "Error: Could not read file %s: %s\n", filename, strerror(errno));
-    exit(1);
-}
+    const char* detail = strerror(errno);
 
-static void unexpectedEndError(Token token)
-{
-    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
-    exit(1);
+    fatalError("Could not read file %s: %s", filename, detail);
 }
 
 static void runModule(ModuleObject* module, bool disassemble)
@@ -46,8 +43,9 @@ static void runSource(char* source, bool disassemble)
     if (!compile(&compiler, source)) {
         unexpectedEndError(compiler.parser.currentToken);
     }
-    runModule(module, disassemble);
 
+    runModule(module, disassemble);
+    
     freeCompiler(&compiler);
     freeModuleObject(module);
 }

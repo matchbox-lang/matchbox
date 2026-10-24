@@ -11,10 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void unexpectedEndError(Compiler* compiler)
+static void unexpectedEndError(Token token)
 {
-    Token token = compiler->parser.currentToken;
-
     fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -69,7 +67,7 @@ static bool finishSourceRead(Compiler* compiler, bool read, size_t length)
     printf("\n");
 
     if (length > 0) {
-        unexpectedEndError(compiler);
+        unexpectedEndError(compiler->parser.currentToken);
     }
 
     return false;
@@ -125,7 +123,7 @@ static void validateReplHistory(char* history)
     initCompiler(&compiler, module);
 
     if (!compile(&compiler, history)) {
-        unexpectedEndError(&compiler);
+        unexpectedEndError(compiler.parser.currentToken);
     }
 
     freeCompiler(&compiler);

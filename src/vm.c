@@ -94,17 +94,16 @@ static void run(VM* vm)
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
 #include VM_WIDE_INSTRUCTIONS
-            // Float-to-integer inputs must be finite and their truncated values must fit the destination
             case OP_F32_TO_I32:
                 vm->fp[a] = I32_VALUE((int32_t)AS_F32(vm->fp[b]));
                 break;
             case OP_F32_TO_U32:
                 vm->fp[a] = U32_VALUE((uint32_t)AS_F32(vm->fp[b]));
                 break;
-            case OP_INT_TO_F32:
+            case OP_I32_TO_F32:
                 vm->fp[a] = F32_VALUE((float)AS_SIGNED(vm->fp[b]));
                 break;
-            case OP_UINT_TO_F32:
+            case OP_U32_TO_F32:
                 vm->fp[a] = F32_VALUE((float)AS_UNSIGNED(vm->fp[b]));
                 break;
             case OP_ADD_F32: {

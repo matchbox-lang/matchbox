@@ -236,7 +236,6 @@ static bool getInstructionBefore(Compiler* compiler, size_t count, PreviousInstr
         return false;
     }
 
-    // Byte-based peephole rewrites must not edit the body of a prefixed instruction
     if (start >= INSTRUCTION_SIZE && code->data[start - INSTRUCTION_SIZE] == OP_WIDE) {
         return false;
     }
@@ -514,7 +513,6 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, size_t position
     }
 
     if (previous.a == compiler->registerCount) {
-        // Reclaim the released store operand while its value is still in the register
         int reg = allocateRegister(compiler);
 
         return makeOperand(reg, true);
@@ -670,7 +668,6 @@ static bool isNarrowIntegerImmediate(uint64_t value, TokenType type)
         return value <= INT16_MAX;
     }
 
-    // Folded i32 arithmetic may store its result as unsigned 32-bit bits
     int32_t signedValue = (int32_t)value;
 
     return signedValue >= INT16_MIN && signedValue <= INT16_MAX;
@@ -1518,9 +1515,9 @@ static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
     Opcode opcode;
 
     if (wide) {
-        opcode = signedInteger ? OP_INT_TO_F64 : OP_UINT_TO_F64;
+        opcode = signedInteger ? OP_I32_TO_F64 : OP_U32_TO_F64;
     } else {
-        opcode = signedInteger ? OP_INT_TO_F32 : OP_UINT_TO_F32;
+        opcode = signedInteger ? OP_I32_TO_F32 : OP_U32_TO_F32;
     }
 
     emitInstruction(compiler, opcode, destinationRegister, operand.reg, 0);
@@ -1636,7 +1633,6 @@ static Operand shrinkIntegerOperand(Compiler* compiler, Operand operand)
     return makeOperand(result, true);
 }
 
-// Integer casts retain low destination bits and interpret signed results as two's complement
 static Operand compileIntegerCast(Compiler* compiler, Operand operand, TokenType source, TokenType destination)
 {
     operand = normalizeUnsignedOperand(compiler, operand, source);
@@ -1691,11 +1687,11 @@ static Opcode getFloatToIntegerOpcode(TokenType source, TokenType destination)
 static Opcode getIntegerToFloatOpcode(TokenType source, TokenType destination)
 {
     static const Opcode signedOpcodes[2][2] = {
-        {OP_INT_TO_F32, OP_INT_TO_F64},
+        {OP_I32_TO_F32, OP_I32_TO_F64},
         {OP_I64_TO_F32, OP_I64_TO_F64}
     };
     static const Opcode unsignedOpcodes[2][2] = {
-        {OP_UINT_TO_F32, OP_UINT_TO_F64},
+        {OP_U32_TO_F32, OP_U32_TO_F64},
         {OP_U64_TO_F32, OP_U64_TO_F64}
     };
     bool wideSource = getTypeSlotCount(source) == 2;
@@ -2372,7 +2368,6 @@ static bool compileUnusedVariableDefinition(
         return true;
     }
 
-    // Preserve analyzed binding positions after discarding an unused initializer
     allocateRegisters(compiler, slots);
 
     return true;
@@ -2444,7 +2439,6 @@ static size_t emitConditionJump(Compiler* compiler, Operand condition)
         opcode = OP_BEQI;
     }
 
-    // Keep the comparison operands in a placeholder for the long-branch fallback
     setByteAt(comparison.code, comparison.start, OP_NOP);
     emitInstruction(compiler, opcode, comparison.b, comparison.c, 0);
 
@@ -2492,7 +2486,6 @@ static void patchJump(Compiler* compiler, size_t position)
 {
     CodeObject* code = currentCodeObject(compiler);
 
-    // A branch offset starts after its body word, excluding the prefix
     if (code->data[position] == OP_WIDE) {
         position += INSTRUCTION_SIZE;
     }

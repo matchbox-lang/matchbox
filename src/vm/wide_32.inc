@@ -44,7 +44,9 @@ case OP_STR_64: {
     reference[1] = vm->fp[a + 1];
     break;
 }
-// Floating-point narrowing rounds to f32 precision, with overflow to infinity
+case OP_F32_TO_F64:
+    WRITE_F64(vm->fp, a, AS_F32(vm->fp[b]));
+    break;
 case OP_F64_TO_F32: {
     double value;
 
@@ -53,7 +55,12 @@ case OP_F64_TO_F32: {
     vm->fp[a] = F32_VALUE((float)value);
     break;
 }
-// Float-to-integer inputs must be finite and their truncated values must fit the destination
+case OP_F32_TO_I64:
+    WRITE_U64(vm->fp, a, (uint64_t)(int64_t)AS_F32(vm->fp[b]));
+    break;
+case OP_F32_TO_U64:
+    WRITE_U64(vm->fp, a, (uint64_t)AS_F32(vm->fp[b]));
+    break;
 case OP_F64_TO_I32: {
     double value;
 
@@ -70,12 +77,6 @@ case OP_F64_TO_U32: {
     vm->fp[a] = U32_VALUE((uint32_t)value);
     break;
 }
-case OP_F32_TO_I64:
-    WRITE_U64(vm->fp, a, (uint64_t)(int64_t)AS_F32(vm->fp[b]));
-    break;
-case OP_F32_TO_U64:
-    WRITE_U64(vm->fp, a, (uint64_t)AS_F32(vm->fp[b]));
-    break;
 case OP_F64_TO_I64: {
     double value;
 
@@ -98,17 +99,17 @@ case OP_I64_TO_F32: {
     vm->fp[a] = F32_VALUE((float)value);
     break;
 }
-case OP_U64_TO_F32: {
-    uint64_t value = READ_U64(vm->fp, b);
-
-    vm->fp[a] = F32_VALUE((float)value);
-    break;
-}
 case OP_I64_TO_F64: {
     int64_t value = (int64_t)READ_U64(vm->fp, b);
 
     WRITE_F64(vm->fp, a, (double)value);
 
+    break;
+}
+case OP_U64_TO_F32: {
+    uint64_t value = READ_U64(vm->fp, b);
+
+    vm->fp[a] = F32_VALUE((float)value);
     break;
 }
 case OP_U64_TO_F64: {
@@ -118,13 +119,10 @@ case OP_U64_TO_F64: {
 
     break;
 }
-case OP_F32_TO_F64:
-    WRITE_F64(vm->fp, a, AS_F32(vm->fp[b]));
-    break;
-case OP_INT_TO_F64:
+case OP_I32_TO_F64:
     WRITE_F64(vm->fp, a, AS_SIGNED(vm->fp[b]));
     break;
-case OP_UINT_TO_F64:
+case OP_U32_TO_F64:
     WRITE_F64(vm->fp, a, AS_UNSIGNED(vm->fp[b]));
     break;
 case OP_ADD_F64: {

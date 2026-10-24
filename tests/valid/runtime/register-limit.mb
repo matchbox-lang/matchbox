@@ -1,4 +1,3 @@
-// Allow R255: 255 globals plus one literal argument, with no unused call metadata
 var slot000 = 0
 var slot001 = 1
 var slot002 = 2

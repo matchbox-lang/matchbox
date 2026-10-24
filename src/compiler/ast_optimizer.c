@@ -294,8 +294,7 @@ static void propagateLiteralLet(ASTNode* ast)
         || symbol->variableDefinition.referenceType != REFERENCE_NONE) {
         return;
     }
-
-    // Keep captured bindings dynamic across later interactive reference accesses
+    
     Scope* definitionScope = symbol->variableDefinition.scope;
     if (definitionScope->frameScope != ast->variable.scope->frameScope) {
         return;

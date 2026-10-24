@@ -586,7 +586,6 @@ static void initReferenceLifetimes(ReferenceLifetimes* lifetimes, Vector* nodes,
         outOfMemoryError();
     }
 
-    // Collect last uses before analysis changes nodes or ownership state
     for (size_t i = start; i < count; i++) {
         ASTNode* ast = getVectorAt(nodes, i);
         lifetimes->position = i;
@@ -678,7 +677,6 @@ static void analyzeNodes(Analyzer* analyzer, Vector* nodes, size_t start)
 
     analyzer->referenceLifetimes = &lifetimes;
 
-    // Include earlier bindings when analyzing a new interactive submission
     for (size_t i = 0; i < start; i++) {
         ASTNode* ast = getVectorAt(nodes, i);
 

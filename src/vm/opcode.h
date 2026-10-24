@@ -69,22 +69,26 @@ typedef enum Opcode
     // Floating-point conversion
     OP_F32_TO_F64,
     OP_F64_TO_F32,
+
+    // Floating-point to integer conversion
     OP_F32_TO_I32,
     OP_F32_TO_U32,
-    OP_F64_TO_I32,
-    OP_F64_TO_U32,
     OP_F32_TO_I64,
     OP_F32_TO_U64,
+    OP_F64_TO_I32,
+    OP_F64_TO_U32,
     OP_F64_TO_I64,
     OP_F64_TO_U64,
+
+    // Integer to floating-point conversion
     OP_I64_TO_F32,
-    OP_U64_TO_F32,
     OP_I64_TO_F64,
+    OP_U64_TO_F32,
     OP_U64_TO_F64,
-    OP_INT_TO_F32,
-    OP_UINT_TO_F32,
-    OP_INT_TO_F64,
-    OP_UINT_TO_F64,
+    OP_I32_TO_F32,
+    OP_I32_TO_F64,
+    OP_U32_TO_F32,
+    OP_U32_TO_F64,
 
     // Floating-point arithmetic
     OP_ADD_F32,

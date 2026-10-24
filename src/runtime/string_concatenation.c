@@ -61,7 +61,6 @@ static size_t stringPartsCapacity(Value* values, const TokenType* types, size_t 
 
 StringObject* concatenateStringParts(Value* values, const TokenType* types, size_t count)
 {
-    // Reserve bounded space so each value is written directly into the result once
     size_t capacity = stringPartsCapacity(values, types, count);
     size_t size = sizeof(StringObject) + capacity + 1;
     StringObject* string = (StringObject*)allocateObject(size, OBJ_STRING);

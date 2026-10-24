@@ -60,37 +60,13 @@ typedef struct ReferenceLifetimes
     Vector* releases;
 } ReferenceLifetimes;
 
-static void semanticTokenError(char* message, Token token)
+static void binaryTypeError(Token token, TokenType left, TokenType right)
 {
-    fprintf(stderr, "Error: %s", message);
-    printTokenValue(token);
+    const char* leftName = getTokenTypeName(left);
+    const char* rightName = getTokenTypeName(right);
+
+    fprintf(stderr, "Error: No lossless common numeric type for %s and %s", leftName, rightName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void semanticError(char* message, Token token)
-{
-    fprintf(stderr, "Error: %s", message);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void implicitConversionError(Token token, TokenType source, TokenType destination)
-{
-    const char* sourceName = getTokenTypeName(source);
-    const char* destinationName = getTokenTypeName(destination);
-
-    fprintf(stderr, "Error: Cannot implicitly convert %s to %s for binding ", sourceName, destinationName);
-    printTokenValue(token);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void symbolError(char* message, Token token)
-{
-    fprintf(stderr, "Error: ");
-    printTokenValue(token);
-    fprintf(stderr, " is %s on line %d:%d\n", message, token.line, token.column);
     exit(1);
 }
 
@@ -99,31 +75,6 @@ static void bindingAccessError(char* message, Token token, char* detail)
     fprintf(stderr, "Error: %s", message);
     printTokenValue(token);
     fprintf(stderr, "%s on line %d:%d\n", detail, token.line, token.column);
-    exit(1);
-}
-
-static void integerLiteralOutOfRangeError(Token token, TokenType type)
-{
-    const char* typeName = getTokenTypeName(type);
-    
-    fprintf(stderr, "Error: Integer literal is outside the range of %s", typeName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void integerLiteralNotRepresentableError(Token token, TokenType type)
-{
-    const char* typeName = getTokenTypeName(type);
-
-    fprintf(stderr, "Error: Integer literal cannot be represented as %s", typeName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
-static void integerLiteralRequiresTypeError(Token token)
-{
-    fprintf(stderr, "Error: Integer literal requires an explicit type");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
@@ -139,6 +90,50 @@ static void floatLiteralOutOfRangeError(Token token, TokenType type)
 static void floatLiteralRequiresTypeError(Token token)
 {
     fprintf(stderr, "Error: Float literal requires an explicit type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void implicitConversionError(Token token, TokenType source, TokenType destination)
+{
+    const char* sourceName = getTokenTypeName(source);
+    const char* destinationName = getTokenTypeName(destination);
+
+    fprintf(stderr, "Error: Cannot implicitly convert %s to %s for binding ", sourceName, destinationName);
+    printTokenValue(token);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralNotRepresentableError(Token token, TokenType type)
+{
+    const char* typeName = getTokenTypeName(type);
+
+    fprintf(stderr, "Error: Integer literal cannot be represented as %s", typeName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralOutOfRangeError(Token token, TokenType type)
+{
+    const char* typeName = getTokenTypeName(type);
+
+    fprintf(stderr, "Error: Integer literal is outside the range of %s", typeName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void integerLiteralRequiresTypeError(Token token)
+{
+    fprintf(stderr, "Error: Integer literal requires an explicit type");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void invalidBuiltinArgumentsError(Token token)
+{
+    fprintf(stderr, "Error: Invalid arguments to builtin ");
+    printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -165,21 +160,26 @@ static void returnOutsideFunctionError(Token token)
     exit(1);
 }
 
-static void binaryTypeError(Token token, TokenType left, TokenType right)
+static void semanticError(char* message, Token token)
 {
-    const char* leftName = getTokenTypeName(left);
-    const char* rightName = getTokenTypeName(right);
-
-    fprintf(stderr, "Error: No lossless common numeric type for %s and %s", leftName, rightName);
+    fprintf(stderr, "Error: %s", message);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
-static void invalidBuiltinArgumentsError(Token token)
+static void semanticTokenError(char* message, Token token)
 {
-    fprintf(stderr, "Error: Invalid arguments to builtin ");
+    fprintf(stderr, "Error: %s", message);
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void symbolError(char* message, Token token)
+{
+    fprintf(stderr, "Error: ");
+    printTokenValue(token);
+    fprintf(stderr, " is %s on line %d:%d\n", message, token.line, token.column);
     exit(1);
 }
 

@@ -85,15 +85,15 @@ static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
 
-static void constantIndexOverflowError(void)
+static void branchOffsetOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than %u constants\n", UINT16_MAX + 1u);
+    fprintf(stderr, "Error: Branch offset exceeds instruction range\n");
     exit(1);
 }
 
-static void globalIndexOverflowError(void)
+static void constantIndexOverflowError(void)
 {
-    fprintf(stderr, "Error: Cannot create more than %u globals\n", UINT16_MAX + 1u);
+    fprintf(stderr, "Error: Cannot create more than %u constants\n", UINT16_MAX + 1u);
     exit(1);
 }
 
@@ -109,9 +109,22 @@ static void functionNotFoundError(ASTNode* ast)
     exit(1);
 }
 
-static void unresolvedReplExpressionTypeError(void)
+static void functionRegisterIndexOverflowError(const char* name)
 {
-    fprintf(stderr, "Error: Cannot display expression with an unresolved type\n");
+    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n", name, UINT16_MAX + 1u);
+    exit(1);
+}
+
+static void globalIndexOverflowError(void)
+{
+    fprintf(stderr, "Error: Cannot create more than %u globals\n", UINT16_MAX + 1u);
+    exit(1);
+}
+
+static void integerToCharacterConversionError(Token token)
+{
+    fprintf(stderr, "Error: Integer-to-char conversion requires a constant or u8 source");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
@@ -121,22 +134,9 @@ static void topLevelRegisterIndexOverflowError(void)
     exit(1);
 }
 
-static void functionRegisterIndexOverflowError(const char* name)
+static void unresolvedReplExpressionTypeError(void)
 {
-    fprintf(stderr, "Error: Function %s requires more than %u virtual registers\n", name, UINT16_MAX + 1u);
-    exit(1);
-}
-
-static void branchOffsetOverflowError(void)
-{
-    fprintf(stderr, "Error: Branch offset exceeds instruction range\n");
-    exit(1);
-}
-
-static void integerToCharacterConversionError(Token token)
-{
-    fprintf(stderr, "Error: Integer-to-char conversion requires a constant or u8 source");
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    fprintf(stderr, "Error: Cannot display expression with an unresolved type\n");
     exit(1);
 }
 

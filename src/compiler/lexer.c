@@ -81,20 +81,6 @@ static const Keyword keywords[] = {
     {"yield",       5, TOKEN_YIELD}
 };
 
-static void unterminatedLiteralError(Position start, char c)
-{
-    fprintf(stderr, "Error: Missing terminating %c character", c);
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
-}
-
-static void invalidNumberError(Position start)
-{
-    fprintf(stderr, "Error: Invalid number literal");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
-}
-
 static void emptyCharacterError(Position start)
 {
     fprintf(stderr, "Error: Empty character literal");
@@ -105,6 +91,20 @@ static void emptyCharacterError(Position start)
 static void invalidCharacterEscapeError(Position start)
 {
     fprintf(stderr, "Error: Invalid character escape on line %d:%d\n", start.line, start.column);
+    exit(1);
+}
+
+static void invalidNumberError(Position start)
+{
+    fprintf(stderr, "Error: Invalid number literal");
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
+    exit(1);
+}
+
+static void invalidUtf8CharacterError(Position start)
+{
+    fprintf(stderr, "Error: Invalid UTF-8 character literal");
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 
@@ -122,16 +122,16 @@ static void newlineCharacterError(Position start)
     exit(1);
 }
 
-static void invalidUtf8CharacterError(Position start)
-{
-    fprintf(stderr, "Error: Invalid UTF-8 character literal");
-    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
-    exit(1);
-}
-
 static void unescapedInterpolationBraceError(Position start)
 {
     fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n", start.line, start.column);
+    exit(1);
+}
+
+static void unterminatedLiteralError(Position start, char c)
+{
+    fprintf(stderr, "Error: Missing terminating %c character", c);
+    fprintf(stderr, " on line %d:%d\n", start.line, start.column);
     exit(1);
 }
 

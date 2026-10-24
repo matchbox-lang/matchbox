@@ -16,16 +16,16 @@ typedef struct NumericConstant
 
 static bool getNumericConstant(ASTNode* ast, NumericConstant* value);
 
-static void integerExceedsMaximumSizeError(Token token)
+static void floatOutsideSupportedRangeError(Token token)
 {
-    fprintf(stderr, "Error: Integer exceeds the maximum supported size");
+    fprintf(stderr, "Error: Float is outside the supported range");
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
-static void floatOutsideSupportedRangeError(Token token)
+static void integerExceedsMaximumSizeError(Token token)
 {
-    fprintf(stderr, "Error: Float is outside the supported range");
+    fprintf(stderr, "Error: Integer exceeds the maximum supported size");
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }

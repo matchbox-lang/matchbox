@@ -14,15 +14,15 @@
 #error Unsupported pointer width
 #endif
 
-static void stackOverflowError(void)
-{
-    fprintf(stderr, "Error: Stack overflow\n");
-    exit(1);
-}
-
 static void divisionByZeroError(void)
 {
     fprintf(stderr, "Error: Division by zero\n");
+    exit(1);
+}
+
+static void stackOverflowError(void)
+{
+    fprintf(stderr, "Error: Stack overflow\n");
     exit(1);
 }
 

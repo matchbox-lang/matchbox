@@ -16,14 +16,14 @@ static void disassembleRequiresFileError()
     fprintf(stderr, "Error: Cannot disassemble without a file\n");
 }
 
-static void unknownOptionError(char* arg)
-{
-    fprintf(stderr, "Error: Unknown option: %s\n", arg);
-}
-
 static void unexpectedArgumentError(char* arg)
 {
     fprintf(stderr, "Error: Unexpected argument: %s\n", arg);
+}
+
+static void unknownOptionError(char* arg)
+{
+    fprintf(stderr, "Error: Unknown option: %s\n", arg);
 }
 
 static bool parseOption(Options* options, char* arg)

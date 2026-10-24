@@ -51,17 +51,17 @@ static void expectedOperandError(Token token)
     exit(1);
 }
 
-static void expectedTypeError(Token token)
+static void expectedTokenError(TokenType type, Token token)
 {
-    fprintf(stderr, "Error: Expected type but found ");
+    fprintf(stderr, "Error: Expected %s but found ", getTokenTypeName(type));
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
 
-static void expectedTokenError(TokenType type, Token token)
+static void expectedTypeError(Token token)
 {
-    fprintf(stderr, "Error: Expected %s but found ", getTokenTypeName(type));
+    fprintf(stderr, "Error: Expected type but found ");
     printTokenValue(token);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);

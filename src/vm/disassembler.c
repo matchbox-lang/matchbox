@@ -14,6 +14,12 @@
 static uint8_t* ptr;
 static uint16_t registerHigh[3];
 
+static void unknownOpcodeError(int opcode)
+{
+    fprintf(stderr, "Error: Unknown opcode %d\n", opcode);
+    exit(1);
+}
+
 static uint16_t readRegister(int field)
 {
     uint8_t low = READ_UINT8();
@@ -32,12 +38,6 @@ static void printWidePrefix(void)
     registerHigh[2] = (uint16_t)c << 8;
 
     printf("%-15s #%u, #%u, #%u\n", "WIDE", a, b, c);
-}
-
-static void unknownOpcodeError(int opcode)
-{
-    fprintf(stderr, "Error: Unknown opcode %d\n", opcode);
-    exit(1);
 }
 
 static void printOpcode(const char* name)

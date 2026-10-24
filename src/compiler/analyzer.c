@@ -105,6 +105,7 @@ static void bindingAccessError(char* message, Token token, char* detail)
 static void integerLiteralOutOfRangeError(Token token, TokenType type)
 {
     const char* typeName = getTokenTypeName(type);
+    
     fprintf(stderr, "Error: Integer literal is outside the range of %s", typeName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
@@ -113,6 +114,7 @@ static void integerLiteralOutOfRangeError(Token token, TokenType type)
 static void integerLiteralNotRepresentableError(Token token, TokenType type)
 {
     const char* typeName = getTokenTypeName(type);
+
     fprintf(stderr, "Error: Integer literal cannot be represented as %s", typeName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
@@ -128,6 +130,7 @@ static void integerLiteralRequiresTypeError(Token token)
 static void floatLiteralOutOfRangeError(Token token, TokenType type)
 {
     const char* typeName = getTokenTypeName(type);
+
     fprintf(stderr, "Error: Float literal is outside the range of %s", typeName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
@@ -158,6 +161,35 @@ static void redefinitionError(char* kind, Token token)
 static void returnOutsideFunctionError(Token token)
 {
     fprintf(stderr, "Error: Return statement is only valid inside a function");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void binaryTypeError(Token token, TokenType left, TokenType right)
+{
+    const char* leftName = getTokenTypeName(left);
+    const char* rightName = getTokenTypeName(right);
+
+    fprintf(stderr, "Error: No lossless common numeric type for %s and %s", leftName, rightName);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
+static void unresolvedBuiltinCallError(ASTNode* ast)
+{
+    if (isBuiltinName(ast->functionCall.id->chars)) {
+        semanticError("Invalid arguments to builtin ", ast->functionCall.token);
+    }
+
+    symbolError("undefined", ast->functionCall.token);
+}
+
+static void unsupportedExplicitConversionError(Token token, TokenType source, TokenType destination)
+{
+    const char* sourceName = getTokenTypeName(source);
+    const char* destinationName = getTokenTypeName(destination);
+
+    fprintf(stderr, "Error: Unsupported explicit conversion from %s to %s", sourceName, destinationName);
     fprintf(stderr, " on line %d:%d\n", token.line, token.column);
     exit(1);
 }
@@ -1593,16 +1625,6 @@ static void applyBinaryIntegerLiteralTypes(ASTNode* left, ASTNode* right)
     }
 }
 
-static void binaryTypeError(Token token, TokenType left, TokenType right)
-{
-    const char* leftName = getTokenTypeName(left);
-    const char* rightName = getTokenTypeName(right);
-
-    fprintf(stderr, "Error: No lossless common numeric type for %s and %s", leftName, rightName);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
-}
-
 static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
 {
     analyzeNode(analyzer, ast->binary.leftExpr);
@@ -2023,15 +2045,6 @@ static Builtin* resolveBuiltinCall(ASTNode* ast)
     return builtin;
 }
 
-static void unresolvedBuiltinCallError(ASTNode* ast)
-{
-    if (isBuiltinName(ast->functionCall.id->chars)) {
-        semanticError("Invalid arguments to builtin ", ast->functionCall.token);
-    }
-
-    symbolError("undefined", ast->functionCall.token);
-}
-
 static void analyzeBuiltinCall(ASTNode* ast)
 {
     Builtin* builtin = resolveBuiltinCall(ast);
@@ -2425,12 +2438,7 @@ static void analyzeTypeConversion(ASTNode* ast)
     ReferenceType reference = getReferenceType(expression);
 
     if (!supported) {
-        const char* sourceName = getTokenTypeName(source);
-        const char* destinationName = getTokenTypeName(destination);
-
-        fprintf(stderr, "Error: Unsupported explicit conversion from %s to %s", sourceName, destinationName);
-        fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-        exit(1);
+        unsupportedExplicitConversionError(token, source, destination);
     }
 
     if (reference != REFERENCE_NONE) {

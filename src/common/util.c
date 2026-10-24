@@ -5,6 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+void outOfMemoryError()
+{
+    fprintf(stderr, "Error: Out of memory\n");
+    exit(1);
+}
+
 bool isLargerThan8BitSigned(int n)
 {
     return n < SCHAR_MIN || n > SCHAR_MAX;
@@ -13,12 +19,6 @@ bool isLargerThan8BitSigned(int n)
 bool isLargerThan16BitSigned(int n)
 {
     return n < SHRT_MIN || n > SHRT_MAX;
-}
-
-void outOfMemoryError()
-{
-    fprintf(stderr, "Error: Out of memory\n");
-    exit(1);
 }
 
 void stripUnderscores(char* str, size_t* length)

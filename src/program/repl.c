@@ -11,6 +11,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void unexpectedEndError(Compiler* compiler)
+{
+    Token token = compiler->parser.currentToken;
+
+    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static bool resizeSource(char** source, size_t* size, size_t required)
 {
     char* resized = realloc(*source, required);
@@ -50,14 +58,6 @@ static bool appendLine(char** source, size_t* size, size_t* length)
     free(line);
 
     return true;
-}
-
-static void unexpectedEndError(Compiler* compiler)
-{
-    Token token = compiler->parser.currentToken;
-
-    fprintf(stderr, "Error: Unexpected end of input on line %d:%d\n", token.line, token.column);
-    exit(1);
 }
 
 static bool finishSourceRead(Compiler* compiler, bool read, size_t length)

@@ -32,9 +32,9 @@ static void expectedFileError(const char* path)
     fprintf(stderr, "Error: Expected .mb file but found %s\n", path);
 }
 
-static void runTestError(const char* filename)
+static void runTestError(const char* path)
 {
-    fprintf(stderr, "Error: Could not run %s\n", filename);
+    fprintf(stderr, "Error: Could not run %s\n", path);
 }
 
 static void testDirectoryError(const char* path)

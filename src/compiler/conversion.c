@@ -30,6 +30,15 @@ static void floatOutsideSupportedRangeError(Token token)
     exit(1);
 }
 
+static void invalidConstantConversion(Token token, TokenType destination)
+{
+    const char* name = getTokenTypeName(destination);
+
+    fprintf(stderr, "Error: Constant is outside the supported domain of conversion to %s", name);
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static uint64_t integerLiteralToValueInBase(Token token, size_t offset, int base)
 {
     size_t length = token.length - offset;
@@ -284,15 +293,6 @@ static bool getNumericConstant(ASTNode* ast, NumericConstant* value)
     value->floating = roundedFloatConstant((double)integer, type);
 
     return true;
-}
-
-static void invalidConstantConversion(Token token, TokenType destination)
-{
-    const char* name = getTokenTypeName(destination);
-
-    fprintf(stderr, "Error: Constant is outside the supported domain of conversion to %s", name);
-    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-    exit(1);
 }
 
 static uint64_t floatConstantToInteger(double value, TokenType destination, Token token)

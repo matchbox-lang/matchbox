@@ -129,6 +129,12 @@ static void invalidUtf8CharacterError(const Lexer* lexer)
     exit(1);
 }
 
+static void unescapedInterpolationBraceError(Position start)
+{
+    fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n", start.line, start.column);
+    exit(1);
+}
+
 static char peek(const Lexer* lexer)
 {
     return *lexer->current.chars;
@@ -590,9 +596,7 @@ static bool scanStringInterpolation(Lexer* lexer, char c, Position start)
     }
 
     if (c == '}') {
-        fprintf(stderr, "Error: Unescaped } in interpolated string on line %d:%d\n",
-            start.line, start.column);
-        exit(1);
+        unescapedInterpolationBraceError(start);
     }
 
     return scanInterpolationExpression(lexer);

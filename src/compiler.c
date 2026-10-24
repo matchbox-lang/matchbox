@@ -133,6 +133,13 @@ static void branchOffsetOverflowError(void)
     exit(1);
 }
 
+static void integerToCharacterConversionError(Token token)
+{
+    fprintf(stderr, "Error: Integer-to-char conversion requires a constant or u8 source");
+    fprintf(stderr, " on line %d:%d\n", token.line, token.column);
+    exit(1);
+}
+
 static void checkRegisterCount(Compiler* compiler, int count)
 {
     if (count <= (int)UINT16_MAX + 1) {
@@ -1741,11 +1748,7 @@ static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
     TokenType destination = ast->conversion.typeId;
 
     if (destination == TOKEN_CHAR && source != TOKEN_U8) {
-        Token token = ast->conversion.token;
-
-        fprintf(stderr, "Error: Integer-to-char conversion requires a constant or u8 source");
-        fprintf(stderr, " on line %d:%d\n", token.line, token.column);
-        exit(1);
+        integerToCharacterConversionError(ast->conversion.token);
     }
 
     Operand operand = compileExpression(compiler, expression, false);

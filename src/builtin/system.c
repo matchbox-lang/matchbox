@@ -18,5 +18,15 @@ void builtinExit(VM* vm, FunctionObject* function, Value* frame)
     (void)function;
     (void)frame;
 
-    exit(0);
+    exit(EXIT_SUCCESS);
+}
+
+void builtinExitStatus(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int32_t status = AS_I32(frame[0]);
+
+    exit(status);
 }

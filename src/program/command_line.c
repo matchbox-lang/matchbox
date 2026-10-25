@@ -31,12 +31,12 @@ static bool parseOption(Options* options, char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
         printVersion();
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
         printUsage(stdout);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     if (strcmp(arg, "-d") == 0 || strcmp(arg, "--disassemble") == 0) {

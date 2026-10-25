@@ -10,7 +10,7 @@ _Noreturn void raiseError(void)
         longjmp(currentContext->jump, 1);
     }
 
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 void beginErrorContext(ErrorContext* context, MemoryGroup* memory)

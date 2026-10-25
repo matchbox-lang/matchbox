@@ -108,7 +108,8 @@ Builtin builtins[BUILTINS_MAX] = {
 
     // System
     {"byteorder",   builtinByteorder,           0,  {},                                     TOKEN_I32},
-    {"exit",        builtinExit,                0,  {},                                     TOKEN_VOID}
+    {"exit",        builtinExit,                0,  {},                                     TOKEN_VOID},
+    {"exit",        builtinExitStatus,          1,  {TOKEN_I32},                            TOKEN_VOID}
 };
 
 static bool builtinArgumentMatches(Builtin* builtin, TokenType* argumentTypes, size_t position)

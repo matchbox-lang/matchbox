@@ -1,0 +1,42 @@
+func choose(value: bool) -> i32 {
+    return value ? 10 : 20
+}
+
+func fail() -> i32 {
+    exit(1)
+
+    return 0
+}
+
+var condition = true
+let left = condition ?
+    choose(condition)
+    : fail()
+
+condition = false
+
+let right = condition ?
+    fail()
+    : choose(condition)
+
+if left != 10 or right != 20 {
+    exit(1)
+}
+
+let constant = true ?
+    42
+    : fail()
+
+if constant != 42 {
+    exit(1)
+}
+
+let nested = condition ?
+    fail()
+    : condition ?
+        fail()
+        : choose(condition)
+
+if nested != 20 {
+    exit(1)
+}

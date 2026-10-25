@@ -1,0 +1,31 @@
+func check(value: bool) {
+    if not value {
+        exit(1)
+    }
+}
+
+// Single line cases verify precedence and nesting in both branches
+check(true?true:false)
+check(not (false ? true : false))
+check((false ? 1 : false ? 2 : 3) == 3)
+check((true ? false ? 1 : 2 : 3) == 2)
+check((true or false ? 1 + 2 : 4 * 5) == 3)
+check(((false ? true : true) ? 4 : 5) == 4)
+
+let selected = false ?
+    1
+    : true ?
+        2
+        : 3
+
+check(selected == 2)
+
+let mixed = true ?
+    if false {
+        1
+    } else {
+        2
+    }
+    : 3
+
+check(mixed == 2)

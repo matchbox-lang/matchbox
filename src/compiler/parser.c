@@ -978,9 +978,60 @@ static ASTNode* parseBooleanOR(Parser* parser)
     return expr;
 }
 
+static ASTNode* parseTernaryBranch(Parser* parser)
+{
+    ASTNode* expression = parseExpression(parser);
+
+    if (!expression) {
+        return NULL;
+    }
+
+    ASTNode* branch = createASTNode(AST_COMPOUND);
+    branch->compound.scope = NULL;
+
+    pushVectorItem(&branch->compound.statements, expression);
+
+    return branch;
+}
+
+static ASTNode* parseTernary(Parser* parser, ASTNode* condition)
+{
+    Token token = parser->currentToken;
+
+    consume(parser, TOKEN_QUESTION);
+
+    ASTNode* thenBranch = parseTernaryBranch(parser);
+
+    if (!thenBranch || isEndOfFile(parser)) {
+        freeASTNode(condition);
+        freeASTNode(thenBranch);
+
+        return NULL;
+    }
+
+    consume(parser, TOKEN_COLON);
+
+    ASTNode* elseBranch = parseTernaryBranch(parser);
+
+    if (!elseBranch) {
+        freeASTNode(condition);
+        freeASTNode(thenBranch);
+
+        return NULL;
+    }
+
+    return createConditionalNode(token, condition, thenBranch, elseBranch);
+}
+
 static ASTNode* parseExpression(Parser* parser)
 {
-    return parseBooleanOR(parser);
+    ASTNode* condition = parseBooleanOR(parser);
+
+    if (!condition || parser->currentToken.type != TOKEN_QUESTION) {
+        return condition;
+    }
+
+    return parseTernary(parser, condition);
 }
 
 static ASTNode* parseReturnStatement(Parser* parser)

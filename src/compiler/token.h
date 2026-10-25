@@ -102,7 +102,6 @@ typedef enum TokenType
     TOKEN_RSHIFT,
     TOKEN_TILDE,
     TOKEN_QUESTION,
-    TOKEN_TERNARY,
     TOKEN_COLON,
     TOKEN_AND_EQUAL,
     TOKEN_OR_EQUAL,

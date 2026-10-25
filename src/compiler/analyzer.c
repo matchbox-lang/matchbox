@@ -1119,7 +1119,7 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     analyzeNode(analyzer, ast->conditional.condition);
 
     if (getTypeId(ast->conditional.condition) != TOKEN_BOOL) {
-        semanticError("If condition must have type bool", ast->conditional.token);
+        semanticError("Condition must have type bool", ast->conditional.token);
     }
 
     Vector thenStates;
@@ -1158,11 +1158,11 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
     }
 
     if (thenType == TOKEN_VOID || elseType == TOKEN_VOID) {
-        semanticTokenError("If expression branch must produce a value ", ast->conditional.token);
+        semanticTokenError("Conditional expression branch must produce a value ", ast->conditional.token);
     }
 
     if (thenType != elseType) {
-        semanticTokenError("If expression branches have incompatible types ", ast->conditional.token);
+        semanticTokenError("Conditional expression branches have incompatible types ", ast->conditional.token);
     }
 
     bool hasExpectedType = ast->conditional.typeId != TOKEN_UNKNOWN

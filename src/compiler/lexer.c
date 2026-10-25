@@ -804,7 +804,6 @@ Token scanToken(Lexer* lexer)
             return makeToken(lexer, 
                 match(lexer, '?') ?
                 match(lexer, '=') ? TOKEN_COALESCE_EQUAL : TOKEN_COALESCE :
-                match(lexer, ':') ? TOKEN_TERNARY :
                 match(lexer, '.') ? TOKEN_SAFE_ACCESS : TOKEN_QUESTION);
         case '.':
             if (isDigit(peek(lexer))) {

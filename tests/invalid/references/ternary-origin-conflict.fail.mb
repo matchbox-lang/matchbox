@@ -1,0 +1,10 @@
+var condition = true
+var left = 10
+var right = 20
+let reference: &i32 = condition ?
+    &left
+    : &right
+
+left = 30
+
+print(reference)

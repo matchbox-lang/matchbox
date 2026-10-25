@@ -9,9 +9,7 @@
 
 static char* createPath(size_t length)
 {
-    char* path = allocateMemory(length + 1);
-
-    return path;
+    return allocateMemory(length + 1);
 }
 
 static bool pathEndsWithSeparator(const char* path)

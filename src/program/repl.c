@@ -15,6 +15,11 @@ typedef enum SubmissionResult
     SUBMISSION_COMPLETE
 } SubmissionResult;
 
+static void unexpectedEndOfInputError(Token token)
+{
+    reportError("Unexpected end of input on line %d:%d", token.line, token.column);
+}
+
 static bool appendLine(char** source, size_t* size, size_t* length)
 {
     char* line = NULL;
@@ -112,9 +117,7 @@ static SubmissionResult finishInput(Compiler* compiler, size_t length, Submissio
         return SUBMISSION_COMPLETE;
     }
 
-    Token token = compiler->parser.currentToken;
-
-    reportError("Unexpected end of input on line %d:%d", token.line, token.column);
+    unexpectedEndOfInputError(compiler->parser.currentToken);
 
     return SUBMISSION_INCOMPLETE;
 }

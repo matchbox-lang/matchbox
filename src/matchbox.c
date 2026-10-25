@@ -1,6 +1,7 @@
 #include "matchbox.h"
+#include "common/errors.h"
+#include "common/memory.h"
 #include "compiler.h"
-#include "program/buffer.h"
 #include "runtime/module_object.h"
 #include "vm.h"
 #include <stdlib.h>
@@ -8,23 +9,16 @@
 
 struct Matchbox
 {
+    MemoryGroup memory;
     ModuleObject* module;
     Compiler compiler;
-    char* source;
 };
 
 static void resetMatchbox(Matchbox* mb)
 {
-    if (!mb->module) {
-        return;
-    }
-
-    freeCompiler(&mb->compiler);
-    freeModuleObject(mb->module);
-    free(mb->source);
+    freeMemoryGroup(&mb->memory);
 
     mb->module = NULL;
-    mb->source = NULL;
 }
 
 static void runModule(ModuleObject* module)
@@ -36,20 +30,17 @@ static void runModule(ModuleObject* module)
     freeVM(&vm);
 }
 
-static bool runSource(Matchbox* mb, char* source)
+static bool runSource(Matchbox* mb, const char* source)
 {
-    resetMatchbox(mb);
+    size_t size = strlen(source) + 1;
+    char* copy = allocateMemory(size);
 
-    mb->source = source;
+    memcpy(copy, source, size);
     mb->module = createModuleObject();
-
     initCompiler(&mb->compiler, mb->module);
 
-    bool compiled = compile(&mb->compiler, source);
-
+    bool compiled = compile(&mb->compiler, copy);
     if (!compiled) {
-        resetMatchbox(mb);
-
         return false;
     }
 
@@ -81,14 +72,25 @@ bool matchbox_run(Matchbox* mb, const char* source)
         return false;
     }
 
-    size_t size = strlen(source) + 1;
-    char* copy = malloc(size);
+    ErrorContext context;
 
-    if (!copy) {
+    resetMatchbox(mb);
+    beginErrorContext(&context, &mb->memory);
+
+    if (setjmp(context.jump) != 0) {
+        endErrorContext(&context);
+        resetMatchbox(mb);
+
         return false;
     }
 
-    memcpy(copy, source, size);
+    bool success = runSource(mb, source);
 
-    return runSource(mb, copy);
+    endErrorContext(&context);
+
+    if (!success) {
+        resetMatchbox(mb);
+    }
+
+    return success;
 }

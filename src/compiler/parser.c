@@ -1,5 +1,5 @@
 #include "compiler/parser.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include "compiler/diagnostics.h"
 #include "compiler/ast.h"
 #include "builtin.h"
@@ -309,12 +309,8 @@ static StringReader createStringReader(Token token)
 static ASTNode* parseStringSegment(StringReader* reader)
 {
     size_t capacity = reader->end - reader->current.chars;
-    char* bytes = malloc(capacity + 1);
+    char* bytes = allocateMemory(capacity + 1);
     size_t count = 0;
-
-    if (!bytes) {
-        outOfMemoryError();
-    }
 
     while (reader->current.chars < reader->end) {
         const char* chars = reader->current.chars;
@@ -343,7 +339,7 @@ static ASTNode* parseStringSegment(StringReader* reader)
         }
 
         if (!valid) {
-            free(bytes);
+            freeMemory(bytes);
             invalidStringError(reader->token);
         }
 
@@ -357,7 +353,7 @@ static ASTNode* parseStringSegment(StringReader* reader)
     ast->stringLiteral.token = reader->token;
     ast->stringLiteral.value = copyStringObject(bytes, count);
 
-    free(bytes);
+    freeMemory(bytes);
 
     return ast;
 }
@@ -690,10 +686,7 @@ static bool parseMatchArm(Parser* parser, ASTNode* ast)
 {
     consume(parser, TOKEN_CASE);
 
-    MatchArm* arm = calloc(1, sizeof(MatchArm));
-    if (!arm) {
-        outOfMemoryError();
-    }
+    MatchArm* arm = allocateZeroedMemory(1, sizeof(MatchArm));
 
     pushVectorItem(&ast->match.arms, arm);
 

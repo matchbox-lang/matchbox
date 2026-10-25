@@ -1,4 +1,5 @@
 #include "compiler.h"
+#include "common/memory.h"
 #include "compiler/diagnostics.h"
 #include "common/errors.h"
 #include "compiler/conversion.h"
@@ -130,6 +131,70 @@ static _Noreturn void topLevelRegisterIndexOverflowError(void)
 static _Noreturn void unresolvedReplExpressionTypeError(void)
 {
     fatalError("Cannot display expression with an unresolved type");
+}
+
+static void discardReplStatements(Compiler* compiler, size_t start)
+{
+    Vector* statements = &compiler->ast->compound.statements;
+
+    while (statements->count > start) {
+        ASTNode* ast = popVectorItem(statements);
+
+        freeASTNode(ast);
+    }
+
+    compiler->statementIndex = start;
+}
+
+static bool containsFunction(Vector* functions, ASTNode* ast)
+{
+    if (!ast) {
+        return true;
+    }
+
+    size_t i = 0;
+
+    while (i < functions->count && functions->data[i] != ast) {
+        i++;
+    }
+
+    return i < functions->count;
+}
+
+static void discardAbandonedFunctions(Compiler* compiler, Vector* functions)
+{
+    Vector* references = &compiler->functionReferences;
+    size_t count = 0;
+
+    while (count < references->count && containsFunction(functions, references->data[count])) {
+        count++;
+    }
+
+    while (compiler->module->functions.count > count) {
+        FunctionObject* function = popVectorItem(&compiler->module->functions);
+
+        freeFunctionObject(function);
+    }
+
+    references->count = count;
+}
+
+static void recoverCompiler(Compiler* compiler)
+{
+    Vector functions;
+
+    rebuildAnalyzer(&compiler->analyzer, &functions);
+    discardAbandonedFunctions(compiler, &functions);
+    freeVector(&functions);
+
+    compiler->module->globalCount = compiler->ast->compound.scope->localCount;
+    compiler->statementIndex = compiler->ast->compound.statements.count;
+    compiler->function = compiler->module->functions.data[0];
+    compiler->registerCount = 0;
+    compiler->frameBaseCount = 0;
+    compiler->peepholeBarrier = 0;
+    compiler->localPositionOffset = -(int)compiler->module->globalCount;
+    compiler->function->maxStackCount = 0;
 }
 
 static void checkRegisterCount(Compiler* compiler, int count)
@@ -2020,11 +2085,7 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
     }
 
     if (count > 0) {
-        function->argumentTypes = malloc(count * sizeof(TokenType));
-    }
-
-    if (count > 0 && !function->argumentTypes) {
-        outOfMemoryError();
+        function->argumentTypes = allocateMemory(count * sizeof(TokenType));
     }
 
     function->argumentCount = count;
@@ -3720,7 +3781,30 @@ bool compile(Compiler* compiler, char* source)
     return compileSource(compiler, source, compileTopLevelStatements);
 }
 
-bool compileRepl(Compiler* compiler, char* source)
+CompileResult compileRepl(Compiler* compiler, char* source)
 {
-    return compileSource(compiler, source, compileReplStatements);
+    ErrorContext context;
+    size_t start = compiler->ast->compound.statements.count;
+
+    beginErrorContext(&context, NULL);
+
+    if (setjmp(context.jump) != 0) {
+        endErrorContext(&context);
+        discardReplStatements(compiler, start);
+        recoverCompiler(compiler);
+
+        return COMPILE_ERROR;
+    }
+
+    bool complete = compileSource(compiler, source, compileReplStatements);
+
+    endErrorContext(&context);
+
+    if (!complete) {
+        discardReplStatements(compiler, start);
+
+        return COMPILE_INCOMPLETE;
+    }
+
+    return COMPILE_SUCCESS;
 }

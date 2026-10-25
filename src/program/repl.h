@@ -1,6 +1,8 @@
 #ifndef REPL_H
 #define REPL_H
 
-void runRepl();
+#include <stdbool.h>
+
+bool runRepl(void);
 
 #endif

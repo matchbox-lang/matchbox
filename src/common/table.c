@@ -1,5 +1,5 @@
 #include "common/table.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include "common/string_view.h"
 #include "common/util.h"
 #include <stdbool.h>
@@ -7,11 +7,7 @@
 
 TableItem* createTableItem(StringView key, void* value, TableItem* next)
 {
-    TableItem* item = malloc(sizeof(TableItem));
-    if (!item) {
-        outOfMemoryError();
-    }
-
+    TableItem* item = allocateMemory(sizeof(TableItem));
     item->key = key;
     item->value = value;
     item->next = next;
@@ -25,7 +21,7 @@ void freeTableItem(TableItem* item)
         freeTableItem(item->next);
     }
 
-    free(item);
+    freeMemory(item);
 }
 
 void initTable(Table* table, size_t capacity)
@@ -35,11 +31,7 @@ void initTable(Table* table, size_t capacity)
     }
 
     table->capacity = capacity;
-    table->data = calloc(table->capacity, sizeof(TableItem*));
-    if (!table->data) {
-        outOfMemoryError();
-    }
-
+    table->data = allocateZeroedMemory(table->capacity, sizeof(TableItem*));
     table->count = 0;
 }
 
@@ -53,7 +45,7 @@ void freeTable(Table* table)
         }
     }
 
-    free(table->data);
+    freeMemory(table->data);
 }
 
 size_t countTable(Table* table)
@@ -122,7 +114,7 @@ bool deleteTableAt(Table* table, StringView key)
         prev->next = current->next;
     }
 
-    free(current);
+    freeMemory(current);
     table->count--;
 
     return true;

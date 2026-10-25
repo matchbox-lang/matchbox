@@ -1,4 +1,5 @@
 #include "runtime/string_object.h"
+#include "common/memory.h"
 #include "common/errors.h"
 #include "runtime/object.h"
 #include "common/util.h"
@@ -48,7 +49,7 @@ StringView getStringView(const StringObject* string)
 
 void freeStringObject(StringObject* string)
 {
-    free(string);
+    freeMemory(string);
 }
 
 bool compareStringObject(const StringObject* a, const StringObject* b)

@@ -1,5 +1,5 @@
 #include "program/path.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include "common/util.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -9,10 +9,7 @@
 
 static char* createPath(size_t length)
 {
-    char* path = malloc(length + 1);
-    if (!path) {
-        outOfMemoryError();
-    }
+    char* path = allocateMemory(length + 1);
 
     return path;
 }
@@ -54,7 +51,7 @@ char* joinPath(const char* directory, const char* name)
 
 void freePath(char* path)
 {
-    free(path);
+    freeMemory(path);
 }
 
 bool pathExists(const char* path)

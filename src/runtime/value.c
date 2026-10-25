@@ -1,4 +1,5 @@
 #include "runtime/value.h"
+#include "common/memory.h"
 #include "common/errors.h"
 #include "common/util.h"
 #include <stdlib.h>
@@ -13,7 +14,7 @@ void initValueArray(ValueArray* array)
 
 void freeValueArray(ValueArray* array)
 {
-    free(array->data);
+    freeMemory(array->data);
 }
 
 int32_t readSignedValue(Value value, TokenType type)
@@ -116,11 +117,7 @@ void reserveValueArray(ValueArray* array, size_t capacity)
         outOfMemoryError();
     }
 
-    Value* data = realloc(array->data, sizeof(Value) * capacity);
-    if (!data) {
-        outOfMemoryError();
-    }
-
+    Value* data = reallocateMemory(array->data, sizeof(Value) * capacity);
     array->data = data;
     array->capacity = capacity;
 }

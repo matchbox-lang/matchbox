@@ -2,7 +2,6 @@
 #include "common/errors.h"
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 _Noreturn void fatalSourceError(int line, int column, const char* format, ...)
 {
@@ -12,7 +11,7 @@ _Noreturn void fatalSourceError(int line, int column, const char* format, ...)
     writeErrorMessage(format, arguments);
     va_end(arguments);
     fprintf(stderr, " on line %d:%d\n", line, column);
-    exit(1);
+    raiseError();
 }
 
 _Noreturn void fatalTokenError(Token token, const char* suffix, const char* format, ...)
@@ -24,7 +23,7 @@ _Noreturn void fatalTokenError(Token token, const char* suffix, const char* form
     va_end(arguments);
     printTokenValue(token);
     fprintf(stderr, "%s on line %d:%d\n", suffix, token.line, token.column);
-    exit(1);
+    raiseError();
 }
 
 _Noreturn void unexpectedEndError(Token token)

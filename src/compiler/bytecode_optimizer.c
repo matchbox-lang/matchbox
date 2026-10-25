@@ -1,5 +1,5 @@
 #include "compiler/bytecode_optimizer.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include "runtime/function_object.h"
 #include "vm/opcode.h"
 #include "common/util.h"
@@ -729,12 +729,8 @@ void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentR
         return;
     }
 
-    OptimizationWord* words = calloc(count + 1, sizeof(OptimizationWord));
-    size_t* positions = malloc((count + 1) * sizeof(size_t));
-
-    if (!words || !positions) {
-        outOfMemoryError();
-    }
+    OptimizationWord* words = allocateZeroedMemory(count + 1, sizeof(OptimizationWord));
+    size_t* positions = allocateMemory((count + 1) * sizeof(size_t));
 
     decodeWords(code, words, count);
     optimizeConstants(module, words, count);
@@ -742,6 +738,6 @@ void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentR
     removeImmediateOperandMoves(words, count);
     fuseInstructions(module, words, count);
     writeWords(code, words, count, positions);
-    free(words);
-    free(positions);
+    freeMemory(words);
+    freeMemory(positions);
 }

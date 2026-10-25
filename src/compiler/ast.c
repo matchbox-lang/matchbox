@@ -1,5 +1,5 @@
 #include "compiler/ast.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include "builtin.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
@@ -11,10 +11,7 @@
 
 ASTNode* createASTNode(ASTNodeType type)
 {
-    ASTNode* ast = calloc(1, sizeof(ASTNode));
-    if (!ast) {
-        outOfMemoryError();
-    }
+    ASTNode* ast = allocateZeroedMemory(1, sizeof(ASTNode));
 
     ast->type = type;
 
@@ -77,7 +74,7 @@ static void freeMatchArms(Vector* arms)
         freeASTNode(arm->binding);
         freeASTNode(arm->guard);
         freeASTNode(arm->branch);
-        free(arm);
+        freeMemory(arm);
     }
 
     freeVector(arms);
@@ -159,7 +156,7 @@ void freeASTNode(ASTNode* ast)
             break;
     }
 
-    free(ast);
+    freeMemory(ast);
 }
 
 Scope* getScope(const ASTNode* ast)

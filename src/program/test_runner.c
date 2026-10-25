@@ -1,4 +1,5 @@
 #include "program/test_runner.h"
+#include "common/memory.h"
 #include "common/errors.h"
 #include "program/options.h"
 #include "program/path.h"
@@ -56,11 +57,7 @@ static void testsNotFoundError(const char* path)
 static char* quoteArgument(const char* argument)
 {
     size_t length = strlen(argument);
-    char* quoted = malloc(length + 3);
-
-    if (!quoted) {
-        outOfMemoryError();
-    }
+    char* quoted = allocateMemory(length + 3);
 
     quoted[0] = '"';
     memcpy(quoted + 1, argument, length);
@@ -72,9 +69,9 @@ static char* quoteArgument(const char* argument)
 
 static void freeTestCommand(char* command, char* quotedExecutablePath, char* quotedFilename)
 {
-    free(command);
-    free(quotedFilename);
-    free(quotedExecutablePath);
+    freeMemory(command);
+    freeMemory(quotedFilename);
+    freeMemory(quotedExecutablePath);
 }
 
 static char* createTestCommand(const char* executablePath, const char* filename,
@@ -86,11 +83,7 @@ static char* createTestCommand(const char* executablePath, const char* filename,
     *quotedExecutablePath = quoteArgument(executablePath);
     *quotedFilename = quoteArgument(filename);
     commandLength = strlen(*quotedExecutablePath) + strlen(*quotedFilename) + 9;
-    command = malloc(commandLength + 1);
-
-    if (!command) {
-        outOfMemoryError();
-    }
+    command = allocateMemory(commandLength + 1);
 
     snprintf(command, commandLength + 1, "\"%s %s 2>&1\"", *quotedExecutablePath, *quotedFilename);
 

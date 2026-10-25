@@ -9,6 +9,13 @@
 #include "common/vector.h"
 #include <stddef.h>
 
+typedef enum CompileResult
+{
+    COMPILE_ERROR,
+    COMPILE_INCOMPLETE,
+    COMPILE_SUCCESS
+} CompileResult;
+
 typedef struct Compiler
 {
     Parser parser;
@@ -28,6 +35,6 @@ typedef struct Compiler
 void initCompiler(Compiler* compiler, ModuleObject* module);
 void freeCompiler(Compiler* compiler);
 bool compile(Compiler* compiler, char* source);
-bool compileRepl(Compiler* compiler, char* source);
+CompileResult compileRepl(Compiler* compiler, char* source);
 
 #endif

@@ -1,4 +1,5 @@
 #include "common/vector.h"
+#include "common/memory.h"
 #include "common/errors.h"
 #include "common/util.h"
 #include <stdint.h>
@@ -13,7 +14,7 @@ void initVector(Vector* vector)
 
 void freeVector(Vector* vector)
 {
-    free(vector->data);
+    freeMemory(vector->data);
 }
 
 size_t countVector(Vector* vector)
@@ -31,11 +32,7 @@ void reserveVector(Vector* vector, size_t capacity)
         outOfMemoryError();
     }
 
-    void** data = realloc(vector->data, sizeof(void*) * capacity);
-    if (!data) {
-        outOfMemoryError();
-    }
-
+    void** data = reallocateMemory(vector->data, sizeof(void*) * capacity);
     vector->data = data;
     vector->capacity = capacity;
 }

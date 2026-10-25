@@ -1,4 +1,5 @@
 #include "compiler/conversion.h"
+#include "common/memory.h"
 #include "compiler/diagnostics.h"
 #include "common/util.h"
 #include "common/unicode.h"
@@ -46,7 +47,7 @@ static uint64_t integerLiteralToValueInBase(Token token, size_t offset, int base
         integerExceedsMaximumSizeError(token);
     }
 
-    free(tmp);
+    freeMemory(tmp);
 
     return value;
 }
@@ -83,7 +84,7 @@ double floatLiteralToValue(Token token)
         floatOutsideSupportedRangeError(token);
     }
 
-    free(tmp);
+    freeMemory(tmp);
 
     return value;
 }

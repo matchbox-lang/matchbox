@@ -1,4 +1,5 @@
 #include "program/buffer.h"
+#include "common/memory.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,16 +18,11 @@ static char* readFileContents(FILE* file)
     }
 
     size_t size = (size_t)length;
-    char* source = malloc(size + 1);
-
-    if (!source) {
-        return NULL;
-    }
-
+    char* source = allocateMemory(size + 1);
     size_t count = fread(source, 1, size, file);
 
     if (count != size || ferror(file)) {
-        free(source);
+        freeMemory(source);
 
         return NULL;
     }
@@ -48,7 +44,7 @@ char* getFileContents(const char* filename)
     int closed = fclose(file);
 
     if (closed != 0) {
-        free(source);
+        freeMemory(source);
 
         return NULL;
     }
@@ -70,19 +66,12 @@ size_t putFileContents(const char* filename, const void* data)
     return size;
 }
 
-static bool growStreamBuffer(char** lineptr, size_t* capacity)
+static void growStreamBuffer(char** lineptr, size_t* capacity)
 {
     size_t newCapacity = *capacity * 2;
-    char* resized = realloc(*lineptr, newCapacity);
-
-    if (!resized) {
-        return false;
-    }
-
+    char* resized = reallocateMemory(*lineptr, newCapacity);
     *lineptr = resized;
     *capacity = newCapacity;
-
-    return true;
 }
 
 int getStreamContents(char **lineptr, size_t *n, FILE *stream)
@@ -96,16 +85,12 @@ int getStreamContents(char **lineptr, size_t *n, FILE *stream)
 
     if (*lineptr == NULL) {
         *n = 256;
-        *lineptr = malloc(*n);
-    }
-
-    if (*lineptr == NULL) {
-        return -1;
+        *lineptr = allocateMemory(*n);
     }
 
     while ((c = fgetc(stream)) != EOF) {
-        if (length + 1 >= *n && !growStreamBuffer(lineptr, n)) {
-            return -1;
+        if (length + 1 >= *n) {
+            growStreamBuffer(lineptr, n);
         }
 
         (*lineptr)[length++] = c;

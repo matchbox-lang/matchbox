@@ -1,4 +1,5 @@
 #include "compiler/analyzer.h"
+#include "common/memory.h"
 #include "common/errors.h"
 #include "compiler/diagnostics.h"
 #include "compiler/conversion.h"
@@ -20,6 +21,7 @@
 typedef bool (*VisitId)(StringView id, void* context);
 
 static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context);
+static void clearNodeAnalysis(ASTNode* ast, Vector* functions);
 static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
 static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast);
 static void activateReferenceAccess(ASTNode* ast);
@@ -558,13 +560,8 @@ static bool recordReferenceUse(StringView id, void* context)
         return false;
     }
 
-    use = malloc(sizeof(ReferenceUse));
-    if (!use) {
-        outOfMemoryError();
-    }
-
+    use = allocateMemory(sizeof(ReferenceUse));
     use->last = lifetimes->position;
-
     setTableAt(&lifetimes->lastUses, id, use);
 
     return false;
@@ -576,11 +573,7 @@ static void initReferenceLifetimes(ReferenceLifetimes* lifetimes, Vector* nodes,
 
     initTable(&lifetimes->lastUses, count * 2);
 
-    lifetimes->releases = calloc(count, sizeof(Vector));
-
-    if (count && !lifetimes->releases) {
-        outOfMemoryError();
-    }
+    lifetimes->releases = allocateZeroedMemory(count, sizeof(Vector));
 
     for (size_t i = start; i < count; i++) {
         ASTNode* ast = getVectorAt(nodes, i);
@@ -616,12 +609,12 @@ static void freeReferenceLifetimes(ReferenceLifetimes* lifetimes, size_t count)
         TableItem* item = lifetimes->lastUses.data[i];
 
         while (item) {
-            free(item->value);
+            freeMemory(item->value);
             item = item->next;
         }
     }
 
-    free(lifetimes->releases);
+    freeMemory(lifetimes->releases);
     freeTable(&lifetimes->lastUses);
 }
 
@@ -818,7 +811,7 @@ static void captureSymbolOwnership(Vector* states, ASTNode* symbol)
         return;
     }
 
-    OwnershipState* state = malloc(sizeof(OwnershipState));
+    OwnershipState* state = allocateMemory(sizeof(OwnershipState));
     state->symbol = symbol;
     initVector(&state->referenceOrigins);
     Vector* origins = getReferenceOrigins(symbol);
@@ -860,7 +853,7 @@ static void copyOwnershipState(Vector* destination, Vector* source)
 
     for (size_t i = 0; i < countVector(source); i++) {
         OwnershipState* sourceState = getVectorAt(source, i);
-        OwnershipState* destinationState = malloc(sizeof(OwnershipState));
+        OwnershipState* destinationState = allocateMemory(sizeof(OwnershipState));
 
         *destinationState = *sourceState;
         initVector(&destinationState->referenceOrigins);
@@ -916,7 +909,7 @@ static void freeOwnershipStates(Vector* states)
     for (size_t i = 0; i < countVector(states); i++) {
         OwnershipState* state = getVectorAt(states, i);
         freeVector(&state->referenceOrigins);
-        free(state);
+        freeMemory(state);
     }
 
     freeVector(states);
@@ -1991,11 +1984,7 @@ static Builtin* resolveBuiltinCall(ASTNode* ast)
     }
 
     if (count) {
-        argumentTypes = malloc(count * sizeof(TokenType));
-    }
-
-    if (count && !argumentTypes) {
-        outOfMemoryError();
+        argumentTypes = allocateMemory(count * sizeof(TokenType));
     }
 
     for (size_t i = 0; i < count; i++) {
@@ -2004,7 +1993,7 @@ static Builtin* resolveBuiltinCall(ASTNode* ast)
 
     Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
 
-    free(argumentTypes);
+    freeMemory(argumentTypes);
 
     return builtin;
 }
@@ -3127,4 +3116,148 @@ bool analyze(Analyzer* analyzer, size_t start)
     analyzeNodes(analyzer, &analyzer->topLevel->compound.statements, start);
 
     return true;
+}
+
+static void clearAnalysisVector(Vector* nodes, Vector* functions)
+{
+    for (size_t i = 0; i < nodes->count; i++) {
+        clearNodeAnalysis(nodes->data[i], functions);
+    }
+}
+
+static void clearVariableAnalysis(ASTNode* ast, Vector* functions)
+{
+    ast->variableDefinition.scope = NULL;
+    ast->variableDefinition.initialized = false;
+    ast->variableDefinition.moved = false;
+    ast->variableDefinition.sharedAccessCount = 0;
+    ast->variableDefinition.exclusiveAccessActive = false;
+    ast->variableDefinition.referenceAccessActive = false;
+    ast->variableDefinition.referenceOrigins.count = 0;
+    ast->variableDefinition.readCount = 0;
+    ast->variableDefinition.discardedReadCount = 0;
+    ast->variableDefinition.discardedReadsAnalyzed = false;
+    ast->variableDefinition.addressTaken = false;
+
+    clearNodeAnalysis(ast->variableDefinition.expr, functions);
+}
+
+static void clearFunctionAnalysis(ASTNode* ast, Vector* functions)
+{
+    ast->functionDefinition.scope = NULL;
+    ast->functionDefinition.returnReferenceOrigin = NULL;
+    ast->functionDefinition.callCount = 0;
+
+    pushVectorItem(functions, ast);
+    clearAnalysisVector(&ast->functionDefinition.params, functions);
+    clearNodeAnalysis(ast->functionDefinition.body, functions);
+}
+
+static void clearMatchArmAnalysis(MatchArm* arm, Vector* functions)
+{
+    clearNodeAnalysis(arm->pattern, functions);
+    clearNodeAnalysis(arm->binding, functions);
+    clearNodeAnalysis(arm->guard, functions);
+    clearNodeAnalysis(arm->branch, functions);
+}
+
+static void clearMatchAnalysis(ASTNode* ast, Vector* functions)
+{
+    ast->match.referenceOrigins.count = 0;
+
+    clearNodeAnalysis(ast->match.subject, functions);
+    clearNodeAnalysis(ast->match.defaultBranch, functions);
+
+    for (size_t i = 0; i < ast->match.arms.count; i++) {
+        clearMatchArmAnalysis(ast->match.arms.data[i], functions);
+    }
+}
+
+static void clearNodeAnalysis(ASTNode* ast, Vector* functions)
+{
+    if (!ast) {
+        return;
+    }
+
+    switch (ast->type) {
+        case AST_COMPOUND:
+            freeScope(ast->compound.scope);
+            ast->compound.scope = NULL;
+            clearAnalysisVector(&ast->compound.statements, functions);
+            break;
+        case AST_VARIABLE_DEFINITION:
+            clearVariableAnalysis(ast, functions);
+            break;
+        case AST_FUNCTION_DEFINITION:
+            clearFunctionAnalysis(ast, functions);
+            break;
+        case AST_PARAMETER:
+            ast->parameter.scope = NULL;
+            ast->parameter.sharedAccessCount = 0;
+            ast->parameter.exclusiveAccessActive = false;
+            ast->parameter.moved = false;
+            ast->parameter.referenceOrigins.count = 0;
+            break;
+        case AST_VARIABLE:
+            ast->variable.scope = NULL;
+            ast->variable.symbol = NULL;
+            break;
+        case AST_ASSIGNMENT:
+            ast->assignment.scope = NULL;
+            ast->assignment.symbol = NULL;
+            ast->assignment.initializesBinding = false;
+            clearNodeAnalysis(ast->assignment.expr, functions);
+            break;
+        case AST_FUNCTION_CALL:
+            ast->functionCall.scope = NULL;
+            ast->functionCall.symbol = NULL;
+            ast->functionCall.referenceOrigins.count = 0;
+            clearAnalysisVector(&ast->functionCall.args, functions);
+            break;
+        case AST_BUILTIN_CALL:
+            clearAnalysisVector(&ast->builtinCall.args, functions);
+            break;
+        case AST_CONDITIONAL:
+            ast->conditional.referenceOrigins.count = 0;
+            clearNodeAnalysis(ast->conditional.condition, functions);
+            clearNodeAnalysis(ast->conditional.thenBranch, functions);
+            clearNodeAnalysis(ast->conditional.elseBranch, functions);
+            break;
+        case AST_MATCH:
+            clearMatchAnalysis(ast, functions);
+            break;
+        case AST_WHILE:
+            clearNodeAnalysis(ast->whileStatement.condition, functions);
+            clearNodeAnalysis(ast->whileStatement.body, functions);
+            break;
+        case AST_BINARY:
+            clearNodeAnalysis(ast->binary.leftExpr, functions);
+            clearNodeAnalysis(ast->binary.rightExpr, functions);
+            break;
+        case AST_PREFIX:
+            ast->prefix.referenceOrigins.count = 0;
+            clearNodeAnalysis(ast->prefix.expr, functions);
+            break;
+        case AST_CONVERSION:
+            clearNodeAnalysis(ast->conversion.expr, functions);
+            break;
+        case AST_RETURN:
+            clearNodeAnalysis(ast->returnStatement.expr, functions);
+            break;
+        default:
+            break;
+    }
+}
+
+void rebuildAnalyzer(Analyzer* analyzer, Vector* functions)
+{
+    ASTNode* ast = analyzer->topLevel;
+
+    initVector(functions);
+    clearNodeAnalysis(ast, functions);
+
+    ast->compound.scope = createScope(NULL);
+
+    initAnalyzer(analyzer, ast);
+    analyze(analyzer, 0);
 }

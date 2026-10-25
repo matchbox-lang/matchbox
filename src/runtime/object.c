@@ -1,14 +1,11 @@
 #include "runtime/object.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include "common/util.h"
 #include <stdlib.h>
 
 Object* allocateObject(size_t size, ObjectType type)
 {
-    Object* object = (Object*)malloc(size);
-    if (!object) {
-        outOfMemoryError();
-    }
+    Object* object = (Object*)allocateMemory(size);
 
     object->type = type;
     

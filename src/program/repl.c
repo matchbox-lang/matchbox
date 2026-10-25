@@ -1,219 +1,163 @@
 #include "program/repl.h"
 #include "common/errors.h"
-#include "compiler/diagnostics.h"
-#include "program/buffer.h"
+#include "common/memory.h"
 #include "compiler.h"
-#include "runtime/module_object.h"
-#include "common/util.h"
-#include "common/vector.h"
+#include "program/buffer.h"
 #include "vm.h"
-#include <stdbool.h>
-#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
-static bool resizeSource(char** source, size_t* size, size_t required)
+typedef enum SubmissionResult
 {
-    char* resized = realloc(*source, required);
-    if (!resized) {
-        return false;
-    }
-
-    *source = resized;
-    *size = required;
-
-    return true;
-}
+    SUBMISSION_RESET = -1,
+    SUBMISSION_INCOMPLETE,
+    SUBMISSION_COMPLETE
+} SubmissionResult;
 
 static bool appendLine(char** source, size_t* size, size_t* length)
 {
     char* line = NULL;
     size_t lineSize = 0;
-    int lineLength = getStreamContents(&line, &lineSize, stdin);
+    int count = getStreamContents(&line, &lineSize, stdin);
 
-    if (lineLength == -1) {
-        free(line);
-
-        return false;
-    }
-
-    size_t required = *length + (size_t)lineLength + 1;
-    bool resizeFailed = required > *size && !resizeSource(source, size, required);
-
-    if (resizeFailed) {
-        free(line);
+    if (count < 0) {
+        freeMemory(line);
 
         return false;
     }
 
-    memcpy(*source + *length, line, (size_t)lineLength + 1);
-    *length += (size_t)lineLength;
-    free(line);
+    size_t required = *length + (size_t)count + 1;
+
+    if (required > *size) {
+        *source = reallocateMemory(*source, required);
+        *size = required;
+    }
+
+    memcpy(*source + *length, line, (size_t)count + 1);
+    freeMemory(line);
+
+    *length += (size_t)count;
 
     return true;
 }
 
-static bool finishSourceRead(Compiler* compiler, bool read, size_t length)
+static SubmissionResult processSource(Compiler* compiler, VM* vm, char* source, MemoryGroup* memory)
 {
-    if (read) {
-        return true;
+    ErrorContext context;
+
+    beginErrorContext(&context, memory);
+
+    if (setjmp(context.jump) != 0) {
+        endErrorContext(&context);
+
+        return SUBMISSION_RESET;
+    }
+
+    CompileResult result = compileRepl(compiler, source);
+
+    if (result == COMPILE_INCOMPLETE) {
+        endErrorContext(&context);
+
+        return SUBMISSION_INCOMPLETE;
+    }
+
+    if (result == COMPILE_ERROR) {
+        endErrorContext(&context);
+
+        return SUBMISSION_COMPLETE;
+    }
+
+    resizeValueArray(&vm->globals, vm->module->globalCount);
+
+    vm->fp = vm->stack;
+    vm->ip = NULL;
+
+    interpret(vm);
+    endErrorContext(&context);
+
+    return SUBMISSION_COMPLETE;
+}
+
+static void finishSubmission(SubmissionResult result, char** source, size_t* size, size_t* length)
+{
+    if (result == SUBMISSION_RESET) {
+        return;
+    }
+
+    if (result == SUBMISSION_COMPLETE) {
+        *source = NULL;
+        *size = 0;
+        *length = 0;
+    }
+
+    if (*length == 0) {
+        printf(">>> ");
+    } else {
+        printf("... ");
+    }
+
+    fflush(stdout);
+}
+
+static SubmissionResult finishInput(Compiler* compiler, size_t length, SubmissionResult result)
+{
+    if (result == SUBMISSION_RESET) {
+        return result;
     }
 
     printf("\n");
 
-    if (length > 0) {
-        unexpectedEndError(compiler->parser.currentToken);
+    if (length == 0) {
+        return SUBMISSION_COMPLETE;
     }
 
-    return false;
+    Token token = compiler->parser.currentToken;
+
+    reportError("Unexpected end of input on line %d:%d", token.line, token.column);
+
+    return SUBMISSION_INCOMPLETE;
 }
 
-static bool readSource(Compiler* compiler, char** source, size_t* size)
+static SubmissionResult runSession(void)
 {
-    size_t length = 0;
-
-    printf(">>> ");
-    bool read = appendLine(source, size, &length);
-    bool complete = read && compileRepl(compiler, *source);
-
-    while (read && !complete) {
-        printf("... ");
-        read = appendLine(source, size, &length);
-        complete = read && compileRepl(compiler, *source);
-    }
-
-    return finishSourceRead(compiler, read, length);
-}
-
-static void freeReplSources(Vector* sources)
-{
-    size_t count = countVector(sources);
-
-    for (size_t i = 0; i < count; i++) {
-        free(getVectorAt(sources, i));
-    }
-
-    freeVector(sources);
-}
-
-static void appendReplHistory(
-    char** history, size_t* size, size_t* length, const char* source)
-{
-    size_t sourceLength = strlen(source);
-    size_t required = *length + sourceLength + 1;
-
-    if (required > *size && !resizeSource(history, size, required)) {
-        outOfMemoryError();
-    }
-
-    memcpy(*history + *length, source, sourceLength + 1);
-    *length += sourceLength;
-}
-
-static void validateReplHistory(char* history)
-{
-    ModuleObject* module = createModuleObject();
-    Compiler compiler;
-
-    initCompiler(&compiler, module);
-
-    if (!compile(&compiler, history)) {
-        unexpectedEndError(compiler.parser.currentToken);
-    }
-
-    freeCompiler(&compiler);
-    freeModuleObject(module);
-}
-
-static void relocateGlobalReference(VM* vm, ASTNode* ast, size_t previousCount,
-    uintptr_t begin, uintptr_t end)
-{
-    if (ast->type != AST_VARIABLE_DEFINITION) {
-        return;
-    }
-
-    size_t position = ast->variableDefinition.position;
-
-    if (position >= previousCount || getReferenceType(ast) == REFERENCE_NONE) {
-        return;
-    }
-
-    uintptr_t pointer;
-
-    memcpy(&pointer, &vm->globals.data[position], sizeof(pointer));
-
-    if (pointer < begin || pointer >= end) {
-        return;
-    }
-
-    size_t offset = (pointer - begin) / sizeof(Value);
-    vm->globals.data[position] = POINTER_VALUE(&vm->globals.data[offset]);
-}
-
-static void relocateGlobalReferences(VM* vm, Compiler* compiler, size_t previousCount, uintptr_t begin)
-{
-    uintptr_t end = begin + previousCount * sizeof(Value);
-    Vector* statements = &compiler->ast->compound.statements;
-
-    for (size_t i = 0; i < statements->count; i++) {
-        ASTNode* ast = statements->data[i];
-
-        relocateGlobalReference(vm, ast, previousCount, begin, end);
-    }
-}
-
-static void resizeGlobals(VM* vm, Compiler* compiler)
-{
-    size_t previousCount = vm->globals.count;
-
-    if (vm->module->globalCount <= previousCount) {
-        return;
-    }
-
-    uintptr_t begin = (uintptr_t)vm->globals.data;
-
-    resizeValueArray(&vm->globals, vm->module->globalCount);
-
-    uintptr_t current = (uintptr_t)vm->globals.data;
-
-    if (current == begin) {
-        return;
-    }
-
-    relocateGlobalReferences(vm, compiler, previousCount, begin);
-}
-
-void runRepl()
-{
-    char* source = NULL;
-    size_t size = 0;
-    char* history = NULL;
-    size_t historySize = 0;
-    size_t historyLength = 0;
+    MemoryGroup memory = {0};
+    MemoryGroup* previous = useMemoryGroup(&memory);
     ModuleObject* module = createModuleObject();
     Compiler compiler;
     VM vm;
-    Vector sources;
-    
+    char* source = NULL;
+    size_t size = 0;
+    size_t length = 0;
+    SubmissionResult result = SUBMISSION_COMPLETE;
+
     initCompiler(&compiler, module);
     initVM(&vm, module);
-    initVector(&sources);
 
-    while (readSource(&compiler, &source, &size)) {
-        appendReplHistory(&history, &historySize, &historyLength, source);
-        validateReplHistory(history);
-        pushVectorItem(&sources, source);
-        source = NULL;
-        size = 0;
-        resizeGlobals(&vm, &compiler);
-        interpret(&vm);
+    reserveValueArray(&vm.globals, UINT16_MAX + 1u);
+    finishSubmission(SUBMISSION_INCOMPLETE, &source, &size, &length);
+
+    while (result != SUBMISSION_RESET && appendLine(&source, &size, &length)) {
+        result = processSource(&compiler, &vm, source, &memory);
+
+        finishSubmission(result, &source, &size, &length);
     }
 
-    freeVM(&vm);
-    freeCompiler(&compiler);
-    freeModuleObject(module);
-    freeReplSources(&sources);
-    free(source);
-    free(history);
+    result = finishInput(&compiler, length, result);
+
+    useMemoryGroup(previous);
+    freeMemoryGroup(&memory);
+
+    return result;
+}
+
+bool runRepl(void)
+{
+    SubmissionResult result;
+
+    do {
+        result = runSession();
+    } while (result == SUBMISSION_RESET);
+
+    return result == SUBMISSION_COMPLETE;
 }

@@ -1,4 +1,5 @@
 #include "runtime/code_object.h"
+#include "common/memory.h"
 #include "common/errors.h"
 #include "common/util.h"
 #include <stddef.h>
@@ -14,7 +15,7 @@ void initCodeObject(CodeObject* code)
 
 void freeCodeObject(CodeObject* code)
 {
-    free(code->data);
+    freeMemory(code->data);
 }
 
 void clearCodeObject(CodeObject* code)
@@ -37,11 +38,7 @@ void reserveCodeObject(CodeObject* code, size_t capacity)
         outOfMemoryError();
     }
 
-    uint8_t* data = realloc(code->data, sizeof(uint8_t) * capacity);
-    if (!data) {
-        outOfMemoryError();
-    }
-
+    uint8_t* data = reallocateMemory(code->data, sizeof(uint8_t) * capacity);
     code->data = data;
     code->capacity = capacity;
 }

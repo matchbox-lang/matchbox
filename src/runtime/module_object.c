@@ -1,4 +1,5 @@
 #include "runtime/module_object.h"
+#include "common/memory.h"
 #include "vm/disassembler.h"
 #include "runtime/function_object.h"
 #include "runtime/object.h"
@@ -53,7 +54,7 @@ void freeModuleObject(ModuleObject* module)
     freeModuleFunctions(module);
     freeModuleObjects(module);
     freeValueArray(&module->constants);
-    free(module);
+    freeMemory(module);
 }
 
 void disassembleModule(ModuleObject* module)

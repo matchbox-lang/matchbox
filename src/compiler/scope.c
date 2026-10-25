@@ -1,4 +1,5 @@
 #include "compiler/scope.h"
+#include "common/memory.h"
 #include "compiler/ast.h"
 #include "common/table.h"
 #include "common/util.h"
@@ -26,7 +27,7 @@ static size_t getLocalOffset(Scope* parent)
 
 Scope* createScope(Scope* parent)
 {
-    Scope* scope = malloc(sizeof(Scope));
+    Scope* scope = allocateMemory(sizeof(Scope));
     scope->parent = parent;
     scope->frameScope = getFrameScope(scope, parent);
     scope->localOffset = getLocalOffset(parent);
@@ -46,7 +47,7 @@ void freeScope(Scope* scope)
     }
 
     freeTable(&scope->symbols);
-    free(scope);
+    freeMemory(scope);
 }
 
 static size_t getSymbolSlotCount(ASTNode* symbol)

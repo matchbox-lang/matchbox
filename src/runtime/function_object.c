@@ -1,4 +1,5 @@
 #include "runtime/function_object.h"
+#include "common/memory.h"
 #include "runtime/code_object.h"
 #include "runtime/object.h"
 #include <stdlib.h>
@@ -23,6 +24,6 @@ FunctionObject* createFunctionObject()
 void freeFunctionObject(FunctionObject* function)
 {
     freeCodeObject(&function->code);
-    free(function->argumentTypes);
-    free(function);
+    freeMemory(function->argumentTypes);
+    freeMemory(function);
 }

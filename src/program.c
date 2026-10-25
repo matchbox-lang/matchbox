@@ -1,4 +1,5 @@
 #include "program.h"
+#include "common/memory.h"
 #include "compiler/diagnostics.h"
 #include "common/errors.h"
 #include "program/buffer.h"
@@ -59,7 +60,7 @@ static bool runFile(Options* options)
     }
 
     runSource(source, options->disassemble);
-    free(source);
+    freeMemory(source);
 
     return true;
 }
@@ -89,9 +90,7 @@ bool runProgram(Options* options)
     }
 
     if (!options->filename) {
-        runRepl();
-
-        return true;
+        return runRepl();
     }
 
     return runFile(options);

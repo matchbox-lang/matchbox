@@ -22,5 +22,6 @@ typedef struct Analyzer
 
 void initAnalyzer(Analyzer* analyzer, ASTNode* ast);
 bool analyze(Analyzer* analyzer, size_t start);
+void rebuildAnalyzer(Analyzer* analyzer, Vector* functions);
 
 #endif

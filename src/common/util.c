@@ -1,5 +1,5 @@
 #include "common/util.h"
-#include "common/errors.h"
+#include "common/memory.h"
 #include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -36,11 +36,7 @@ void stripUnderscores(char* str, size_t* length)
 
 char* strndup(const char* src, size_t length)
 {
-    char* dst = malloc(length + 1);
-    if (!dst) {
-        outOfMemoryError();
-    }
-
+    char* dst = allocateMemory(length + 1);
     memcpy(dst, src, length);
     dst[length] = '\0';
 

@@ -325,27 +325,27 @@ static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* inst
     return getInstructionBefore(compiler, count, instruction);
 }
 
-static void emitMov(Compiler* compiler, int dst, int src)
+static void emitMov(Compiler* compiler, int destination, int source)
 {
-    if (dst == src) {
+    if (destination == source) {
         return;
     }
 
-    emitInstruction(compiler, OP_MOV, dst, src, 0);
+    emitInstruction(compiler, OP_MOV, destination, source, 0);
 }
 
-static void emitOperandMov(Compiler* compiler, int dst, Operand operand)
+static void emitOperandMov(Compiler* compiler, int destination, Operand operand)
 {
     if (operand.slots != 2) {
-        emitMov(compiler, dst, operand.reg);
+        emitMov(compiler, destination, operand.reg);
         return;
     }
 
-    if (dst == operand.reg) {
+    if (destination == operand.reg) {
         return;
     }
 
-    emitInstruction(compiler, OP_MOV_64, dst, operand.reg, 0);
+    emitInstruction(compiler, OP_MOV_64, destination, operand.reg, 0);
 }
 
 static Operand makeOperand(int reg, bool temporary)
@@ -675,11 +675,11 @@ static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
     emitGlobalInstruction(compiler, OP_STG, value.reg, position);
 }
 
-static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
+static bool retargetTemporary(Compiler* compiler, Operand value, int destination)
 {
     PreviousInstruction previous;
 
-    if (!value.temporary || dst > (int)UINT8_MAX) {
+    if (!value.temporary || destination > (int)UINT8_MAX) {
         return false;
     }
 
@@ -692,7 +692,7 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int dst)
         return false;
     }
 
-    setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, dst);
+    setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, destination);
 
     return true;
 }
@@ -934,20 +934,20 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
 static Operand emitBinaryOperands(
     Compiler* compiler, IntegerOperation operation, TokenType type, Operand left, Operand right)
 {
-    int dst;
+    int destination;
 
     if (left.temporary) {
-        dst = left.reg;
+        destination = left.reg;
         releaseOperand(compiler, right);
     } else if (right.temporary) {
-        dst = right.reg;
+        destination = right.reg;
     } else {
-        dst = allocateRegisters(compiler, left.slots);
+        destination = allocateRegisters(compiler, left.slots);
     }
 
-    emitInstruction(compiler, getIntegerOpcode(type, operation), dst, left.reg, right.reg);
+    emitInstruction(compiler, getIntegerOpcode(type, operation), destination, left.reg, right.reg);
 
-    return left.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
+    return left.slots == 2 ? makeWideOperand(destination, true) : makeOperand(destination, true);
 }
 
 static bool prepareImmediateComparison(
@@ -1326,10 +1326,10 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
         return operand;
     }
 
-    int dst = allocateRegisters(compiler, operand.slots);
-    emitInstruction(compiler, opcode, dst, operand.reg, 0);
+    int destination = allocateRegisters(compiler, operand.slots);
+    emitInstruction(compiler, opcode, destination, operand.reg, 0);
 
-    return operand.slots == 2 ? makeWideOperand(dst, true) : makeOperand(dst, true);
+    return operand.slots == 2 ? makeWideOperand(destination, true) : makeOperand(destination, true);
 }
 
 static Opcode getNegationOpcode(TokenType type)

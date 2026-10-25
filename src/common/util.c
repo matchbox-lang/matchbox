@@ -17,28 +17,28 @@ bool isLargerThan16BitSigned(int n)
 
 void stripUnderscores(char* str, size_t* length)
 {
-	char* src = str;
-    char* dst = str;
+	char* source = str;
+    char* destination = str;
 
-	while (*src != '\0') {
-		if (*src != '_') {
-			*dst =* src;
-			dst++;
+	while (*source != '\0') {
+		if (*source != '_') {
+			*destination =* source;
+			destination++;
 		} else {
 			--(*length);
 		}
 
-		src++;
+		source++;
 	}
 
-	*dst = '\0';
+	*destination = '\0';
 }
 
-char* strndup(const char* src, size_t length)
+char* strndup(const char* source, size_t length)
 {
-    char* dst = allocateMemory(length + 1);
-    memcpy(dst, src, length);
-    dst[length] = '\0';
+    char* destination = allocateMemory(length + 1);
+    memcpy(destination, source, length);
+    destination[length] = '\0';
 
-    return dst;
+    return destination;
 }

@@ -1,6 +1,7 @@
 #include "compiler/ast_optimizer.h"
 #include "common/vector.h"
 #include "compiler/conversion.h"
+#include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
 #include "runtime/string_concatenation.h"
@@ -8,9 +9,9 @@
 #include <math.h>
 #include <stdint.h>
 
-static void optimizeNode(ASTNode* ast);
-static void optimizeMatchPattern(ASTNode* pattern);
-static void optimizeConditional(ASTNode* ast, bool fold);
+static void optimizeNode(ASTNode* ast, bool checkZero);
+static void optimizeMatchPattern(ASTNode* pattern, bool checkZero);
+static void optimizeConditional(ASTNode* ast, bool fold, bool checkZero);
 
 static int64_t signedI32Value(uint32_t value)
 {
@@ -437,28 +438,30 @@ static void foldPrefix(ASTNode* ast)
     foldFloatNegation(ast, type);
 }
 
-static void optimizeNodes(Vector* nodes)
+static void optimizeNodes(Vector* nodes, bool checkZero)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        optimizeNode(getVectorAt(nodes, i));
+        ASTNode* node = getVectorAt(nodes, i);
+
+        optimizeNode(node, checkZero);
     }
 }
 
-static void optimizeConditionalBranch(ASTNode* branch)
+static void optimizeConditionalBranch(ASTNode* branch, bool checkZero)
 {
     if (!branch) {
         return;
     }
 
     if (branch->type == AST_CONDITIONAL) {
-        optimizeConditional(branch, false);
+        optimizeConditional(branch, false, checkZero);
 
         return;
     }
 
-    optimizeNodes(&branch->compound.statements);
+    optimizeNodes(&branch->compound.statements, checkZero);
 }
 
 static ASTNode* getLiteralBranchResult(ASTNode* branch)
@@ -524,11 +527,11 @@ static void foldConditional(ASTNode* ast)
     *ast = replacement;
 }
 
-static void optimizeConditional(ASTNode* ast, bool fold)
+static void optimizeConditional(ASTNode* ast, bool fold, bool checkZero)
 {
-    optimizeNode(ast->conditional.condition);
-    optimizeConditionalBranch(ast->conditional.thenBranch);
-    optimizeConditionalBranch(ast->conditional.elseBranch);
+    optimizeNode(ast->conditional.condition, checkZero);
+    optimizeConditionalBranch(ast->conditional.thenBranch, checkZero);
+    optimizeConditionalBranch(ast->conditional.elseBranch, checkZero);
 
     if (!fold) {
         return;
@@ -537,35 +540,35 @@ static void optimizeConditional(ASTNode* ast, bool fold)
     foldConditional(ast);
 }
 
-static void optimizeMatchPattern(ASTNode* pattern)
+static void optimizeMatchPattern(ASTNode* pattern, bool checkZero)
 {
     if (pattern->type != AST_BINARY || pattern->binary.operator.type != TOKEN_PIPE) {
-        optimizeNode(pattern);
+        optimizeNode(pattern, checkZero);
 
         return;
     }
 
-    optimizeMatchPattern(pattern->binary.leftExpr);
-    optimizeMatchPattern(pattern->binary.rightExpr);
+    optimizeMatchPattern(pattern->binary.leftExpr, checkZero);
+    optimizeMatchPattern(pattern->binary.rightExpr, checkZero);
 }
 
-static void optimizeMatchArm(MatchArm* arm)
+static void optimizeMatchArm(MatchArm* arm, bool checkZero)
 {
     if (arm->pattern) {
-        optimizeMatchPattern(arm->pattern);
+        optimizeMatchPattern(arm->pattern, checkZero);
     }
 
     if (arm->guard) {
-        optimizeNode(arm->guard);
+        optimizeNode(arm->guard, checkZero);
     }
 
-    optimizeConditionalBranch(arm->branch);
+    optimizeConditionalBranch(arm->branch, checkZero);
 }
 
-static void optimizeMatch(ASTNode* ast)
+static void optimizeMatch(ASTNode* ast, bool checkZero)
 {
     if (ast->match.subject) {
-        optimizeNode(ast->match.subject);
+        optimizeNode(ast->match.subject, checkZero);
     }
 
     size_t count = countVector(&ast->match.arms);
@@ -573,15 +576,15 @@ static void optimizeMatch(ASTNode* ast)
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
 
-        optimizeMatchArm(arm);
+        optimizeMatchArm(arm, checkZero);
     }
 
-    optimizeConditionalBranch(ast->match.defaultBranch);
+    optimizeConditionalBranch(ast->match.defaultBranch, checkZero);
 }
 
-static void optimizeConversion(ASTNode* ast)
+static void optimizeConversion(ASTNode* ast, bool checkZero)
 {
-    optimizeNode(ast->conversion.expr);
+    optimizeNode(ast->conversion.expr, checkZero);
     foldExplicitConversion(ast);
 
     ASTNode* expression = ast->conversion.expr;
@@ -599,51 +602,107 @@ static void optimizeConversion(ASTNode* ast)
     *ast = replacement;
 }
 
-static void optimizeNode(ASTNode* ast)
+static void validateZeroDivisor(ASTNode* divisor, Token operator, TokenType type, bool checkZero)
+{
+    if (!checkZero || divisor->type != AST_INTEGER || divisor->integerLiteral.value != 0) {
+        return;
+    }
+
+    bool integer = isIntegerTypeToken(type);
+    bool division = operator.type == TOKEN_SLASH || operator.type == TOKEN_SLASH_EQUAL;
+    bool remainder = operator.type == TOKEN_PERCENT || operator.type == TOKEN_PERCENT_EQUAL;
+
+    if (!integer || (!division && !remainder)) {
+        return;
+    }
+
+    fatalSourceError(operator.line, operator.column, "Division by zero");
+}
+
+static bool shouldCheckRightDivisor(ASTNode* ast, bool checkZero)
+{
+    if (!checkZero) {
+        return false;
+    }
+
+    bool logical = isLogicalToken(ast->binary.operator.type);
+
+    if (!logical) {
+        return true;
+    }
+
+    ASTNode* left = ast->binary.leftExpr;
+
+    if (left->type != AST_BOOLEAN) {
+        return false;
+    }
+
+    return left->booleanLiteral.value == (ast->binary.operator.type == TOKEN_AND);
+}
+
+static void optimizeBinary(ASTNode* ast, bool checkZero)
+{
+    optimizeNode(ast->binary.leftExpr, checkZero);
+
+    bool checkRight = shouldCheckRightDivisor(ast, checkZero);
+
+    optimizeNode(ast->binary.rightExpr, checkRight);
+    validateZeroDivisor(ast->binary.rightExpr, ast->binary.operator, ast->binary.operandType, checkZero);
+    foldBinary(ast);
+}
+
+static void optimizeAssignment(ASTNode* ast, bool checkZero)
+{
+    optimizeNode(ast->assignment.expr, checkZero);
+
+    TokenType type = getTypeId(ast->assignment.symbol);
+
+    validateZeroDivisor(ast->assignment.expr, ast->assignment.operator, type, checkZero);
+}
+
+static void optimizeNode(ASTNode* ast, bool checkZero)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            optimizeNode(ast->assignment.expr);
+            optimizeAssignment(ast, checkZero);
             break;
         case AST_BINARY:
-            optimizeNode(ast->binary.leftExpr);
-            optimizeNode(ast->binary.rightExpr);
-            foldBinary(ast);
+            optimizeBinary(ast, checkZero);
             break;
         case AST_BUILTIN_CALL:
-            optimizeNodes(&ast->builtinCall.args);
+            optimizeNodes(&ast->builtinCall.args, checkZero);
             break;
         case AST_WHILE:
-            optimizeNode(ast->whileStatement.condition);
-            optimizeNodes(&ast->whileStatement.body->compound.statements);
+            optimizeNode(ast->whileStatement.condition, checkZero);
+            optimizeNodes(&ast->whileStatement.body->compound.statements, checkZero);
             break;
         case AST_CONDITIONAL:
-            optimizeConditional(ast, true);
+            optimizeConditional(ast, true, checkZero);
             break;
         case AST_CONVERSION:
-            optimizeConversion(ast);
+            optimizeConversion(ast, checkZero);
             break;
         case AST_FUNCTION_CALL:
-            optimizeNodes(&ast->functionCall.args);
+            optimizeNodes(&ast->functionCall.args, checkZero);
             break;
         case AST_FUNCTION_DEFINITION:
-            optimizeNodes(&ast->functionDefinition.body->compound.statements);
+            optimizeNodes(&ast->functionDefinition.body->compound.statements, checkZero);
             break;
         case AST_MATCH:
-            optimizeMatch(ast);
+            optimizeMatch(ast, checkZero);
             break;
         case AST_PREFIX:
-            optimizeNode(ast->prefix.expr);
+            optimizeNode(ast->prefix.expr, checkZero);
             foldPrefix(ast);
             break;
         case AST_RETURN:
-            optimizeNode(ast->returnStatement.expr);
+            optimizeNode(ast->returnStatement.expr, checkZero);
             break;
         case AST_VARIABLE:
             propagateLiteralLet(ast);
             break;
         case AST_VARIABLE_DEFINITION:
-            optimizeNode(ast->variableDefinition.expr);
+            optimizeNode(ast->variableDefinition.expr, checkZero);
             break;
         default:
             break;
@@ -655,6 +714,8 @@ void optimize(ASTNode* ast, size_t start)
     size_t count = countVector(&ast->compound.statements);
 
     for (size_t i = start; i < count; i++) {
-        optimizeNode(getVectorAt(&ast->compound.statements, i));
+        ASTNode* node = getVectorAt(&ast->compound.statements, i);
+
+        optimizeNode(node, true);
     }
 }

@@ -1,2 +1,2 @@
-let zero = 0
+var zero = 0
 let unused = 1 / zero

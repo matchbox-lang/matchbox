@@ -1,0 +1,3 @@
+var value: i16 = 1
+
+value %= i16(0)

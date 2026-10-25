@@ -1,0 +1,3 @@
+let divisor = 2 - 2
+
+print(1 % divisor)

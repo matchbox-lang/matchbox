@@ -1,0 +1,5 @@
+func evaluate(value: bool) -> bool {
+    return value and (1 / 0 == 0)
+}
+
+evaluate(true)

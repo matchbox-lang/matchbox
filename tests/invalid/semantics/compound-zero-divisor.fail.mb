@@ -1,0 +1,4 @@
+var value: u64 = 1
+let zero: u64 = 0
+
+value /= zero

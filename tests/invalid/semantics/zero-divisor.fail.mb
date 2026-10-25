@@ -1,0 +1,3 @@
+var numerator = 1
+
+print(numerator / 0)

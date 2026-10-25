@@ -1,3 +1,3 @@
-let zero = 0
+var zero = 0
 let intermediate = 1 / zero
 let unused = intermediate + 1

@@ -3094,7 +3094,8 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
             analyzeVariableDefinition(analyzer, ast); break;
         case AST_VARIABLE:
             analyzeVariable(analyzer, ast); break;
-        default: break;
+        default:
+            break;
     }
 }
 

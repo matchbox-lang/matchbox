@@ -275,10 +275,14 @@ static bool isLiteralOfType(ASTNode* ast, TokenType type)
 static void setLiteralToken(ASTNode* ast, Token token)
 {
     switch (ast->type) {
-        case AST_INTEGER: ast->integerLiteral.token = token; break;
-        case AST_BOOLEAN: ast->booleanLiteral.token = token; break;
-        case AST_FLOAT: ast->floatLiteral.token = token; break;
-        default: break;
+        case AST_INTEGER:
+            ast->integerLiteral.token = token; break;
+        case AST_BOOLEAN:
+            ast->booleanLiteral.token = token; break;
+        case AST_FLOAT:
+            ast->floatLiteral.token = token; break;
+        default:
+            break;
     }
 }
 

@@ -1,8 +1,8 @@
 #ifndef STRING_OBJECT_H
 #define STRING_OBJECT_H
 
-#include "runtime/object.h"
 #include "common/string_view.h"
+#include "runtime/object.h"
 
 #define AS_STRING_OBJECT(value) ((StringObject*)AS_OBJECT(value))
 

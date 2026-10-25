@@ -1,12 +1,12 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include "common/vector.h"
+#include "compiler/analyzer.h"
 #include "compiler/ast.h"
+#include "compiler/parser.h"
 #include "runtime/function_object.h"
 #include "runtime/module_object.h"
-#include "compiler/parser.h"
-#include "compiler/analyzer.h"
-#include "common/vector.h"
 #include <stddef.h>
 
 typedef enum CompileResult

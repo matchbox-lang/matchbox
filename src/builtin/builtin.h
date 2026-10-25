@@ -1,8 +1,8 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
 
-#include "runtime/function_object.h"
 #include "compiler/token.h"
+#include "runtime/function_object.h"
 #include "runtime/value.h"
 
 #define BUILTINS_MAX 95

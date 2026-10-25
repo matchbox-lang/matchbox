@@ -1,8 +1,8 @@
 #ifndef CONVERSION_H
 #define CONVERSION_H
 
-#include "compiler/token.h"
 #include "compiler/ast.h"
+#include "compiler/token.h"
 #include <stdint.h>
 
 uint64_t integerLiteralToValue(Token token);

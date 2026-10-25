@@ -1,8 +1,8 @@
 #ifndef MODULE_OBJECT_H
 #define MODULE_OBJECT_H
 
-#include "runtime/object.h"
 #include "common/vector.h"
+#include "runtime/object.h"
 
 #define AS_MODULE_OBJECT(value) ((ModuleObject*)AS_OBJECT(value))
 

@@ -1,8 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
-#include "compiler/token.h"
 #include "common/vector.h"
+#include "compiler/token.h"
 #include <stdbool.h>
 #include <stdint.h>
 

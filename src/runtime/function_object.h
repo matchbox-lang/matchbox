@@ -1,8 +1,8 @@
 #ifndef FUNCTION_OBJECT_H
 #define FUNCTION_OBJECT_H
 
-#include "runtime/code_object.h"
 #include "compiler/token.h"
+#include "runtime/code_object.h"
 
 #define AS_FUNCTION_OBJECT(value) ((FunctionObject*)AS_OBJECT(value))
 

@@ -1,8 +1,8 @@
 #include "runtime/string_object.h"
-#include "common/memory.h"
 #include "common/errors.h"
-#include "runtime/object.h"
+#include "common/memory.h"
 #include "common/util.h"
+#include "runtime/object.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

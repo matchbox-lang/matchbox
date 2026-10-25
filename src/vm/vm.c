@@ -1,7 +1,7 @@
 #include "vm/vm.h"
 #include "common/errors.h"
-#include "vm/opcode.h"
 #include "runtime/function_object.h"
+#include "vm/opcode.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

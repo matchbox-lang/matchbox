@@ -1,6 +1,6 @@
 #include "common/vector.h"
-#include "common/memory.h"
 #include "common/errors.h"
+#include "common/memory.h"
 #include "common/util.h"
 #include <stdint.h>
 #include <stdlib.h>

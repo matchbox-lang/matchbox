@@ -1,8 +1,8 @@
 #include "compiler/conversion.h"
 #include "common/memory.h"
-#include "compiler/diagnostics.h"
-#include "common/util.h"
 #include "common/unicode.h"
+#include "common/util.h"
+#include "compiler/diagnostics.h"
 #include <errno.h>
 #include <float.h>
 #include <limits.h>

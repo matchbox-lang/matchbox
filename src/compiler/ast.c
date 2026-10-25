@@ -1,11 +1,11 @@
 #include "compiler/ast.h"
-#include "common/memory.h"
 #include "builtin/builtin.h"
-#include "compiler/scope.h"
-#include "runtime/string_object.h"
-#include "compiler/token.h"
+#include "common/memory.h"
 #include "common/util.h"
 #include "common/vector.h"
+#include "compiler/scope.h"
+#include "compiler/token.h"
+#include "runtime/string_object.h"
 #include <stdbool.h>
 #include <stdlib.h>
 

@@ -1,10 +1,10 @@
 #include "program/test_runner.h"
-#include "common/memory.h"
 #include "common/errors.h"
+#include "common/memory.h"
+#include "common/util.h"
 #include "program/options.h"
 #include "program/path.h"
 #include "program/program.h"
-#include "common/util.h"
 #include <dirent.h>
 #include <stdbool.h>
 #include <stdio.h>

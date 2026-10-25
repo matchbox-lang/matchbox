@@ -1,8 +1,8 @@
 #include "runtime/string_concatenation.h"
 #include "common/errors.h"
+#include "common/util.h"
 #include "runtime/object.h"
 #include "runtime/output.h"
-#include "common/util.h"
 #include <stdint.h>
 
 static size_t stringPartCapacity(Value* values, TokenType type)

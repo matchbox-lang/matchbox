@@ -1,10 +1,10 @@
 #include "runtime/module_object.h"
 #include "common/memory.h"
-#include "vm/disassembler.h"
 #include "runtime/function_object.h"
 #include "runtime/object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
+#include "vm/disassembler.h"
 #include <stdio.h>
 #include <stdlib.h>
 

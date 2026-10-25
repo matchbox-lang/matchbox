@@ -1,13 +1,13 @@
 #include "program/program.h"
-#include "common/memory.h"
-#include "compiler/diagnostics.h"
 #include "common/errors.h"
-#include "program/io.h"
+#include "common/memory.h"
 #include "compiler/compiler.h"
-#include "runtime/module_object.h"
+#include "compiler/diagnostics.h"
+#include "program/io.h"
 #include "program/options.h"
 #include "program/repl.h"
 #include "program/test_runner.h"
+#include "runtime/module_object.h"
 #include "vm/vm.h"
 #include <errno.h>
 #include <stdbool.h>

@@ -1,10 +1,10 @@
 #include "compiler/ast_optimizer.h"
+#include "common/vector.h"
 #include "compiler/conversion.h"
 #include "compiler/scope.h"
-#include "runtime/string_object.h"
-#include "runtime/string_concatenation.h"
 #include "compiler/token.h"
-#include "common/vector.h"
+#include "runtime/string_concatenation.h"
+#include "runtime/string_object.h"
 #include <math.h>
 #include <stdint.h>
 

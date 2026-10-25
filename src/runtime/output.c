@@ -1,7 +1,7 @@
 #include "runtime/output.h"
 #include "common/float_format.h"
-#include "runtime/string_object.h"
 #include "common/unicode.h"
+#include "runtime/string_object.h"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>

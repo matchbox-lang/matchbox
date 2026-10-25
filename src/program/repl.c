@@ -156,11 +156,11 @@ static SubmissionResult runSession(void)
 
 bool runRepl(void)
 {
-    SubmissionResult result;
+    SubmissionResult result = SUBMISSION_RESET;
 
-    do {
+    while (result == SUBMISSION_RESET) {
         result = runSession();
-    } while (result == SUBMISSION_RESET);
+    }
 
     return result == SUBMISSION_COMPLETE;
 }

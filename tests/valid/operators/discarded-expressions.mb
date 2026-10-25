@@ -14,3 +14,19 @@ effect() + 1
 4 / divisor
 4 % divisor
 2 ** divisor
+
+func unexpected() -> bool {
+    exit(1)
+
+    return true
+}
+
+false and unexpected()
+true or unexpected()
+
+let unusedAnd = false and unexpected()
+let unusedOr = true or unexpected()
+let zero = 0
+
+false and (1 / zero == 0)
+true or (1 % zero == 0)

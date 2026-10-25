@@ -87,6 +87,8 @@ static bool isSimpleMatchValue(ASTNode* ast);
 static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
+static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister);
+static void patchJump(Compiler* compiler, size_t position);
 
 static _Noreturn void branchOffsetOverflowError(void)
 {
@@ -1254,10 +1256,6 @@ static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
     TokenType type, Operand left, Operand right)
 {
     switch (operatorType) {
-        case TOKEN_AND:
-            return emitComparison(compiler, OP_AND, left, right);
-        case TOKEN_OR:
-            return emitComparison(compiler, OP_OR, left, right);
         case TOKEN_PLUS:
             return emitBinaryOperands(compiler, INTEGER_ADD, type, left, right);
         case TOKEN_MINUS:
@@ -1283,6 +1281,27 @@ static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
     }
 }
 
+static Operand compileLogicalBinary(Compiler* compiler, ASTNode* ast)
+{
+    Operand result = compileExpression(compiler, ast->binary.leftExpr, false);
+    Opcode opcode = OP_BZ;
+
+    result = materializeOperand(compiler, result);
+
+    if (ast->binary.operator.type == TOKEN_OR) {
+        opcode = OP_BNZ;
+    }
+
+    size_t endJump = emitJump(compiler, opcode, result.reg);
+    Operand right = compileExpression(compiler, ast->binary.rightExpr, false);
+
+    emitOperandMov(compiler, result.reg, right);
+    releaseOperand(compiler, right);
+    patchJump(compiler, endJump);
+
+    return result;
+}
+
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
     TokenType resultType = getTypeId(ast);
@@ -1296,8 +1315,13 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
     }
 
     TokenType operatorType = ast->binary.operator.type;
-    bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
 
+    bool logical = isLogicalToken(operatorType);
+    if (logical) {
+        return compileLogicalBinary(compiler, ast);
+    }
+
+    bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
     if (comparison) {
         return compileNumericComparison(compiler, ast);
     }

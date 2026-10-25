@@ -1,0 +1,43 @@
+var calls = 0
+
+func probe(value: bool) -> bool {
+    calls += 1
+
+    return value
+}
+
+let skippedAnd = probe(false) and probe(true)
+let skippedOr = probe(true) or probe(false)
+let requiredAnd = probe(true) and probe(false)
+let requiredOr = probe(false) or probe(true)
+
+if skippedAnd or not skippedOr or requiredAnd or not requiredOr {
+    exit(1)
+}
+
+if calls != 6 {
+    exit(1)
+}
+
+let chained = probe(false) and probe(true) or probe(true)
+
+if not chained or calls != 8 {
+    exit(1)
+}
+
+var flag = true
+let result = flag and probe(false)
+
+if not flag or result or calls != 9 {
+    exit(1)
+}
+
+func protected(value: bool) -> bool {
+    return value or (1 / 0 == 0)
+}
+
+let safe = protected(true)
+
+if not safe {
+    exit(1)
+}

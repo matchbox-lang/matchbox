@@ -1,0 +1,6 @@
+func evaluate() {
+    let zero: i64 = 0
+    let unused = 1 % zero
+}
+
+evaluate()

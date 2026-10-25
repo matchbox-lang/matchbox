@@ -1429,7 +1429,7 @@ static void compileCompoundAssignment(
 
 static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->assignment.initializesBinding) {
+    if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
         Operand reference = compileReferenceExpression(compiler, ast->assignment.expr);
         storeVariable(compiler, ast->assignment.symbol, reference);
 
@@ -3290,10 +3290,6 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
         case AST_STRING:
         case AST_VARIABLE:
             return true;
-        case AST_BINARY:
-            compileExpression(compiler, ast->binary.leftExpr, true);
-            compileExpression(compiler, ast->binary.rightExpr, true);
-            return true;
         case AST_PREFIX:
             compileExpression(compiler, ast->prefix.expr, true);
             return true;
@@ -3334,10 +3330,6 @@ static void removeDiscardedExpressionReads(ASTNode* ast)
     switch (ast->type) {
         case AST_VARIABLE:
             removeDiscardedVariableRead(ast);
-            break;
-        case AST_BINARY:
-            removeDiscardedExpressionReads(ast->binary.leftExpr);
-            removeDiscardedExpressionReads(ast->binary.rightExpr);
             break;
         case AST_PREFIX:
             removeDiscardedExpressionReads(ast->prefix.expr);

@@ -1,0 +1,3 @@
+let zero = 0
+
+1 / zero

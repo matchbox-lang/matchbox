@@ -5,9 +5,17 @@ var shared: &i32 = &first
 shared = &second
 print(shared)
 
+if first != 10 {
+    exit(1)
+}
+
 var third = 30
 var fourth = 40
 var exclusive: ^i32 = ^third
 
 exclusive = ^fourth
 print(exclusive)
+
+if third != 30 {
+    exit(1)
+}

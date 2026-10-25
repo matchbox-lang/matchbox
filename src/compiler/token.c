@@ -112,7 +112,6 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_RSHIFT:              return ">>";
         case TOKEN_TILDE:               return "~";
         case TOKEN_QUESTION:            return "?";
-        case TOKEN_TERNARY:             return "?:";
         case TOKEN_COLON:               return ":";
         case TOKEN_AND_EQUAL:           return "&=";
         case TOKEN_OR_EQUAL:            return "|=";

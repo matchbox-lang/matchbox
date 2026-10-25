@@ -26,7 +26,7 @@ _Noreturn void fatalTokenError(Token token, const char* suffix, const char* form
     raiseError();
 }
 
-_Noreturn void unexpectedEndError(Token token)
+_Noreturn void unexpectedEndOfInputError(Token token)
 {
     fatalSourceError(token.line, token.column, "Unexpected end of input");
 }

@@ -127,12 +127,12 @@ static SubmissionResult runSession(void)
     MemoryGroup memory = {0};
     MemoryGroup* previous = useMemoryGroup(&memory);
     ModuleObject* module = createModuleObject();
-    Compiler compiler;
-    VM vm;
     char* source = NULL;
     size_t size = 0;
     size_t length = 0;
     SubmissionResult result = SUBMISSION_COMPLETE;
+    Compiler compiler;
+    VM vm;
 
     initCompiler(&compiler, module);
     initVM(&vm, module);

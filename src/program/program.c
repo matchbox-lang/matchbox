@@ -42,7 +42,7 @@ static void runSource(char* source, bool disassemble)
     
     initCompiler(&compiler, module);
     if (!compile(&compiler, source)) {
-        unexpectedEndError(compiler.parser.currentToken);
+        unexpectedEndOfInputError(compiler.parser.currentToken);
     }
 
     runModule(module, disassemble);

@@ -3066,34 +3066,47 @@ static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            analyzeAssignment(analyzer, ast); break;
+            analyzeAssignment(analyzer, ast);
+            break;
         case AST_BINARY:
-            analyzeBinary(analyzer, ast); break;
+            analyzeBinary(analyzer, ast);
+            break;
         case AST_BUILTIN_CALL:
-            analyzeResolvedBuiltinCall(analyzer, ast); break;
+            analyzeResolvedBuiltinCall(analyzer, ast);
+            break;
         case AST_WHILE:
             analyzeWhile(analyzer, ast);
             break;
         case AST_CONDITIONAL:
-            analyzeConditional(analyzer, ast); break;
+            analyzeConditional(analyzer, ast);
+            break;
         case AST_CONVERSION:
-            analyzeNode(analyzer, ast->conversion.expr); break;
+            analyzeNode(analyzer, ast->conversion.expr);
+            break;
         case AST_FUNCTION_CALL:
-            analyzeFunctionCall(analyzer, ast); break;
+            analyzeFunctionCall(analyzer, ast);
+            break;
         case AST_FUNCTION_DEFINITION:
-            analyzeFunction(analyzer, ast); break;
+            analyzeFunction(analyzer, ast);
+            break;
         case AST_MATCH:
-            analyzeMatch(analyzer, ast); break;
+            analyzeMatch(analyzer, ast);
+            break;
         case AST_PARAMETER:
-            analyzeParameter(analyzer, ast); break;
+            analyzeParameter(analyzer, ast);
+            break;
         case AST_PREFIX:
-            analyzePrefix(analyzer, ast); break;
+            analyzePrefix(analyzer, ast);
+            break;
         case AST_RETURN:
-            analyzeReturn(analyzer, ast); break;
+            analyzeReturn(analyzer, ast);
+            break;
         case AST_VARIABLE_DEFINITION:
-            analyzeVariableDefinition(analyzer, ast); break;
+            analyzeVariableDefinition(analyzer, ast);
+            break;
         case AST_VARIABLE:
-            analyzeVariable(analyzer, ast); break;
+            analyzeVariable(analyzer, ast);
+            break;
         default:
             break;
     }

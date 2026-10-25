@@ -540,10 +540,17 @@ static bool fuseMoveLoad(OptimizationWord* first, OptimizationWord* second)
     }
 
     switch (second->opcode) {
-        case OP_LDI: first->opcode = OP_MOV_LDI; break;
-        case OP_LDC: first->opcode = OP_MOV_LDC; break;
-        case OP_LDG: first->opcode = OP_MOV_LDG; break;
-        default: return false;
+        case OP_LDI:
+            first->opcode = OP_MOV_LDI;
+            break;
+        case OP_LDC:
+            first->opcode = OP_MOV_LDC;
+            break;
+        case OP_LDG:
+            first->opcode = OP_MOV_LDG;
+            break;
+        default:
+            return false;
     }
 
     first->c = second->c;

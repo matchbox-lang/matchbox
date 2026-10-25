@@ -276,11 +276,14 @@ static void setLiteralToken(ASTNode* ast, Token token)
 {
     switch (ast->type) {
         case AST_INTEGER:
-            ast->integerLiteral.token = token; break;
+            ast->integerLiteral.token = token;
+            break;
         case AST_BOOLEAN:
-            ast->booleanLiteral.token = token; break;
+            ast->booleanLiteral.token = token;
+            break;
         case AST_FLOAT:
-            ast->floatLiteral.token = token; break;
+            ast->floatLiteral.token = token;
+            break;
         default:
             break;
     }

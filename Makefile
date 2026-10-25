@@ -27,8 +27,8 @@ RELEASE_OBJ_DIR := $(BUILD_DIR)/release
 RELEASE_OBJ_DIRS := $(RELEASE_OBJ_DIR) $(RELEASE_OBJ_DIR)/builtin $(RELEASE_OBJ_DIR)/compiler \
     $(RELEASE_OBJ_DIR)/common $(RELEASE_OBJ_DIR)/program $(RELEASE_OBJ_DIR)/runtime $(RELEASE_OBJ_DIR)/vm
 RELEASE_OBJECTS := $(patsubst $(SRC_DIR)/%.c, $(RELEASE_OBJ_DIR)/%.o, $(SRCS))
-LIBRARY_SRCS := $(filter-out $(SRC_DIR)/main.c $(SRC_DIR)/program.c $(SRC_DIR)/program/%.c,$(SRCS)) \
-    $(SRC_DIR)/program/buffer.c
+LIBRARY_SRCS := $(filter-out $(SRC_DIR)/main.c $(SRC_DIR)/program/%.c,$(SRCS)) \
+    $(SRC_DIR)/program/io.c
 DEBUG_LIBRARY_OBJ_DIR := $(BUILD_DIR)/lib-debug
 DEBUG_LIBRARY_OBJ_DIRS := $(DEBUG_LIBRARY_OBJ_DIR) $(DEBUG_LIBRARY_OBJ_DIR)/builtin \
     $(DEBUG_LIBRARY_OBJ_DIR)/common $(DEBUG_LIBRARY_OBJ_DIR)/compiler \

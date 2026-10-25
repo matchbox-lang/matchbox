@@ -1,7 +1,7 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
-#include "program.h"
+#include "program/program.h"
 #include <stdbool.h>
 
 typedef enum TestOutput

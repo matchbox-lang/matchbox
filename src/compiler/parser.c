@@ -2,7 +2,7 @@
 #include "common/memory.h"
 #include "compiler/diagnostics.h"
 #include "compiler/ast.h"
-#include "builtin.h"
+#include "builtin/builtin.h"
 #include "builtin/string.h"
 #include "compiler/conversion.h"
 #include "compiler/lexer.h"

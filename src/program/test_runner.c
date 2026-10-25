@@ -3,7 +3,7 @@
 #include "common/errors.h"
 #include "program/options.h"
 #include "program/path.h"
-#include "program.h"
+#include "program/program.h"
 #include "common/util.h"
 #include <dirent.h>
 #include <stdbool.h>

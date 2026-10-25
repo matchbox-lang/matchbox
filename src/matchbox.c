@@ -1,9 +1,9 @@
 #include "matchbox.h"
 #include "common/errors.h"
 #include "common/memory.h"
-#include "compiler.h"
+#include "compiler/compiler.h"
 #include "runtime/module_object.h"
-#include "vm.h"
+#include "vm/vm.h"
 #include <stdlib.h>
 #include <string.h>
 

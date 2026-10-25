@@ -1,4 +1,4 @@
-#include "program/buffer.h"
+#include "program/io.h"
 #include "common/memory.h"
 #include <stdbool.h>
 #include <stdio.h>

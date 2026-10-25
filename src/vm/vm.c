@@ -1,4 +1,4 @@
-#include "vm.h"
+#include "vm/vm.h"
 #include "common/errors.h"
 #include "vm/opcode.h"
 #include "runtime/function_object.h"

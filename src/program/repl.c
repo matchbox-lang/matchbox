@@ -1,9 +1,9 @@
 #include "program/repl.h"
 #include "common/errors.h"
 #include "common/memory.h"
-#include "compiler.h"
-#include "program/buffer.h"
-#include "vm.h"
+#include "compiler/compiler.h"
+#include "program/io.h"
+#include "vm/vm.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

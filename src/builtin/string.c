@@ -1,6 +1,6 @@
 #include "builtin/string.h"
 #include "runtime/string_concatenation.h"
-#include "vm.h"
+#include "vm/vm.h"
 
 void builtinString(VM* vm, FunctionObject* function, Value* frame)
 {

@@ -1,5 +1,5 @@
-#ifndef BUFFER_H
-#define BUFFER_H
+#ifndef PROGRAM_IO_H
+#define PROGRAM_IO_H
 
 #include <stdio.h>
 

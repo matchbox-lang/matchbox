@@ -1,0 +1,21 @@
+if false { print(1) } else if (true) print(2)
+
+func choose(first: bool, second: bool) -> i32 {
+    var result = 0
+
+    if first { result = 1 } else if (second) result = 2
+
+    return result
+}
+
+let first = choose(true, true)
+let second = choose(false, true)
+let neither = choose(false, false)
+
+if (first != 1 or second != 2 or neither != 0) exit(1)
+
+var selected = 0
+
+if false { exit(1) } else if false { exit(1) } else if (true) selected = 3
+
+if (selected != 3) exit(1)

@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct StringReader
 {
@@ -32,7 +33,7 @@ static ASTNode* parseIdentifier(Parser* parser);
 static ASTNode* parseFunctionCall(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
 static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
-static ASTNode* parseConditional(Parser* parser);
+static ASTNode* parseConditional(Parser* parser, bool allowShorthand);
 static ASTNode* parseMatch(Parser* parser);
 static ASTNode* parseStatement(Parser* parser);
 static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
@@ -456,7 +457,7 @@ static ASTNode* parsePrimary(Parser* parser)
             return ast;
         }
         case TOKEN_IF:
-            return parseConditional(parser);
+            return parseConditional(parser, false);
         case TOKEN_MATCH:
             return parseMatch(parser);
         case TOKEN_I8:
@@ -518,7 +519,7 @@ static ASTNode* parseConditionalBranch(Parser* parser)
     return branch;
 }
 
-static ASTNode* parseConditionalElse(Parser* parser)
+static ASTNode* parseConditionalElse(Parser* parser, bool allowShorthand)
 {
     if (parser->currentToken.type != TOKEN_ELSE) {
         return NULL;
@@ -526,7 +527,7 @@ static ASTNode* parseConditionalElse(Parser* parser)
 
     consume(parser, TOKEN_ELSE);
     if (parser->currentToken.type == TOKEN_IF) {
-        return parseConditional(parser);
+        return parseConditional(parser, allowShorthand);
     }
 
     return parseConditionalBranch(parser);
@@ -547,25 +548,126 @@ static ASTNode* createConditionalNode(
     return ast;
 }
 
-static ASTNode* parseConditional(Parser* parser)
+static bool isParenthesizedCondition(Parser start, Token end)
+{
+    if (start.currentToken.type != TOKEN_LPAREN) {
+        return false;
+    }
+
+    Token token = start.currentToken;
+    int depth = 1;
+
+    while (depth > 0 && token.type != TOKEN_EOF && token.type != TOKEN_INCOMPLETE_INPUT) {
+        token = scanToken(&start.lexer);
+        depth += token.type == TOKEN_LPAREN;
+        depth -= token.type == TOKEN_RPAREN;
+    }
+
+    return depth == 0 && token.chars == end.chars;
+}
+
+static void validateShorthandEnd(Parser* parser, Token token)
+{
+    Token end = parser->previousToken;
+    bool multiline = end.line != token.line || memchr(end.chars, '\n', end.length)
+        || memchr(end.chars, '\r', end.length);
+
+    if (multiline) {
+        fatalSourceError(token.line, token.column, "Expected statement to end on the same physical line as if");
+    }
+
+    if (parser->currentToken.type == TOKEN_SEMICOLON) {
+        consume(parser, TOKEN_SEMICOLON);
+    }
+
+    if (parser->currentToken.type == TOKEN_ELSE) {
+        fatalTokenError(parser->currentToken, "", "Unexpected ");
+    }
+
+    bool sameLineStatement = !isEndOfFile(parser) && parser->currentToken.line == token.line
+        && parser->currentToken.type != TOKEN_RBRACE;
+
+    if (sameLineStatement) {
+        fatalTokenError(parser->currentToken, "", "Expected end of line but found ");
+    }
+}
+
+static ASTNode* parseShorthandBranch(Parser* parser, Token token)
+{
+    if (isEndOfFile(parser)) {
+        return NULL;
+    }
+
+    if (parser->currentToken.line != token.line) {
+        fatalSourceError(token.line, token.column, "Expected statement on the same physical line as if");
+    }
+
+    if (parser->currentToken.type == TOKEN_IF) {
+        expectedTokenError(TOKEN_LBRACE, parser->currentToken);
+    }
+
+    ASTNode* statement = parseStatement(parser);
+
+    if (!statement) {
+        return NULL;
+    }
+
+    validateShorthandEnd(parser, token);
+
+    ASTNode* branch = createASTNode(AST_COMPOUND);
+    branch->compound.scope = NULL;
+
+    pushVectorItem(&branch->compound.statements, statement);
+
+    return branch;
+}
+
+static ASTNode* parseIfBranch(Parser* parser, Parser start, Token token, bool allowShorthand)
+{
+    if (parser->currentToken.type == TOKEN_LBRACE) {
+        return parseConditionalBranch(parser);
+    }
+
+    if (!allowShorthand) {
+        expectedTokenError(TOKEN_LBRACE, parser->currentToken);
+    }
+
+    bool parenthesized = isParenthesizedCondition(start, parser->previousToken);
+
+    if (!parenthesized) {
+        expectedTokenError(TOKEN_LBRACE, parser->currentToken);
+    }
+
+    return parseShorthandBranch(parser, token);
+}
+
+static ASTNode* parseConditional(Parser* parser, bool allowShorthand)
 {
     Token token = parser->currentToken;
+
     consume(parser, TOKEN_IF);
 
+    Parser conditionStart = *parser;
     ASTNode* condition = parseExpression(parser);
     if (!condition) {
         return NULL;
     }
 
-    ASTNode* thenBranch = parseConditionalBranch(parser);
+    bool shorthand = parser->currentToken.type != TOKEN_LBRACE;
+    ASTNode* thenBranch = parseIfBranch(parser, conditionStart, token, allowShorthand);
+
     if (!thenBranch) {
         freeASTNode(condition);
 
         return NULL;
     }
 
+    if (shorthand) {
+        return createConditionalNode(token, condition, thenBranch, NULL);
+    }
+
     bool hasElse = parser->currentToken.type == TOKEN_ELSE;
-    ASTNode* elseBranch = parseConditionalElse(parser);
+    ASTNode* elseBranch = parseConditionalElse(parser, allowShorthand);
 
     if (hasElse && !elseBranch) {
         freeASTNode(condition);
@@ -1462,7 +1564,7 @@ static ASTNode* parseStatement(Parser* parser)
         case TOKEN_WHILE:
             return parseWhileStatement(parser);
         case TOKEN_IF: {
-            ASTNode* ast = parseConditional(parser);
+            ASTNode* ast = parseConditional(parser, true);
 
             if (!ast) {
                 return NULL;

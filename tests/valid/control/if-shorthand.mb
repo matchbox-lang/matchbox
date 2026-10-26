@@ -1,0 +1,24 @@
+var condition = true
+var count = 0
+
+if (condition) count += 1
+if (not condition) exit(1)
+if ((condition)) count += 2;
+if (condition) var count = 99
+
+if count != 3 {
+    exit(1)
+}
+
+condition = false
+
+if (condition) count += 10
+if (count != 3) exit(1)
+
+if (count) == (3) {
+    count += 1
+} else {
+    exit(1)
+}
+
+if (count != 4) exit(1)

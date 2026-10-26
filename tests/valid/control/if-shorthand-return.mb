@@ -1,0 +1,16 @@
+func select(value: bool) -> i32 {
+    if (value) return 7
+
+    return 9
+}
+
+let first = select(true)
+let second = select(false)
+
+if (first != 7 or second != 9) exit(1)
+
+func check(value: bool) {
+    if (value) exit(1)
+}
+
+check(false)

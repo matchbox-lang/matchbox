@@ -22,3 +22,22 @@ if (count) == (3) {
 }
 
 if (count != 4) exit(1)
+
+if (true) print(1); print(2)
+if (false) exit(1); count += 1
+if (true) count += 1; count += 2
+
+if (count != 8) exit(1)
+
+func sequence(value: bool) -> i32 {
+    var result = 0
+
+    if (value) result += 1; result += 2
+
+    return result
+}
+
+let taken = sequence(true)
+let skipped = sequence(false)
+
+if (taken != 3 or skipped != 2) exit(1)

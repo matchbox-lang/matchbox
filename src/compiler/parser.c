@@ -33,7 +33,7 @@ static ASTNode* parseIdentifier(Parser* parser);
 static ASTNode* parseFunctionCall(Parser* parser);
 static ASTNode* parsePrefix(Parser* parser);
 static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
-static ASTNode* parseConditional(Parser* parser, bool allowShorthand);
+static ASTNode* parseConditional(Parser* parser, bool allowSingleLineBody);
 static ASTNode* parseMatch(Parser* parser);
 static ASTNode* parseStatement(Parser* parser);
 static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
@@ -519,7 +519,7 @@ static ASTNode* parseConditionalBranch(Parser* parser)
     return branch;
 }
 
-static ASTNode* parseConditionalElse(Parser* parser, bool allowShorthand)
+static ASTNode* parseConditionalElse(Parser* parser, bool allowSingleLineBody)
 {
     if (parser->currentToken.type != TOKEN_ELSE) {
         return NULL;
@@ -527,7 +527,7 @@ static ASTNode* parseConditionalElse(Parser* parser, bool allowShorthand)
 
     consume(parser, TOKEN_ELSE);
     if (parser->currentToken.type == TOKEN_IF) {
-        return parseConditional(parser, allowShorthand);
+        return parseConditional(parser, allowSingleLineBody);
     }
 
     return parseConditionalBranch(parser);
@@ -566,7 +566,7 @@ static bool isParenthesizedCondition(Parser start, Token end)
     return depth == 0 && token.chars == end.chars;
 }
 
-static void validateShorthandEnd(Parser* parser, Token token)
+static void validateSingleLineIfBranchEnd(Parser* parser, Token token)
 {
     Token end = parser->previousToken;
     bool multiline = end.line != token.line || memchr(end.chars, '\n', end.length)
@@ -577,7 +577,7 @@ static void validateShorthandEnd(Parser* parser, Token token)
     }
 
     if (parser->currentToken.type == TOKEN_SEMICOLON) {
-        consume(parser, TOKEN_SEMICOLON);
+        return;
     }
 
     if (parser->currentToken.type == TOKEN_ELSE) {
@@ -592,7 +592,7 @@ static void validateShorthandEnd(Parser* parser, Token token)
     }
 }
 
-static ASTNode* parseShorthandBranch(Parser* parser, Token token)
+static ASTNode* parseSingleLineIfBranch(Parser* parser, Token token)
 {
     if (isEndOfFile(parser)) {
         return NULL;
@@ -612,7 +612,7 @@ static ASTNode* parseShorthandBranch(Parser* parser, Token token)
         return NULL;
     }
 
-    validateShorthandEnd(parser, token);
+    validateSingleLineIfBranchEnd(parser, token);
 
     ASTNode* branch = createASTNode(AST_COMPOUND);
     branch->compound.scope = NULL;
@@ -622,13 +622,13 @@ static ASTNode* parseShorthandBranch(Parser* parser, Token token)
     return branch;
 }
 
-static ASTNode* parseIfBranch(Parser* parser, Parser start, Token token, bool allowShorthand)
+static ASTNode* parseIfBranch(Parser* parser, Parser start, Token token, bool allowSingleLineBody)
 {
     if (parser->currentToken.type == TOKEN_LBRACE) {
         return parseConditionalBranch(parser);
     }
 
-    if (!allowShorthand) {
+    if (!allowSingleLineBody) {
         expectedTokenError(TOKEN_LBRACE, parser->currentToken);
     }
 
@@ -638,10 +638,10 @@ static ASTNode* parseIfBranch(Parser* parser, Parser start, Token token, bool al
         expectedTokenError(TOKEN_LBRACE, parser->currentToken);
     }
 
-    return parseShorthandBranch(parser, token);
+    return parseSingleLineIfBranch(parser, token);
 }
 
-static ASTNode* parseConditional(Parser* parser, bool allowShorthand)
+static ASTNode* parseConditional(Parser* parser, bool allowSingleLineBody)
 {
     Token token = parser->currentToken;
 
@@ -653,8 +653,8 @@ static ASTNode* parseConditional(Parser* parser, bool allowShorthand)
         return NULL;
     }
 
-    bool shorthand = parser->currentToken.type != TOKEN_LBRACE;
-    ASTNode* thenBranch = parseIfBranch(parser, conditionStart, token, allowShorthand);
+    bool singleLineBody = parser->currentToken.type != TOKEN_LBRACE;
+    ASTNode* thenBranch = parseIfBranch(parser, conditionStart, token, allowSingleLineBody);
 
     if (!thenBranch) {
         freeASTNode(condition);
@@ -662,12 +662,12 @@ static ASTNode* parseConditional(Parser* parser, bool allowShorthand)
         return NULL;
     }
 
-    if (shorthand) {
+    if (singleLineBody) {
         return createConditionalNode(token, condition, thenBranch, NULL);
     }
 
     bool hasElse = parser->currentToken.type == TOKEN_ELSE;
-    ASTNode* elseBranch = parseConditionalElse(parser, allowShorthand);
+    ASTNode* elseBranch = parseConditionalElse(parser, allowSingleLineBody);
 
     if (hasElse && !elseBranch) {
         freeASTNode(condition);

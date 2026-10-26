@@ -4,8 +4,7 @@ func check(value: bool) {
     }
 }
 
-// Single line cases verify precedence and nesting in both branches
-check(true?true:false)
+check(true ? true : false)
 check(not (false ? true : false))
 check((false ? 1 : false ? 2 : 3) == 3)
 check((true ? false ? 1 : 2 : 3) == 2)

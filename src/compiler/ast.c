@@ -340,6 +340,11 @@ bool isExpressionStatement(const ASTNode* ast)
     }
 }
 
+bool isTextLiteral(const ASTNode* ast)
+{
+    return ast && (ast->type == AST_STRING || ast->type == AST_CHARACTER);
+}
+
 bool isFunctionCall(const ASTNode* ast)
 {
     return ast && ast->type == AST_FUNCTION_CALL;

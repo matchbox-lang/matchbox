@@ -13,7 +13,7 @@ FunctionObject* createFunctionObject()
     function->maxStackCount = 0;
     function->paramCount = 0;
     function->returnCount = 0;
-    function->argumentTypes = NULL;
+    function->argumentFormats = NULL;
     function->argumentCount = 0;
     
     initCodeObject(&function->code);
@@ -24,6 +24,6 @@ FunctionObject* createFunctionObject()
 void freeFunctionObject(FunctionObject* function)
 {
     freeCodeObject(&function->code);
-    freeMemory(function->argumentTypes);
+    freeMemory(function->argumentFormats);
     freeMemory(function);
 }

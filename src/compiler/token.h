@@ -156,6 +156,7 @@ bool isIntegerTypeToken(TokenType type);
 bool isFloatTypeToken(TokenType type);
 bool isSignedIntegerTypeToken(TokenType type);
 size_t getIntegerTypeSize(TokenType type);
+bool isPrintableType(TokenType type);
 size_t getTypeSlotCount(TokenType type);
 bool isComparisonToken(TokenType type);
 bool isEqualityToken(TokenType type);

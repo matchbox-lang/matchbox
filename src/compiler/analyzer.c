@@ -10,7 +10,6 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
-#include "runtime/output.h"
 #include "runtime/string_object.h"
 #include <float.h>
 #include <limits.h>

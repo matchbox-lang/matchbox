@@ -8,15 +8,6 @@
 
 Builtin builtins[BUILTINS_MAX] = {
     // I/O
-    {"print",       builtinPrintI32,            1,  {TOKEN_I32},                            TOKEN_VOID},
-    {"print",       builtinPrintI64,            1,  {TOKEN_I64},                            TOKEN_VOID},
-    {"print",       builtinPrintU32,            1,  {TOKEN_U32},                            TOKEN_VOID},
-    {"print",       builtinPrintU64,            1,  {TOKEN_U64},                            TOKEN_VOID},
-    {"print",       builtinPrintF32,            1,  {TOKEN_F32},                            TOKEN_VOID},
-    {"print",       builtinPrintF64,            1,  {TOKEN_F64},                            TOKEN_VOID},
-    {"print",       builtinPrintBool,           1,  {TOKEN_BOOL},                           TOKEN_VOID},
-    {"print",       builtinPrintChar,           1,  {TOKEN_CHAR},                           TOKEN_VOID},
-    {"print",       builtinPrintString,         1,  {TOKEN_STRING},                         TOKEN_VOID},
     {"print",       builtinPrint,              -1,  {TOKEN_UNKNOWN},                        TOKEN_VOID},
 
     // Math

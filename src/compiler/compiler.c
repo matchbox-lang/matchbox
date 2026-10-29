@@ -17,6 +17,7 @@
 #include "runtime/module_object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
+#include "vm/argument.h"
 #include "vm/opcode.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -2080,6 +2081,40 @@ static TokenType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
     return getTypeId(argument);
 }
 
+static ArgumentFormatter getArgumentFormatter(TokenType type)
+{
+    switch (type) {
+        case TOKEN_I8:
+            return formatI8Argument;
+        case TOKEN_I16:
+            return formatI16Argument;
+        case TOKEN_I32:
+            return formatI32Argument;
+        case TOKEN_I64:
+            return formatI64Argument;
+        case TOKEN_U8:
+            return formatU8Argument;
+        case TOKEN_U16:
+            return formatU16Argument;
+        case TOKEN_U32:
+            return formatU32Argument;
+        case TOKEN_U64:
+            return formatU64Argument;
+        case TOKEN_F32:
+            return formatF32Argument;
+        case TOKEN_F64:
+            return formatF64Argument;
+        case TOKEN_CHAR:
+            return formatCharArgument;
+        case TOKEN_STRING:
+            return formatStringArgument;
+        case TOKEN_BOOL:
+            return formatBoolArgument;
+        default:
+            return NULL;
+    }
+}
+
 static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, Vector* args)
 {
     if (function->type != FUNCTION_BUILTIN || function->entry != builtin->entry
@@ -2087,16 +2122,30 @@ static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, 
         return false;
     }
 
-    for (size_t i = 0; i < args->count; i++) {
-        ASTNode* argument = args->data[i];
-        TokenType type = getBuiltinArgumentType(builtin, argument);
-
-        if (type != function->argumentTypes[i]) {
-            return false;
-        }
+    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
+        return true;
     }
 
-    return true;
+    bool matches = true;
+
+    for (size_t i = 0; i < args->count && matches; i++) {
+        ASTNode* argument = args->data[i];
+        TokenType type = getTypeId(argument);
+        ArgumentFormatter formatter = getArgumentFormatter(type);
+        matches = formatter == function->argumentFormats[i].formatter;
+    }
+
+    return matches;
+}
+
+static void setBuiltinArgumentFormat(FunctionObject* function, TokenType type, size_t index)
+{
+    if (!function->argumentFormats) {
+        return;
+    }
+
+    function->argumentFormats[index].formatter = getArgumentFormatter(type);
+    function->argumentFormats[index].slot = function->paramCount;
 }
 
 static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* args)
@@ -2104,12 +2153,12 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
     FunctionObject* function = createBuiltinFunctionObject(builtin);
     size_t count = args->count;
 
-    if (count > SIZE_MAX / sizeof(TokenType)) {
+    if (count > SIZE_MAX / sizeof(ArgumentFormat)) {
         outOfMemoryError();
     }
 
-    if (count > 0) {
-        function->argumentTypes = allocateMemory(count * sizeof(TokenType));
+    if (builtin->paramCount == BUILTIN_VARIADIC && count > 0) {
+        function->argumentFormats = allocateMemory(count * sizeof(ArgumentFormat));
     }
 
     function->argumentCount = count;
@@ -2117,7 +2166,9 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
     for (size_t i = 0; i < count; i++) {
         ASTNode* argument = args->data[i];
         TokenType type = getBuiltinArgumentType(builtin, argument);
-        function->argumentTypes[i] = type;
+
+        setBuiltinArgumentFormat(function, type, i);
+
         function->paramCount += getTypeSlotCount(type);
     }
 

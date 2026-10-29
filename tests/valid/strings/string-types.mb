@@ -15,3 +15,7 @@ let otherParts = string(single, " ", double, " ", true, " ", false, " ", '\u{1F6
 print(signedParts)
 print(unsignedParts)
 print(otherParts)
+
+print(small, " ", medium, " ", large)
+print(byte, " ", word, " ", unsigned, " ", wide)
+print(single, " ", double, " ", true, " ", false, " ", '\u{1F600}')

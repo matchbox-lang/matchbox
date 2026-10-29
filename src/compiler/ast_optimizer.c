@@ -4,7 +4,7 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
-#include "runtime/string_concatenation.h"
+#include "runtime/concatenation.h"
 #include "runtime/string_object.h"
 #include <math.h>
 #include <stdint.h>
@@ -176,42 +176,37 @@ static bool foldBooleanBinary(ASTNode* ast)
     return true;
 }
 
-static bool getTextLiteral(ASTNode* ast, Value* value)
+static void writeTextLiteral(Writer* writer, ASTNode* ast)
 {
     if (ast->type == AST_STRING) {
-        *value = POINTER_VALUE(ast->stringLiteral.value);
+        formatString(writer, ast->stringLiteral.value);
 
-        return true;
+        return;
     }
 
-    if (ast->type == AST_CHARACTER) {
-        *value = U32_VALUE(ast->characterLiteral.value);
+    formatChar(writer, ast->characterLiteral.value);
+}
 
-        return true;
-    }
+static void writeConcatenationLiterals(Writer* writer, const void* context)
+{
+    const ASTNode* ast = context;
 
-    return false;
+    writeTextLiteral(writer, ast->binary.leftExpr);
+    writeTextLiteral(writer, ast->binary.rightExpr);
 }
 
 static bool foldConcatenation(ASTNode* ast)
 {
-    Value left;
-    Value right;
-
     if (ast->binary.typeId != TOKEN_STRING || ast->binary.operator.type != TOKEN_PLUS) {
         return false;
     }
 
-    if (!getTextLiteral(ast->binary.leftExpr, &left) || !getTextLiteral(ast->binary.rightExpr, &right)) {
+    if (!isTextLiteral(ast->binary.leftExpr) || !isTextLiteral(ast->binary.rightExpr)) {
         return false;
     }
 
-    TokenType leftType = getTypeId(ast->binary.leftExpr);
-    TokenType rightType = getTypeId(ast->binary.rightExpr);
     Token token = ast->binary.operator;
-    Value values[] = {left, right};
-    TokenType types[] = {leftType, rightType};
-    StringObject* string = concatenateStringParts(values, types, 2);
+    StringObject* string = concatenateStringParts(writeConcatenationLiterals, ast);
 
     freeASTNode(ast->binary.leftExpr);
     freeASTNode(ast->binary.rightExpr);

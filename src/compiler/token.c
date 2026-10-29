@@ -306,3 +306,11 @@ bool isPrefixToken(TokenType type)
             return false;
     }
 }
+
+bool isPrintableType(TokenType type)
+{
+    return isIntegerTypeToken(type) || isFloatTypeToken(type)
+        || type == TOKEN_BOOL
+        || type == TOKEN_CHAR
+        || type == TOKEN_STRING;
+}

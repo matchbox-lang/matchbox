@@ -1,4 +1,4 @@
-#include "program/path.h"
+#include "cli/path.h"
 #include "common/memory.h"
 #include "common/util.h"
 #include <stdbool.h>

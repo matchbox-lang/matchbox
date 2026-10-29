@@ -17,6 +17,5 @@ typedef struct ModuleObject
 
 ModuleObject* createModuleObject();
 void freeModuleObject(ModuleObject* module);
-void disassembleModule(ModuleObject* module);
 
 #endif

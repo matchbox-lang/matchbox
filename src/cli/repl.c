@@ -1,8 +1,8 @@
-#include "program/repl.h"
+#include "cli/repl.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "compiler/compiler.h"
-#include "program/io.h"
+#include "common/io.h"
 #include "vm/vm.h"
 #include <stdint.h>
 #include <stdio.h>

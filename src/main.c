@@ -1,6 +1,6 @@
-#include "program/command_line.h"
-#include "program/options.h"
-#include "program/program.h"
+#include "cli/arguments.h"
+#include "cli/options.h"
+#include "cli/program.h"
 #include <stdio.h>
 
 int main(int argc, char* argv[])

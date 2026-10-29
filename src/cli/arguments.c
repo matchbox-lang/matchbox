@@ -1,7 +1,7 @@
-#include "program/command_line.h"
+#include "cli/arguments.h"
 #include "common/errors.h"
-#include "program/options.h"
-#include "program/program.h"
+#include "cli/options.h"
+#include "cli/program.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

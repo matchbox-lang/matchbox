@@ -1,5 +1,5 @@
 #include "builtin/string.h"
-#include "vm/argument.h"
+#include "runtime/argument_format.h"
 #include "vm/vm.h"
 
 void builtinString(VM* vm, FunctionObject* function, Value* frame)

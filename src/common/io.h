@@ -1,5 +1,5 @@
-#ifndef PROGRAM_IO_H
-#define PROGRAM_IO_H
+#ifndef COMMON_IO_H
+#define COMMON_IO_H
 
 #include <stdio.h>
 

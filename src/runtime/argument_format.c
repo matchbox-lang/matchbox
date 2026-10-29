@@ -1,4 +1,4 @@
-#include "vm/argument.h"
+#include "runtime/argument_format.h"
 #include "common/errors.h"
 #include "runtime/concatenation.h"
 #include <stdint.h>

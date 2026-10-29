@@ -1,5 +1,5 @@
-#ifndef ARGUMENT_H
-#define ARGUMENT_H
+#ifndef ARGUMENT_FORMAT_H
+#define ARGUMENT_FORMAT_H
 
 #include "runtime/writer.h"
 #include "runtime/value.h"

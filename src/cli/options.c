@@ -1,4 +1,4 @@
-#include "program/options.h"
+#include "cli/options.h"
 #include <stdbool.h>
 #include <stdio.h>
 

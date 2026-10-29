@@ -4,8 +4,6 @@
 #include "runtime/object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
-#include "vm/disassembler.h"
-#include <stdio.h>
 #include <stdlib.h>
 
 ModuleObject* createModuleObject()
@@ -55,24 +53,4 @@ void freeModuleObject(ModuleObject* module)
     freeModuleObjects(module);
     freeValueArray(&module->constants);
     freeMemory(module);
-}
-
-void disassembleModule(ModuleObject* module)
-{
-    size_t functionCount = countVector(&module->functions);
-    FunctionObject* function;
-
-    for (size_t i = 0; i < functionCount; i++) {
-        function = getVectorAt(&module->functions, i);
-
-        if (function->type == FUNCTION_BUILTIN) {
-            continue;
-        }
-
-        disassemble(&function->code);
-
-        if (i < functionCount - 1) {
-            printf("\n");
-        }
-    }
 }

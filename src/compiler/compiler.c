@@ -17,7 +17,7 @@
 #include "runtime/module_object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
-#include "vm/argument.h"
+#include "runtime/argument_format.h"
 #include "vm/opcode.h"
 #include <stddef.h>
 #include <stdint.h>

@@ -1,5 +1,5 @@
-#ifndef COMMAND_LINE_H
-#define COMMAND_LINE_H
+#ifndef CLI_ARGUMENTS_H
+#define CLI_ARGUMENTS_H
 
 #include <stdbool.h>
 

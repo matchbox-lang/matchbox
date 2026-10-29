@@ -1,6 +1,7 @@
 #include "vm/disassembler.h"
 #include "common/errors.h"
 #include "runtime/code_object.h"
+#include "runtime/function_object.h"
 #include "vm/opcode.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -392,5 +393,29 @@ void disassemble(CodeObject* code)
         }
 
         printInstruction(c);
+    }
+}
+
+static void disassembleModuleFunction(ModuleObject* module, size_t index)
+{
+    FunctionObject* function = getVectorAt(&module->functions, index);
+
+    if (function->type == FUNCTION_BUILTIN) {
+        return;
+    }
+
+    disassemble(&function->code);
+
+    if (index < module->functions.count - 1) {
+        printf("\n");
+    }
+}
+
+void disassembleModule(ModuleObject* module)
+{
+    size_t functionCount = countVector(&module->functions);
+
+    for (size_t i = 0; i < functionCount; i++) {
+        disassembleModuleFunction(module, i);
     }
 }

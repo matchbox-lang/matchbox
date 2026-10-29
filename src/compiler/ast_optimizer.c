@@ -1,4 +1,5 @@
 #include "compiler/ast_optimizer.h"
+#include "common/errors.h"
 #include "common/vector.h"
 #include "compiler/conversion.h"
 #include "compiler/diagnostics.h"
@@ -195,6 +196,27 @@ static void writeConcatenationLiterals(Writer* writer, const void* context)
     writeTextLiteral(writer, ast->binary.rightExpr);
 }
 
+static size_t textLiteralCapacity(const ASTNode* ast)
+{
+    if (ast->type == AST_STRING) {
+        return ast->stringLiteral.value->length;
+    }
+
+    return 4;
+}
+
+static size_t concatenationLiteralCapacity(const ASTNode* ast)
+{
+    size_t left = textLiteralCapacity(ast->binary.leftExpr);
+    size_t right = textLiteralCapacity(ast->binary.rightExpr);
+
+    if (right > SIZE_MAX - left) {
+        outOfMemoryError();
+    }
+
+    return left + right;
+}
+
 static bool foldConcatenation(ASTNode* ast)
 {
     if (ast->binary.typeId != TOKEN_STRING || ast->binary.operator.type != TOKEN_PLUS) {
@@ -206,7 +228,8 @@ static bool foldConcatenation(ASTNode* ast)
     }
 
     Token token = ast->binary.operator;
-    StringObject* string = concatenateStringParts(writeConcatenationLiterals, ast);
+    size_t capacity = concatenationLiteralCapacity(ast);
+    StringObject* string = concatenateStringParts(capacity, writeConcatenationLiterals, ast);
 
     freeASTNode(ast->binary.leftExpr);
     freeASTNode(ast->binary.rightExpr);

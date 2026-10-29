@@ -1,5 +1,7 @@
 #include "vm/argument.h"
+#include "common/errors.h"
 #include "runtime/concatenation.h"
+#include <stdint.h>
 
 typedef struct FormattedArguments
 {
@@ -25,11 +27,45 @@ static void writeArgumentParts(Writer* writer, const void* context)
     formatArguments(writer, arguments->frame, arguments->formats, arguments->count);
 }
 
+static size_t argumentCapacity(Value* frame, const ArgumentFormat* format)
+{
+    if (format->capacity) {
+        return format->capacity;
+    }
+
+    StringObject* string = AS_POINTER(frame[format->slot]);
+
+    return string->length;
+}
+
+static size_t addArgumentCapacity(size_t capacity, Value* frame, const ArgumentFormat* format)
+{
+    size_t length = argumentCapacity(frame, format);
+
+    if (length > SIZE_MAX - capacity) {
+        outOfMemoryError();
+    }
+
+    return capacity + length;
+}
+
+static size_t getArgumentsCapacity(Value* frame, const ArgumentFormat* formats, size_t count)
+{
+    size_t capacity = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        capacity = addArgumentCapacity(capacity, frame, &formats[i]);
+    }
+
+    return capacity;
+}
+
 StringObject* concatenateArguments(Value* frame, const ArgumentFormat* formats, size_t count)
 {
     FormattedArguments arguments = {frame, formats, count};
+    size_t capacity = getArgumentsCapacity(frame, formats, count);
 
-    return concatenateStringParts(writeArgumentParts, &arguments);
+    return concatenateStringParts(capacity, writeArgumentParts, &arguments);
 }
 
 void formatI8Argument(Writer* writer, Value* argument)

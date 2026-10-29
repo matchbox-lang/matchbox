@@ -2081,37 +2081,37 @@ static TokenType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
     return getTypeId(argument);
 }
 
-static ArgumentFormatter getArgumentFormatter(TokenType type)
+static ArgumentFormat getArgumentFormat(TokenType type)
 {
     switch (type) {
         case TOKEN_I8:
-            return formatI8Argument;
+            return (ArgumentFormat){.formatter = formatI8Argument, .capacity = 4};
         case TOKEN_I16:
-            return formatI16Argument;
+            return (ArgumentFormat){.formatter = formatI16Argument, .capacity = 6};
         case TOKEN_I32:
-            return formatI32Argument;
+            return (ArgumentFormat){.formatter = formatI32Argument, .capacity = 11};
         case TOKEN_I64:
-            return formatI64Argument;
+            return (ArgumentFormat){.formatter = formatI64Argument, .capacity = 20};
         case TOKEN_U8:
-            return formatU8Argument;
+            return (ArgumentFormat){.formatter = formatU8Argument, .capacity = 3};
         case TOKEN_U16:
-            return formatU16Argument;
+            return (ArgumentFormat){.formatter = formatU16Argument, .capacity = 5};
         case TOKEN_U32:
-            return formatU32Argument;
+            return (ArgumentFormat){.formatter = formatU32Argument, .capacity = 10};
         case TOKEN_U64:
-            return formatU64Argument;
+            return (ArgumentFormat){.formatter = formatU64Argument, .capacity = 20};
         case TOKEN_F32:
-            return formatF32Argument;
+            return (ArgumentFormat){.formatter = formatF32Argument, .capacity = 32};
         case TOKEN_F64:
-            return formatF64Argument;
+            return (ArgumentFormat){.formatter = formatF64Argument, .capacity = 32};
         case TOKEN_CHAR:
-            return formatCharArgument;
+            return (ArgumentFormat){.formatter = formatCharArgument, .capacity = 4};
         case TOKEN_STRING:
-            return formatStringArgument;
+            return (ArgumentFormat){.formatter = formatStringArgument};
         case TOKEN_BOOL:
-            return formatBoolArgument;
+            return (ArgumentFormat){.formatter = formatBoolArgument, .capacity = 5};
         default:
-            return NULL;
+            return (ArgumentFormat){0};
     }
 }
 
@@ -2131,8 +2131,8 @@ static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, 
     for (size_t i = 0; i < args->count && matches; i++) {
         ASTNode* argument = args->data[i];
         TokenType type = getTypeId(argument);
-        ArgumentFormatter formatter = getArgumentFormatter(type);
-        matches = formatter == function->argumentFormats[i].formatter;
+        ArgumentFormat format = getArgumentFormat(type);
+        matches = format.formatter == function->argumentFormats[i].formatter;
     }
 
     return matches;
@@ -2144,8 +2144,9 @@ static void setBuiltinArgumentFormat(FunctionObject* function, TokenType type, s
         return;
     }
 
-    function->argumentFormats[index].formatter = getArgumentFormatter(type);
-    function->argumentFormats[index].slot = function->paramCount;
+    ArgumentFormat format = getArgumentFormat(type);
+    format.slot = function->paramCount;
+    function->argumentFormats[index] = format;
 }
 
 static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* args)

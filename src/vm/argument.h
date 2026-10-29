@@ -10,6 +10,7 @@ typedef struct ArgumentFormat
 {
     ArgumentFormatter formatter;
     size_t slot;
+    size_t capacity;
 } ArgumentFormat;
 
 void formatArguments(Writer* writer, Value* frame, const ArgumentFormat* formats, size_t count);

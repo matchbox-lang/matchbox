@@ -1,5 +1,8 @@
 #include "compiler/ast_optimizer.h"
+#include "builtin/builtin.h"
+#include "builtin/string.h"
 #include "common/errors.h"
+#include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/conversion.h"
 #include "compiler/diagnostics.h"
@@ -600,6 +603,35 @@ static void optimizeMatch(ASTNode* ast, bool checkZero)
     optimizeConditionalBranch(ast->match.defaultBranch, checkZero);
 }
 
+static void replaceWithExpression(ASTNode* ast, ASTNode* expression)
+{
+    ASTNode replacement = *expression;
+
+    freeMemory(expression);
+
+    *ast = replacement;
+}
+
+static void optimizeBuiltinCall(ASTNode* ast, bool checkZero)
+{
+    optimizeNodes(&ast->builtinCall.args, checkZero);
+
+    Builtin* builtin = ast->builtinCall.builtin;
+
+    if (builtin->entry != builtinString || ast->builtinCall.args.count != 1) {
+        return;
+    }
+
+    ASTNode* expression = ast->builtinCall.args.data[0];
+
+    if (getTypeId(expression) != builtin->returnTypeId || getReferenceType(expression) != REFERENCE_NONE) {
+        return;
+    }
+
+    freeVector(&ast->builtinCall.args);
+    replaceWithExpression(ast, expression);
+}
+
 static void optimizeConversion(ASTNode* ast, bool checkZero)
 {
     optimizeNode(ast->conversion.expr, checkZero);
@@ -608,16 +640,13 @@ static void optimizeConversion(ASTNode* ast, bool checkZero)
     ASTNode* expression = ast->conversion.expr;
     bool literal = expression->type == AST_INTEGER || expression->type == AST_FLOAT
         || expression->type == AST_CHARACTER;
+    bool identity = getTypeId(expression) == ast->conversion.typeId;
 
-    if (!literal) {
+    if (!literal && !identity) {
         return;
     }
 
-    ASTNode replacement = *expression;
-
-    freeASTNode(expression);
-
-    *ast = replacement;
+    replaceWithExpression(ast, expression);
 }
 
 static void validateZeroDivisor(ASTNode* divisor, Token operator, TokenType type, bool checkZero)
@@ -688,7 +717,7 @@ static void optimizeNode(ASTNode* ast, bool checkZero)
             optimizeBinary(ast, checkZero);
             break;
         case AST_BUILTIN_CALL:
-            optimizeNodes(&ast->builtinCall.args, checkZero);
+            optimizeBuiltinCall(ast, checkZero);
             break;
         case AST_WHILE:
             optimizeNode(ast->whileStatement.condition, checkZero);

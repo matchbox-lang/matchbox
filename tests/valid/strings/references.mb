@@ -10,3 +10,13 @@ var value = "Original"
 
 exclusive(^value)
 display(&value)
+
+func capture(value: &string) -> string {
+    return string(value)
+}
+
+let captured = capture(&value)
+value = "Updated"
+
+print(captured)
+print(value)

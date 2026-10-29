@@ -44,3 +44,23 @@ print(highest)
 let mixedSum: i64 = sum(signed8, unsigned32, 1)
 
 print(mixedSum)
+
+let signedTotal32: i32 = sum(minimum32, -1)
+let signedTotal64: i64 = sum(minimum64, -1)
+let unsignedTotal32: u32 = sum(unsigned32, 0)
+let unsignedTotal64: u64 = sum(unsigned64, 0)
+
+if signedTotal32 != signed32 or signedTotal64 != signed64 {
+    exit(1)
+}
+
+if unsignedTotal32 != unsigned32 or unsignedTotal64 != unsigned64 {
+    exit(1)
+}
+
+let unsignedWrap32: u32 = sum(unsigned32, 1, 1)
+let unsignedWrap64: u64 = sum(unsigned64, 1, 1)
+
+if unsignedWrap32 != 1 or unsignedWrap64 != 1 {
+    exit(1)
+}

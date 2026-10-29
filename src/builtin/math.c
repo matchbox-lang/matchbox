@@ -903,16 +903,36 @@ void builtinSumI32(VM* vm, FunctionObject* function, Value* frame)
         result += AS_U32(frame[i]);
     }
 
-    if (function->argumentTypes[0] == TOKEN_U32) {
-        frame[-2] = U32_VALUE(result);
-
-        return;
-    }
-
     frame[-2] = I32_VALUE(result);
 }
 
 void builtinSumI64(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+
+    uint64_t result = 0;
+
+    for (size_t i = 0; i < function->argumentCount; i++) {
+        result += readU64(frame, i * 2);
+    }
+
+    writeI64(frame, (int64_t)result);
+}
+
+void builtinSumU32(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+
+    uint32_t result = 0;
+
+    for (size_t i = 0; i < function->argumentCount; i++) {
+        result += AS_U32(frame[i]);
+    }
+
+    frame[-2] = U32_VALUE(result);
+}
+
+void builtinSumU64(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;
 

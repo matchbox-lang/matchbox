@@ -80,6 +80,8 @@ void builtinSumF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinSumF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinSumI32(VM* vm, FunctionObject* function, Value* frame);
 void builtinSumI64(VM* vm, FunctionObject* function, Value* frame);
+void builtinSumU32(VM* vm, FunctionObject* function, Value* frame);
+void builtinSumU64(VM* vm, FunctionObject* function, Value* frame);
 void builtinTanF32(VM* vm, FunctionObject* function, Value* frame);
 void builtinTanF64(VM* vm, FunctionObject* function, Value* frame);
 void builtinTanhF32(VM* vm, FunctionObject* function, Value* frame);

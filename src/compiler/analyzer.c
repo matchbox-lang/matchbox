@@ -163,6 +163,11 @@ static ASTNode* getIntegerLiteral(ASTNode* expression, bool* negative)
 {
     *negative = false;
 
+    if (expression->type == AST_INTEGER && isSignedIntegerTypeToken(expression->integerLiteral.typeId)
+        && expression->integerLiteral.value > INT64_MAX) {
+        return NULL;
+    }
+
     if (expression->type == AST_INTEGER) {
         return expression;
     }

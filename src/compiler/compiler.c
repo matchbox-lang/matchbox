@@ -3759,9 +3759,10 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
     }
 
     TokenType argumentType = getTypeId(ast);
-
+    void* items[] = {ast};
+    Vector args = {.data = items, .capacity = 1, .count = 1};
     Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
-    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
+    uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
     compileCallWithArgument(compiler, function, position, value, true);

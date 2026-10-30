@@ -832,13 +832,22 @@ static bool isDuplicateInstruction(const OptimizationWord* previous, const Optim
         && !previous->wide && !word->wide && !word->target;
 }
 
-static OptimizationWord* removeDuplicateInstruction(OptimizationWord* previous, OptimizationWord* word)
+static bool isRedundantGlobalLoad(const OptimizationWord* previous, const OptimizationWord* word)
+{
+    bool matchingOpcodes = previous && ((previous->opcode == OP_STG && word->opcode == OP_LDG)
+        || (previous->opcode == OP_STG_64 && word->opcode == OP_LDG_64));
+
+    return matchingOpcodes && previous->a == word->a && previous->b == word->b && previous->c == word->c
+        && !previous->wide && !word->wide && !word->target;
+}
+
+static OptimizationWord* removeRedundantInstruction(OptimizationWord* previous, OptimizationWord* word)
 {
     if (word->removed) {
         return previous;
     }
 
-    if (isDuplicateInstruction(previous, word)) {
+    if (isDuplicateInstruction(previous, word) || isRedundantGlobalLoad(previous, word)) {
         word->removed = true;
 
         return previous;
@@ -847,12 +856,12 @@ static OptimizationWord* removeDuplicateInstruction(OptimizationWord* previous, 
     return word;
 }
 
-static void removeDuplicateInstructions(OptimizationWord* words, size_t count)
+static void removeRedundantInstructions(OptimizationWord* words, size_t count)
 {
     OptimizationWord* previous = NULL;
 
     for (size_t i = 0; i < count; i++) {
-        previous = removeDuplicateInstruction(previous, &words[i]);
+        previous = removeRedundantInstruction(previous, &words[i]);
     }
 }
 
@@ -917,7 +926,7 @@ void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentR
     removeDeadLoads(module, words, count, persistentRegisters);
     removeImmediateOperandMoves(words, count);
     fuseInstructions(module, words, count);
-    removeDuplicateInstructions(words, count);
+    removeRedundantInstructions(words, count);
     writeWords(code, words, count, positions);
     freeMemory(words);
     freeMemory(positions);

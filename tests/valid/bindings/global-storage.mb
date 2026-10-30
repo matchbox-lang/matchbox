@@ -25,3 +25,10 @@ print(first)
 if first != 24 {
     exit(1)
 }
+
+wide += 1
+print(wide)
+
+if wide != 4294967320 {
+    exit(1)
+}

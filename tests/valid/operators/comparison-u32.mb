@@ -6,6 +6,30 @@ func compare(left: u32, right: u32) {
     print(left > right)
     print(left >= right)
     print(left <=> right)
+
+    if left == right {
+        print(10)
+    }
+
+    if left != right {
+        print(20)
+    }
+
+    if left < right {
+        print(30)
+    }
+
+    if left <= right {
+        print(40)
+    }
+
+    if left > right {
+        print(50)
+    }
+
+    if left >= right {
+        print(60)
+    }
 }
 
 compare(0, 4294967295)

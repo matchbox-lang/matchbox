@@ -21,6 +21,7 @@ typedef struct OptimizationWord
 typedef struct KnownConstant
 {
     bool known;
+    bool wide;
     int64_t value;
     Opcode loadOpcode;
     uint16_t operand;
@@ -205,8 +206,10 @@ static void selectImmediateArithmetic(OptimizationWord* word, KnownConstant* kno
     bool signedOperand = word->opcode >= OP_ADD_I64 && word->opcode <= OP_MULI_I8;
     int64_t minimum = signedOperand ? INT8_MIN : 0;
     int64_t maximum = signedOperand ? INT8_MAX : UINT8_MAX;
+    bool pairs = usesRegisterPairs(word->opcode);
 
-    if (immediate == OP_HLT || !right.known || right.value < minimum || right.value > maximum) {
+    if (immediate == OP_HLT || !right.known || right.wide != pairs
+        || right.value < minimum || right.value > maximum) {
         return;
     }
 
@@ -217,8 +220,10 @@ static void selectImmediateArithmetic(OptimizationWord* word, KnownConstant* kno
 static void selectConstantMove(OptimizationWord* word, KnownConstant* known)
 {
     KnownConstant value = known[word->b];
+    bool move = word->opcode == OP_MOV || word->opcode == OP_MOV_64;
+    bool wide = word->opcode == OP_MOV_64;
 
-    if (word->opcode != OP_MOV || !value.known) {
+    if (!move || !value.known || value.wide != wide) {
         return;
     }
 
@@ -227,21 +232,45 @@ static void selectConstantMove(OptimizationWord* word, KnownConstant* known)
     word->c = value.operand;
 }
 
+static void invalidateKnownRegister(KnownConstant* known, size_t reg)
+{
+    if (reg >= 256) {
+        return;
+    }
+
+    known[reg] = (KnownConstant){0};
+
+    if (reg > 0 && known[reg - 1].wide) {
+        known[reg - 1] = (KnownConstant){0};
+    }
+}
+
+static int64_t readConstant(ModuleObject* module, Opcode opcode, size_t position)
+{
+    if (opcode == OP_LDC_64) {
+        return readI64(module->constants.data, position);
+    }
+
+    return module->constants.data[position].signedValue;
+}
+
 static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownConstant* known)
 {
     KnownConstant value = {0};
     OpcodeFlag flags = getOpcodeFlags(word->opcode);
+    bool pairs = usesRegisterPairs(word->opcode);
 
     if (word->opcode == OP_LDI) {
         value.known = true;
         value.value = (int16_t)(word->b << 8 | word->c);
     }
 
-    if (word->opcode == OP_LDC) {
+    if (word->opcode == OP_LDC || word->opcode == OP_LDC_64) {
         size_t position = word->b << 8 | word->c;
 
         value.known = true;
-        value.value = module->constants.data[position].signedValue;
+        value.wide = pairs;
+        value.value = readConstant(module, word->opcode, position);
     }
 
     if (value.known) {
@@ -249,13 +278,57 @@ static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownCon
         value.operand = word->b << 8 | word->c;
     }
 
-    if (word->opcode == OP_MOV) {
+    if (word->opcode == OP_MOV || word->opcode == OP_MOV_64) {
         value = known[word->b];
+        value.known = value.known && value.wide == pairs;
     }
 
-    if (flags & OP_FLAG_WRITES_A) {
-        known[word->a] = value;
+    if (!(flags & OP_FLAG_WRITES_A)) {
+        return;
     }
+
+    invalidateKnownRegister(known, word->a);
+
+    if (pairs) {
+        invalidateKnownRegister(known, word->a + 1);
+    }
+
+    if (pairs && word->a == UINT8_MAX) {
+        return;
+    }
+
+    known[word->a] = value;
+}
+
+static bool supportsWideConstants(Opcode opcode)
+{
+    if (opcode == OP_LDC_64 || opcode == OP_MOV_64) {
+        return true;
+    }
+
+    Opcode immediate = immediateOpcode(opcode);
+
+    return immediate != OP_HLT;
+}
+
+static void optimizeConstantWord(ModuleObject* module, OptimizationWord* word, KnownConstant* known)
+{
+    bool invalidate = invalidatesConstants(word->opcode);
+    bool pairs = usesRegisterPairs(word->opcode);
+    bool supported = supportsWideConstants(word->opcode);
+    bool barrier = word->wide || invalidate || (pairs && !supported);
+
+    if (word->target || barrier) {
+        memset(known, 0, 256 * sizeof(KnownConstant));
+    }
+
+    if (barrier) {
+        return;
+    }
+
+    selectConstantMove(word, known);
+    selectImmediateArithmetic(word, known);
+    trackConstant(module, word, known);
 }
 
 static void optimizeConstants(ModuleObject* module, OptimizationWord* words, size_t count)
@@ -263,27 +336,60 @@ static void optimizeConstants(ModuleObject* module, OptimizationWord* words, siz
     KnownConstant known[256] = {0};
 
     for (size_t i = 0; i < count; i++) {
-        OptimizationWord* word = &words[i];
-
-        if (word->target) {
-            memset(known, 0, sizeof(known));
-        }
-
-        bool invalidate = invalidatesConstants(word->opcode);
-        bool pairs = usesRegisterPairs(word->opcode);
-
-        if (word->target || word->wide || invalidate || pairs) {
-            memset(known, 0, sizeof(known));
-        }
-
-        if (word->wide || invalidate || pairs) {
-            continue;
-        }
-
-        selectConstantMove(word, known);
-        selectImmediateArithmetic(word, known);
-        trackConstant(module, word, known);
+        optimizeConstantWord(module, &words[i], known);
     }
+}
+
+static bool isWideImmediateArithmetic(Opcode opcode)
+{
+    switch (opcode) {
+        case OP_ADDI_I64:
+        case OP_SUBI_I64:
+        case OP_MULI_I64:
+        case OP_BANDI_I64:
+        case OP_BORI_I64:
+        case OP_BXORI_I64:
+        case OP_LSLI_I64:
+        case OP_LSRI_I64:
+        case OP_ASRI_I64:
+            return true;
+        default: return false;
+    }
+}
+
+static bool updateWideLiveness(OptimizationWord* word, bool* live)
+{
+    bool immediate = isWideImmediateArithmetic(word->opcode);
+    bool pairs = usesRegisterPairs(word->opcode);
+    Opcode selected = immediateOpcode(word->opcode);
+    bool binary = pairs && selected != OP_HLT;
+    bool constant = word->opcode == OP_LDC_64;
+    bool load = constant || word->opcode == OP_LDG_64;
+    bool move = word->opcode == OP_MOV_64;
+
+    if (word->wide || word->a == UINT8_MAX || (!immediate && !binary && !load && !move)) {
+        return false;
+    }
+
+    if ((!load && word->b == UINT8_MAX) || (binary && word->c == UINT8_MAX)) {
+        return false;
+    }
+
+    word->removed = constant && !word->target && !live[word->a] && !live[word->a + 1];
+    live[word->a] = false;
+    live[word->a + 1] = false;
+
+    if (!load) {
+        live[word->b] = true;
+        live[word->b + 1] = true;
+    }
+
+    if (binary) {
+        live[word->c] = true;
+        live[word->c + 1] = true;
+    }
+
+    return true;
 }
 
 static bool updateBuiltinCallLiveness(ModuleObject* module, OptimizationWord* word, bool* live)
@@ -335,6 +441,12 @@ static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live)
 static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* live,
     size_t persistentRegisters)
 {
+    bool wide = updateWideLiveness(word, live);
+
+    if (wide) {
+        return;
+    }
+
     bool isBuiltinCall = updateBuiltinCallLiveness(module, word, live);
 
     if (isBuiltinCall) {
@@ -441,9 +553,15 @@ static bool isImmediateArithmetic(Opcode opcode)
 
 static void removeImmediateOperandMove(OptimizationWord* move, OptimizationWord* arithmetic)
 {
-    bool immediate = isImmediateArithmetic(arithmetic->opcode);
+    bool wide = isWideImmediateArithmetic(arithmetic->opcode);
+    bool immediate = isImmediateArithmetic(arithmetic->opcode) || wide;
+    Opcode moveOpcode = OP_MOV;
 
-    if (!immediate || move->opcode != OP_MOV || move->target || move->wide
+    if (wide) {
+        moveOpcode = OP_MOV_64;
+    }
+
+    if (!immediate || move->opcode != moveOpcode || move->target || move->wide
         || arithmetic->target || arithmetic->wide || move->a != arithmetic->a
         || move->a != arithmetic->b) {
         return;

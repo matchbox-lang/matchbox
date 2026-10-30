@@ -166,3 +166,43 @@ value64 = 2
 value64 <<= 1
 
 print(value64)
+
+func checkWideImmediates(value: i64, bits: u64) {
+    if value + -128 != -126 {
+        exit(1)
+    }
+
+    if value - -128 != 130 {
+        exit(1)
+    }
+
+    if value * 127 != 254 {
+        exit(1)
+    }
+
+    if (bits & 255) != 2 {
+        exit(1)
+    }
+
+    if (bits | 128) != 130 {
+        exit(1)
+    }
+
+    if (bits ^ 255) != 253 {
+        exit(1)
+    }
+
+    if (bits << 32) != 8589934592 {
+        exit(1)
+    }
+
+    if (bits >> 1) != 1 {
+        exit(1)
+    }
+
+    if (value >> 1) != 1 {
+        exit(1)
+    }
+}
+
+checkWideImmediates(2, 2)

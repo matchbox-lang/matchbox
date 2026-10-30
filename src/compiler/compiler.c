@@ -2558,40 +2558,73 @@ static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
     return position;
 }
 
+static Opcode getConditionJumpOpcode(Opcode comparison)
+{
+    switch (comparison) {
+        case OP_EQ:     return OP_BNE;
+        case OP_NE:     return OP_BEQ;
+        case OP_EQI:    return OP_BNEI;
+        case OP_NEI:    return OP_BEQI;
+        case OP_LT_I32: return OP_BLE_I32;
+        case OP_LT_U32: return OP_BLE_U32;
+        case OP_LE_I32: return OP_BLT_I32;
+        case OP_LE_U32: return OP_BLT_U32;
+        default:        return OP_HLT;
+    }
+}
+
 static size_t emitConditionJump(Compiler* compiler, Operand condition)
 {
     PreviousInstruction comparison;
 
-    if (!condition.temporary || !getPreviousInstruction(compiler, &comparison)
-        || (comparison.opcode != OP_EQI && comparison.opcode != OP_NEI) || comparison.a != condition.reg) {
+    if (!condition.temporary || !getPreviousInstruction(compiler, &comparison) || comparison.a != condition.reg) {
         return emitJump(compiler, OP_BZ, condition.reg);
     }
 
-    Opcode opcode = OP_BNEI;
-    size_t position = comparison.start + INSTRUCTION_SIZE;
+    Opcode opcode = getConditionJumpOpcode(comparison.opcode);
 
-    if (comparison.opcode == OP_NEI) {
-        opcode = OP_BEQI;
+    if (opcode == OP_HLT) {
+        return emitJump(compiler, OP_BZ, condition.reg);
+    }
+
+    size_t position = comparison.start + INSTRUCTION_SIZE;
+    int left = comparison.b;
+    int right = comparison.c;
+
+    if (opcode >= OP_BLT_I32 && opcode <= OP_BLE_U32) {
+        left = comparison.c;
+        right = comparison.b;
     }
 
     setByteAt(comparison.code, comparison.start, OP_NOP);
-    emitInstruction(compiler, opcode, comparison.b, comparison.c, 0);
+    emitInstruction(compiler, opcode, left, right, 0);
 
     return position;
 }
 
-static Opcode expandImmediateJump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
+static Opcode getJumpComparisonOpcode(Opcode opcode)
 {
-    if ((opcode != OP_BEQI && opcode != OP_BNEI) || offset <= INT8_MAX) {
+    switch (opcode) {
+        case OP_BNE:     return OP_EQ;
+        case OP_BEQ:     return OP_NE;
+        case OP_BNEI:    return OP_EQI;
+        case OP_BEQI:    return OP_NEI;
+        case OP_BLE_I32: return OP_LT_I32;
+        case OP_BLE_U32: return OP_LT_U32;
+        case OP_BLT_I32: return OP_LE_I32;
+        case OP_BLT_U32: return OP_LE_U32;
+        default:        return OP_HLT;
+    }
+}
+
+static Opcode expandConditionJump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
+{
+    if (opcode < OP_BEQ || opcode > OP_BLE_U32 || offset <= INT8_MAX) {
         return opcode;
     }
 
     size_t comparison = position - INSTRUCTION_SIZE;
-    Opcode comparisonOpcode = OP_EQI;
-
-    if (opcode == OP_BEQI) {
-        comparisonOpcode = OP_NEI;
-    }
+    Opcode comparisonOpcode = getJumpComparisonOpcode(opcode);
 
     setByteAt(code, comparison, comparisonOpcode);
     setByteAt(code, position, OP_BZ);
@@ -2629,7 +2662,7 @@ static void patchJump(Compiler* compiler, size_t position)
     size_t wordOffset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
     Opcode opcode = (Opcode)code->data[position];
     compiler->peepholeBarrier = count;
-    opcode = expandImmediateJump(code, position, opcode, wordOffset);
+    opcode = expandConditionJump(code, position, opcode, wordOffset);
 
     checkJumpOffset(opcode, wordOffset);
 

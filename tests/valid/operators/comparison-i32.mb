@@ -6,6 +6,30 @@ func compare(left: i32, right: i32) {
     print(left > right)
     print(left >= right)
     print(left <=> right)
+
+    if left == right {
+        print(10)
+    }
+
+    if left != right {
+        print(20)
+    }
+
+    if left < right {
+        print(30)
+    }
+
+    if left <= right {
+        print(40)
+    }
+
+    if left > right {
+        print(50)
+    }
+
+    if left >= right {
+        print(60)
+    }
 }
 
 compare(-1, 1)

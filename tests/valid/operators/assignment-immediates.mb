@@ -1,5 +1,6 @@
 var value8: i8 = 2
 value8 = 2
+value8 = 2
 value8 += 3
 
 print(value8)

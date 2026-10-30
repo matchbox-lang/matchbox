@@ -821,6 +821,41 @@ static void fuseInstructions(ModuleObject* module, OptimizationWord* words, size
     }
 }
 
+static bool isDuplicateInstruction(const OptimizationWord* previous, const OptimizationWord* word)
+{
+    OpcodeFlag flags = getOpcodeFlags(word->opcode);
+    OpcodeRegisterFlag registers = getOpcodeRegisterFlag(word->opcode);
+    bool independent = (flags & OP_FLAG_WRITES_A) && !(registers & (OP_REGISTER_B | OP_REGISTER_C));
+
+    return independent && previous && previous->opcode == word->opcode
+        && previous->a == word->a && previous->b == word->b && previous->c == word->c
+        && !previous->wide && !word->wide && !word->target;
+}
+
+static OptimizationWord* removeDuplicateInstruction(OptimizationWord* previous, OptimizationWord* word)
+{
+    if (word->removed) {
+        return previous;
+    }
+
+    if (isDuplicateInstruction(previous, word)) {
+        word->removed = true;
+
+        return previous;
+    }
+
+    return word;
+}
+
+static void removeDuplicateInstructions(OptimizationWord* words, size_t count)
+{
+    OptimizationWord* previous = NULL;
+
+    for (size_t i = 0; i < count; i++) {
+        previous = removeDuplicateInstruction(previous, &words[i]);
+    }
+}
+
 static void relocateBranch(OptimizationWord* word, size_t position, size_t* positions)
 {
     int offset = (int)positions[word->destination] - (int)position - 1;
@@ -882,6 +917,7 @@ void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentR
     removeDeadLoads(module, words, count, persistentRegisters);
     removeImmediateOperandMoves(words, count);
     fuseInstructions(module, words, count);
+    removeDuplicateInstructions(words, count);
     writeWords(code, words, count, positions);
     freeMemory(words);
     freeMemory(positions);

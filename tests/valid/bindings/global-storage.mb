@@ -18,3 +18,10 @@ func updateWide() {
 
 updateWide()
 print(wide)
+
+first += 1
+print(first)
+
+if first != 24 {
+    exit(1)
+}

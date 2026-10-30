@@ -283,6 +283,7 @@ typedef enum Opcode
     OP_LDC_CALL,
     OP_LDG_CALL,
     OP_LDR_CALL,
+    OP_STG_CALL,
 
     // Fused data movement
     OP_LDI_LDG,

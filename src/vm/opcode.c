@@ -350,6 +350,7 @@ static const OpcodeRegisterFlag OpcodeRegisterFlags[OP_COUNT] = {
     [OP_LDC_CALL] = OP_REGISTER_A,
     [OP_LDG_CALL] = OP_REGISTER_A,
     [OP_LDR_CALL] = OP_REGISTER_A,
+    [OP_STG_CALL] = OP_REGISTER_A,
     [OP_LDI_LDG] = OP_REGISTER_A,
     [OP_LDG_LDI] = OP_REGISTER_A,
     [OP_MOV_LDI] = OP_REGISTER_A | OP_REGISTER_B,

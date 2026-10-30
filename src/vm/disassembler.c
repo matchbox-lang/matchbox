@@ -367,6 +367,7 @@ static void printInstruction(uint8_t c)
         case OP_LDC_CALL:       printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:       printLoadCall("LDG_CALL"); break;
         case OP_LDR_CALL:       printLoadCall("LDR_CALL"); break;
+        case OP_STG_CALL:       printOpcodeRegisterUint8Uint8("STG_CALL"); break;
         case OP_LDI_LDG:        printOpcodeRegisterInt8Uint8("LDI_LDG"); break;
         case OP_LDG_LDI:        printOpcodeRegisterUint8Int8("LDG_LDI"); break;
         case OP_MOV_LDI:        printOpcodeRegisters2Int8("MOV_LDI"); break;

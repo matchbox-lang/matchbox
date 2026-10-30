@@ -194,7 +194,7 @@ static bool invalidatesConstants(Opcode opcode)
 {
     bool end = endsBlock(opcode);
 
-    return end || opcode == OP_CALL || opcode == OP_STG || opcode == OP_STG_64
+    return end || opcode == OP_CALL || opcode == OP_STG_CALL || opcode == OP_STG || opcode == OP_STG_64
         || opcode == OP_STR || opcode == OP_STR_64
         || opcode == OP_REFL || opcode == OP_REFG || opcode == OP_WIDE;
 }
@@ -718,6 +718,20 @@ static bool fuseLoadCall(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
+static bool fuseStoreCall(OptimizationWord* first, OptimizationWord* second)
+{
+    if (first->opcode != OP_STG || second->opcode != OP_CALL || first->a != second->a
+        || first->b != 0 || second->b != 0) {
+        return false;
+    }
+
+    first->opcode = OP_STG_CALL;
+    first->b = first->c;
+    first->c = second->c;
+
+    return true;
+}
+
 static bool fusePair(ModuleObject* module, OptimizationWord* first, OptimizationWord* second)
 {
     bool loads = fuseLoads(first, second);
@@ -729,6 +743,12 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
     bool call = fuseLoadCall(first, second);
 
     if (call) {
+        return true;
+    }
+
+    bool storeCall = fuseStoreCall(first, second);
+
+    if (storeCall) {
         return true;
     }
 

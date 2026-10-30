@@ -613,6 +613,10 @@ static void run(VM* vm)
                 vm->fp[a] = vm->globals.data[b];
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
+            case OP_STG_CALL:
+                vm->globals.data[b] = vm->fp[a];
+                functionPosition = c;
+                goto call;
             case OP_LDI_CALL: {
                 uint16_t operands = OPERAND_BC(inst);
                 int16_t imm = LOAD_CALL_SIGNED_OPERAND(operands);

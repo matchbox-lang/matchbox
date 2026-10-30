@@ -1,7 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include "common/type.h"
+#include "common/data_type.h"
 #include <stdbool.h>
 #include <stdio.h>
 

@@ -3,7 +3,7 @@
 #include "builtin/math.h"
 #include "builtin/string.h"
 #include "builtin/system.h"
-#include "common/type.h"
+#include "common/data_type.h"
 #include <string.h>
 
 Builtin builtins[BUILTINS_MAX] = {

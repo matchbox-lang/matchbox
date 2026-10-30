@@ -1,7 +1,7 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
 
-#include "common/type.h"
+#include "common/data_type.h"
 #include "runtime/function_object.h"
 #include "runtime/value.h"
 

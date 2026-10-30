@@ -1,7 +1,7 @@
 #ifndef VALUE_H
 #define VALUE_H
 
-#include "common/type.h"
+#include "common/data_type.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

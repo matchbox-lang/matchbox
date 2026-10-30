@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include "common/type.h"
+#include "common/data_type.h"
 #include "common/vector.h"
 #include "compiler/token.h"
 #include <stdbool.h>

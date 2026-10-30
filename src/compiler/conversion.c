@@ -4,7 +4,6 @@
 #include "common/util.h"
 #include "compiler/diagnostics.h"
 #include <errno.h>
-#include <float.h>
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -28,9 +27,9 @@ static _Noreturn void integerExceedsMaximumSizeError(Token token)
     fatalSourceError(token.line, token.column, "Integer exceeds the maximum supported size");
 }
 
-static _Noreturn void invalidConstantConversionError(Token token, TokenType destination)
+static _Noreturn void invalidConstantConversionError(Token token, DataType destination)
 {
-    const char* name = getTokenTypeName(destination);
+    const char* name = getDataTypeName(destination);
 
     fatalSourceError(token.line, token.column, "Constant is outside the supported domain of conversion to %s", name);
 }
@@ -89,122 +88,7 @@ double floatLiteralToValue(Token token)
     return value;
 }
 
-bool canImplicitlyWidenInteger(TokenType source, TokenType destination)
-{
-    if (!isIntegerTypeToken(source) || !isIntegerTypeToken(destination)) {
-        return false;
-    }
-
-    if (isSignedIntegerTypeToken(source) && !isSignedIntegerTypeToken(destination)) {
-        return false;
-    }
-
-    return getIntegerTypeSize(source) < getIntegerTypeSize(destination);
-}
-
-bool canImplicitlyWidenFloat(TokenType source, TokenType destination)
-{
-    return source == TOKEN_F32 && destination == TOKEN_F64;
-}
-
-bool canImplicitlyConvertIntegerToFloat(TokenType source, TokenType destination)
-{
-    if (!isIntegerTypeToken(source)) {
-        return false;
-    }
-
-    size_t bits = getIntegerTypeSize(source) * CHAR_BIT;
-    bool signedType = isSignedIntegerTypeToken(source);
-    size_t precision = 0;
-
-    if (destination == TOKEN_F32) {
-        precision = FLT_MANT_DIG;
-    }
-
-    if (destination == TOKEN_F64) {
-        precision = DBL_MANT_DIG;
-    }
-
-    return bits - signedType <= precision;
-}
-
-bool canImplicitlyWidenType(TokenType source, TokenType destination)
-{
-    if (canImplicitlyWidenInteger(source, destination)) {
-        return true;
-    }
-
-    if (canImplicitlyConvertIntegerToFloat(source, destination)) {
-        return true;
-    }
-
-    return canImplicitlyWidenFloat(source, destination);
-}
-
-bool canExplicitlyConvertType(TokenType source, TokenType destination)
-{
-    bool sourceNumeric = isIntegerTypeToken(source) || isFloatTypeToken(source);
-    bool destinationNumeric = isIntegerTypeToken(destination) || isFloatTypeToken(destination);
-
-    if (source == TOKEN_BOOL && isIntegerTypeToken(destination)) {
-        return true;
-    }
-
-    if (sourceNumeric && destinationNumeric) {
-        return true;
-    }
-
-    if (source == TOKEN_CHAR) {
-        return destination == TOKEN_CHAR || isIntegerTypeToken(destination);
-    }
-
-    return isIntegerTypeToken(source) && destination == TOKEN_CHAR;
-}
-
-static bool acceptsNumericType(TokenType source, TokenType destination)
-{
-    return source == destination || canImplicitlyWidenType(source, destination);
-}
-
-static bool acceptsBothNumericTypes(TokenType left, TokenType right, TokenType destination)
-{
-    bool acceptsLeft = acceptsNumericType(left, destination);
-    bool acceptsRight = acceptsNumericType(right, destination);
-
-    return acceptsLeft && acceptsRight;
-}
-
-TokenType getCommonNumericType(TokenType left, TokenType right)
-{
-    bool leftNumeric = isIntegerTypeToken(left) || isFloatTypeToken(left);
-    bool rightNumeric = isIntegerTypeToken(right) || isFloatTypeToken(right);
-
-    if (!leftNumeric || !rightNumeric) {
-        return TOKEN_UNKNOWN;
-    }
-
-    if (acceptsNumericType(left, right)) {
-        return right;
-    }
-
-    if (acceptsNumericType(right, left)) {
-        return left;
-    }
-
-    TokenType candidate = TOKEN_I8;
-
-    while (candidate <= TOKEN_F64 && !acceptsBothNumericTypes(left, right, candidate)) {
-        candidate++;
-    }
-
-    if (candidate > TOKEN_F64) {
-        return TOKEN_UNKNOWN;
-    }
-
-    return candidate;
-}
-
-static uint64_t normalizeIntegerConstant(uint64_t value, TokenType type)
+static uint64_t normalizeIntegerConstant(uint64_t value, DataType type)
 {
     size_t bits = getIntegerTypeSize(type) * CHAR_BIT;
 
@@ -214,7 +98,7 @@ static uint64_t normalizeIntegerConstant(uint64_t value, TokenType type)
 
     uint64_t mask = (UINT64_C(1) << bits) - 1;
     uint64_t result = value & mask;
-    bool negative = isSignedIntegerTypeToken(type) && (result & (UINT64_C(1) << (bits - 1)));
+    bool negative = isSignedIntegerType(type) && (result & (UINT64_C(1) << (bits - 1)));
 
     if (negative) {
         result |= ~mask;
@@ -223,9 +107,9 @@ static uint64_t normalizeIntegerConstant(uint64_t value, TokenType type)
     return result;
 }
 
-static double roundedFloatConstant(double value, TokenType type)
+static double roundedFloatConstant(double value, DataType type)
 {
-    if (type == TOKEN_F32) {
+    if (type == TYPE_F32) {
         return (float)value;
     }
 
@@ -240,7 +124,7 @@ static bool getNegatedNumericConstant(ASTNode* ast, NumericConstant* value)
         return false;
     }
 
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
     uint64_t negated = 0 - value->integer;
 
     value->integer = normalizeIntegerConstant(negated, type);
@@ -251,7 +135,7 @@ static bool getNegatedNumericConstant(ASTNode* ast, NumericConstant* value)
 
 static bool getNumericConstant(ASTNode* ast, NumericConstant* value)
 {
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
 
     if (ast->type == AST_CONVERSION) {
         return getNumericConstant(ast->conversion.expr, value);
@@ -291,9 +175,9 @@ static bool getNumericConstant(ASTNode* ast, NumericConstant* value)
     return true;
 }
 
-static uint64_t floatConstantToInteger(double value, TokenType destination, Token token)
+static uint64_t floatConstantToInteger(double value, DataType destination, Token token)
 {
-    bool signedType = isSignedIntegerTypeToken(destination);
+    bool signedType = isSignedIntegerType(destination);
     size_t bits = getIntegerTypeSize(destination) * CHAR_BIT;
     double upper = ldexp(1.0, bits - signedType);
     double lower = 0.0;
@@ -314,39 +198,39 @@ static uint64_t floatConstantToInteger(double value, TokenType destination, Toke
     return (uint64_t)truncated;
 }
 
-static double integerConstantToFloat(uint64_t value, TokenType source, TokenType destination)
+static double integerConstantToFloat(uint64_t value, DataType source, DataType destination)
 {
-    if (isSignedIntegerTypeToken(source) && destination == TOKEN_F32) {
+    if (isSignedIntegerType(source) && destination == TYPE_F32) {
         return (float)(int64_t)value;
     }
 
-    if (isSignedIntegerTypeToken(source)) {
+    if (isSignedIntegerType(source)) {
         return (double)(int64_t)value;
     }
 
-    if (destination == TOKEN_F32) {
+    if (destination == TYPE_F32) {
         return (float)value;
     }
 
     return (double)value;
 }
 
-static NumericConstant convertNumericConstant(NumericConstant value, TokenType source,
-    TokenType destination, Token token)
+static NumericConstant convertNumericConstant(NumericConstant value, DataType source,
+    DataType destination, Token token)
 {
-    if (isFloatTypeToken(source) && isIntegerTypeToken(destination)) {
+    if (isFloatType(source) && isIntegerType(destination)) {
         value.integer = floatConstantToInteger(value.floating, destination, token);
 
         return value;
     }
 
-    if (isIntegerTypeToken(destination)) {
+    if (isIntegerType(destination)) {
         value.integer = normalizeIntegerConstant(value.integer, destination);
 
         return value;
     }
 
-    if (isIntegerTypeToken(source)) {
+    if (isIntegerType(source)) {
         value.floating = integerConstantToFloat(value.integer, source, destination);
 
         return value;
@@ -357,9 +241,9 @@ static NumericConstant convertNumericConstant(NumericConstant value, TokenType s
     return value;
 }
 
-static ASTNode* createConvertedConstant(NumericConstant value, TokenType type, Token token)
+static ASTNode* createConvertedConstant(NumericConstant value, DataType type, Token token)
 {
-    if (type == TOKEN_CHAR) {
+    if (type == TYPE_CHAR) {
         ASTNode* result = createASTNode(AST_CHARACTER);
 
         result->characterLiteral.value = value.integer;
@@ -368,7 +252,7 @@ static ASTNode* createConvertedConstant(NumericConstant value, TokenType type, T
         return result;
     }
 
-    if (isFloatTypeToken(type)) {
+    if (isFloatType(type)) {
         ASTNode* result = createASTNode(AST_FLOAT);
 
         result->floatLiteral.value = value.floating;
@@ -390,8 +274,8 @@ static ASTNode* createConvertedConstant(NumericConstant value, TokenType type, T
 void foldExplicitConversion(ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    TokenType source = getTypeId(expression);
-    TokenType destination = ast->conversion.typeId;
+    DataType source = getTypeId(expression);
+    DataType destination = ast->conversion.typeId;
     Token token = ast->conversion.token;
     NumericConstant value = {0};
     bool constant = getNumericConstant(expression, &value);
@@ -400,11 +284,11 @@ void foldExplicitConversion(ASTNode* ast)
         return;
     }
 
-    if (destination == TOKEN_CHAR && (value.integer > UINT32_MAX || !isUnicodeScalar((uint32_t)value.integer))) {
+    if (destination == TYPE_CHAR && (value.integer > UINT32_MAX || !isUnicodeScalar((uint32_t)value.integer))) {
         invalidConstantConversionError(token, destination);
     }
 
-    if (destination != TOKEN_CHAR) {
+    if (destination != TYPE_CHAR) {
         value = convertNumericConstant(value, source, destination, token);
     }
 

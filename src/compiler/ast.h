@@ -1,6 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
+#include "common/type.h"
 #include "common/vector.h"
 #include "compiler/token.h"
 #include <stdbool.h>
@@ -60,7 +61,7 @@ typedef struct ASTNode
         struct {
             ASTNode* expr;
             Token token;
-            TokenType typeId;
+            DataType typeId;
         } conversion;
 
         struct {
@@ -82,8 +83,8 @@ typedef struct ASTNode
             Token operator;
             ASTNode* leftExpr;
             ASTNode* rightExpr;
-            TokenType typeId;
-            TokenType operandType;
+            DataType typeId;
+            DataType operandType;
         } binary;
 
         struct {
@@ -112,7 +113,7 @@ typedef struct ASTNode
             ASTNode* condition;
             ASTNode* thenBranch;
             ASTNode* elseBranch;
-            TokenType typeId;
+            DataType typeId;
             ReferenceType referenceType;
             Vector referenceOrigins;
             bool expression;
@@ -121,7 +122,7 @@ typedef struct ASTNode
         struct {
             double value;
             Token token;
-            TokenType typeId;
+            DataType typeId;
         } floatLiteral;
 
         struct {
@@ -139,7 +140,7 @@ typedef struct ASTNode
             Token token;
             Vector params;
             bool hasExplicitReturnType;
-            TokenType returnTypeId;
+            DataType returnTypeId;
             ReferenceType returnReferenceType;
             ASTNode* returnReferenceOrigin;
             ASTNode* body;
@@ -149,7 +150,7 @@ typedef struct ASTNode
         struct {
             uint64_t value;
             Token token;
-            TokenType typeId;
+            DataType typeId;
         } integerLiteral;
 
         struct {
@@ -157,7 +158,7 @@ typedef struct ASTNode
             ASTNode* subject;
             Vector arms;
             ASTNode* defaultBranch;
-            TokenType typeId;
+            DataType typeId;
             ReferenceType referenceType;
             Vector referenceOrigins;
             bool expression;
@@ -167,7 +168,7 @@ typedef struct ASTNode
             Scope* scope;
             StringObject* id;
             Token token;
-            TokenType typeId;
+            DataType typeId;
             ReferenceType referenceType;
             Vector referenceOrigins;
             size_t sharedAccessCount;
@@ -205,7 +206,7 @@ typedef struct ASTNode
             Token token;
             bool fixed;
             bool initialized;
-            TokenType typeId;
+            DataType typeId;
             ReferenceType referenceType;
             Vector referenceOrigins;
             size_t sharedAccessCount;
@@ -226,7 +227,7 @@ typedef struct ASTNode
 ASTNode* createASTNode(ASTNodeType type);
 void freeASTNode(ASTNode* ast);
 Scope* getScope(const ASTNode* ast);
-TokenType getTypeId(const ASTNode* ast);
+DataType getTypeId(const ASTNode* ast);
 ASTNode* getReferenceOrigin(const ASTNode* ast);
 Vector* getReferenceOrigins(ASTNode* ast);
 ReferenceType getReferenceType(const ASTNode* ast);

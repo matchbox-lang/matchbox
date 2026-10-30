@@ -112,32 +112,32 @@ static bool isEndOfFile(Parser* parser)
         || parser->currentToken.type == TOKEN_EOF;
 }
 
-static TokenType inferIntegerLiteralType(uint64_t value)
+static DataType inferIntegerLiteralType(uint64_t value)
 {
     if (value <= INT32_MAX) {
-        return TOKEN_I32;
+        return TYPE_I32;
     }
 
     if (value <= INT64_MAX) {
-        return TOKEN_I64;
+        return TYPE_I64;
     }
 
-    return TOKEN_UNKNOWN;
+    return TYPE_UNKNOWN;
 }
 
-static TokenType inferFloatLiteralType(double value)
+static DataType inferFloatLiteralType(double value)
 {
     if (value > FLT_MAX) {
-        return TOKEN_F64;
+        return TYPE_F64;
     }
 
     float narrowed = (float)value;
 
     if ((double)narrowed == value) {
-        return TOKEN_F32;
+        return TYPE_F32;
     }
 
-    return TOKEN_F64;
+    return TYPE_F64;
 }
 
 static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
@@ -231,7 +231,7 @@ static ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token to
     ast->binary.leftExpr = leftExpr;
     ast->binary.operator = token;
     ast->binary.rightExpr = rightExpr;
-    ast->binary.typeId = TOKEN_UNKNOWN;
+    ast->binary.typeId = TYPE_UNKNOWN;
 
     return ast;
 }
@@ -541,7 +541,7 @@ static ASTNode* createConditionalNode(
     ast->conditional.condition = condition;
     ast->conditional.thenBranch = thenBranch;
     ast->conditional.elseBranch = elseBranch;
-    ast->conditional.typeId = TOKEN_VOID;
+    ast->conditional.typeId = TYPE_VOID;
     ast->conditional.referenceType = REFERENCE_NONE;
     ast->conditional.expression = true;
 
@@ -818,7 +818,7 @@ static ASTNode* createMatchNode(Token token)
 {
     ASTNode* ast = createASTNode(AST_MATCH);
     ast->match.token = token;
-    ast->match.typeId = TOKEN_VOID;
+    ast->match.typeId = TYPE_VOID;
     ast->match.referenceType = REFERENCE_NONE;
     ast->match.expression = true;
 
@@ -1208,7 +1208,7 @@ static ASTNode* createParameterNode(Token token, StringObject* id)
     ast->parameter.scope = NULL;
     ast->parameter.id = id;
     ast->parameter.token = token;
-    ast->parameter.typeId = TOKEN_I32;
+    ast->parameter.typeId = TYPE_I32;
     ast->parameter.referenceType = REFERENCE_NONE;
 
     return ast;
@@ -1229,8 +1229,10 @@ static ASTNode* parseParameter(Parser* parser)
 
     if (parser->currentToken.type == TOKEN_COLON) {
         consume(parser, TOKEN_COLON);
+
         ast->parameter.referenceType = parseReferenceType(parser);
-        ast->parameter.typeId = parser->currentToken.type;
+        ast->parameter.typeId = getTokenDataType(parser->currentToken.type);
+
         consumeType(parser);
     }
 
@@ -1314,7 +1316,7 @@ static ASTNode* createFunctionDefinitionNode(Token token, StringObject* id)
     ast->functionDefinition.scope = NULL;
     ast->functionDefinition.id = id;
     ast->functionDefinition.token = token;
-    ast->functionDefinition.returnTypeId = TOKEN_I32;
+    ast->functionDefinition.returnTypeId = TYPE_I32;
     ast->functionDefinition.returnReferenceType = REFERENCE_NONE;
     ast->functionDefinition.returnReferenceOrigin = NULL;
     ast->functionDefinition.hasExplicitReturnType = false;
@@ -1330,9 +1332,12 @@ static void parseFunctionReturnType(Parser* parser, ASTNode* ast)
     }
 
     consume(parser, TOKEN_ARROW);
+
     ast->functionDefinition.returnReferenceType = parseReferenceType(parser);
-    ast->functionDefinition.returnTypeId = parser->currentToken.type;
+    ast->functionDefinition.returnTypeId = getTokenDataType(parser->currentToken.type);
+
     consumeType(parser);
+
     ast->functionDefinition.hasExplicitReturnType = true;
 }
 
@@ -1433,7 +1438,7 @@ static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool
     ast->variableDefinition.id = id;
     ast->variableDefinition.token = token;
     ast->variableDefinition.fixed = fixed;
-    ast->variableDefinition.typeId = TOKEN_UNKNOWN;
+    ast->variableDefinition.typeId = TYPE_UNKNOWN;
     ast->variableDefinition.referenceType = REFERENCE_NONE;
     ast->variableDefinition.position = 0;
     ast->variableDefinition.expr = NULL;
@@ -1445,8 +1450,10 @@ static void parseVariableType(Parser* parser, ASTNode* ast)
 {
     if (parser->currentToken.type == TOKEN_COLON) {
         consume(parser, TOKEN_COLON);
+
         ast->variableDefinition.referenceType = parseReferenceType(parser);
-        ast->variableDefinition.typeId = parser->currentToken.type;
+        ast->variableDefinition.typeId = getTokenDataType(parser->currentToken.type);
+
         consumeType(parser);
 
         return;
@@ -1468,8 +1475,8 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
 
     ast->variableDefinition.expr = createASTNode(AST_NONE);
 
-    if (ast->variableDefinition.typeId == TOKEN_UNKNOWN) {
-        ast->variableDefinition.typeId = TOKEN_I32;
+    if (ast->variableDefinition.typeId == TYPE_UNKNOWN) {
+        ast->variableDefinition.typeId = TYPE_I32;
     }
 
     return true;

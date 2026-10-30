@@ -1,7 +1,7 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
 
-#include "compiler/token.h"
+#include "common/type.h"
 #include "runtime/function_object.h"
 #include "runtime/value.h"
 
@@ -15,11 +15,11 @@ typedef struct Builtin
     const char* name;
     FunctionEntry entry;
     int paramCount;
-    TokenType params[BUILTIN_PARAMS_MAX];
-    TokenType returnTypeId;
+    DataType params[BUILTIN_PARAMS_MAX];
+    DataType returnTypeId;
 } Builtin;
 
 bool isBuiltinName(const char* name);
-Builtin* resolveBuiltin(const char* name, TokenType* argumentTypes, size_t argumentCount);
+Builtin* resolveBuiltin(const char* name, DataType* argumentTypes, size_t argumentCount);
 
 #endif

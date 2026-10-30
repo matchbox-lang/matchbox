@@ -1,6 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include "common/type.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -152,12 +153,7 @@ void printTokenValue(Token token);
 const char* getTokenTypeName(TokenType type);
 bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
-bool isIntegerTypeToken(TokenType type);
-bool isFloatTypeToken(TokenType type);
-bool isSignedIntegerTypeToken(TokenType type);
-size_t getIntegerTypeSize(TokenType type);
-bool isPrintableType(TokenType type);
-size_t getTypeSlotCount(TokenType type);
+DataType getTokenDataType(TokenType type);
 bool isComparisonToken(TokenType type);
 bool isEqualityToken(TokenType type);
 bool isLogicalToken(TokenType type);

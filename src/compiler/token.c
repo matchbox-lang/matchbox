@@ -173,53 +173,47 @@ bool isAssignmentToken(TokenType type)
     }
 }
 
-bool isFloatTypeToken(TokenType type)
+DataType getTokenDataType(TokenType type)
 {
-    return type == TOKEN_F32 || type == TOKEN_F64;
-}
-
-bool isIntegerTypeToken(TokenType type)
-{
-    return type >= TOKEN_I8 && type <= TOKEN_U64;
-}
-
-bool isSignedIntegerTypeToken(TokenType type)
-{
-    return type >= TOKEN_I8 && type <= TOKEN_I64;
+    switch (type) {
+        case TOKEN_I8:
+            return TYPE_I8;
+        case TOKEN_I16:
+            return TYPE_I16;
+        case TOKEN_I32:
+            return TYPE_I32;
+        case TOKEN_I64:
+            return TYPE_I64;
+        case TOKEN_U8:
+            return TYPE_U8;
+        case TOKEN_U16:
+            return TYPE_U16;
+        case TOKEN_U32:
+            return TYPE_U32;
+        case TOKEN_U64:
+            return TYPE_U64;
+        case TOKEN_F32:
+            return TYPE_F32;
+        case TOKEN_F64:
+            return TYPE_F64;
+        case TOKEN_CHAR:
+            return TYPE_CHAR;
+        case TOKEN_STRING:
+            return TYPE_STRING;
+        case TOKEN_BOOL:
+            return TYPE_BOOL;
+        case TOKEN_VOID:
+            return TYPE_VOID;
+        default:
+            return TYPE_UNKNOWN;
+    }
 }
 
 bool isTypeToken(TokenType type)
 {
-    return isIntegerTypeToken(type) || isFloatTypeToken(type)
-        || type == TOKEN_BOOL
-        || type == TOKEN_CHAR
-        || type == TOKEN_STRING
-        || type == TOKEN_VOID;
-}
+    DataType dataType = getTokenDataType(type);
 
-size_t getIntegerTypeSize(TokenType type)
-{
-    switch (type) {
-        case TOKEN_I8:
-        case TOKEN_U8:
-            return 1;
-        case TOKEN_I16:
-        case TOKEN_U16:
-            return 2;
-        case TOKEN_I32:
-        case TOKEN_U32:
-            return 4;
-        case TOKEN_I64:
-        case TOKEN_U64:
-            return 8;
-        default:
-            return 0;
-    }
-}
-
-size_t getTypeSlotCount(TokenType type)
-{
-    return type == TOKEN_I64 || type == TOKEN_U64 || type == TOKEN_F64 ? 2 : 1;
+    return dataType != TYPE_UNKNOWN;
 }
 
 bool isComparisonToken(TokenType type)
@@ -305,12 +299,4 @@ bool isPrefixToken(TokenType type)
         default:
             return false;
     }
-}
-
-bool isPrintableType(TokenType type)
-{
-    return isIntegerTypeToken(type) || isFloatTypeToken(type)
-        || type == TOKEN_BOOL
-        || type == TOKEN_CHAR
-        || type == TOKEN_STRING;
 }

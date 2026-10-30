@@ -185,10 +185,10 @@ Scope* getScope(const ASTNode* ast)
     }
 }
 
-TokenType getTypeId(const ASTNode* ast)
+DataType getTypeId(const ASTNode* ast)
 {
     if (!ast) {
-        return TOKEN_VOID;
+        return TYPE_VOID;
     }
 
     switch (ast->type) {
@@ -199,11 +199,11 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_CONDITIONAL:
             return ast->conditional.typeId;
         case AST_BOOLEAN:
-            return TOKEN_BOOL;
+            return TYPE_BOOL;
         case AST_BUILTIN_CALL:
             return ast->builtinCall.builtin->returnTypeId;
         case AST_CHARACTER:
-            return TOKEN_CHAR;
+            return TYPE_CHAR;
         case AST_FLOAT:
             return ast->floatLiteral.typeId;
         case AST_FUNCTION_CALL:
@@ -223,9 +223,9 @@ TokenType getTypeId(const ASTNode* ast)
         case AST_MATCH:
             return ast->match.typeId;
         case AST_STRING:
-            return TOKEN_STRING;
+            return TYPE_STRING;
         default:
-            return TOKEN_VOID;
+            return TYPE_VOID;
     }
 }
 

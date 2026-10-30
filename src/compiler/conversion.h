@@ -11,12 +11,6 @@ uint64_t hexadecimalLiteralToValue(Token token);
 uint64_t octalLiteralToValue(Token token);
 double floatLiteralToValue(Token token);
 
-bool canImplicitlyWidenInteger(TokenType source, TokenType destination);
-bool canImplicitlyConvertIntegerToFloat(TokenType source, TokenType destination);
-bool canImplicitlyWidenFloat(TokenType source, TokenType destination);
-bool canImplicitlyWidenType(TokenType source, TokenType destination);
-bool canExplicitlyConvertType(TokenType source, TokenType destination);
-TokenType getCommonNumericType(TokenType left, TokenType right);
 void foldExplicitConversion(ASTNode* ast);
 
 #endif

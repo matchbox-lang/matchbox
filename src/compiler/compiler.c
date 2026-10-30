@@ -71,7 +71,7 @@ static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard);
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
 static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference);
 static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference);
-static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast, TokenType destination, bool reference);
+static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast, DataType destination, bool reference);
 static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
@@ -730,9 +730,9 @@ static Operand compileWideNumber(Compiler* compiler, uint64_t value)
     return makeWideOperand(reg, true);
 }
 
-static bool isNarrowIntegerImmediate(uint64_t value, TokenType type)
+static bool isNarrowIntegerImmediate(uint64_t value, DataType type)
 {
-    bool signedType = isSignedIntegerTypeToken(type);
+    bool signedType = isSignedIntegerType(type);
 
     if (!signedType) {
         return value <= INT16_MAX;
@@ -746,15 +746,15 @@ static bool isNarrowIntegerImmediate(uint64_t value, TokenType type)
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     uint64_t value = ast->integerLiteral.value;
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
 
-    if (type == TOKEN_F64) {
+    if (type == TYPE_F64) {
         size_t position = makeF64Constant(compiler, (double)value);
 
         return makeWideOperand(emitLdcI64(compiler, position), true);
     }
 
-    if (type == TOKEN_F32) {
+    if (type == TYPE_F32) {
         size_t position = makeF32Constant(compiler, (float)value);
 
         return makeOperand(emitLdc(compiler, position), true);
@@ -767,7 +767,7 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
     bool immediate = isNarrowIntegerImmediate(value, type);
 
     if (!immediate) {
-        Value constant = isSignedIntegerTypeToken(type)
+        Value constant = isSignedIntegerType(type)
             ? SIGNED_VALUE((int64_t)value)
             : UNSIGNED_VALUE(value);
         size_t position = makeConstant(compiler, constant);
@@ -778,9 +778,9 @@ static Operand compileNumber(Compiler* compiler, ASTNode* ast)
     return makeOperand(emitLdi(compiler, (int16_t)value), true);
 }
 
-static Operand compileFloatValue(Compiler* compiler, double value, TokenType type)
+static Operand compileFloatValue(Compiler* compiler, double value, DataType type)
 {
-    if (type == TOKEN_F64) {
+    if (type == TYPE_F64) {
         size_t position = makeF64Constant(compiler, value);
         int reg = emitLdcI64(compiler, position);
 
@@ -796,7 +796,7 @@ static Operand compileFloatValue(Compiler* compiler, double value, TokenType typ
 static Operand compileFloat(Compiler* compiler, ASTNode* ast)
 {
     double value = ast->floatLiteral.value;
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
 
     return compileFloatValue(compiler, value, type);
 }
@@ -859,7 +859,7 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
 }
 
 static Opcode getWidthOpcode(
-    TokenType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
+    DataType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
 {
     switch (getIntegerTypeSize(type)) {
         case 8:
@@ -875,34 +875,34 @@ static Opcode getWidthOpcode(
     }
 }
 
-static Opcode getDivisionOpcode(TokenType type)
+static Opcode getDivisionOpcode(DataType type)
 {
-    if (isSignedIntegerTypeToken(type)) {
+    if (isSignedIntegerType(type)) {
         return getWidthOpcode(type, OP_IDIV_I64, OP_IDIV_I32, OP_IDIV_I16, OP_IDIV_I8);
     }
 
     return getWidthOpcode(type, OP_IDIV_U64, OP_IDIV_U32, OP_IDIV_U16, OP_IDIV_U8);
 }
 
-static Opcode getRemainderOpcode(TokenType type)
+static Opcode getRemainderOpcode(DataType type)
 {
-    if (isSignedIntegerTypeToken(type)) {
+    if (isSignedIntegerType(type)) {
         return getWidthOpcode(type, OP_REM_I64, OP_REM_I32, OP_REM_I16, OP_REM_I8);
     }
 
     return getWidthOpcode(type, OP_REM_U64, OP_REM_U32, OP_REM_U16, OP_REM_U8);
 }
 
-static Opcode getRightShiftOpcode(TokenType type)
+static Opcode getRightShiftOpcode(DataType type)
 {
-    if (isSignedIntegerTypeToken(type)) {
+    if (isSignedIntegerType(type)) {
         return getWidthOpcode(type, OP_ASR_I64, OP_ASR_I32, OP_ASR_I16, OP_ASR_I8);
     }
 
     return getWidthOpcode(type, OP_LSR_I64, OP_LSR_I32, OP_LSR_I16, OP_LSR_I8);
 }
 
-static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
+static Opcode getIntegerOpcode(DataType type, IntegerOperation operation)
 {
     switch (operation) {
         case INTEGER_ADD:
@@ -935,7 +935,7 @@ static Opcode getIntegerOpcode(TokenType type, IntegerOperation operation)
 }
 
 static Operand emitBinaryOperands(
-    Compiler* compiler, IntegerOperation operation, TokenType type, Operand left, Operand right)
+    Compiler* compiler, IntegerOperation operation, DataType type, Operand left, Operand right)
 {
     int destination;
 
@@ -1042,53 +1042,53 @@ static Operand emitReversedComparison(Compiler* compiler, Opcode opcode, Operand
     return makeOperand(destination, true);
 }
 
-static Opcode getComparisonOpcode(TokenType type, bool orEqual)
+static Opcode getComparisonOpcode(DataType type, bool orEqual)
 {
-    if (isSignedIntegerTypeToken(type)) {
+    if (isSignedIntegerType(type)) {
         return orEqual ? OP_LE_I32 : OP_LT_I32;
     }
 
     return orEqual ? OP_LE_U32 : OP_LT_U32;
 }
 
-static Opcode getFloatOpcode(TokenType type, TokenType operatorType)
+static Opcode getFloatOpcode(DataType type, TokenType operatorType)
 {
     switch (operatorType) {
         case TOKEN_PLUS:
-            return type == TOKEN_F64 ? OP_ADD_F64 : OP_ADD_F32;
+            return type == TYPE_F64 ? OP_ADD_F64 : OP_ADD_F32;
         case TOKEN_MINUS:
-            return type == TOKEN_F64 ? OP_SUB_F64 : OP_SUB_F32;
+            return type == TYPE_F64 ? OP_SUB_F64 : OP_SUB_F32;
         case TOKEN_STAR:
-            return type == TOKEN_F64 ? OP_MUL_F64 : OP_MUL_F32;
+            return type == TYPE_F64 ? OP_MUL_F64 : OP_MUL_F32;
         case TOKEN_SLASH:
-            return type == TOKEN_F64 ? OP_DIV_F64 : OP_DIV_F32;
+            return type == TYPE_F64 ? OP_DIV_F64 : OP_DIV_F32;
         case TOKEN_PERCENT:
-            return type == TOKEN_F64 ? OP_REM_F64 : OP_REM_F32;
+            return type == TYPE_F64 ? OP_REM_F64 : OP_REM_F32;
         default:
             return OP_HLT;
     }
 }
 
-static Opcode getFloatOperationOpcode(TokenType type, IntegerOperation operation)
+static Opcode getFloatOperationOpcode(DataType type, IntegerOperation operation)
 {
     switch (operation) {
         case INTEGER_ADD:
-            return type == TOKEN_F64 ? OP_ADD_F64 : OP_ADD_F32;
+            return type == TYPE_F64 ? OP_ADD_F64 : OP_ADD_F32;
         case INTEGER_SUB:
-            return type == TOKEN_F64 ? OP_SUB_F64 : OP_SUB_F32;
+            return type == TYPE_F64 ? OP_SUB_F64 : OP_SUB_F32;
         case INTEGER_MUL:
-            return type == TOKEN_F64 ? OP_MUL_F64 : OP_MUL_F32;
+            return type == TYPE_F64 ? OP_MUL_F64 : OP_MUL_F32;
         case INTEGER_DIV:
-            return type == TOKEN_F64 ? OP_DIV_F64 : OP_DIV_F32;
+            return type == TYPE_F64 ? OP_DIV_F64 : OP_DIV_F32;
         case INTEGER_REM:
-            return type == TOKEN_F64 ? OP_REM_F64 : OP_REM_F32;
+            return type == TYPE_F64 ? OP_REM_F64 : OP_REM_F32;
         default:
             return OP_HLT;
     }
 }
 
 static Operand emitFloatOperands(Compiler* compiler, Opcode opcode,
-    TokenType type, Operand left, Operand right)
+    DataType type, Operand left, Operand right)
 {
     int destination;
 
@@ -1103,14 +1103,14 @@ static Operand emitFloatOperands(Compiler* compiler, Opcode opcode,
 
     emitInstruction(compiler, opcode, destination, left.reg, right.reg);
 
-    return type == TOKEN_F64
+    return type == TYPE_F64
         ? makeWideOperand(destination, true)
         : makeOperand(destination, true);
 }
 
 static Operand compileFloatBinary(Compiler* compiler, ASTNode* ast)
 {
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
     Operand left = compileConvertedExpression(compiler, ast->binary.leftExpr, type, false);
 
     if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
@@ -1123,7 +1123,7 @@ static Operand compileFloatBinary(Compiler* compiler, ASTNode* ast)
     return emitFloatOperands(compiler, opcode, type, left, right);
 }
 
-static Operand emitOrderedComparison(Compiler* compiler, TokenType type,
+static Operand emitOrderedComparison(Compiler* compiler, DataType type,
     Operand left, Operand right, bool orEqual, bool reversed)
 {
     Opcode opcode = getComparisonOpcode(type, orEqual);
@@ -1135,22 +1135,22 @@ static Operand emitOrderedComparison(Compiler* compiler, TokenType type,
     return emitComparison(compiler, opcode, left, right);
 }
 
-static Opcode getThreeWayOpcode(TokenType type, TokenType operatorType)
+static Opcode getThreeWayOpcode(DataType type, TokenType operatorType)
 {
     switch (type) {
-        case TOKEN_I64:
+        case TYPE_I64:
             return OP_CMP_I64;
-        case TOKEN_U64:
+        case TYPE_U64:
             return OP_CMP_U64;
-        case TOKEN_F32:
+        case TYPE_F32:
             return operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL ? OP_CMPG_F32 : OP_CMPL_F32;
-        case TOKEN_F64:
+        case TYPE_F64:
             return operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL ? OP_CMPG_F64 : OP_CMPL_F64;
         default:
             break;
     }
 
-    bool signedType = isSignedIntegerTypeToken(type);
+    bool signedType = isSignedIntegerType(type);
 
     return signedType ? OP_CMP_I32 : OP_CMP_U32;
 }
@@ -1168,7 +1168,7 @@ static Operand emitThreeWayComparison(Compiler* compiler, Opcode opcode, Operand
 }
 
 static Operand emitIntegerComparison(Compiler* compiler, TokenType operatorType,
-    TokenType type, Operand left, Operand right)
+    DataType type, Operand left, Operand right)
 {
     switch (operatorType) {
         case TOKEN_EQUAL_EQUAL:
@@ -1187,10 +1187,10 @@ static Operand emitIntegerComparison(Compiler* compiler, TokenType operatorType,
 }
 
 static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
-    TokenType type, Operand left, Operand right)
+    DataType type, Operand left, Operand right)
 {
-    bool floating = isFloatTypeToken(type);
-    bool wide = type == TOKEN_I64 || type == TOKEN_U64;
+    bool floating = isFloatType(type);
+    bool wide = type == TYPE_I64 || type == TYPE_U64;
 
     if (!floating && !wide && operatorType != TOKEN_SPACESHIP) {
         return emitIntegerComparison(compiler, operatorType, type, left, right);
@@ -1208,10 +1208,10 @@ static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
 
     emitInstruction(compiler, OP_LDI, zeroRegister, 0, 0);
 
-    return emitNumericComparison(compiler, operatorType, TOKEN_I32, ordering, zero);
+    return emitNumericComparison(compiler, operatorType, TYPE_I32, ordering, zero);
 }
 
-static Operand normalizeIntegerOperand(Compiler* compiler, Operand operand, TokenType type)
+static Operand normalizeIntegerOperand(Compiler* compiler, Operand operand, DataType type)
 {
     size_t size = getIntegerTypeSize(type);
 
@@ -1224,7 +1224,7 @@ static Operand normalizeIntegerOperand(Compiler* compiler, Operand operand, Toke
     Opcode opcode = OP_ZEXT_I32;
     int width = size * 8;
 
-    if (isSignedIntegerTypeToken(type)) {
+    if (isSignedIntegerType(type)) {
         opcode = OP_SEXT_I32;
     }
 
@@ -1233,7 +1233,7 @@ static Operand normalizeIntegerOperand(Compiler* compiler, Operand operand, Toke
     return operand;
 }
 
-static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenType type)
+static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, DataType type)
 {
     Operand value = compileConvertedExpression(compiler, ast, type, false);
 
@@ -1242,7 +1242,7 @@ static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenT
 
 static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
 {
-    TokenType type = ast->binary.operandType;
+    DataType type = ast->binary.operandType;
     Operand left = compileComparisonOperand(compiler, ast->binary.leftExpr, type);
     bool direct = isDirectVariable(compiler, ast->binary.rightExpr);
 
@@ -1256,7 +1256,7 @@ static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
 }
 
 static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
-    TokenType type, Operand left, Operand right)
+    DataType type, Operand left, Operand right)
 {
     switch (operatorType) {
         case TOKEN_PLUS:
@@ -1307,9 +1307,9 @@ static Operand compileLogicalBinary(Compiler* compiler, ASTNode* ast)
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
-    TokenType resultType = getTypeId(ast);
+    DataType resultType = getTypeId(ast);
 
-    if (resultType == TOKEN_STRING) {
+    if (resultType == TYPE_STRING) {
         return compileConcatenation(compiler, ast);
     }
 
@@ -1329,11 +1329,11 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
         return compileNumericComparison(compiler, ast);
     }
 
-    if (isFloatTypeToken(getTypeId(ast))) {
+    if (isFloatType(getTypeId(ast))) {
         return compileFloatBinary(compiler, ast);
     }
 
-    TokenType type = ast->binary.operandType;
+    DataType type = ast->binary.operandType;
     Operand left = compileConvertedExpression(compiler, ast->binary.leftExpr, type, false);
 
     if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
@@ -1359,13 +1359,13 @@ static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand opera
     return operand.slots == 2 ? makeWideOperand(destination, true) : makeOperand(destination, true);
 }
 
-static Opcode getNegationOpcode(TokenType type)
+static Opcode getNegationOpcode(DataType type)
 {
-    if (type == TOKEN_F32) {
+    if (type == TYPE_F32) {
         return OP_NEG_F32;
     }
 
-    if (type == TOKEN_F64) {
+    if (type == TYPE_F64) {
         return OP_NEG_F64;
     }
 
@@ -1388,7 +1388,7 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
             return emitUnaryOperand(
                 compiler, getIntegerOpcode(getTypeId(ast), INTEGER_BNOT), operand);
         case TOKEN_MINUS: {
-            TokenType type = getTypeId(ast);
+            DataType type = getTypeId(ast);
             Opcode opcode = getNegationOpcode(type);
 
             return emitUnaryOperand(compiler, opcode, operand);
@@ -1428,7 +1428,7 @@ static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand va
 static void compileCompoundAssignment(
     Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
-    TokenType type = getTypeId(ast->assignment.symbol);
+    DataType type = getTypeId(ast->assignment.symbol);
 
     Operand left = loadVariable(compiler, ast->assignment.symbol);
 
@@ -1444,7 +1444,7 @@ static void compileCompoundAssignment(
     Operand right = compileConvertedExpression(compiler, ast->assignment.expr, type, false);
     Operand result;
 
-    if (isFloatTypeToken(type)) {
+    if (isFloatType(type)) {
         Opcode opcode = getFloatOperationOpcode(type, operation);
         result = emitFloatOperands(compiler, opcode, type, left, right);
     } else {
@@ -1510,16 +1510,16 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
     return compileExpression(compiler, ast, false);
 }
 
-static Operand normalizeUnsignedOperand(Compiler* compiler, Operand operand, TokenType source)
+static Operand normalizeUnsignedOperand(Compiler* compiler, Operand operand, DataType source)
 {
-    if (source != TOKEN_U8 && source != TOKEN_U16) {
+    if (source != TYPE_U8 && source != TYPE_U16) {
         return operand;
     }
 
     return normalizeIntegerOperand(compiler, operand, source);
 }
 
-static Operand extendIntegerOperand(Compiler* compiler, Operand operand, TokenType source)
+static Operand extendIntegerOperand(Compiler* compiler, Operand operand, DataType source)
 {
     int destinationRegister = operand.reg;
 
@@ -1531,7 +1531,7 @@ static Operand extendIntegerOperand(Compiler* compiler, Operand operand, TokenTy
 
     int highRegister = allocateRegister(compiler);
 
-    if (isSignedIntegerTypeToken(source)) {
+    if (isSignedIntegerType(source)) {
         emitInstruction(compiler, OP_ASRI_I32, highRegister, destinationRegister, 31);
 
         return makeWideOperand(destinationRegister, true);
@@ -1543,7 +1543,7 @@ static Operand extendIntegerOperand(Compiler* compiler, Operand operand, TokenTy
 }
 
 static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
-    TokenType source, TokenType destination)
+    DataType source, DataType destination)
 {
     if (!canImplicitlyWidenInteger(source, destination)
         || getTypeSlotCount(destination) == operand.slots) {
@@ -1554,9 +1554,9 @@ static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
 }
 
 static Operand widenFloatOperand(Compiler* compiler, Operand operand,
-    TokenType source, TokenType destination)
+    DataType source, DataType destination)
 {
-    if (source != TOKEN_F32 || destination != TOKEN_F64) {
+    if (source != TYPE_F32 || destination != TYPE_F64) {
         return operand;
     }
 
@@ -1575,13 +1575,13 @@ static Operand widenFloatOperand(Compiler* compiler, Operand operand,
 }
 
 static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
-    TokenType source, TokenType destination)
+    DataType source, DataType destination)
 {
     if (!canImplicitlyConvertIntegerToFloat(source, destination)) {
         return operand;
     }
 
-    bool wide = destination == TOKEN_F64;
+    bool wide = destination == TYPE_F64;
     int destinationRegister = operand.reg;
 
     if (!operand.temporary) {
@@ -1590,7 +1590,7 @@ static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
         allocateRegister(compiler);
     }
 
-    bool signedInteger = isSignedIntegerTypeToken(source);
+    bool signedInteger = isSignedIntegerType(source);
     Opcode opcode;
 
     if (wide) {
@@ -1608,31 +1608,31 @@ static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
     return makeOperand(destinationRegister, true);
 }
 
-static uint64_t getWidenedIntegerLiteralValue(ASTNode* ast, TokenType source)
+static uint64_t getWidenedIntegerLiteralValue(ASTNode* ast, DataType source)
 {
     uint64_t value = ast->integerLiteral.value;
 
     switch (source) {
-        case TOKEN_I8:
+        case TYPE_I8:
             return (uint64_t)(int64_t)(int8_t)value;
-        case TOKEN_I16:
+        case TYPE_I16:
             return (uint64_t)(int64_t)(int16_t)value;
-        case TOKEN_I32:
+        case TYPE_I32:
             return (uint64_t)(int64_t)(int32_t)value;
-        case TOKEN_U8:
+        case TYPE_U8:
             return (uint8_t)value;
-        case TOKEN_U16:
+        case TYPE_U16:
             return (uint16_t)value;
-        case TOKEN_U32:
+        case TYPE_U32:
             return (uint32_t)value;
         default:
             return value;
     }
 }
 
-static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, TokenType destination)
+static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, DataType destination)
 {
-    TokenType source = getTypeId(ast);
+    DataType source = getTypeId(ast);
     ASTNode literal = *ast;
 
     literal.integerLiteral.value = getWidenedIntegerLiteralValue(ast, source);
@@ -1641,17 +1641,17 @@ static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, To
     return compileNumber(compiler, &literal);
 }
 
-static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, TokenType destination)
+static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, DataType destination)
 {
-    TokenType source = getTypeId(ast);
+    DataType source = getTypeId(ast);
     uint64_t integer = getWidenedIntegerLiteralValue(ast, source);
     double number = integer;
 
-    if (isSignedIntegerTypeToken(source)) {
+    if (isSignedIntegerType(source)) {
         number = (int64_t)integer;
     }
 
-    if (source == TOKEN_F32) {
+    if (source == TYPE_F32) {
         number = (float)number;
     }
 
@@ -1659,9 +1659,9 @@ static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, To
 }
 
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
-    TokenType destination, bool reference)
+    DataType destination, bool reference)
 {
-    TokenType source = getTypeId(ast);
+    DataType source = getTypeId(ast);
     bool integerToFloat = canImplicitlyConvertIntegerToFloat(source, destination);
     bool floatWidening = canImplicitlyWidenFloat(source, destination);
 
@@ -1673,7 +1673,7 @@ static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
         return compileWidenedIntegerLiteral(compiler, ast, destination);
     }
 
-    if (!reference && ast->type == AST_FLOAT && source == TOKEN_F32 && destination == TOKEN_F64) {
+    if (!reference && ast->type == AST_FLOAT && source == TYPE_F32 && destination == TYPE_F64) {
         double value = (float)ast->floatLiteral.value;
 
         return compileFloatValue(compiler, value, destination);
@@ -1712,7 +1712,7 @@ static Operand shrinkIntegerOperand(Compiler* compiler, Operand operand)
     return makeOperand(result, true);
 }
 
-static Operand compileIntegerCast(Compiler* compiler, Operand operand, TokenType source, TokenType destination)
+static Operand compileIntegerCast(Compiler* compiler, Operand operand, DataType source, DataType destination)
 {
     operand = normalizeUnsignedOperand(compiler, operand, source);
 
@@ -1735,7 +1735,7 @@ static Operand compileIntegerCast(Compiler* compiler, Operand operand, TokenType
 
     Opcode opcode = OP_LSRI_I32;
 
-    if (isSignedIntegerTypeToken(destination)) {
+    if (isSignedIntegerType(destination)) {
         opcode = OP_ASRI_I32;
     }
 
@@ -1744,7 +1744,7 @@ static Operand compileIntegerCast(Compiler* compiler, Operand operand, TokenType
     return operand;
 }
 
-static Opcode getFloatToIntegerOpcode(TokenType source, TokenType destination)
+static Opcode getFloatToIntegerOpcode(DataType source, DataType destination)
 {
     static const Opcode opcodes[2][4] = {
         {OP_F32_TO_I32, OP_F32_TO_U32, OP_F32_TO_I64, OP_F32_TO_U64},
@@ -1752,7 +1752,7 @@ static Opcode getFloatToIntegerOpcode(TokenType source, TokenType destination)
     };
     int index = 0;
 
-    if (!isSignedIntegerTypeToken(destination)) {
+    if (!isSignedIntegerType(destination)) {
         index++;
     }
 
@@ -1760,10 +1760,10 @@ static Opcode getFloatToIntegerOpcode(TokenType source, TokenType destination)
         index += 2;
     }
 
-    return opcodes[source == TOKEN_F64][index];
+    return opcodes[source == TYPE_F64][index];
 }
 
-static Opcode getIntegerToFloatOpcode(TokenType source, TokenType destination)
+static Opcode getIntegerToFloatOpcode(DataType source, DataType destination)
 {
     static const Opcode signedOpcodes[2][2] = {
         {OP_I32_TO_F32, OP_I32_TO_F64},
@@ -1774,29 +1774,29 @@ static Opcode getIntegerToFloatOpcode(TokenType source, TokenType destination)
         {OP_U64_TO_F32, OP_U64_TO_F64}
     };
     bool wideSource = getTypeSlotCount(source) == 2;
-    bool wideDestination = destination == TOKEN_F64;
+    bool wideDestination = destination == TYPE_F64;
 
-    if (isSignedIntegerTypeToken(source)) {
+    if (isSignedIntegerType(source)) {
         return signedOpcodes[wideSource][wideDestination];
     }
 
     return unsignedOpcodes[wideSource][wideDestination];
 }
 
-static Opcode getNumericConversionOpcode(TokenType source, TokenType destination)
+static Opcode getNumericConversionOpcode(DataType source, DataType destination)
 {
-    if (isIntegerTypeToken(destination)) {
+    if (isIntegerType(destination)) {
         return getFloatToIntegerOpcode(source, destination);
     }
 
-    if (isIntegerTypeToken(source)) {
+    if (isIntegerType(source)) {
         return getIntegerToFloatOpcode(source, destination);
     }
 
     return OP_F64_TO_F32;
 }
 
-static Operand emitConversionOperand(Compiler* compiler, Operand operand, TokenType destination, Opcode opcode)
+static Operand emitConversionOperand(Compiler* compiler, Operand operand, DataType destination, Opcode opcode)
 {
     size_t slots = getTypeSlotCount(destination);
 
@@ -1816,23 +1816,23 @@ static Operand emitConversionOperand(Compiler* compiler, Operand operand, TokenT
 static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    TokenType source = getTypeId(expression);
-    TokenType destination = ast->conversion.typeId;
+    DataType source = getTypeId(expression);
+    DataType destination = ast->conversion.typeId;
 
-    if (destination == TOKEN_CHAR && source != TOKEN_U8) {
+    if (destination == TYPE_CHAR && source != TYPE_U8) {
         integerToCharacterConversionError(ast->conversion.token);
     }
 
     Operand operand = compileExpression(compiler, expression, false);
 
-    if (destination == TOKEN_CHAR) {
+    if (destination == TYPE_CHAR) {
         return normalizeUnsignedOperand(compiler, operand, source);
     }
 
-    return compileIntegerCast(compiler, operand, TOKEN_U32, destination);
+    return compileIntegerCast(compiler, operand, TYPE_U32, destination);
 }
 
-static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, TokenType destination)
+static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, DataType destination)
 {
     Operand operand = compileExpression(compiler, expression, false);
 
@@ -1841,7 +1841,7 @@ static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, 
     emitInstruction(compiler, OP_BANDI_I32, operand.reg, operand.reg, 1);
 
     if (getTypeSlotCount(destination) == 2) {
-        return extendIntegerOperand(compiler, operand, TOKEN_U32);
+        return extendIntegerOperand(compiler, operand, TYPE_U32);
     }
 
     return operand;
@@ -1850,24 +1850,24 @@ static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, 
 static Operand compileExplicitConversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    TokenType source = getTypeId(expression);
-    TokenType destination = ast->conversion.typeId;
+    DataType source = getTypeId(expression);
+    DataType destination = ast->conversion.typeId;
 
     if (source == destination || canImplicitlyWidenType(source, destination)) {
         return compileConvertedExpression(compiler, expression, destination, false);
     }
 
-    if (source == TOKEN_BOOL) {
+    if (source == TYPE_BOOL) {
         return compileBooleanToInteger(compiler, expression, destination);
     }
 
-    if (source == TOKEN_CHAR || destination == TOKEN_CHAR) {
+    if (source == TYPE_CHAR || destination == TYPE_CHAR) {
         return compileCharacterConversion(compiler, ast);
     }
 
     Operand operand = compileExpression(compiler, expression, false);
 
-    if (isIntegerTypeToken(source) && isIntegerTypeToken(destination)) {
+    if (isIntegerType(source) && isIntegerType(destination)) {
         return compileIntegerCast(compiler, operand, source, destination);
     }
 
@@ -1924,7 +1924,7 @@ static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vecto
     bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
 
     ASTNode* argument = args->data[position];
-    TokenType destination = parameter ? getTypeId(parameter) : getTypeId(argument);
+    DataType destination = parameter ? getTypeId(parameter) : getTypeId(argument);
     Operand expression = compileConvertedExpression(compiler, argument, destination, reference);
 
     return expression;
@@ -2001,7 +2001,7 @@ static FunctionObject* createBuiltinFunctionObject(Builtin* builtin)
         function->paramCount += getTypeSlotCount(builtin->params[i]);
     }
 
-    if (builtin->returnTypeId == TOKEN_VOID) {
+    if (builtin->returnTypeId == TYPE_VOID) {
         function->returnCount = 0;
     }
 
@@ -2022,7 +2022,7 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     }
     function->returnCount = getTypeSlotCount(ast->functionDefinition.returnTypeId);
 
-    if (ast->functionDefinition.returnTypeId == TOKEN_VOID) {
+    if (ast->functionDefinition.returnTypeId == TYPE_VOID) {
         function->returnCount = 0;
     }
 
@@ -2059,7 +2059,7 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
     return position;
 }
 
-static TokenType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
+static DataType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
 {
     if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
         return builtin->params[0];
@@ -2068,34 +2068,34 @@ static TokenType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
     return getTypeId(argument);
 }
 
-static ArgumentFormat getArgumentFormat(TokenType type)
+static ArgumentFormat getArgumentFormat(DataType type)
 {
     switch (type) {
-        case TOKEN_I8:
+        case TYPE_I8:
             return (ArgumentFormat){.formatter = formatI8Argument, .capacity = 4};
-        case TOKEN_I16:
+        case TYPE_I16:
             return (ArgumentFormat){.formatter = formatI16Argument, .capacity = 6};
-        case TOKEN_I32:
+        case TYPE_I32:
             return (ArgumentFormat){.formatter = formatI32Argument, .capacity = 11};
-        case TOKEN_I64:
+        case TYPE_I64:
             return (ArgumentFormat){.formatter = formatI64Argument, .capacity = 20};
-        case TOKEN_U8:
+        case TYPE_U8:
             return (ArgumentFormat){.formatter = formatU8Argument, .capacity = 3};
-        case TOKEN_U16:
+        case TYPE_U16:
             return (ArgumentFormat){.formatter = formatU16Argument, .capacity = 5};
-        case TOKEN_U32:
+        case TYPE_U32:
             return (ArgumentFormat){.formatter = formatU32Argument, .capacity = 10};
-        case TOKEN_U64:
+        case TYPE_U64:
             return (ArgumentFormat){.formatter = formatU64Argument, .capacity = 20};
-        case TOKEN_F32:
+        case TYPE_F32:
             return (ArgumentFormat){.formatter = formatF32Argument, .capacity = 32};
-        case TOKEN_F64:
+        case TYPE_F64:
             return (ArgumentFormat){.formatter = formatF64Argument, .capacity = 32};
-        case TOKEN_CHAR:
+        case TYPE_CHAR:
             return (ArgumentFormat){.formatter = formatCharArgument, .capacity = 4};
-        case TOKEN_STRING:
+        case TYPE_STRING:
             return (ArgumentFormat){.formatter = formatStringArgument};
-        case TOKEN_BOOL:
+        case TYPE_BOOL:
             return (ArgumentFormat){.formatter = formatBoolArgument, .capacity = 5};
         default:
             return (ArgumentFormat){0};
@@ -2117,7 +2117,7 @@ static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, 
 
     for (size_t i = 0; i < args->count && matches; i++) {
         ASTNode* argument = args->data[i];
-        TokenType type = getTypeId(argument);
+        DataType type = getTypeId(argument);
         ArgumentFormat format = getArgumentFormat(type);
         matches = format.formatter == function->argumentFormats[i].formatter;
     }
@@ -2125,7 +2125,7 @@ static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, 
     return matches;
 }
 
-static void setBuiltinArgumentFormat(FunctionObject* function, TokenType type, size_t index)
+static void setBuiltinArgumentFormat(FunctionObject* function, DataType type, size_t index)
 {
     if (!function->argumentFormats) {
         return;
@@ -2153,7 +2153,7 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* argument = args->data[i];
-        TokenType type = getBuiltinArgumentType(builtin, argument);
+        DataType type = getBuiltinArgumentType(builtin, argument);
 
         setBuiltinArgumentFormat(function, type, i);
 
@@ -2233,7 +2233,7 @@ static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode
 {
     void* items[] = {leftExpression, rightExpression};
     Vector args = {.data = items, .capacity = 2, .count = 2};
-    TokenType argumentTypes[] = {TOKEN_I32, TOKEN_I32};
+    DataType argumentTypes[] = {TYPE_I32, TYPE_I32};
     Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
     uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
@@ -2440,7 +2440,7 @@ static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
 
     bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
     ASTNode* function = getCurrentFunctionDefinition(compiler);
-    TokenType returnType = function->functionDefinition.returnTypeId;
+    DataType returnType = function->functionDefinition.returnTypeId;
     Operand value = compileConvertedExpression(
         compiler, ast->returnStatement.expr, returnType, reference);
 
@@ -2674,9 +2674,9 @@ static void patchJump(Compiler* compiler, size_t position)
 }
 
 static void storeConditionalValue(
-    Compiler* compiler, TokenType type, int destination, Operand value)
+    Compiler* compiler, DataType type, int destination, Operand value)
 {
-    if (type == TOKEN_VOID) {
+    if (type == TYPE_VOID) {
         return;
     }
 
@@ -2688,7 +2688,7 @@ static void storeConditionalValue(
 }
 
 static Operand compileConditionalBranch(
-    Compiler* compiler, ASTNode* branch, TokenType type, int destination, bool reference)
+    Compiler* compiler, ASTNode* branch, DataType type, int destination, bool reference)
 {
     if (branch->type == AST_CONDITIONAL) {
         Operand value = compileConvertedExpression(compiler, branch, type, reference);
@@ -2701,7 +2701,7 @@ static Operand compileConditionalBranch(
     size_t count = countVector(&branch->compound.statements);
 
     for (size_t i = 0; i < count; i++) {
-        bool discard = type == TOKEN_VOID || i + 1 < count;
+        bool discard = type == TYPE_VOID || i + 1 < count;
         ASTNode* statement = getVectorAt(&branch->compound.statements, i);
 
         if (discard) {
@@ -2720,9 +2720,9 @@ static Operand compileConditionalBranch(
     return noOperand();
 }
 
-static Operand allocateConditionalResult(Compiler* compiler, TokenType type)
+static Operand allocateConditionalResult(Compiler* compiler, DataType type)
 {
-    if (type == TOKEN_VOID) {
+    if (type == TYPE_VOID) {
         return noOperand();
     }
 
@@ -2735,7 +2735,7 @@ static Operand allocateConditionalResult(Compiler* compiler, TokenType type)
 }
 
 static void compileScopedConditionalBranch(
-    Compiler* compiler, ASTNode* branch, TokenType type, int destination, bool reference)
+    Compiler* compiler, ASTNode* branch, DataType type, int destination, bool reference)
 {
     if (!branch) {
         return;
@@ -2752,7 +2752,7 @@ static void compileConditionalBranches(
     Compiler* compiler, ASTNode* ast, int destination, bool reference, size_t elseJump)
 {
     ASTNode* condition = ast->conditional.condition;
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
 
     if (condition->type == AST_BOOLEAN) {
         ASTNode* branch = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
@@ -2790,7 +2790,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
         releaseOperand(compiler, condition);
     }
 
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
     Operand result = allocateConditionalResult(compiler, type);
 
     compileConditionalBranches(compiler, ast, result.reg, reference, elseJump);
@@ -2824,7 +2824,7 @@ static void compileWhile(Compiler* compiler, ASTNode* ast)
     size_t exitJump = emitConditionJump(compiler, condition);
 
     releaseOperand(compiler, condition);
-    compileScopedConditionalBranch(compiler, ast->whileStatement.body, TOKEN_VOID, 0, false);
+    compileScopedConditionalBranch(compiler, ast->whileStatement.body, TYPE_VOID, 0, false);
     emitLoopJump(compiler, start);
     patchJump(compiler, exitJump);
 
@@ -2833,7 +2833,7 @@ static void compileWhile(Compiler* compiler, ASTNode* ast)
 
 static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
 {
-    TokenType type = getTypeId(subject);
+    DataType type = getTypeId(subject);
     Operand value = compileComparisonOperand(compiler, subject, type);
     value.temporary = false;
 
@@ -2848,7 +2848,7 @@ static bool isMatchAlternative(ASTNode* pattern)
 static Operand compileSubjectMatchCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
     if (!isMatchAlternative(pattern)) {
-        TokenType type = getTypeId(pattern);
+        DataType type = getTypeId(pattern);
         Operand value = compileComparisonOperand(compiler, pattern, type);
 
         return emitNumericComparison(compiler, TOKEN_EQUAL_EQUAL, type, subject, value);
@@ -2888,9 +2888,9 @@ static void markMatchJoin(Compiler* compiler, Vector* jumps)
     patchMatchJumps(compiler, jumps);
 }
 
-static int allocateMatchDestination(Compiler* compiler, TokenType type)
+static int allocateMatchDestination(Compiler* compiler, DataType type)
 {
-    if (type == TOKEN_VOID) {
+    if (type == TYPE_VOID) {
         return -1;
     }
 
@@ -2978,7 +2978,7 @@ static size_t compileMatchAlternativeJumps(
         operatorType = TOKEN_EQUAL_EQUAL;
     }
 
-    TokenType type = getTypeId(pattern);
+    DataType type = getTypeId(pattern);
     Operand condition = emitNumericComparison(compiler, operatorType, type, subject, value);
     size_t jump = emitConditionJump(compiler, condition);
 
@@ -3012,13 +3012,13 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
     }
 
     if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
-        && isLiteralMatchPattern(arm->pattern) && getTypeId(ast->match.subject) != TOKEN_I64
-        && getTypeId(ast->match.subject) != TOKEN_U64) {
+        && isLiteralMatchPattern(arm->pattern) && getTypeId(ast->match.subject) != TYPE_I64
+        && getTypeId(ast->match.subject) != TYPE_U64) {
         return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
     }
 
-    TokenType patternType = getTypeId(arm->pattern);
-    bool numericCompare = patternType == TOKEN_I64 || patternType == TOKEN_U64 || isFloatTypeToken(patternType);
+    DataType patternType = getTypeId(arm->pattern);
+    bool numericCompare = patternType == TYPE_I64 || patternType == TYPE_U64 || isFloatType(patternType);
 
     if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm) || numericCompare) {
         Operand condition = compileMatchCondition(compiler, ast, arm, subject);
@@ -3064,7 +3064,7 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
 
     emitOperandMov(compiler, position, subject);
 
-    TokenType bindingType = getTypeId(binding);
+    DataType bindingType = getTypeId(binding);
     int bindingRegisterCount = position + getTypeSlotCount(bindingType);
 
     compiler->registerCount = MAX(compiler->registerCount, bindingRegisterCount);
@@ -3089,7 +3089,7 @@ static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, O
 {
     int branchRegisterCount = compiler->registerCount;
     size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
 
     storeMatchBinding(compiler, arm->binding, subject);
 
@@ -3155,15 +3155,15 @@ static void compileMatchDefault(
         return;
     }
 
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
 
     compileConditionalBranch(compiler, ast->match.defaultBranch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
 }
 
-static Operand matchResultOperand(TokenType type, int destination)
+static Operand matchResultOperand(DataType type, int destination)
 {
-    if (type == TOKEN_VOID) {
+    if (type == TYPE_VOID) {
         return noOperand();
     }
 
@@ -3194,7 +3194,7 @@ static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value)
 
     *value = ast->integerLiteral.value;
 
-    if (ast->integerLiteral.typeId == TOKEN_I32) {
+    if (ast->integerLiteral.typeId == TYPE_I32) {
         *value = (uint64_t)(int64_t)(int32_t)*value;
     }
 
@@ -3305,7 +3305,7 @@ static bool findLiteralMatchBranch(ASTNode* ast, ASTNode** branch, ASTNode** bin
 }
 
 static bool compileLiteralMatch(
-    Compiler* compiler, ASTNode* ast, TokenType type, int destination, bool reference)
+    Compiler* compiler, ASTNode* ast, DataType type, int destination, bool reference)
 {
     ASTNode* branch;
     ASTNode* binding;
@@ -3327,13 +3327,13 @@ static bool compileLiteralMatch(
     return true;
 }
 
-static void restoreMatchCompilerState(Compiler* compiler, TokenType type, int previousLocalPositionOffset,
+static void restoreMatchCompilerState(Compiler* compiler, DataType type, int previousLocalPositionOffset,
     int previousRegisterCount)
 {
     compiler->localPositionOffset = previousLocalPositionOffset;
     compiler->registerCount = previousRegisterCount;
 
-    if (type != TOKEN_VOID) {
+    if (type != TYPE_VOID) {
         compiler->registerCount += getTypeSlotCount(type);
     }
 }
@@ -3342,7 +3342,7 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference)
 {
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
-    TokenType type = getTypeId(ast);
+    DataType type = getTypeId(ast);
     int destination = allocateMatchDestination(compiler, type);
 
     if (compileLiteralMatch(compiler, ast, type, destination, reference)) {
@@ -3766,9 +3766,9 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
-    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TOKEN_VOID;
+    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TYPE_VOID;
 
-    if (display && getTypeId(ast) == TOKEN_UNKNOWN) {
+    if (display && getTypeId(ast) == TYPE_UNKNOWN) {
         unresolvedReplExpressionTypeError();
     }
 
@@ -3778,7 +3778,7 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
         return;
     }
 
-    TokenType argumentType = getTypeId(ast);
+    DataType argumentType = getTypeId(ast);
     void* items[] = {ast};
     Vector args = {.data = items, .capacity = 1, .count = 1};
     Builtin* builtin = resolveBuiltin("print", &argumentType, 1);

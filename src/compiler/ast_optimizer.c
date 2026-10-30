@@ -98,22 +98,22 @@ static bool getLiteralComparisonOperand(ASTNode* ast, int64_t* value)
     uint64_t integer = ast->integerLiteral.value;
 
     switch (ast->integerLiteral.typeId) {
-        case TOKEN_I8:
+        case TYPE_I8:
             *value = (int8_t)integer;
             break;
-        case TOKEN_I16:
+        case TYPE_I16:
             *value = (int16_t)integer;
             break;
-        case TOKEN_I32:
+        case TYPE_I32:
             *value = signedI32Value(integer);
             break;
-        case TOKEN_U8:
+        case TYPE_U8:
             *value = (uint8_t)integer;
             break;
-        case TOKEN_U16:
+        case TYPE_U16:
             *value = (uint16_t)integer;
             break;
-        case TOKEN_U32:
+        case TYPE_U32:
             *value = (uint32_t)integer;
             break;
         default: return false;
@@ -161,7 +161,7 @@ static bool foldBooleanBinary(ASTNode* ast)
     int64_t right;
     bool value;
 
-    if (ast->binary.typeId != TOKEN_BOOL
+    if (ast->binary.typeId != TYPE_BOOL
         || !getLiteralComparisonOperand(ast->binary.leftExpr, &left)
         || !getLiteralComparisonOperand(ast->binary.rightExpr, &right)
         || !foldBooleanValue(ast->binary.operator.type, left, right, &value)) {
@@ -222,7 +222,7 @@ static size_t concatenationLiteralCapacity(const ASTNode* ast)
 
 static bool foldConcatenation(ASTNode* ast)
 {
-    if (ast->binary.typeId != TOKEN_STRING || ast->binary.operator.type != TOKEN_PLUS) {
+    if (ast->binary.typeId != TYPE_STRING || ast->binary.operator.type != TOKEN_PLUS) {
         return false;
     }
 
@@ -262,8 +262,8 @@ static void foldBinary(ASTNode* ast)
         return;
     }
 
-    if (getTypeId(ast->binary.leftExpr) != TOKEN_I32
-        || getTypeId(ast->binary.rightExpr) != TOKEN_I32) {
+    if (getTypeId(ast->binary.leftExpr) != TYPE_I32
+        || getTypeId(ast->binary.rightExpr) != TYPE_I32) {
         return;
     }
 
@@ -280,16 +280,16 @@ static void foldBinary(ASTNode* ast)
     ast->type = AST_INTEGER;
     ast->integerLiteral.value = value;
     ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = TOKEN_I32;
+    ast->integerLiteral.typeId = TYPE_I32;
 }
 
-static bool isLiteralOfType(ASTNode* ast, TokenType type)
+static bool isLiteralOfType(ASTNode* ast, DataType type)
 {
     if (ast->type != AST_INTEGER && ast->type != AST_BOOLEAN && ast->type != AST_FLOAT) {
         return false;
     }
 
-    TokenType literalType = getTypeId(ast);
+    DataType literalType = getTypeId(ast);
 
     return literalType == type;
 }
@@ -330,7 +330,7 @@ static void propagateLiteralLet(ASTNode* ast)
     }
 
     ASTNode* initializer = symbol->variableDefinition.expr;
-    TokenType type = symbol->variableDefinition.typeId;
+    DataType type = symbol->variableDefinition.typeId;
 
     if (!initializer) {
         return;
@@ -376,23 +376,23 @@ static void foldLogicalNot(ASTNode* ast)
     replacePrefixWithLiteral(ast, &replacement);
 }
 
-static uint64_t negateIntegerValue(uint64_t value, TokenType type)
+static uint64_t negateIntegerValue(uint64_t value, DataType type)
 {
     uint64_t result = UINT64_C(0) - value;
 
     switch (type) {
-        case TOKEN_I8:
+        case TYPE_I8:
             return (uint64_t)(int64_t)(int8_t)result;
-        case TOKEN_I16:
+        case TYPE_I16:
             return (uint64_t)(int64_t)(int16_t)result;
-        case TOKEN_I32:
+        case TYPE_I32:
             return (uint64_t)(int64_t)(int32_t)result;
         default:
             return result;
     }
 }
 
-static void foldIntegerNegation(ASTNode* ast, TokenType type)
+static void foldIntegerNegation(ASTNode* ast, DataType type)
 {
     ASTNode* operand = ast->prefix.expr;
 
@@ -409,11 +409,11 @@ static void foldIntegerNegation(ASTNode* ast, TokenType type)
     replacePrefixWithLiteral(ast, &replacement);
 }
 
-static void foldFloatNegation(ASTNode* ast, TokenType type)
+static void foldFloatNegation(ASTNode* ast, DataType type)
 {
     ASTNode* operand = ast->prefix.expr;
 
-    if (type != TOKEN_F32 && type != TOKEN_F64) {
+    if (type != TYPE_F32 && type != TYPE_F64) {
         return;
     }
 
@@ -424,7 +424,7 @@ static void foldFloatNegation(ASTNode* ast, TokenType type)
     double value = operand->type == AST_FLOAT ? operand->floatLiteral.value : operand->integerLiteral.value;
     ASTNode replacement = {.type = AST_FLOAT};
 
-    if (type == TOKEN_F32) {
+    if (type == TYPE_F32) {
         value = (float)value;
     }
 
@@ -447,8 +447,8 @@ static void foldPrefix(ASTNode* ast)
         return;
     }
 
-    TokenType type = getTypeId(ast->prefix.expr);
-    bool integer = isSignedIntegerTypeToken(type);
+    DataType type = getTypeId(ast->prefix.expr);
+    bool integer = isSignedIntegerType(type);
 
     if (integer) {
         foldIntegerNegation(ast, type);
@@ -532,7 +532,7 @@ static void foldConditional(ASTNode* ast)
         return;
     }
 
-    TokenType type = getTypeId(result);
+    DataType type = getTypeId(result);
 
     if (type != ast->conditional.typeId) {
         return;
@@ -649,13 +649,13 @@ static void optimizeConversion(ASTNode* ast, bool checkZero)
     replaceWithExpression(ast, expression);
 }
 
-static void validateZeroDivisor(ASTNode* divisor, Token operator, TokenType type, bool checkZero)
+static void validateZeroDivisor(ASTNode* divisor, Token operator, DataType type, bool checkZero)
 {
     if (!checkZero || divisor->type != AST_INTEGER || divisor->integerLiteral.value != 0) {
         return;
     }
 
-    bool integer = isIntegerTypeToken(type);
+    bool integer = isIntegerType(type);
     bool division = operator.type == TOKEN_SLASH || operator.type == TOKEN_SLASH_EQUAL;
     bool remainder = operator.type == TOKEN_PERCENT || operator.type == TOKEN_PERCENT_EQUAL;
 
@@ -702,7 +702,7 @@ static void optimizeAssignment(ASTNode* ast, bool checkZero)
 {
     optimizeNode(ast->assignment.expr, checkZero);
 
-    TokenType type = getTypeId(ast->assignment.symbol);
+    DataType type = getTypeId(ast->assignment.symbol);
 
     validateZeroDivisor(ast->assignment.expr, ast->assignment.operator, type, checkZero);
 }

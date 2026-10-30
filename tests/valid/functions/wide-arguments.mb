@@ -1,0 +1,27 @@
+func signedIdentity(value: i64) -> i64 {
+    return value
+}
+
+func unsignedIdentity(value: u64) -> u64 {
+    return value
+}
+
+func floatIdentity(value: f64) -> f64 {
+    return value
+}
+
+var signedValue: i64 = -9223372036854775808
+var unsignedValue: u64 = 18446744073709551615
+var floatValue: f64 = 1.25
+
+var signedResult = signedIdentity(signedValue)
+var unsignedResult = unsignedIdentity(unsignedValue)
+var floatResult = floatIdentity(floatValue)
+
+print(signedResult, unsignedResult, floatResult)
+
+signedResult = signedIdentity(-9223372036854775808)
+unsignedResult = unsignedIdentity(18446744073709551615)
+floatResult = floatIdentity(1.25)
+
+print(signedResult, unsignedResult, floatResult)

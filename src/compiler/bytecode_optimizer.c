@@ -37,6 +37,8 @@ static bool usesRegisterPairs(Opcode opcode)
         case OP_MOV_64:
         case OP_LDC_64:
         case OP_LDG_64:
+        case OP_LDC_64_CALL:
+        case OP_LDG_64_CALL:
         case OP_STG_64:
         case OP_LDR_64:
         case OP_STR_64:
@@ -684,6 +686,10 @@ static Opcode loadCallOpcode(Opcode opcode)
         case OP_LDI: return OP_LDI_CALL;
         case OP_LDC: return OP_LDC_CALL;
         case OP_LDG: return OP_LDG_CALL;
+        case OP_LDC_64:
+            return OP_LDC_64_CALL;
+        case OP_LDG_64:
+            return OP_LDG_64_CALL;
         case OP_LDR: return OP_LDR_CALL;
         default: return OP_HLT;
     }

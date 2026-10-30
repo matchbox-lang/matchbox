@@ -286,6 +286,8 @@ typedef enum Opcode
     OP_LDI_CALL,
     OP_LDC_CALL,
     OP_LDG_CALL,
+    OP_LDC_64_CALL,
+    OP_LDG_64_CALL,
     OP_LDR_CALL,
     OP_STG_CALL,
 

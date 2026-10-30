@@ -29,6 +29,26 @@ case OP_LDC_64:
 case OP_LDG_64:
     WRITE_U64(vm->fp, a, READ_U64(vm->globals.data, OPERAND_BC(inst)));
     break;
+case OP_LDC_64_CALL: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->module->constants.data[position];
+    vm->fp[a + 1] = vm->module->constants.data[position + 1];
+
+    functionPosition = LOAD_CALL_FUNCTION(operands);
+    goto call;
+}
+case OP_LDG_64_CALL: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->globals.data[position];
+    vm->fp[a + 1] = vm->globals.data[position + 1];
+
+    functionPosition = LOAD_CALL_FUNCTION(operands);
+    goto call;
+}
 case OP_STG_64:
     WRITE_U64(vm->globals.data, OPERAND_BC(inst), READ_U64(vm->fp, a));
     break;

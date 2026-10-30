@@ -7,6 +7,24 @@ case OP_LDC_64:
 case OP_LDG_64:
     vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
     break;
+case OP_LDC_64_CALL: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->module->constants.data[position];
+
+    functionPosition = LOAD_CALL_FUNCTION(operands);
+    goto call;
+}
+case OP_LDG_64_CALL: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->globals.data[position];
+
+    functionPosition = LOAD_CALL_FUNCTION(operands);
+    goto call;
+}
 case OP_STG_64:
     vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
     break;

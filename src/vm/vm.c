@@ -80,6 +80,10 @@ static void run(VM* vm)
             case OP_STG:
                 vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
                 break;
+            case OP_STGI:
+                vm->fp[a] = SIGNED_VALUE((int8_t)b);
+                vm->globals.data[c] = vm->fp[a];
+                break;
             case OP_REFL:
                 vm->fp[a] = POINTER_VALUE(&vm->fp[b]);
                 break;
@@ -638,10 +642,6 @@ static void run(VM* vm)
                 functionPosition = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
-            case OP_LDI_STG:
-                vm->fp[a] = SIGNED_VALUE((int8_t)b);
-                vm->globals.data[c] = vm->fp[a];
-                break;
             case OP_WIDE: {
                 Instruction prefix = inst;
                 inst = *vm->ip++;

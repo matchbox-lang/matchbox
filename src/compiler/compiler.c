@@ -572,7 +572,7 @@ static Operand loadGlobalWithStoreForwarding(Compiler* compiler, size_t position
 
     if (previous.opcode == OP_STG) {
         storedPosition = previous.b << 8 | previous.c;
-    } else if (previous.opcode == OP_LDI_STG) {
+    } else if (previous.opcode == OP_STGI) {
         storedPosition = previous.c;
     } else {
         return makeOperand(emitLdg(compiler, position), true);

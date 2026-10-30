@@ -53,6 +53,7 @@ typedef enum Opcode
     OP_LDC,
     OP_LDG,
     OP_STG,
+    OP_STGI,
     OP_REFL,
     OP_REFG,
     OP_LDR,
@@ -284,7 +285,6 @@ typedef enum Opcode
     OP_LDR_CALL,
 
     // Fused data movement
-    OP_LDI_STG,
     OP_LDI_LDG,
     OP_LDG_LDI,
     OP_MOV_LDI,

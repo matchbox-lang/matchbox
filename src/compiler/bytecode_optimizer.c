@@ -631,7 +631,7 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
 
     if (first->opcode == OP_LDI && second->opcode == OP_STG && first->a == second->a
         && second->b == 0 && small) {
-        first->opcode = OP_LDI_STG;
+        first->opcode = OP_STGI;
         first->b = first->c;
         first->c = second->c;
 

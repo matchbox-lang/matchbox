@@ -187,6 +187,7 @@ static void printInstruction(uint8_t c)
         case OP_LDC:            printOpcodeRegisterUint16("LDC"); break;
         case OP_LDG:            printOpcodeRegisterUint16("LDG"); break;
         case OP_STG:            printOpcodeRegisterUint16("STG"); break;
+        case OP_STGI:           printOpcodeRegisterInt8Uint8("STGI"); break;
         case OP_REFL:           printOpcodeRegisters2("REFL"); break;
         case OP_REFG:           printOpcodeRegisterUint16("REFG"); break;
         case OP_LDR:            printOpcodeRegisters2("LDR"); break;
@@ -366,7 +367,6 @@ static void printInstruction(uint8_t c)
         case OP_LDC_CALL:       printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:       printLoadCall("LDG_CALL"); break;
         case OP_LDR_CALL:       printLoadCall("LDR_CALL"); break;
-        case OP_LDI_STG:        printOpcodeRegisterInt8Uint8("LDI_STG"); break;
         case OP_LDI_LDG:        printOpcodeRegisterInt8Uint8("LDI_LDG"); break;
         case OP_LDG_LDI:        printOpcodeRegisterUint8Int8("LDG_LDI"); break;
         case OP_MOV_LDI:        printOpcodeRegisters2Int8("MOV_LDI"); break;

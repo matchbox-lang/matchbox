@@ -1334,6 +1334,7 @@ static void mergeMatchResult(ASTNode* ast, ASTNode* branch, DataType branchType,
     bool first = *resultType == TYPE_UNKNOWN;
     bool hasExpectedType = ast->match.typeId != TYPE_UNKNOWN && ast->match.typeId != TYPE_VOID;
     ASTNode* result = getBranchResult(branch);
+    
     mergeBranchReference(ast, result, first, hasExpectedType, ast->match.token);
     mergeMatchBranchType(ast, branchType, resultType);
 }
@@ -1435,11 +1436,14 @@ static void analyzeMatchDefault(Analyzer* analyzer, ASTNode* ast, Vector* contin
     }
 
     Vector states;
+
     copyOwnershipState(&states, initialStates);
     applyOwnershipStates(&states);
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
     releaseReferencesDeadOnBranch(analyzer, &states, ast->match.defaultBranch);
+
     DataType branchType = analyzeScopedBranch(analyzer, ast->match.defaultBranch, NULL, ast->match.typeId);
+    
     mergeMatchResult(ast, ast->match.defaultBranch, branchType, resultType);
     updateOwnershipStates(&states);
     mergeOwnershipOutcome(mergedStates, &states, mergedInitialized);
@@ -1761,12 +1765,14 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* variable = getReferenceVariable(ast);
     ASTNode* symbol = findReferenceSymbol(analyzer, variable);
+
     validateReferenceAccess(ast, variable, symbol);
     markAddressTaken(symbol);
 
     variable->variable.scope = analyzer->currentScope;
     variable->variable.symbol = symbol;
     Vector* origins = getReferenceOrigins(ast);
+    
     addReferenceOrigin(origins, symbol);
     trackVariableRead(symbol);
 }
@@ -2042,16 +2048,12 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
         ReferenceType parameterType = getReferenceType(param);
         bool valueParameter = parameterType == REFERENCE_NONE;
         bool implicitAccess = argumentType == REFERENCE_NONE;
-        bool compatibleReference = valueParameter
-            || implicitAccess
-            || argumentType == parameterType
+        bool compatibleReference = valueParameter || implicitAccess || argumentType == parameterType
             || (argumentType == REFERENCE_EXCLUSIVE && parameterType == REFERENCE_SHARED);
-
         DataType argumentValueType = getTypeId(arg);
         DataType parameterValueType = param->parameter.typeId;
         bool compatibleValue = argumentValueType == parameterValueType
-            || (argumentType == REFERENCE_NONE
-                && parameterType == REFERENCE_NONE
+            || (argumentType == REFERENCE_NONE && parameterType == REFERENCE_NONE
                 && canImplicitlyWidenType(argumentValueType, parameterValueType));
 
         if (!compatibleValue || !compatibleReference) {
@@ -2555,16 +2557,13 @@ static void setParameterPositions(ASTNode* ast)
     for (size_t i = 0; i < count; i++) {
         ASTNode* param = getVectorAt(&ast->functionDefinition.params, i);
         param->parameter.position = position;
-        position += getReferenceType(param) == REFERENCE_NONE
-            ? getTypeSlotCount(getTypeId(param))
-            : 1;
+        position += getReferenceType(param) == REFERENCE_NONE ? getTypeSlotCount(getTypeId(param)) : 1;
     }
 }
 
 static void resolveFunctionReturnValueType(ASTNode* ast)
 {
-    DataType type = getFunctionReturnValueType(
-        &ast->functionDefinition.body->compound.statements);
+    DataType type = getFunctionReturnValueType(&ast->functionDefinition.body->compound.statements);
 
     if (ast->functionDefinition.hasExplicitReturnType) {
         validateFunctionReturnValueType(ast, type);
@@ -2653,8 +2652,7 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
     ASTNode* expression = ast->assignment.expr;
     DataType expressionType = getTypeId(expression);
     DataType bindingType = getTypeId(symbol);
-    bool compatibleValue = bindingType == expressionType
-        || (getReferenceType(symbol) == REFERENCE_NONE
+    bool compatibleValue = bindingType == expressionType || (getReferenceType(symbol) == REFERENCE_NONE
             && getReferenceType(expression) == REFERENCE_NONE
             && canImplicitlyWidenType(expressionType, bindingType));
 
@@ -2709,7 +2707,6 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     }
 
     applyLiteralType(ast->assignment.expr, getTypeId(symbol));
-
     analyzeNode(analyzer, ast->assignment.expr);
     validateAssignmentType(ast, symbol);
 
@@ -2860,8 +2857,7 @@ static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    applyDeclaredType(
-        expression, ast->variableDefinition.typeId, ast->variableDefinition.referenceType);
+    applyDeclaredType(expression, ast->variableDefinition.typeId, ast->variableDefinition.referenceType);
     analyzeNode(analyzer, expression);
     resolveVariableType(ast, expression);
 
@@ -2878,14 +2874,12 @@ static void validateVariableType(ASTNode* ast)
 
 static void trackVariableReference(ASTNode* ast)
 {
-    if (ast->variableDefinition.referenceType == REFERENCE_NONE
-        || !ast->variableDefinition.initialized) {
+    if (ast->variableDefinition.referenceType == REFERENCE_NONE || !ast->variableDefinition.initialized) {
         return;
     }
 
     ASTNode* expression = ast->variableDefinition.expr;
-    bool transfersExclusive = ast->variableDefinition.referenceType == REFERENCE_EXCLUSIVE
-        && isVariable(expression);
+    bool transfersExclusive = ast->variableDefinition.referenceType == REFERENCE_EXCLUSIVE && isVariable(expression);
 
     if (transfersExclusive) {
         transferExclusiveReference(expression);
@@ -2954,16 +2948,14 @@ static ReferenceType validateReturnReferenceType(Analyzer* analyzer, ASTNode* as
 static void trackReturnOrigin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
 {
     if (!canReturnReferenceOrigin(origin)) {
-        semanticTokenError("Reference to local binding cannot escape function ",
-            ast->returnStatement.token);
+        semanticTokenError("Reference to local binding cannot escape function ", ast->returnStatement.token);
     }
 
     ASTNode* function = analyzer->function;
     ASTNode* previous = function->functionDefinition.returnReferenceOrigin;
 
     if (previous && previous != origin) {
-        semanticTokenError("Reference returns must share one lifetime in function ",
-            ast->returnStatement.token);
+        semanticTokenError("Reference returns must share one lifetime in function ", ast->returnStatement.token);
     }
 
     function->functionDefinition.returnReferenceOrigin = origin;

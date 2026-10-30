@@ -272,11 +272,11 @@ typedef enum Opcode
     OP_RETV,
 
     // Repeated instructions
-    OP_CALL2,
-    OP_LDI2,
-    OP_LDC2,
-    OP_LDG2,
-    OP_MOV2,
+    OP_CALL_CALL,
+    OP_LDI_LDI,
+    OP_LDC_LDC,
+    OP_LDG_LDG,
+    OP_MOV_MOV,
 
     // Fused calls
     OP_LDI_CALL,

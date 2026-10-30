@@ -568,7 +568,7 @@ static void run(VM* vm)
                 vm->fp = fp;
                 break;
             }
-            case OP_CALL2: {
+            case OP_CALL_CALL: {
                 Value* newFrame = vm->fp + a;
 
                 function = vm->module->functions.data[b];
@@ -577,19 +577,19 @@ static void run(VM* vm)
                 function->entry(vm, function, newFrame + 1);
                 break;
             }
-            case OP_LDI2:
+            case OP_LDI_LDI:
                 vm->fp[a] = SIGNED_VALUE((int8_t)b);
                 vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
                 break;
-            case OP_LDC2:
+            case OP_LDC_LDC:
                 vm->fp[a] = vm->module->constants.data[b];
                 vm->fp[a + 1] = vm->module->constants.data[c];
                 break;
-            case OP_LDG2:
+            case OP_LDG_LDG:
                 vm->fp[a] = vm->globals.data[b];
                 vm->fp[a + 1] = vm->globals.data[c];
                 break;
-            case OP_MOV2:
+            case OP_MOV_MOV:
                 vm->fp[a] = vm->fp[b];
                 vm->fp[a + 1] = vm->fp[c];
                 break;

@@ -358,11 +358,11 @@ static void printInstruction(uint8_t c)
         case OP_RET:            printOpcode("RET"); break;
         case OP_RET_64:         printOpcodeRegister("RET_64"); break;
         case OP_RETV:           printOpcodeRegister("RETV"); break;
-        case OP_CALL2:          printOpcodeRegisterUint8Uint8("CALL2"); break;
-        case OP_LDI2:           printOpcodeRegisterInt8Int8("LDI2"); break;
-        case OP_LDC2:           printOpcodeRegisterUint8Uint8("LDC2"); break;
-        case OP_LDG2:           printOpcodeRegisterUint8Uint8("LDG2"); break;
-        case OP_MOV2:           printOpcodeRegisters3("MOV2"); break;
+        case OP_CALL_CALL:      printOpcodeRegisterUint8Uint8("CALL_CALL"); break;
+        case OP_LDI_LDI:        printOpcodeRegisterInt8Int8("LDI_LDI"); break;
+        case OP_LDC_LDC:        printOpcodeRegisterUint8Uint8("LDC_LDC"); break;
+        case OP_LDG_LDG:        printOpcodeRegisterUint8Uint8("LDG_LDG"); break;
+        case OP_MOV_MOV:        printOpcodeRegisters3("MOV_MOV"); break;
         case OP_LDI_CALL:       printSignedLoadCall("LDI_CALL"); break;
         case OP_LDC_CALL:       printLoadCall("LDC_CALL"); break;
         case OP_LDG_CALL:       printLoadCall("LDG_CALL"); break;

@@ -492,15 +492,15 @@ static bool smallLoad(OptimizationWord* word)
 static Opcode loadPairOpcode(Opcode first, Opcode second)
 {
     if (first == OP_LDI && second == OP_LDI) {
-        return OP_LDI2;
+        return OP_LDI_LDI;
     }
 
     if (first == OP_LDC && second == OP_LDC) {
-        return OP_LDC2;
+        return OP_LDC_LDC;
     }
 
     if (first == OP_LDG && second == OP_LDG) {
-        return OP_LDG2;
+        return OP_LDG_LDG;
     }
 
     if (first == OP_LDI && second == OP_LDG) {
@@ -621,7 +621,7 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
     }
 
     if (first->opcode == OP_MOV && second->opcode == OP_MOV && first->a + 1 == second->a) {
-        first->opcode = OP_MOV2;
+        first->opcode = OP_MOV_MOV;
         first->c = second->b;
 
         return true;
@@ -649,7 +649,7 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
         return false;
     }
 
-    first->opcode = OP_CALL2;
+    first->opcode = OP_CALL_CALL;
     first->b = first->c;
     first->c = second->c;
 

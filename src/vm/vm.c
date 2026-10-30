@@ -97,6 +97,18 @@ static void run(VM* vm)
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
 #include VM_WIDE_INSTRUCTIONS
+            case OP_SEXT_I32: {
+                uint32_t value = AS_U32(vm->fp[b]);
+                int32_t result = (int32_t)(value << (32 - c)) >> (32 - c);
+                vm->fp[a] = I32_VALUE(result);
+                break;
+            }
+            case OP_ZEXT_I32: {
+                uint32_t value = AS_U32(vm->fp[b]);
+                uint32_t result = value & (UINT32_MAX >> (32 - c));
+                vm->fp[a] = U32_VALUE(result);
+                break;
+            }
             case OP_F32_TO_I32:
                 vm->fp[a] = I32_VALUE((int32_t)AS_F32(vm->fp[b]));
                 break;

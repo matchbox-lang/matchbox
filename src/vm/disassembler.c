@@ -198,6 +198,8 @@ static void printInstruction(uint8_t c)
         case OP_STG_64:         printOpcodeRegisterUint16("STG_64"); break;
         case OP_LDR_64:         printOpcodeRegisters2("LDR_64"); break;
         case OP_STR_64:         printOpcodeRegisters2("STR_64"); break;
+        case OP_SEXT_I32:       printOpcodeRegisters2Int8("SEXT_I32"); break;
+        case OP_ZEXT_I32:       printOpcodeRegisters2Int8("ZEXT_I32"); break;
         case OP_F32_TO_F64:     printOpcodeRegisters2("F32_TO_F64"); break;
         case OP_F64_TO_F32:     printOpcodeRegisters2("F64_TO_F32"); break;
         case OP_F32_TO_I32:     printOpcodeRegisters2("F32_TO_I32"); break;

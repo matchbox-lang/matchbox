@@ -1211,31 +1211,33 @@ static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
     return emitNumericComparison(compiler, operatorType, TOKEN_I32, ordering, zero);
 }
 
+static Operand normalizeIntegerOperand(Compiler* compiler, Operand operand, TokenType type)
+{
+    size_t size = getIntegerTypeSize(type);
+
+    if (size != 1 && size != 2) {
+        return operand;
+    }
+
+    operand = materializeOperand(compiler, operand);
+
+    Opcode opcode = OP_ZEXT_I32;
+    int width = size * 8;
+
+    if (isSignedIntegerTypeToken(type)) {
+        opcode = OP_SEXT_I32;
+    }
+
+    emitInstruction(compiler, opcode, operand.reg, operand.reg, width);
+
+    return operand;
+}
+
 static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, TokenType type)
 {
     Operand value = compileConvertedExpression(compiler, ast, type, false);
-    int shift = 0;
 
-    if (type == TOKEN_I8 || type == TOKEN_U8) {
-        shift = 24;
-    }
-
-    if (type == TOKEN_I16 || type == TOKEN_U16) {
-        shift = 16;
-    }
-
-    if (!shift) {
-        return value;
-    }
-
-    value = materializeOperand(compiler, value);
-    bool signedType = isSignedIntegerTypeToken(type);
-    Opcode opcode = signedType ? OP_ASRI_I32 : OP_LSRI_I32;
-
-    emitInstruction(compiler, OP_LSLI_I32, value.reg, value.reg, shift);
-    emitInstruction(compiler, opcode, value.reg, value.reg, shift);
-
-    return value;
+    return normalizeIntegerOperand(compiler, value, type);
 }
 
 static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
@@ -1510,26 +1512,11 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
 
 static Operand normalizeUnsignedOperand(Compiler* compiler, Operand operand, TokenType source)
 {
-    int shift = 0;
-
-    if (source == TOKEN_U8) {
-        shift = 24;
-    }
-
-    if (source == TOKEN_U16) {
-        shift = 16;
-    }
-
-    if (!shift) {
+    if (source != TOKEN_U8 && source != TOKEN_U16) {
         return operand;
     }
 
-    operand = materializeOperand(compiler, operand);
-
-    emitInstruction(compiler, OP_LSLI_I32, operand.reg, operand.reg, shift);
-    emitInstruction(compiler, OP_LSRI_I32, operand.reg, operand.reg, shift);
-
-    return operand;
+    return normalizeIntegerOperand(compiler, operand, source);
 }
 
 static Operand extendIntegerOperand(Compiler* compiler, Operand operand, TokenType source)
@@ -1741,18 +1728,18 @@ static Operand compileIntegerCast(Compiler* compiler, Operand operand, TokenType
     operand = materializeOperand(compiler, operand);
 
     size_t size = getIntegerTypeSize(destination);
-    int shift = 32 - size * 8;
+
+    if (size < 4) {
+        return normalizeIntegerOperand(compiler, operand, destination);
+    }
+
     Opcode opcode = OP_LSRI_I32;
 
     if (isSignedIntegerTypeToken(destination)) {
         opcode = OP_ASRI_I32;
     }
 
-    if (shift) {
-        emitInstruction(compiler, OP_LSLI_I32, operand.reg, operand.reg, shift);
-    }
-
-    emitInstruction(compiler, opcode, operand.reg, operand.reg, shift);
+    emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
 
     return operand;
 }

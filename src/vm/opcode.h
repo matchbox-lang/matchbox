@@ -67,6 +67,10 @@ typedef enum Opcode
     OP_LDR_64,
     OP_STR_64,
 
+    // Integer extension
+    OP_SEXT_I32,
+    OP_ZEXT_I32,
+
     // Floating-point conversion
     OP_F32_TO_F64,
     OP_F64_TO_F32,

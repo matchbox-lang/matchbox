@@ -519,6 +519,8 @@ static void removeDeadLoads(ModuleObject* module, OptimizationWord* words, size_
 static bool isImmediateArithmetic(Opcode opcode)
 {
     switch (opcode) {
+        case OP_SEXT_I32:
+        case OP_ZEXT_I32:
         case OP_ADDI_I32:
         case OP_ADDI_I16:
         case OP_ADDI_I8:

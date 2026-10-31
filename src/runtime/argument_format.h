@@ -1,8 +1,8 @@
 #ifndef ARGUMENT_FORMAT_H
 #define ARGUMENT_FORMAT_H
 
-#include "runtime/writer.h"
 #include "runtime/value.h"
+#include "runtime/writer.h"
 
 typedef void (*ArgumentFormatter)(Writer* writer, Value* argument);
 

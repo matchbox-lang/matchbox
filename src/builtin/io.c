@@ -1,6 +1,6 @@
 #include "builtin/io.h"
-#include "runtime/writer.h"
 #include "runtime/argument_format.h"
+#include "runtime/writer.h"
 #include <stdio.h>
 
 void builtinPrint(VM* vm, FunctionObject* function, Value* frame)

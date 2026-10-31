@@ -1406,6 +1406,30 @@ static ASTNode* parseWhileStatement(Parser* parser)
     return createWhileNode(token, condition, body);
 }
 
+static ASTNode* parseIfStatement(Parser* parser)
+{
+    ASTNode* ast = parseConditional(parser, true);
+    if (!ast) {
+        return NULL;
+    }
+
+    markConditionalStatement(ast);
+
+    return ast;
+}
+
+static ASTNode* parseMatchStatement(Parser* parser)
+{
+    ASTNode* ast = parseMatch(parser);
+    if (!ast) {
+        return NULL;
+    }
+
+    ast->match.expression = false;
+
+    return ast;
+}
+
 static ASTNode* parseStatement(Parser* parser)
 {
     switch (parser->currentToken.type) {
@@ -1418,25 +1442,10 @@ static ASTNode* parseStatement(Parser* parser)
             return parseReturnStatement(parser);
         case TOKEN_WHILE:
             return parseWhileStatement(parser);
-        case TOKEN_IF: {
-            ASTNode* ast = parseConditional(parser, true);
-            if (!ast) {
-                return NULL;
-            }
-
-            markConditionalStatement(ast);
-            return ast;
-        }
-        case TOKEN_MATCH: {
-            ASTNode* ast = parseMatch(parser);
-
-            if (!ast) {
-                return NULL;
-            }
-
-            ast->match.expression = false;
-            return ast;
-        }
+        case TOKEN_IF:
+            return parseIfStatement(parser);
+        case TOKEN_MATCH:
+            return parseMatchStatement(parser);
         default:
             return parseExpression(parser);
     }

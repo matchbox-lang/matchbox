@@ -440,7 +440,6 @@ static ASTNode* parsePrimary(Parser* parser)
         case TOKEN_CHAR:
         case TOKEN_STRING:
             consume(parser, parser->currentToken.type);
-
             return parseFunctionCall(parser);
         case TOKEN_STRING_LITERAL:
             return parseStringLiteral(parser);

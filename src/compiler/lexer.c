@@ -735,19 +735,32 @@ Token scanToken(Lexer* lexer)
 
     switch (c) {
         case '"':
-        case '`':   return scanStringLiteral(lexer, c, false);
-        case '\'':  return scanCharacterLiteral(lexer);
-        case '(':   return makeToken(lexer, TOKEN_LPAREN);
-        case ')':   return makeToken(lexer, TOKEN_RPAREN);
-        case '[':   return makeToken(lexer, TOKEN_LSQUARE);
-        case ']':   return makeToken(lexer, TOKEN_RSQUARE);
-        case '{':   return makeToken(lexer, TOKEN_LBRACE);
-        case '}':   return makeToken(lexer, TOKEN_RBRACE);
-        case ':':   return makeToken(lexer, TOKEN_COLON);
-        case ';':   return makeToken(lexer, TOKEN_SEMICOLON);
-        case ',':   return makeToken(lexer, TOKEN_COMMA);
-        case '$':   return scanInterpolatedString(lexer);
-        case '~':   return makeToken(lexer, TOKEN_TILDE);
+        case '`':
+            return scanStringLiteral(lexer, c, false);
+        case '\'':
+            return scanCharacterLiteral(lexer);
+        case '(':
+            return makeToken(lexer, TOKEN_LPAREN);
+        case ')':
+            return makeToken(lexer, TOKEN_RPAREN);
+        case '[':
+            return makeToken(lexer, TOKEN_LSQUARE);
+        case ']':
+            return makeToken(lexer, TOKEN_RSQUARE);
+        case '{':
+            return makeToken(lexer, TOKEN_LBRACE);
+        case '}':
+            return makeToken(lexer, TOKEN_RBRACE);
+        case ':':
+            return makeToken(lexer, TOKEN_COLON);
+        case ';':
+            return makeToken(lexer, TOKEN_SEMICOLON);
+        case ',':
+            return makeToken(lexer, TOKEN_COMMA);
+        case '$':
+            return scanInterpolatedString(lexer);
+        case '~':
+            return makeToken(lexer, TOKEN_TILDE);
         case '%':
             return makeToken(lexer, 
                 match(lexer, '=') ? TOKEN_PERCENT_EQUAL : TOKEN_PERCENT);

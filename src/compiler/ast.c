@@ -482,13 +482,13 @@ ASTNode* getReferenceOrigin(const ASTNode* ast)
     return NULL;
 }
 
-static ReferenceType getPrefixReferenceType(TokenType operatorType)
+static ReferenceType getPrefixReferenceType(TokenType type)
 {
-    if (operatorType == TOKEN_AMPERSAND) {
+    if (type == TOKEN_AMPERSAND) {
         return REFERENCE_SHARED;
     }
 
-    if (operatorType == TOKEN_CIRCUMFLEX) {
+    if (type == TOKEN_CIRCUMFLEX) {
         return REFERENCE_EXCLUSIVE;
     }
 

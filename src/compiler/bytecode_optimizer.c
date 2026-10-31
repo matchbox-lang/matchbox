@@ -683,15 +683,13 @@ static bool fuseMoveLoad(OptimizationWord* first, OptimizationWord* second)
 static Opcode loadCallOpcode(Opcode opcode)
 {
     switch (opcode) {
-        case OP_LDI: return OP_LDI_CALL;
-        case OP_LDC: return OP_LDC_CALL;
-        case OP_LDG: return OP_LDG_CALL;
-        case OP_LDC_64:
-            return OP_LDC_64_CALL;
-        case OP_LDG_64:
-            return OP_LDG_64_CALL;
-        case OP_LDR: return OP_LDR_CALL;
-        default: return OP_HLT;
+        case OP_LDI:    return OP_LDI_CALL;
+        case OP_LDC:    return OP_LDC_CALL;
+        case OP_LDG:    return OP_LDG_CALL;
+        case OP_LDC_64: return OP_LDC_64_CALL;
+        case OP_LDG_64: return OP_LDG_64_CALL;
+        case OP_LDR:    return OP_LDR_CALL;
+        default:        return OP_HLT;
     }
 }
 

@@ -854,10 +854,11 @@ static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
         || isCompilingTopLevel(compiler);
 }
 
-static Opcode getWidthOpcode(
-    DataType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
+static Opcode getWidthOpcode(DataType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
 {
-    switch (getIntegerTypeSize(type)) {
+    size_t size = getIntegerTypeSize(type);
+    
+    switch (size) {
         case 8:
             return opcode64;
         case 4:
@@ -1131,6 +1132,24 @@ static Operand emitOrderedComparison(Compiler* compiler, DataType type,
     return emitComparison(compiler, opcode, left, right);
 }
 
+static Opcode getFloat32ThreeWayOpcode(TokenType operatorType)
+{
+    if (operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL) {
+        return OP_CMPG_F32;
+    }
+
+    return OP_CMPL_F32;
+}
+
+static Opcode getFloat64ThreeWayOpcode(TokenType operatorType)
+{
+    if (operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL) {
+        return OP_CMPG_F64;
+    }
+
+    return OP_CMPL_F64;
+}
+
 static Opcode getThreeWayOpcode(DataType type, TokenType operatorType)
 {
     switch (type) {
@@ -1139,9 +1158,9 @@ static Opcode getThreeWayOpcode(DataType type, TokenType operatorType)
         case TYPE_U64:
             return OP_CMP_U64;
         case TYPE_F32:
-            return operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL ? OP_CMPG_F32 : OP_CMPL_F32;
+            return getFloat32ThreeWayOpcode(operatorType);
         case TYPE_F64:
-            return operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL ? OP_CMPG_F64 : OP_CMPL_F64;
+            return getFloat64ThreeWayOpcode(operatorType);
         default:
             break;
     }
@@ -1381,8 +1400,7 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
         case TOKEN_NOT:
             return emitUnaryOperand(compiler, OP_NOT, operand);
         case TOKEN_TILDE:
-            return emitUnaryOperand(
-                compiler, getIntegerOpcode(getNodeDataType(ast), INTEGER_BNOT), operand);
+            return emitUnaryOperand(compiler, getIntegerOpcode(getNodeDataType(ast), INTEGER_BNOT), operand);
         case TOKEN_MINUS: {
             DataType type = getNodeDataType(ast);
             Opcode opcode = getNegationOpcode(type);
@@ -1478,8 +1496,6 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
             return compileCompoundAssignment(compiler, ast, INTEGER_DIV);
         case TOKEN_PERCENT_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_REM);
-        case TOKEN_POWER_EQUAL:
-            return compilePowerAssignment(compiler, ast);
         case TOKEN_AND_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_BAND);
         case TOKEN_OR_EQUAL:
@@ -1490,6 +1506,8 @@ static void compileAssignment(Compiler* compiler, ASTNode* ast)
             return compileCompoundAssignment(compiler, ast, INTEGER_LSL);
         case TOKEN_RSHIFT_EQUAL:
             return compileCompoundAssignment(compiler, ast, INTEGER_LSR);
+        case TOKEN_POWER_EQUAL:
+            return compilePowerAssignment(compiler, ast);
         case TOKEN_EQUAL:
             return compileSimpleAssignment(compiler, ast);
         default:
@@ -2553,15 +2571,15 @@ static size_t emitConditionJump(Compiler* compiler, Operand condition)
 static Opcode getJumpComparisonOpcode(Opcode opcode)
 {
     switch (opcode) {
-        case OP_BNE:     return OP_EQ;
-        case OP_BEQ:     return OP_NE;
-        case OP_BNEI:    return OP_EQI;
-        case OP_BEQI:    return OP_NEI;
-        case OP_BLE_I32: return OP_LT_I32;
-        case OP_BLE_U32: return OP_LT_U32;
-        case OP_BLT_I32: return OP_LE_I32;
-        case OP_BLT_U32: return OP_LE_U32;
-        default:        return OP_HLT;
+        case OP_BNE:        return OP_EQ;
+        case OP_BEQ:        return OP_NE;
+        case OP_BNEI:       return OP_EQI;
+        case OP_BEQI:       return OP_NEI;
+        case OP_BLE_I32:    return OP_LT_I32;
+        case OP_BLE_U32:    return OP_LT_U32;
+        case OP_BLT_I32:    return OP_LE_I32;
+        case OP_BLT_U32:    return OP_LE_U32;
+        default:            return OP_HLT;
     }
 }
 

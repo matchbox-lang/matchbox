@@ -7,5 +7,6 @@
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame);
 void builtinExit(VM* vm, FunctionObject* function, Value* frame);
 void builtinExitStatus(VM* vm, FunctionObject* function, Value* frame);
+void builtinPanic(VM* vm, FunctionObject* function, Value* frame);
 
 #endif

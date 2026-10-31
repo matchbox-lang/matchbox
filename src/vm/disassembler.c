@@ -3,6 +3,7 @@
 #include "runtime/code_object.h"
 #include "runtime/function_object.h"
 #include "vm/opcode.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -381,7 +382,7 @@ static void printInstruction(uint8_t c)
     }
 }
 
-void disassemble(CodeObject* code)
+static void disassembleCode(CodeObject* code)
 {
     ptr = code->data;
 
@@ -400,17 +401,15 @@ void disassemble(CodeObject* code)
     }
 }
 
-static void disassembleModuleFunction(ModuleObject* module, size_t index)
+static void disassembleFunction(FunctionObject* function, bool separate)
 {
-    FunctionObject* function = getVectorAt(&module->functions, index);
-
     if (function->type == FUNCTION_BUILTIN) {
         return;
     }
 
-    disassemble(&function->code);
+    disassembleCode(&function->code);
 
-    if (index < module->functions.count - 1) {
+    if (separate) {
         printf("\n");
     }
 }
@@ -420,6 +419,9 @@ void disassembleModule(ModuleObject* module)
     size_t functionCount = countVector(&module->functions);
 
     for (size_t i = 0; i < functionCount; i++) {
-        disassembleModuleFunction(module, i);
+        FunctionObject* function = getVectorAt(&module->functions, i);
+        bool separate = i < functionCount - 1;
+
+        disassembleFunction(function, separate);
     }
 }

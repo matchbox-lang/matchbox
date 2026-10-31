@@ -30,7 +30,6 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_DEFAULT:             return "default";
         case TOKEN_BREAK:               return "break";
         case TOKEN_CONTINUE:            return "continue";
-        case TOKEN_WHERE:               return "where";
         case TOKEN_RETURN:              return "return";
         case TOKEN_YIELD:               return "yield";
         case TOKEN_AS:                  return "as";

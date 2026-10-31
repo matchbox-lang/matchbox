@@ -21,7 +21,6 @@ typedef enum TokenType
     TOKEN_DEFAULT,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
-    TOKEN_WHERE,
     TOKEN_RETURN,
     TOKEN_YIELD,
     TOKEN_AS,

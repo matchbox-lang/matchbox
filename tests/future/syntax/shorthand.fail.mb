@@ -4,7 +4,7 @@ let c = a ?? b
 let matrix: i32[2][3] = [1, 2, 3, 4, 5, 6]
 
 let a = [x for x in 1..10]
-let b = [x for x in 1..10 where x > 2]
+let b = [x for x in 1..10 if x > 2]
 let c = [y for x in matrix for y in x]
 let d = [[y for y in range(5)] for x in range(5)]
 let e = [[y for y in x] for x in matrix]

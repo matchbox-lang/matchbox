@@ -6,7 +6,6 @@
 int main(int argc, char* argv[])
 {
     Options options;
-
     initOptions(&options);
 
     if (!parseCommandLine(&options, argc, argv)) {

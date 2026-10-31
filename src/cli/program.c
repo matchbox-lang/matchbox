@@ -23,21 +23,26 @@ static _Noreturn void readFileError(const char* filename)
     fatalError("Could not read file %s: %s", filename, detail);
 }
 
-static void runModule(ModuleObject* module, bool disassemble)
+static int runModule(ModuleObject* module, bool disassemble)
 {
     if (disassemble) {
         disassembleModule(module);
-        return;
+
+        return EXIT_SUCCESS;
     }
 
     VM vm;
 
     initVM(&vm, module);
-    interpret(&vm);
+
+    int status = interpret(&vm);
+
     freeVM(&vm);
+
+    return status;
 }
 
-static void runSource(char* source, bool disassemble)
+static int runSource(char* source, bool disassemble)
 {
     ModuleObject* module = createModuleObject();
     Compiler compiler;
@@ -47,12 +52,15 @@ static void runSource(char* source, bool disassemble)
         unexpectedEndOfInputError(compiler.parser.currentToken);
     }
 
-    runModule(module, disassemble);
+    int status = runModule(module, disassemble);
+
     freeCompiler(&compiler);
     freeModuleObject(module);
+
+    return status;
 }
 
-static bool runFile(Options* options)
+static int runFile(Options* options)
 {
     char* source = getFileContents(options->filename);
     
@@ -60,10 +68,11 @@ static bool runFile(Options* options)
         readFileError(options->filename);
     }
 
-    runSource(source, options->disassemble);
+    int status = runSource(source, options->disassemble);
+
     freeMemory(source);
 
-    return true;
+    return status;
 }
 
 void printUsage(FILE* stream)
@@ -84,7 +93,7 @@ void printVersion()
     printf("%s %s\n", PROGRAM_NAME, PROGRAM_VERSION);
 }
 
-bool runProgram(Options* options)
+int runProgram(Options* options)
 {
     if (options->mode == PROGRAM_TEST) {
         return runTests(options);

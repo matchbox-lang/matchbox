@@ -1,0 +1,12 @@
+func stop() {
+    exit()
+    exit(1)
+}
+
+func caller() {
+    stop()
+    exit(1)
+}
+
+caller()
+exit(1)

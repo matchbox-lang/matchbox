@@ -12,6 +12,7 @@ typedef struct Matchbox Matchbox;
 Matchbox* matchbox_create(void);
 void matchbox_destroy(Matchbox* mb);
 bool matchbox_run(Matchbox* mb, const char* source);
+int matchbox_exit_status(const Matchbox* mb);
 
 #ifdef __cplusplus
 }

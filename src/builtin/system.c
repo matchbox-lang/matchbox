@@ -1,4 +1,5 @@
 #include "builtin/system.h"
+#include "vm/vm.h"
 #include <stdlib.h>
 
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
@@ -14,19 +15,17 @@ void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
 
 void builtinExit(VM* vm, FunctionObject* function, Value* frame)
 {
-    (void)vm;
     (void)function;
     (void)frame;
 
-    exit(EXIT_SUCCESS);
+    exitVM(vm, EXIT_SUCCESS);
 }
 
 void builtinExitStatus(VM* vm, FunctionObject* function, Value* frame)
 {
-    (void)vm;
     (void)function;
 
-    int32_t status = AS_I32(frame[0]);
+    int status = AS_I32(frame[0]);
 
-    exit(status);
+    exitVM(vm, status);
 }

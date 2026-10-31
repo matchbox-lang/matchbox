@@ -12,6 +12,7 @@ struct Matchbox
     MemoryGroup memory;
     ModuleObject* module;
     Compiler compiler;
+    int exitStatus;
 };
 
 static void resetMatchbox(Matchbox* mb)
@@ -21,13 +22,17 @@ static void resetMatchbox(Matchbox* mb)
     mb->module = NULL;
 }
 
-static void runModule(ModuleObject* module)
+static int runModule(ModuleObject* module)
 {
     VM vm;
 
     initVM(&vm, module);
-    interpret(&vm);
+
+    int status = interpret(&vm);
+
     freeVM(&vm);
+
+    return status;
 }
 
 static bool runSource(Matchbox* mb, const char* source)
@@ -44,9 +49,18 @@ static bool runSource(Matchbox* mb, const char* source)
         return false;
     }
 
-    runModule(mb->module);
+    mb->exitStatus = runModule(mb->module);
 
     return true;
+}
+
+int matchbox_exit_status(const Matchbox* mb)
+{
+    if (!mb) {
+        return EXIT_SUCCESS;
+    }
+
+    return mb->exitStatus;
 }
 
 Matchbox* matchbox_create(void)
@@ -73,6 +87,8 @@ bool matchbox_run(Matchbox* mb, const char* source)
     }
 
     ErrorContext context;
+
+    mb->exitStatus = EXIT_SUCCESS;
 
     resetMatchbox(mb);
     beginErrorContext(&context, &mb->memory);

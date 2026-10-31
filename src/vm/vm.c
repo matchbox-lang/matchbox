@@ -679,6 +679,8 @@ void initVM(VM* vm, ModuleObject* module)
     vm->module = module;
     vm->ip = NULL;
     vm->fp = vm->stack;
+    vm->exitRequested = false;
+    vm->exitStatus = EXIT_SUCCESS;
 
     initValueArray(&vm->globals);
     resizeValueArray(&vm->globals, module->globalCount);
@@ -689,11 +691,29 @@ void freeVM(VM* vm)
     freeValueArray(&vm->globals);
 }
 
-void interpret(VM* vm)
+int interpret(VM* vm)
 {
+    vm->exitRequested = false;
+    vm->exitStatus = EXIT_SUCCESS;
+    vm->fp = vm->stack;
+
     if (!vm->module) {
-        return;
+        return vm->exitStatus;
+    }
+
+    if (setjmp(vm->exitJump) != 0) {
+        return vm->exitStatus;
     }
 
     run(vm);
+
+    return vm->exitStatus;
+}
+
+_Noreturn void exitVM(VM* vm, int status)
+{
+    vm->exitStatus = status;
+    vm->exitRequested = true;
+
+    longjmp(vm->exitJump, 1);
 }

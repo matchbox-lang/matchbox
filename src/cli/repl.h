@@ -3,6 +3,6 @@
 
 #include <stdbool.h>
 
-bool runRepl(void);
+int runRepl(void);
 
 #endif

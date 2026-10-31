@@ -6,13 +6,15 @@
 #include "vm/vm.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef enum SubmissionResult
 {
     SUBMISSION_RESET = -1,
     SUBMISSION_INCOMPLETE,
-    SUBMISSION_COMPLETE
+    SUBMISSION_COMPLETE,
+    SUBMISSION_EXIT
 } SubmissionResult;
 
 static void unexpectedEndOfInputError(Token token)
@@ -81,12 +83,16 @@ static SubmissionResult processSource(Compiler* compiler, VM* vm, char* source, 
     interpret(vm);
     endErrorContext(&context);
 
+    if (vm->exitRequested) {
+        return SUBMISSION_EXIT;
+    }
+
     return SUBMISSION_COMPLETE;
 }
 
 static void finishSubmission(SubmissionResult result, char** source, size_t* size, size_t* length)
 {
-    if (result == SUBMISSION_RESET) {
+    if (result == SUBMISSION_RESET || result == SUBMISSION_EXIT) {
         return;
     }
 
@@ -107,7 +113,7 @@ static void finishSubmission(SubmissionResult result, char** source, size_t* siz
 
 static SubmissionResult finishInput(Compiler* compiler, size_t length, SubmissionResult result)
 {
-    if (result == SUBMISSION_RESET) {
+    if (result == SUBMISSION_RESET || result == SUBMISSION_EXIT) {
         return result;
     }
 
@@ -122,7 +128,7 @@ static SubmissionResult finishInput(Compiler* compiler, size_t length, Submissio
     return SUBMISSION_INCOMPLETE;
 }
 
-static SubmissionResult runSession(void)
+static SubmissionResult runSession(int* status)
 {
     MemoryGroup memory = {0};
     MemoryGroup* previous = useMemoryGroup(&memory);
@@ -139,12 +145,13 @@ static SubmissionResult runSession(void)
     reserveValueArray(&vm.globals, UINT16_MAX + 1u);
     finishSubmission(SUBMISSION_INCOMPLETE, &source, &size, &length);
 
-    while (result != SUBMISSION_RESET && appendLine(&source, &size, &length)) {
+    while (result != SUBMISSION_RESET && result != SUBMISSION_EXIT && appendLine(&source, &size, &length)) {
         result = processSource(&compiler, &vm, source, &memory);
 
         finishSubmission(result, &source, &size, &length);
     }
 
+    *status = vm.exitStatus;
     result = finishInput(&compiler, length, result);
 
     useMemoryGroup(previous);
@@ -153,13 +160,18 @@ static SubmissionResult runSession(void)
     return result;
 }
 
-bool runRepl(void)
+int runRepl(void)
 {
     SubmissionResult result = SUBMISSION_RESET;
+    int status = EXIT_SUCCESS;
 
     while (result == SUBMISSION_RESET) {
-        result = runSession();
+        result = runSession(&status);
     }
 
-    return result == SUBMISSION_COMPLETE;
+    if (result == SUBMISSION_EXIT) {
+        return status;
+    }
+
+    return result == SUBMISSION_COMPLETE ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -14,9 +14,5 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if (!runProgram(&options)) {
-        return 1;
-    }
-
-    return 0;
+    return runProgram(&options);
 }

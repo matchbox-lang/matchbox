@@ -148,15 +148,21 @@ static ASTNode* parseBooleanLiteralNode(Parser* parser, Token token)
     return ast;
 }
 
-static ASTNode* parseIntegerLiteralNode(Parser* parser, Token token)
+static ASTNode* finishIntegerLiteralNode(Parser* parser, Token token, uint64_t value)
 {
-    uint64_t value = parseDecimalLiteral(token);
     DataType typeId = inferIntegerLiteralType(value);
     ASTNode* ast = createIntegerNode(token, value, typeId);
 
     consume(parser, token.type);
 
     return ast;
+}
+
+static ASTNode* parseIntegerLiteralNode(Parser* parser, Token token)
+{
+    uint64_t value = parseDecimalLiteral(token);
+
+    return finishIntegerLiteralNode(parser, token, value);
 }
 
 static ASTNode* parseFloatLiteralNode(Parser* parser, Token token)
@@ -173,34 +179,22 @@ static ASTNode* parseFloatLiteralNode(Parser* parser, Token token)
 static ASTNode* parseBinaryLiteralNode(Parser* parser, Token token)
 {
     uint64_t value = parseBinaryLiteral(token);
-    DataType typeId = inferIntegerLiteralType(value);
-    ASTNode* ast = createIntegerNode(token, value, typeId);
 
-    consume(parser, token.type);
-
-    return ast;
+    return finishIntegerLiteralNode(parser, token, value);
 }
 
 static ASTNode* parseHexadecimalLiteralNode(Parser* parser, Token token)
 {
     uint64_t value = parseHexadecimalLiteral(token);
-    DataType typeId = inferIntegerLiteralType(value);
-    ASTNode* ast = createIntegerNode(token, value, typeId);
 
-    consume(parser, token.type);
-
-    return ast;
+    return finishIntegerLiteralNode(parser, token, value);
 }
 
 static ASTNode* parseOctalLiteralNode(Parser* parser, Token token)
 {
     uint64_t value = parseOctalLiteral(token);
-    DataType typeId = inferIntegerLiteralType(value);
-    ASTNode* ast = createIntegerNode(token, value, typeId);
 
-    consume(parser, token.type);
-
-    return ast;
+    return finishIntegerLiteralNode(parser, token, value);
 }
 
 static ASTNode* parseGroupExpression(Parser* parser)

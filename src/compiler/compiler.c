@@ -931,21 +931,28 @@ static Opcode getIntegerOpcode(DataType type, IntegerOperation operation)
     return OP_HLT;
 }
 
+static int selectBinaryDestination(Compiler* compiler, Operand left, Operand right, size_t slots)
+{
+    if (left.temporary) {
+        releaseOperand(compiler, right);
+
+        return left.reg;
+    }
+
+    if (right.temporary) {
+        return right.reg;
+    }
+
+    return allocateRegisters(compiler, slots);
+}
+
 static Operand emitBinaryOperands(
     Compiler* compiler, IntegerOperation operation, DataType type, Operand left, Operand right)
 {
-    int destination;
+    int destination = selectBinaryDestination(compiler, left, right, left.slots);
+    Opcode opcode = getIntegerOpcode(type, operation);
 
-    if (left.temporary) {
-        destination = left.reg;
-        releaseOperand(compiler, right);
-    } else if (right.temporary) {
-        destination = right.reg;
-    } else {
-        destination = allocateRegisters(compiler, left.slots);
-    }
-
-    emitInstruction(compiler, getIntegerOpcode(type, operation), destination, left.reg, right.reg);
+    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
 
     return left.slots == 2 ? makeWideOperand(destination, true) : makeOperand(destination, true);
 }
@@ -953,8 +960,7 @@ static Operand emitBinaryOperands(
 static bool prepareImmediateComparison(
     Compiler* compiler, Opcode opcode, Operand* left, Operand* right, PreviousInstruction* load)
 {
-    if ((opcode != OP_EQ && opcode != OP_NE) || !getPreviousInstruction(compiler, load)
-        || load->opcode != OP_LDI) {
+    if ((opcode != OP_EQ && opcode != OP_NE) || !getPreviousInstruction(compiler, load)|| load->opcode != OP_LDI) {
         return false;
     }
 
@@ -1087,16 +1093,8 @@ static Opcode getFloatOperationOpcode(DataType type, IntegerOperation operation)
 static Operand emitFloatOperands(Compiler* compiler, Opcode opcode,
     DataType type, Operand left, Operand right)
 {
-    int destination;
-
-    if (left.temporary) {
-        destination = left.reg;
-        releaseOperand(compiler, right);
-    } else if (right.temporary) {
-        destination = right.reg;
-    } else {
-        destination = allocateRegisters(compiler, getTypeSlotCount(type));
-    }
+    size_t slots = getTypeSlotCount(type);
+    int destination = selectBinaryDestination(compiler, left, right, slots);
 
     emitInstruction(compiler, opcode, destination, left.reg, right.reg);
 
@@ -2699,7 +2697,7 @@ static Operand compileConditionalBranch(
     return noOperand();
 }
 
-static Operand allocateConditionalResult(Compiler* compiler, DataType type)
+static Operand allocateBranchResult(Compiler* compiler, DataType type)
 {
     if (type == TYPE_VOID) {
         return noOperand();
@@ -2770,7 +2768,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
     }
 
     DataType type = getNodeDataType(ast);
-    Operand result = allocateConditionalResult(compiler, type);
+    Operand result = allocateBranchResult(compiler, type);
 
     compileConditionalBranches(compiler, ast, result.reg, reference, elseJump);
 
@@ -2865,19 +2863,6 @@ static void markMatchJoin(Compiler* compiler, Vector* jumps)
     }
 
     patchMatchJumps(compiler, jumps);
-}
-
-static int allocateMatchDestination(Compiler* compiler, DataType type)
-{
-    if (type == TYPE_VOID) {
-        return -1;
-    }
-
-    size_t slots = getTypeSlotCount(type);
-    int destination = allocateRegisters(compiler, slots);
-    compiler->localPositionOffset += slots;
-
-    return destination;
 }
 
 static bool areSimpleMatchValues(Vector* values)
@@ -3322,7 +3307,8 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference)
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
     DataType type = getNodeDataType(ast);
-    int destination = allocateMatchDestination(compiler, type);
+    Operand result = allocateBranchResult(compiler, type);
+    int destination = result.reg;
 
     if (compileLiteralMatch(compiler, ast, type, destination, reference)) {
         restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);

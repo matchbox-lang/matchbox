@@ -444,7 +444,7 @@ static void emitRetv(Compiler* compiler, Operand operand)
     emitInstruction(compiler, opcode, operand.reg, 0, 0);
 }
 
-static int getCallAreaCount(FunctionObject* function)
+static int getCallAreaCount(const FunctionObject* function)
 {
     return function->paramCount;
 }
@@ -2016,7 +2016,7 @@ static uint16_t makeFunctionPosition(size_t position)
     return (uint16_t)position;
 }
 
-static FunctionObject* createBuiltinFunctionObject(Builtin* builtin)
+static FunctionObject* createBuiltinFunctionObject(const Builtin* builtin)
 {
     FunctionObject* function = createFunctionObject();
     function->type = FUNCTION_BUILTIN;
@@ -2065,7 +2065,7 @@ static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
     return function;
 }
 
-static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
+static uint16_t getBuiltinFunctionPosition(Compiler* compiler, const Builtin* builtin)
 {
     size_t functionCount = countVector(&compiler->module->functions);
 
@@ -2086,7 +2086,7 @@ static uint16_t getBuiltinFunctionPosition(Compiler* compiler, Builtin* builtin)
     return position;
 }
 
-static DataType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
+static DataType getBuiltinArgumentType(const Builtin* builtin, const ASTNode* argument)
 {
     if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
         return builtin->params[0];
@@ -2095,7 +2095,7 @@ static DataType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
     return getNodeDataType(argument);
 }
 
-static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, Vector* args)
+static bool matchesBuiltinArguments(const FunctionObject* function, const Builtin* builtin, const Vector* args)
 {
     if (function->type != FUNCTION_BUILTIN || function->entry != builtin->entry
         || function->argumentCount != args->count) {
@@ -2129,7 +2129,7 @@ static void setBuiltinArgumentFormat(FunctionObject* function, DataType type, si
     function->argumentFormats[index] = format;
 }
 
-static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* args)
+static FunctionObject* createVariadicBuiltinFunction(const Builtin* builtin, const Vector* args)
 {
     FunctionObject* function = createBuiltinFunctionObject(builtin);
     size_t count = args->count;
@@ -2158,7 +2158,7 @@ static FunctionObject* createVariadicBuiltinFunction(Builtin* builtin, Vector* a
     return function;
 }
 
-static uint16_t getBuiltinCallPosition(Compiler* compiler, Builtin* builtin, Vector* args)
+static uint16_t getBuiltinCallPosition(Compiler* compiler, const Builtin* builtin, const Vector* args)
 {
     if (builtin->paramCount >= 0) {
         return getBuiltinFunctionPosition(compiler, builtin);
@@ -2227,7 +2227,7 @@ static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode
     void* items[] = {leftExpression, rightExpression};
     Vector args = {.data = items, .capacity = 2, .count = 2};
     DataType argumentTypes[] = {TYPE_I32, TYPE_I32};
-    Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
+    const Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
     uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
@@ -2240,7 +2240,7 @@ static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
     ASTNode* right = ast->binary.rightExpr;
     void* items[] = {left, right};
     Vector args = {.data = items, .capacity = 2, .count = 2};
-    Builtin* builtin = resolveBuiltin("string", NULL, 0);
+    const Builtin* builtin = resolveBuiltin("string", NULL, 0);
     uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
@@ -2298,7 +2298,7 @@ static Operand compileTypedVariadicCall(Compiler* compiler, ASTNode* ast, Functi
 
 static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    Builtin* builtin = ast->builtinCall.builtin;
+    const Builtin* builtin = ast->builtinCall.builtin;
     uint16_t position = getBuiltinCallPosition(compiler, builtin, &ast->builtinCall.args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
@@ -3520,7 +3520,7 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
     DataType argumentType = getNodeDataType(ast);
     void* items[] = {ast};
     Vector args = {.data = items, .capacity = 1, .count = 1};
-    Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
+    const Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
     uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
     FunctionObject* function = getVectorAt(&compiler->module->functions, position);
 
@@ -3571,7 +3571,7 @@ void freeCompiler(Compiler* compiler)
     freeASTNode(compiler->ast);
 }
 
-static bool compileSource(Compiler* compiler, char* source, CompileStatements compileStatements)
+static bool compileSource(Compiler* compiler, const char* source, CompileStatements compileStatements)
 {
     if (!compiler->module) {
         return false;
@@ -3604,12 +3604,12 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
     return true;
 }
 
-bool compile(Compiler* compiler, char* source)
+bool compile(Compiler* compiler, const char* source)
 {
     return compileSource(compiler, source, compileTopLevelStatements);
 }
 
-CompileResult compileRepl(Compiler* compiler, char* source)
+CompileResult compileRepl(Compiler* compiler, const char* source)
 {
     ErrorContext context;
     size_t start = compiler->ast->compound.statements.count;

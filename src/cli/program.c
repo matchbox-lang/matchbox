@@ -43,7 +43,7 @@ static int runModule(ModuleObject* module, bool disassemble)
     return status;
 }
 
-static int runSource(char* source, bool disassemble)
+static int runSource(const char* source, bool disassemble)
 {
     ModuleObject* module = createModuleObject();
     Compiler compiler;
@@ -61,7 +61,7 @@ static int runSource(char* source, bool disassemble)
     return status;
 }
 
-static int runFile(Options* options)
+static int runFile(const Options* options)
 {
     char* source = getFileContents(options->filename);
     
@@ -101,7 +101,7 @@ void printVersion()
     printf("%s %s\n", PROGRAM_NAME, PROGRAM_VERSION);
 }
 
-int runProgram(Options* options)
+int runProgram(const Options* options)
 {
     if (options->mode == PROGRAM_CHECK) {
         return runChecks(options);

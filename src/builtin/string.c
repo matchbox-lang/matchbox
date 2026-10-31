@@ -2,7 +2,7 @@
 #include "runtime/argument_format.h"
 #include "vm/vm.h"
 
-void builtinString(VM* vm, FunctionObject* function, Value* frame)
+void builtinString(VM* vm, const FunctionObject* function, Value* frame)
 {
     StringObject* string = concatenateArguments(frame, function->argumentFormats, function->argumentCount);
 

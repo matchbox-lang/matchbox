@@ -49,7 +49,7 @@ static bool appendLine(char** source, size_t* size, size_t* length)
     return true;
 }
 
-static SubmissionResult processSource(Compiler* compiler, VM* vm, char* source, MemoryGroup* memory)
+static SubmissionResult processSource(Compiler* compiler, VM* vm, const char* source, MemoryGroup* memory)
 {
     ErrorContext context;
 

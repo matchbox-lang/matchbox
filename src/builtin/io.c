@@ -3,7 +3,7 @@
 #include "runtime/writer.h"
 #include <stdio.h>
 
-void builtinPrint(VM* vm, FunctionObject* function, Value* frame)
+void builtinPrint(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 

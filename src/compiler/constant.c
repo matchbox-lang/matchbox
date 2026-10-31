@@ -5,7 +5,7 @@
 #include <limits.h>
 #include <math.h>
 
-static bool evaluateBranch(ASTNode* branch, ConstantValue* value);
+static bool evaluateBranch(const ASTNode* branch, ConstantValue* value);
 
 static _Noreturn void invalidConstantConversionError(Token token, DataType destination)
 {
@@ -262,9 +262,9 @@ ASTNode* createConstantNode(ConstantValue value, DataType type, Token token)
     return createIntegerNode(token, value.integer, type);
 }
 
-static bool evaluateConversion(ASTNode* ast, ConstantValue* value)
+static bool evaluateConversion(const ASTNode* ast, ConstantValue* value)
 {
-    ASTNode* expression = ast->conversion.expr;
+    const ASTNode* expression = ast->conversion.expr;
     bool constant = evaluateConstant(expression, value);
 
     if (!constant) {
@@ -287,7 +287,7 @@ static bool evaluateConversion(ASTNode* ast, ConstantValue* value)
     return true;
 }
 
-static bool evaluatePrefix(ASTNode* ast, ConstantValue* value)
+static bool evaluatePrefix(const ASTNode* ast, ConstantValue* value)
 {
     bool constant = evaluateConstant(ast->prefix.expr, value);
 
@@ -314,7 +314,8 @@ static bool evaluatePrefix(ASTNode* ast, ConstantValue* value)
     return true;
 }
 
-static bool evaluateBooleanBinary(ASTNode* ast, ConstantValue leftValue, ConstantValue rightValue, ConstantValue* value)
+static bool evaluateBooleanBinary(
+    const ASTNode* ast, ConstantValue leftValue, ConstantValue rightValue, ConstantValue* value)
 {
     int64_t left;
     int64_t right;
@@ -335,7 +336,7 @@ static bool evaluateBooleanBinary(ASTNode* ast, ConstantValue leftValue, Constan
     return folded;
 }
 
-static bool evaluateBinary(ASTNode* ast, ConstantValue* value)
+static bool evaluateBinary(const ASTNode* ast, ConstantValue* value)
 {
     ConstantValue left = {0};
     ConstantValue right = {0};
@@ -365,9 +366,9 @@ static bool evaluateBinary(ASTNode* ast, ConstantValue* value)
     return folded;
 }
 
-static bool evaluateVariable(ASTNode* ast, ConstantValue* value)
+static bool evaluateVariable(const ASTNode* ast, ConstantValue* value)
 {
-    ASTNode* symbol = ast->variable.symbol;
+    const ASTNode* symbol = ast->variable.symbol;
 
     if (!symbol || symbol->type != AST_VARIABLE_DEFINITION) {
         return false;
@@ -378,13 +379,13 @@ static bool evaluateVariable(ASTNode* ast, ConstantValue* value)
         return false;
     }
 
-    Scope* definitionScope = symbol->variableDefinition.scope;
+    const Scope* definitionScope = symbol->variableDefinition.scope;
 
     if (definitionScope->frameScope != ast->variable.scope->frameScope) {
         return false;
     }
 
-    ASTNode* initializer = symbol->variableDefinition.expr;
+    const ASTNode* initializer = symbol->variableDefinition.expr;
     DataType type = symbol->variableDefinition.typeId;
 
     if (!initializer || type == TYPE_CHAR) {
@@ -394,7 +395,7 @@ static bool evaluateVariable(ASTNode* ast, ConstantValue* value)
     return evaluateConstant(initializer, value);
 }
 
-static bool evaluateSelectedBranch(ASTNode* ast, ConstantValue* value)
+static bool evaluateSelectedBranch(const ASTNode* ast, ConstantValue* value)
 {
     ConstantValue condition = {0};
     bool constant = evaluateConstant(ast->conditional.condition, &condition);
@@ -403,12 +404,12 @@ static bool evaluateSelectedBranch(ASTNode* ast, ConstantValue* value)
         return false;
     }
 
-    ASTNode* branch = condition.integer ? ast->conditional.thenBranch : ast->conditional.elseBranch;
+    const ASTNode* branch = condition.integer ? ast->conditional.thenBranch : ast->conditional.elseBranch;
 
     return evaluateBranch(branch, value);
 }
 
-static bool evaluateBranch(ASTNode* branch, ConstantValue* value)
+static bool evaluateBranch(const ASTNode* branch, ConstantValue* value)
 {
     if (!branch) {
         return false;
@@ -422,7 +423,7 @@ static bool evaluateBranch(ASTNode* branch, ConstantValue* value)
         return false;
     }
 
-    ASTNode* result = branch->compound.statements.data[0];
+    const ASTNode* result = branch->compound.statements.data[0];
     DataType type = getNodeDataType(result);
 
     if (type == TYPE_CHAR || type == TYPE_STRING) {
@@ -432,7 +433,7 @@ static bool evaluateBranch(ASTNode* branch, ConstantValue* value)
     return evaluateConstant(result, value);
 }
 
-static bool evaluateConditional(ASTNode* ast, ConstantValue* value)
+static bool evaluateConditional(const ASTNode* ast, ConstantValue* value)
 {
     if (!ast->conditional.expression || ast->conditional.referenceType != REFERENCE_NONE) {
         return false;
@@ -441,7 +442,7 @@ static bool evaluateConditional(ASTNode* ast, ConstantValue* value)
     return evaluateSelectedBranch(ast, value);
 }
 
-bool evaluateConstant(ASTNode* ast, ConstantValue* value)
+bool evaluateConstant(const ASTNode* ast, ConstantValue* value)
 {
     if (!ast) {
         return false;

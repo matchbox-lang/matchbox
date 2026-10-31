@@ -22,17 +22,17 @@ static void disassembleDoesNotSupportCheckError()
     reportError("Cannot disassemble checks");
 }
 
-static void unexpectedArgumentError(char* arg)
+static void unexpectedArgumentError(const char* arg)
 {
     reportError("Unexpected argument: %s", arg);
 }
 
-static void unknownOptionError(char* arg)
+static void unknownOptionError(const char* arg)
 {
     reportError("Unknown option: %s", arg);
 }
 
-static bool parseOption(Options* options, char* arg)
+static bool parseOption(Options* options, const char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
         printVersion();
@@ -67,17 +67,17 @@ static bool parseOption(Options* options, char* arg)
     return false;
 }
 
-static bool isOption(char* arg)
+static bool isOption(const char* arg)
 {
     return arg[0] == '-';
 }
 
-static bool isOptionDelimiter(char* arg)
+static bool isOptionDelimiter(const char* arg)
 {
     return strcmp(arg, "--") == 0;
 }
 
-static bool isCommand(Options* options, char* arg, bool parsingOptions, const char* command)
+static bool isCommand(const Options* options, const char* arg, bool parsingOptions, const char* command)
 {
     if (!parsingOptions) {
         return false;
@@ -94,7 +94,7 @@ static bool isCommand(Options* options, char* arg, bool parsingOptions, const ch
     return strcmp(arg, command) == 0;
 }
 
-static bool parseTestArgument(Options* options, char* arg)
+static bool parseTestArgument(Options* options, const char* arg)
 {
     if (options->testPath) {
         unexpectedArgumentError(arg);
@@ -107,7 +107,7 @@ static bool parseTestArgument(Options* options, char* arg)
     return true;
 }
 
-static bool parseRunArgument(Options* options, char* arg)
+static bool parseRunArgument(Options* options, const char* arg)
 {
     if (options->filename) {
         unexpectedArgumentError(arg);
@@ -120,7 +120,7 @@ static bool parseRunArgument(Options* options, char* arg)
     return true;
 }
 
-static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
+static bool parseArgument(Options* options, const char* arg, bool* parsingOptions)
 {
     if (*parsingOptions && isOptionDelimiter(arg)) {
         *parsingOptions = false;
@@ -151,7 +151,7 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
     return parseRunArgument(options, arg);
 }
 
-static bool parseArguments(Options* options, int argc, char* argv[])
+static bool parseArguments(Options* options, int argc, char* const argv[])
 {
     bool parsingOptions = true;
     bool parsed = true;
@@ -165,7 +165,7 @@ static bool parseArguments(Options* options, int argc, char* argv[])
     return parsed;
 }
 
-bool parseCommandLine(Options* options, int argc, char* argv[])
+bool parseCommandLine(Options* options, int argc, char* const argv[])
 {
     if (!parseArguments(options, argc, argv)) {
         return false;

@@ -34,7 +34,7 @@ typedef struct Compiler
 
 void initCompiler(Compiler* compiler, ModuleObject* module);
 void freeCompiler(Compiler* compiler);
-bool compile(Compiler* compiler, char* source);
-CompileResult compileRepl(Compiler* compiler, char* source);
+bool compile(Compiler* compiler, const char* source);
+CompileResult compileRepl(Compiler* compiler, const char* source);
 
 #endif

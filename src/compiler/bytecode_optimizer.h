@@ -5,6 +5,6 @@
 #include "runtime/module_object.h"
 #include <stddef.h>
 
-void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentRegisters);
+void optimizeBytecode(const ModuleObject* module, CodeObject* code, size_t persistentRegisters);
 
 #endif

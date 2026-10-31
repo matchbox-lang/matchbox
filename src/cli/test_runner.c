@@ -359,7 +359,7 @@ static void printTestSummary(const TestRun* run)
     printf("%d %s failed.\n", run->failed, run->failed == 1 ? "test" : "tests");
 }
 
-int runTests(Options* options)
+int runTests(const Options* options)
 {
     TestRun run = {options->testOutput, PROGRAM_COMMAND, 0, 0, 0};
     const char* path = configureTestRun(&run, options);

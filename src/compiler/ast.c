@@ -89,7 +89,7 @@ ASTNode* createBooleanNode(Token token, bool value)
     return ast;
 }
 
-ASTNode* createBuiltinCallNode(Token token, Builtin* builtin)
+ASTNode* createBuiltinCallNode(Token token, const Builtin* builtin)
 {
     ASTNode* ast = createASTNode(AST_BUILTIN_CALL);
     ast->builtinCall.builtin = builtin;

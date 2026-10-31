@@ -17,7 +17,7 @@ typedef struct FunctionObject FunctionObject;
 
 typedef void (*FunctionEntry)(
     VM* vm,
-    FunctionObject* function,
+    const FunctionObject* function,
     Value* frame
 );
 
@@ -37,6 +37,6 @@ typedef struct FunctionObject
 
 FunctionObject* createFunctionObject();
 void freeFunctionObject(FunctionObject* function);
-void enterBytecodeFunction(VM* vm, FunctionObject* function, Value* frame);
+void enterBytecodeFunction(VM* vm, const FunctionObject* function, Value* frame);
 
 #endif

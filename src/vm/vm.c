@@ -25,14 +25,14 @@ static _Noreturn void stackOverflowError(void)
     fatalError("Stack overflow");
 }
 
-static void testFrameOverflow(VM* vm, Value* frame, int maxStackCount)
+static void testFrameOverflow(const VM* vm, const Value* frame, int maxStackCount)
 {
     if (frame - vm->stack - 2 + maxStackCount > STACK_MAX) {
         stackOverflowError();
     }
 }
 
-void enterBytecodeFunction(VM* vm, FunctionObject* function, Value* frame)
+void enterBytecodeFunction(VM* vm, const FunctionObject* function, Value* frame)
 {
     testFrameOverflow(vm, frame, function->maxStackCount);
 

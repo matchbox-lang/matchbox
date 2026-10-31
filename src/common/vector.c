@@ -17,7 +17,7 @@ void freeVector(Vector* vector)
     freeMemory(vector->data);
 }
 
-size_t countVector(Vector* vector)
+size_t countVector(const Vector* vector)
 {
     return vector->count;
 }
@@ -74,7 +74,7 @@ void* popVectorItem(Vector* vector)
     return NULL;
 }
 
-void* getVectorAt(Vector* vector, size_t index)
+void* getVectorAt(const Vector* vector, size_t index)
 {
     if (index >= vector->count) {
         return NULL;
@@ -90,12 +90,12 @@ void setVectorAt(Vector* vector, size_t index, void* item)
     }
 }
 
-void* vectorBegin(Vector* vector)
+void* vectorBegin(const Vector* vector)
 {
     return vector->data;
 }
 
-void* vectorEnd(Vector* vector)
+void* vectorEnd(const Vector* vector)
 {
     if (!vector->data) {
         return NULL;

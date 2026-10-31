@@ -3,6 +3,6 @@
 
 #include "runtime/module_object.h"
 
-void disassembleModule(ModuleObject* module);
+void disassembleModule(const ModuleObject* module);
 
 #endif

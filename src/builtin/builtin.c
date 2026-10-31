@@ -6,7 +6,7 @@
 #include "common/data_type.h"
 #include <string.h>
 
-Builtin builtins[BUILTINS_MAX] = {
+static const Builtin builtins[BUILTINS_MAX] = {
     // I/O
     {"print",       builtinPrint,              -1,  {TYPE_UNKNOWN},                         TYPE_VOID},
 
@@ -106,7 +106,7 @@ Builtin builtins[BUILTINS_MAX] = {
     {"panic",       builtinPanic,               1,  {TYPE_STRING},                          TYPE_VOID}
 };
 
-static bool builtinArgumentMatches(Builtin* builtin, DataType* argumentTypes, size_t position)
+static bool builtinArgumentMatches(const Builtin* builtin, const DataType* argumentTypes, size_t position)
 {
     DataType argumentType = argumentTypes[position];
     DataType parameterType = builtin->params[position];
@@ -116,7 +116,8 @@ static bool builtinArgumentMatches(Builtin* builtin, DataType* argumentTypes, si
         || canImplicitlyWidenType(argumentType, parameterType);
 }
 
-static bool typedVariadicMatches(Builtin* builtin, DataType* argumentTypes, size_t argumentCount, bool exact)
+static bool typedVariadicMatches(
+    const Builtin* builtin, const DataType* argumentTypes, size_t argumentCount, bool exact)
 {
     if (!argumentCount || !argumentTypes) {
         return false;
@@ -133,7 +134,7 @@ static bool typedVariadicMatches(Builtin* builtin, DataType* argumentTypes, size
     return matches;
 }
 
-static bool builtinMatches(Builtin* builtin, DataType* argumentTypes, size_t argumentCount)
+static bool builtinMatches(const Builtin* builtin, const DataType* argumentTypes, size_t argumentCount)
 {
     if (builtin->paramCount == BUILTIN_VARIADIC) {
         return true;
@@ -157,13 +158,14 @@ static bool builtinMatches(Builtin* builtin, DataType* argumentTypes, size_t arg
 }
 
 static bool builtinCallMatches(
-    Builtin* builtin, const char* name, DataType* argumentTypes, size_t argumentCount)
+    const Builtin* builtin, const char* name, const DataType* argumentTypes, size_t argumentCount)
 {
     return strcmp(name, builtin->name) == 0
         && builtinMatches(builtin, argumentTypes, argumentCount);
 }
 
-static Builtin* matchExactTypedVariadicBuiltin(Builtin* builtin, DataType* argumentTypes, size_t argumentCount)
+static const Builtin* matchExactTypedVariadicBuiltin(
+    const Builtin* builtin, const DataType* argumentTypes, size_t argumentCount)
 {
     bool matches = typedVariadicMatches(builtin, argumentTypes, argumentCount, true);
 
@@ -174,7 +176,8 @@ static Builtin* matchExactTypedVariadicBuiltin(Builtin* builtin, DataType* argum
     return builtin;
 }
 
-static Builtin* matchExactBuiltin(Builtin* builtin, const char* name, DataType* argumentTypes, size_t argumentCount)
+static const Builtin* matchExactBuiltin(
+    const Builtin* builtin, const char* name, const DataType* argumentTypes, size_t argumentCount)
 {
     if (strcmp(name, builtin->name) != 0) {
         return NULL;
@@ -201,9 +204,9 @@ static Builtin* matchExactBuiltin(Builtin* builtin, const char* name, DataType* 
     return builtin;
 }
 
-static Builtin* resolveExactBuiltin(const char* name, DataType* argumentTypes, size_t argumentCount)
+static const Builtin* resolveExactBuiltin(const char* name, const DataType* argumentTypes, size_t argumentCount)
 {
-    Builtin* exact = NULL;
+    const Builtin* exact = NULL;
 
     for (int i = 0; i < BUILTINS_MAX && !exact; i++) {
         exact = matchExactBuiltin(&builtins[i], name, argumentTypes, argumentCount);
@@ -212,18 +215,18 @@ static Builtin* resolveExactBuiltin(const char* name, DataType* argumentTypes, s
     return exact;
 }
 
-Builtin* resolveBuiltin(const char* name, DataType* argumentTypes, size_t argumentCount)
+const Builtin* resolveBuiltin(const char* name, const DataType* argumentTypes, size_t argumentCount)
 {
-    Builtin* exact = resolveExactBuiltin(name, argumentTypes, argumentCount);
+    const Builtin* exact = resolveExactBuiltin(name, argumentTypes, argumentCount);
 
     if (exact) {
         return exact;
     }
 
-    Builtin* variadic = NULL;
+    const Builtin* variadic = NULL;
 
     for (int i = 0; i < BUILTINS_MAX; i++) {
-        Builtin* builtin = &builtins[i];
+        const Builtin* builtin = &builtins[i];
 
         if (!builtinCallMatches(builtin, name, argumentTypes, argumentCount)) {
             continue;

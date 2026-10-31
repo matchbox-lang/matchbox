@@ -26,8 +26,8 @@ TableItem* createTableItem(StringView key, void* value, TableItem* next);
 void freeTableItem(TableItem* item);
 void initTable(Table* table, size_t capacity);
 void freeTable(Table* table);
-size_t countTable(Table* table);
-void* getTableAt(Table* table, StringView key);
+size_t countTable(const Table* table);
+void* getTableAt(const Table* table, StringView key);
 bool setTableAt(Table* table, StringView key, void* value);
 bool deleteTableAt(Table* table, StringView key);
 

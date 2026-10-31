@@ -387,7 +387,7 @@ static ASTNode* parseStringLiteral(Parser* parser)
     ASTNode* ast = parseStringSegment(&reader);
 
     if (reader.current.chars < reader.end) {
-        Builtin* builtin = resolveBuiltin("string", NULL, 0);
+        const Builtin* builtin = resolveBuiltin("string", NULL, 0);
         ASTNode* call = createBuiltinCallNode(token, builtin);
 
         appendStringPart(call, ast);
@@ -1494,7 +1494,7 @@ void initParser(Parser* parser, ASTNode* ast)
     parser->topLevel = ast;
 }
 
-bool parse(Parser* parser, char* source)
+bool parse(Parser* parser, const char* source)
 {
     initLexer(&parser->lexer, source);
     advance(parser);

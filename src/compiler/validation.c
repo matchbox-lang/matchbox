@@ -2,18 +2,18 @@
 #include "compiler/constant.h"
 #include "compiler/diagnostics.h"
 
-static void validateNode(ASTNode* ast, bool checkZero);
+static void validateNode(const ASTNode* ast, bool checkZero);
 
-static void validateNodes(Vector* nodes, size_t start, bool checkZero)
+static void validateNodes(const Vector* nodes, size_t start, bool checkZero)
 {
     for (size_t i = start; i < nodes->count; i++) {
-        ASTNode* node = nodes->data[i];
+        const ASTNode* node = nodes->data[i];
 
         validateNode(node, checkZero);
     }
 }
 
-static void validateZeroDivisor(ASTNode* divisor, Token operator, DataType type, bool checkZero)
+static void validateZeroDivisor(const ASTNode* divisor, Token operator, DataType type, bool checkZero)
 {
     bool division = operator.type == TOKEN_SLASH || operator.type == TOKEN_SLASH_EQUAL;
     bool remainder = operator.type == TOKEN_PERCENT || operator.type == TOKEN_PERCENT_EQUAL;
@@ -32,7 +32,7 @@ static void validateZeroDivisor(ASTNode* divisor, Token operator, DataType type,
     fatalSourceError(operator.line, operator.column, "Division by zero");
 }
 
-static bool shouldCheckRightDivisor(ASTNode* ast, bool checkZero)
+static bool shouldCheckRightDivisor(const ASTNode* ast, bool checkZero)
 {
     if (!checkZero) {
         return false;
@@ -52,7 +52,7 @@ static bool shouldCheckRightDivisor(ASTNode* ast, bool checkZero)
     return (left.integer != 0) == (ast->binary.operator.type == TOKEN_AND);
 }
 
-static void validateBinary(ASTNode* ast, bool checkZero)
+static void validateBinary(const ASTNode* ast, bool checkZero)
 {
     validateNode(ast->binary.leftExpr, checkZero);
 
@@ -62,7 +62,7 @@ static void validateBinary(ASTNode* ast, bool checkZero)
     validateZeroDivisor(ast->binary.rightExpr, ast->binary.operator, ast->binary.operandType, checkZero);
 }
 
-static void validateConversion(ASTNode* ast, bool checkZero)
+static void validateConversion(const ASTNode* ast, bool checkZero)
 {
     validateNode(ast->conversion.expr, checkZero);
 
@@ -79,7 +79,7 @@ static void validateConversion(ASTNode* ast, bool checkZero)
     fatalSourceError(token.line, token.column, "Integer-to-char conversion requires a constant or u8 source");
 }
 
-static void validateAssignment(ASTNode* ast, bool checkZero)
+static void validateAssignment(const ASTNode* ast, bool checkZero)
 {
     validateNode(ast->assignment.expr, checkZero);
 
@@ -88,26 +88,26 @@ static void validateAssignment(ASTNode* ast, bool checkZero)
     validateZeroDivisor(ast->assignment.expr, ast->assignment.operator, type, checkZero);
 }
 
-static void validateConditional(ASTNode* ast, bool checkZero)
+static void validateConditional(const ASTNode* ast, bool checkZero)
 {
     validateNode(ast->conditional.condition, checkZero);
     validateNode(ast->conditional.thenBranch, checkZero);
     validateNode(ast->conditional.elseBranch, checkZero);
 }
 
-static void validateMatchArm(MatchArm* arm, bool checkZero)
+static void validateMatchArm(const MatchArm* arm, bool checkZero)
 {
     validateNode(arm->pattern, checkZero);
     validateNode(arm->guard, checkZero);
     validateNode(arm->branch, checkZero);
 }
 
-static void validateMatch(ASTNode* ast, bool checkZero)
+static void validateMatch(const ASTNode* ast, bool checkZero)
 {
     validateNode(ast->match.subject, checkZero);
 
     for (size_t i = 0; i < ast->match.arms.count; i++) {
-        MatchArm* arm = ast->match.arms.data[i];
+        const MatchArm* arm = ast->match.arms.data[i];
 
         validateMatchArm(arm, checkZero);
     }
@@ -115,7 +115,7 @@ static void validateMatch(ASTNode* ast, bool checkZero)
     validateNode(ast->match.defaultBranch, checkZero);
 }
 
-static void validateNode(ASTNode* ast, bool checkZero)
+static void validateNode(const ASTNode* ast, bool checkZero)
 {
     if (!ast) {
         return;
@@ -167,7 +167,7 @@ static void validateNode(ASTNode* ast, bool checkZero)
     }
 }
 
-void validateConstantExpressions(ASTNode* ast, size_t start)
+void validateConstantExpressions(const ASTNode* ast, size_t start)
 {
     validateNodes(&ast->compound.statements, start, true);
 }

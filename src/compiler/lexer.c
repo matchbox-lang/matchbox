@@ -700,7 +700,7 @@ static Token scanIdentifier(Lexer* lexer)
     return makeToken(lexer, getIdentifierType(lexer));
 }
 
-void initLexer(Lexer* lexer, char* source)
+void initLexer(Lexer* lexer, const char* source)
 {
     lexer->current.chars = source;
     lexer->current.line = 1;

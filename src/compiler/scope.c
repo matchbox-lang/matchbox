@@ -16,7 +16,7 @@ static Scope* getFrameScope(Scope* scope, Scope* parent)
     return scope;
 }
 
-static size_t getLocalOffset(Scope* parent)
+static size_t getLocalOffset(const Scope* parent)
 {
     if (!parent) {
         return 0;
@@ -50,7 +50,7 @@ void freeScope(Scope* scope)
     freeMemory(scope);
 }
 
-static size_t getSymbolSlotCount(ASTNode* symbol)
+static size_t getSymbolSlotCount(const ASTNode* symbol)
 {
     if (!isVariableType(symbol)) {
         return 0;
@@ -63,22 +63,22 @@ static size_t getSymbolSlotCount(ASTNode* symbol)
     return getTypeSlotCount(getNodeDataType(symbol));
 }
 
-size_t getMaxLocalCount(Scope* scope)
+size_t getMaxLocalCount(const Scope* scope)
 {
     return scope->frameScope->maxLocalCount;
 }
 
-size_t getNextLocalPosition(Scope* scope)
+size_t getNextLocalPosition(const Scope* scope)
 {
     return scope->localOffset + scope->localCount;
 }
 
-size_t getScopeLevel(Scope* scope)
+size_t getScopeLevel(const Scope* scope)
 {
     return scope ? scope->level : 0;
 }
 
-bool isTopLevelScope(Scope* scope)
+bool isTopLevelScope(const Scope* scope)
 {
     return scope->level == 1;
 }
@@ -102,12 +102,12 @@ ASTNode* setLocalVariableSymbol(Scope* scope, StringView id, ASTNode* symbol)
     return setLocalSymbol(scope, id, symbol);
 }
 
-ASTNode* getLocalSymbol(Scope* scope, StringView id)
+ASTNode* getLocalSymbol(const Scope* scope, StringView id)
 {
     return getTableAt(&scope->symbols, id);
 }
 
-ASTNode* getSymbol(Scope* scope, StringView id)
+ASTNode* getSymbol(const Scope* scope, StringView id)
 {
     ASTNode* symbol = getTableAt(&scope->symbols, id);
 

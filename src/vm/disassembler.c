@@ -14,7 +14,7 @@
 #define READ_UINT16() (ptr += 2, (uint16_t)((ptr[-2] << 8) | ptr[-1]))
 #define READ_INT24() (ptr += 3, (int32_t)((ptr[-3] << 24) | (ptr[-2] << 16) | (ptr[-1] << 8)) >> 8)
 
-static uint8_t* ptr;
+static const uint8_t* ptr;
 static uint16_t registerHigh[3];
 
 static _Noreturn void unknownOpcodeError(int opcode)
@@ -382,7 +382,7 @@ static void printInstruction(uint8_t c)
     }
 }
 
-static void disassembleCode(CodeObject* code)
+static void disassembleCode(const CodeObject* code)
 {
     ptr = code->data;
 
@@ -401,7 +401,7 @@ static void disassembleCode(CodeObject* code)
     }
 }
 
-static void disassembleFunction(FunctionObject* function, bool separate)
+static void disassembleFunction(const FunctionObject* function, bool separate)
 {
     if (function->type == FUNCTION_BUILTIN) {
         return;
@@ -414,12 +414,12 @@ static void disassembleFunction(FunctionObject* function, bool separate)
     }
 }
 
-void disassembleModule(ModuleObject* module)
+void disassembleModule(const ModuleObject* module)
 {
     size_t functionCount = countVector(&module->functions);
 
     for (size_t i = 0; i < functionCount; i++) {
-        FunctionObject* function = getVectorAt(&module->functions, i);
+        const FunctionObject* function = getVectorAt(&module->functions, i);
         bool separate = i < functionCount - 1;
 
         disassembleFunction(function, separate);

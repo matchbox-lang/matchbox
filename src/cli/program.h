@@ -15,6 +15,6 @@ typedef struct Options Options;
 
 void printUsage(FILE* stream);
 void printVersion();
-int runProgram(Options* options);
+int runProgram(const Options* options);
 
 #endif

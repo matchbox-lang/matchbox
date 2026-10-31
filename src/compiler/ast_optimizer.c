@@ -347,7 +347,7 @@ static void optimizeBuiltinCall(ASTNode* ast)
 {
     optimizeNodes(&ast->builtinCall.args);
 
-    Builtin* builtin = ast->builtinCall.builtin;
+    const Builtin* builtin = ast->builtinCall.builtin;
 
     if (builtin->entry != builtinString || ast->builtinCall.args.count != 1) {
         return;

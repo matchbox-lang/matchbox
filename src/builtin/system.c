@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void builtinAssert(VM* vm, FunctionObject* function, Value* frame)
+void builtinAssert(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -17,7 +17,7 @@ void builtinAssert(VM* vm, FunctionObject* function, Value* frame)
     fatalError("Assertion failed");
 }
 
-void builtinAssertMessage(VM* vm, FunctionObject* function, Value* frame)
+void builtinAssertMessage(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -26,7 +26,7 @@ void builtinAssertMessage(VM* vm, FunctionObject* function, Value* frame)
         return;
     }
 
-    StringObject* message = AS_STRING_OBJECT(frame[1]);
+    const StringObject* message = AS_STRING_OBJECT(frame[1]);
 
     fputs("Error: Assertion failed: ", stderr);
     fwrite(message->chars, 1, message->length, stderr);
@@ -34,18 +34,18 @@ void builtinAssertMessage(VM* vm, FunctionObject* function, Value* frame)
     raiseError();
 }
 
-void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
+void builtinByteorder(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
 
-    int32_t i = 1;
-    char* c = (char*)&i;
+    const int32_t i = 1;
+    const char* c = (const char*)&i;
     
     frame[-2] = SIGNED_VALUE(*c == 0);
 }
 
-void builtinExit(VM* vm, FunctionObject* function, Value* frame)
+void builtinExit(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)function;
     (void)frame;
@@ -53,7 +53,7 @@ void builtinExit(VM* vm, FunctionObject* function, Value* frame)
     exitVM(vm, EXIT_SUCCESS);
 }
 
-void builtinExitStatus(VM* vm, FunctionObject* function, Value* frame)
+void builtinExitStatus(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)function;
 
@@ -62,12 +62,12 @@ void builtinExitStatus(VM* vm, FunctionObject* function, Value* frame)
     exitVM(vm, status);
 }
 
-void builtinPanic(VM* vm, FunctionObject* function, Value* frame)
+void builtinPanic(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
 
-    StringObject* message = AS_STRING_OBJECT(frame[0]);
+    const StringObject* message = AS_STRING_OBJECT(frame[0]);
 
     fputs("Panic: ", stderr);
     fwrite(message->chars, 1, message->length, stderr);

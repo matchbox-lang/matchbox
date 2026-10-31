@@ -4,7 +4,7 @@
 #include "runtime/value.h"
 #include "runtime/writer.h"
 
-typedef void (*ArgumentFormatter)(Writer* writer, Value* argument);
+typedef void (*ArgumentFormatter)(Writer* writer, const Value* argument);
 
 typedef struct ArgumentFormat
 {
@@ -14,20 +14,20 @@ typedef struct ArgumentFormat
 } ArgumentFormat;
 
 ArgumentFormat getArgumentFormat(DataType type);
-void formatArguments(Writer* writer, Value* frame, const ArgumentFormat* formats, size_t count);
-StringObject* concatenateArguments(Value* frame, const ArgumentFormat* formats, size_t count);
-void formatI8Argument(Writer* writer, Value* argument);
-void formatI16Argument(Writer* writer, Value* argument);
-void formatI32Argument(Writer* writer, Value* argument);
-void formatI64Argument(Writer* writer, Value* argument);
-void formatU8Argument(Writer* writer, Value* argument);
-void formatU16Argument(Writer* writer, Value* argument);
-void formatU32Argument(Writer* writer, Value* argument);
-void formatU64Argument(Writer* writer, Value* argument);
-void formatF32Argument(Writer* writer, Value* argument);
-void formatF64Argument(Writer* writer, Value* argument);
-void formatBoolArgument(Writer* writer, Value* argument);
-void formatCharArgument(Writer* writer, Value* argument);
-void formatStringArgument(Writer* writer, Value* argument);
+void formatArguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count);
+StringObject* concatenateArguments(const Value* frame, const ArgumentFormat* formats, size_t count);
+void formatI8Argument(Writer* writer, const Value* argument);
+void formatI16Argument(Writer* writer, const Value* argument);
+void formatI32Argument(Writer* writer, const Value* argument);
+void formatI64Argument(Writer* writer, const Value* argument);
+void formatU8Argument(Writer* writer, const Value* argument);
+void formatU16Argument(Writer* writer, const Value* argument);
+void formatU32Argument(Writer* writer, const Value* argument);
+void formatU64Argument(Writer* writer, const Value* argument);
+void formatF32Argument(Writer* writer, const Value* argument);
+void formatF64Argument(Writer* writer, const Value* argument);
+void formatBoolArgument(Writer* writer, const Value* argument);
+void formatCharArgument(Writer* writer, const Value* argument);
+void formatStringArgument(Writer* writer, const Value* argument);
 
 #endif

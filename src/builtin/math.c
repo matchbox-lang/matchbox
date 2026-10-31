@@ -2,7 +2,7 @@
 #include "common/util.h"
 #include <math.h>
 
-void builtinAbsF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAbsF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -13,7 +13,7 @@ void builtinAbsF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAbsF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAbsF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -24,7 +24,7 @@ void builtinAbsF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAbsI32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAbsI32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -35,7 +35,7 @@ void builtinAbsI32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(x);
 }
 
-void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAbsI64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -46,7 +46,7 @@ void builtinAbsI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, x);
 }
 
-void builtinAcosF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAcosF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -57,7 +57,7 @@ void builtinAcosF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAcosF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAcosF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -68,7 +68,7 @@ void builtinAcosF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAcoshF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAcoshF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -79,7 +79,7 @@ void builtinAcoshF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAcoshF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAcoshF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -90,7 +90,7 @@ void builtinAcoshF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAsinF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAsinF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -101,7 +101,7 @@ void builtinAsinF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAsinF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAsinF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -112,7 +112,7 @@ void builtinAsinF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAsinhF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAsinhF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -123,7 +123,7 @@ void builtinAsinhF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAsinhF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAsinhF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -134,7 +134,7 @@ void builtinAsinhF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAtan2F32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAtan2F32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -146,7 +146,7 @@ void builtinAtan2F32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAtan2F64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAtan2F64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -158,7 +158,7 @@ void builtinAtan2F64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAtanF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAtanF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -169,7 +169,7 @@ void builtinAtanF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAtanF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAtanF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -180,7 +180,7 @@ void builtinAtanF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAtanhF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAtanhF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -191,7 +191,7 @@ void builtinAtanhF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinAtanhF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAtanhF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -202,7 +202,7 @@ void builtinAtanhF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinAvgF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinAvgF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     builtinSumF32(vm, function, frame);
 
@@ -211,7 +211,7 @@ void builtinAvgF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(result);
 }
 
-void builtinAvgF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinAvgF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     builtinSumF64(vm, function, frame);
 
@@ -221,7 +221,7 @@ void builtinAvgF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, result);
 }
 
-void builtinCbrtF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinCbrtF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -232,7 +232,7 @@ void builtinCbrtF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinCbrtF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinCbrtF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -243,7 +243,7 @@ void builtinCbrtF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinCeilF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinCeilF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -254,7 +254,7 @@ void builtinCeilF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinCeilF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinCeilF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -265,7 +265,7 @@ void builtinCeilF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinClampF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinClampF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -284,7 +284,7 @@ void builtinClampF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinClampF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinClampF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -303,7 +303,7 @@ void builtinClampF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinClampI32(VM* vm, FunctionObject* function, Value* frame)
+void builtinClampI32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -321,7 +321,7 @@ void builtinClampI32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(num);
 }
 
-void builtinClampI64(VM* vm, FunctionObject* function, Value* frame)
+void builtinClampI64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -339,7 +339,7 @@ void builtinClampI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, num);
 }
 
-void builtinCosF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinCosF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -350,7 +350,7 @@ void builtinCosF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinCosF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinCosF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -361,7 +361,7 @@ void builtinCosF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinCoshF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinCoshF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -372,7 +372,7 @@ void builtinCoshF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinCoshF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinCoshF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -383,7 +383,7 @@ void builtinCoshF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinDegF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinDegF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -394,7 +394,7 @@ void builtinDegF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinDegF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinDegF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -405,7 +405,7 @@ void builtinDegF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinExpF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinExpF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -416,7 +416,7 @@ void builtinExpF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinExpF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinExpF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -427,7 +427,7 @@ void builtinExpF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinFloorF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinFloorF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -438,7 +438,7 @@ void builtinFloorF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinFloorF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinFloorF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -449,7 +449,7 @@ void builtinFloorF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinHypotF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinHypotF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -461,7 +461,7 @@ void builtinHypotF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinHypotF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinHypotF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -473,7 +473,7 @@ void builtinHypotF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinLdexpF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinLdexpF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -485,7 +485,7 @@ void builtinLdexpF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinLdexpF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinLdexpF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -497,7 +497,7 @@ void builtinLdexpF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinLog10F32(VM* vm, FunctionObject* function, Value* frame)
+void builtinLog10F32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -508,7 +508,7 @@ void builtinLog10F32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinLog10F64(VM* vm, FunctionObject* function, Value* frame)
+void builtinLog10F64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -519,7 +519,7 @@ void builtinLog10F64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinLog2F32(VM* vm, FunctionObject* function, Value* frame)
+void builtinLog2F32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -530,7 +530,7 @@ void builtinLog2F32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinLog2F64(VM* vm, FunctionObject* function, Value* frame)
+void builtinLog2F64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -541,7 +541,7 @@ void builtinLog2F64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinLogF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinLogF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -552,7 +552,7 @@ void builtinLogF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinLogF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinLogF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -563,7 +563,7 @@ void builtinLogF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinMaxF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -577,7 +577,7 @@ void builtinMaxF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(result);
 }
 
-void builtinMaxF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -591,7 +591,7 @@ void builtinMaxF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, result);
 }
 
-void builtinMaxI32(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxI32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -605,7 +605,7 @@ void builtinMaxI32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = I32_VALUE(result);
 }
 
-void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxI64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -619,7 +619,7 @@ void builtinMaxI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, result);
 }
 
-void builtinMaxU32(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxU32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -633,7 +633,7 @@ void builtinMaxU32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = U32_VALUE(result);
 }
 
-void builtinMaxU64(VM* vm, FunctionObject* function, Value* frame)
+void builtinMaxU64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -647,7 +647,7 @@ void builtinMaxU64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, (int64_t)result);
 }
 
-void builtinMinF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -661,7 +661,7 @@ void builtinMinF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(result);
 }
 
-void builtinMinF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -675,7 +675,7 @@ void builtinMinF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, result);
 }
 
-void builtinMinI32(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinI32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -689,7 +689,7 @@ void builtinMinI32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = I32_VALUE(result);
 }
 
-void builtinMinI64(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinI64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -703,7 +703,7 @@ void builtinMinI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, result);
 }
 
-void builtinMinU32(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinU32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -717,7 +717,7 @@ void builtinMinU32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = U32_VALUE(result);
 }
 
-void builtinMinU64(VM* vm, FunctionObject* function, Value* frame)
+void builtinMinU64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -731,7 +731,7 @@ void builtinMinU64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, (int64_t)result);
 }
 
-void builtinPowF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinPowF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -743,7 +743,7 @@ void builtinPowF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinPowF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinPowF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -755,7 +755,7 @@ void builtinPowF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinPowI32(VM* vm, FunctionObject* function, Value* frame)
+void builtinPowI32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -767,7 +767,7 @@ void builtinPowI32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(x);
 }
 
-void builtinPowI64(VM* vm, FunctionObject* function, Value* frame)
+void builtinPowI64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -779,7 +779,7 @@ void builtinPowI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, x);
 }
 
-void builtinRadF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinRadF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -790,7 +790,7 @@ void builtinRadF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinRadF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinRadF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -801,7 +801,7 @@ void builtinRadF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinSinF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinSinF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -812,7 +812,7 @@ void builtinSinF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinSinF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinSinF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -823,7 +823,7 @@ void builtinSinF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinSinhF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinSinhF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -834,7 +834,7 @@ void builtinSinhF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinSinhF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinSinhF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -845,7 +845,7 @@ void builtinSinhF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinSqrtF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinSqrtF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -856,7 +856,7 @@ void builtinSqrtF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinSqrtF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinSqrtF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -867,7 +867,7 @@ void builtinSqrtF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinSumF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinSumF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -880,7 +880,7 @@ void builtinSumF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(result);
 }
 
-void builtinSumF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinSumF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -893,7 +893,7 @@ void builtinSumF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, result);
 }
 
-void builtinSumI32(VM* vm, FunctionObject* function, Value* frame)
+void builtinSumI32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -906,7 +906,7 @@ void builtinSumI32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = I32_VALUE(result);
 }
 
-void builtinSumI64(VM* vm, FunctionObject* function, Value* frame)
+void builtinSumI64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -919,7 +919,7 @@ void builtinSumI64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, (int64_t)result);
 }
 
-void builtinSumU32(VM* vm, FunctionObject* function, Value* frame)
+void builtinSumU32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -932,7 +932,7 @@ void builtinSumU32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = U32_VALUE(result);
 }
 
-void builtinSumU64(VM* vm, FunctionObject* function, Value* frame)
+void builtinSumU64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
@@ -945,7 +945,7 @@ void builtinSumU64(VM* vm, FunctionObject* function, Value* frame)
     writeI64(frame, (int64_t)result);
 }
 
-void builtinTanF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinTanF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -956,7 +956,7 @@ void builtinTanF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinTanF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinTanF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -967,7 +967,7 @@ void builtinTanF64(VM* vm, FunctionObject* function, Value* frame)
     writeF64(frame, x);
 }
 
-void builtinTanhF32(VM* vm, FunctionObject* function, Value* frame)
+void builtinTanhF32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -978,7 +978,7 @@ void builtinTanhF32(VM* vm, FunctionObject* function, Value* frame)
     frame[-2] = F32_VALUE(x);
 }
 
-void builtinTanhF64(VM* vm, FunctionObject* function, Value* frame)
+void builtinTanhF64(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;

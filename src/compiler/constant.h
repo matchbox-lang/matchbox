@@ -9,7 +9,7 @@ typedef struct ConstantValue
     double floating;
 } ConstantValue;
 
-bool evaluateConstant(ASTNode* ast, ConstantValue* value);
+bool evaluateConstant(const ASTNode* ast, ConstantValue* value);
 ASTNode* createConstantNode(ConstantValue value, DataType type, Token token);
 
 #endif

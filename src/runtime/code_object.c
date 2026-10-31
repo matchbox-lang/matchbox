@@ -23,7 +23,7 @@ void clearCodeObject(CodeObject* code)
     code->count = 0;
 }
 
-size_t countCodeObject(CodeObject* code)
+size_t countCodeObject(const CodeObject* code)
 {
     return code->count;
 }
@@ -78,12 +78,12 @@ void setByteAt(CodeObject* code, size_t index, uint8_t byte)
     }
 }
 
-uint8_t* codeObjectBegin(CodeObject* code)
+uint8_t* codeObjectBegin(const CodeObject* code)
 {
     return code->data;
 }
 
-uint8_t* codeObjectEnd(CodeObject* code)
+uint8_t* codeObjectEnd(const CodeObject* code)
 {
     if (!code->data) {
         return NULL;

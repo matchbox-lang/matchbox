@@ -48,19 +48,19 @@ void freeTable(Table* table)
     freeMemory(table->data);
 }
 
-size_t countTable(Table* table)
+size_t countTable(const Table* table)
 {
     return table->count;
 }
 
-void* getTableAt(Table* table, StringView key)
+void* getTableAt(const Table* table, StringView key)
 {
     if (table->count == 0) {
         return NULL;
     }
 
     size_t index = key.hash % table->capacity;
-    TableItem* current = table->data[index];
+    const TableItem* current = table->data[index];
 
     while (current && !compareStringView(current->key, key)) {
         current = current->next;

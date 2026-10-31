@@ -43,7 +43,7 @@ uint32_t readUnsignedValue(Value value, DataType type)
     return AS_U32(value);
 }
 
-int64_t readI64(Value* frame, size_t position)
+int64_t readI64(const Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
@@ -54,7 +54,7 @@ int64_t readI64(Value* frame, size_t position)
 #endif
 }
 
-uint64_t readU64(Value* frame, size_t position)
+uint64_t readU64(const Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX
     return AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
@@ -63,7 +63,7 @@ uint64_t readU64(Value* frame, size_t position)
 #endif
 }
 
-double readF64(Value* frame, size_t position)
+double readF64(const Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
@@ -102,7 +102,7 @@ void writeF64(Value* frame, double value)
 #endif
 }
 
-size_t countValueArray(ValueArray* array)
+size_t countValueArray(const ValueArray* array)
 {
     return array->count;
 }
@@ -150,7 +150,7 @@ size_t pushValue(ValueArray* array, Value value)
     return array->count;
 }
 
-void* getValueAsPointer(ValueArray* array, size_t index)
+void* getValueAsPointer(const ValueArray* array, size_t index)
 {
     if (index >= array->count) {
         return NULL;

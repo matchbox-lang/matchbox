@@ -5,6 +5,6 @@
 
 typedef struct Options Options;
 
-bool parseCommandLine(Options* options, int argc, char* argv[]);
+bool parseCommandLine(Options* options, int argc, char* const argv[]);
 
 #endif

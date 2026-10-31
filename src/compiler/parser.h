@@ -14,6 +14,6 @@ typedef struct Parser
 } Parser;
 
 void initParser(Parser* parser, ASTNode* ast);
-bool parse(Parser* parser, char* source);
+bool parse(Parser* parser, const char* source);
 
 #endif

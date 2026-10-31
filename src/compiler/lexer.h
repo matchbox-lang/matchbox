@@ -10,7 +10,7 @@ typedef struct Lexer
     SourcePosition start;
 } Lexer;
 
-void initLexer(Lexer* lexer, char* source);
+void initLexer(Lexer* lexer, const char* source);
 Token scanToken(Lexer* lexer);
 
 #endif

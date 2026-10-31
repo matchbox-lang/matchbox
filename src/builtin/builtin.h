@@ -20,6 +20,6 @@ typedef struct Builtin
 } Builtin;
 
 bool isBuiltinName(const char* name);
-Builtin* resolveBuiltin(const char* name, DataType* argumentTypes, size_t argumentCount);
+const Builtin* resolveBuiltin(const char* name, const DataType* argumentTypes, size_t argumentCount);
 
 #endif

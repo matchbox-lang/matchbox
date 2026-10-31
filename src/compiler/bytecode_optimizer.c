@@ -104,7 +104,7 @@ static bool endsBlock(Opcode opcode)
     return branch || opcode == OP_HLT || opcode == OP_RET || opcode == OP_RETV || opcode == OP_RET_64;
 }
 
-static int branchOffset(OptimizationWord* word)
+static int branchOffset(const OptimizationWord* word)
 {
     if (word->opcode == OP_BZ || word->opcode == OP_BNZ) {
         return (int16_t)(word->b << 8 | word->c);
@@ -119,10 +119,10 @@ static int branchOffset(OptimizationWord* word)
     return (int32_t)(offset ^ 0x800000u) - 0x800000;
 }
 
-static void decodeWords(CodeObject* code, OptimizationWord* words, size_t count)
+static void decodeWords(const CodeObject* code, OptimizationWord* words, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
-        uint8_t* bytes = code->data + i * INSTRUCTION_SIZE;
+        const uint8_t* bytes = code->data + i * INSTRUCTION_SIZE;
         OptimizationWord* word = &words[i];
 
         word->opcode = bytes[0];
@@ -201,7 +201,7 @@ static bool invalidatesConstants(Opcode opcode)
         || opcode == OP_REFL || opcode == OP_REFG || opcode == OP_WIDE;
 }
 
-static void selectImmediateArithmetic(OptimizationWord* word, KnownConstant* known)
+static void selectImmediateArithmetic(OptimizationWord* word, const KnownConstant* known)
 {
     KnownConstant right = known[word->c];
     Opcode immediate = immediateOpcode(word->opcode);
@@ -219,7 +219,7 @@ static void selectImmediateArithmetic(OptimizationWord* word, KnownConstant* kno
     word->c = right.value;
 }
 
-static void selectConstantMove(OptimizationWord* word, KnownConstant* known)
+static void selectConstantMove(OptimizationWord* word, const KnownConstant* known)
 {
     KnownConstant value = known[word->b];
     bool move = word->opcode == OP_MOV || word->opcode == OP_MOV_64;
@@ -247,7 +247,7 @@ static void invalidateKnownRegister(KnownConstant* known, size_t reg)
     }
 }
 
-static int64_t readConstant(ModuleObject* module, Opcode opcode, size_t position)
+static int64_t readConstant(const ModuleObject* module, Opcode opcode, size_t position)
 {
     if (opcode == OP_LDC_64) {
         return readI64(module->constants.data, position);
@@ -256,7 +256,7 @@ static int64_t readConstant(ModuleObject* module, Opcode opcode, size_t position
     return module->constants.data[position].signedValue;
 }
 
-static void trackConstant(ModuleObject* module, OptimizationWord* word, KnownConstant* known)
+static void trackConstant(const ModuleObject* module, const OptimizationWord* word, KnownConstant* known)
 {
     KnownConstant value = {0};
     OpcodeFlag flags = getOpcodeFlags(word->opcode);
@@ -313,7 +313,7 @@ static bool supportsWideConstants(Opcode opcode)
     return immediate != OP_HLT;
 }
 
-static void optimizeConstantWord(ModuleObject* module, OptimizationWord* word, KnownConstant* known)
+static void optimizeConstantWord(const ModuleObject* module, OptimizationWord* word, KnownConstant* known)
 {
     bool invalidate = invalidatesConstants(word->opcode);
     bool pairs = usesRegisterPairs(word->opcode);
@@ -333,7 +333,7 @@ static void optimizeConstantWord(ModuleObject* module, OptimizationWord* word, K
     trackConstant(module, word, known);
 }
 
-static void optimizeConstants(ModuleObject* module, OptimizationWord* words, size_t count)
+static void optimizeConstants(const ModuleObject* module, OptimizationWord* words, size_t count)
 {
     KnownConstant known[256] = {0};
 
@@ -394,14 +394,14 @@ static bool updateWideLiveness(OptimizationWord* word, bool* live)
     return true;
 }
 
-static bool updateBuiltinCallLiveness(ModuleObject* module, OptimizationWord* word, bool* live)
+static bool updateBuiltinCallLiveness(const ModuleObject* module, const OptimizationWord* word, bool* live)
 {
     if (word->opcode != OP_CALL || word->wide) {
         return false;
     }
 
     size_t position = word->b << 8 | word->c;
-    FunctionObject* function = module->functions.data[position];
+    const FunctionObject* function = module->functions.data[position];
     int argumentEnd = word->a + function->paramCount;
 
     if (function->type != FUNCTION_BUILTIN || argumentEnd > 256) {
@@ -421,7 +421,7 @@ static bool updateBuiltinCallLiveness(ModuleObject* module, OptimizationWord* wo
     return true;
 }
 
-static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live)
+static bool updateGlobalStoreLiveness(const OptimizationWord* word, bool* live)
 {
     if (word->wide || (word->opcode != OP_STG && word->opcode != OP_STG_64)) {
         return false;
@@ -440,7 +440,7 @@ static bool updateGlobalStoreLiveness(OptimizationWord* word, bool* live)
     return true;
 }
 
-static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* live,
+static void updateLiveness(const ModuleObject* module, OptimizationWord* word, bool* live,
     size_t persistentRegisters)
 {
     bool wide = updateWideLiveness(word, live);
@@ -500,7 +500,7 @@ static void updateLiveness(ModuleObject* module, OptimizationWord* word, bool* l
     }
 }
 
-static void removeDeadLoads(ModuleObject* module, OptimizationWord* words, size_t count,
+static void removeDeadLoads(const ModuleObject* module, OptimizationWord* words, size_t count,
     size_t persistentRegisters)
 {
     bool live[256];
@@ -594,7 +594,7 @@ static void removeImmediateOperandMoves(OptimizationWord* words, size_t count)
     }
 }
 
-static bool smallLoad(OptimizationWord* word)
+static bool smallLoad(const OptimizationWord* word)
 {
     int operand = word->b << 8 | word->c;
 
@@ -738,7 +738,7 @@ static bool fuseStoreCall(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
-static bool fusePair(ModuleObject* module, OptimizationWord* first, OptimizationWord* second)
+static bool fusePair(const ModuleObject* module, OptimizationWord* first, OptimizationWord* second)
 {
     bool loads = fuseLoads(first, second);
 
@@ -787,7 +787,7 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
         return false;
     }
 
-    FunctionObject* function = module->functions.data[first->c];
+    const FunctionObject* function = module->functions.data[first->c];
 
     if (function->type != FUNCTION_BUILTIN) {
         return false;
@@ -800,7 +800,7 @@ static bool fusePair(ModuleObject* module, OptimizationWord* first, Optimization
     return true;
 }
 
-static void fuseInstructions(ModuleObject* module, OptimizationWord* words, size_t count)
+static void fuseInstructions(const ModuleObject* module, OptimizationWord* words, size_t count)
 {
     size_t previous = count;
 
@@ -871,7 +871,7 @@ static void removeRedundantInstructions(OptimizationWord* words, size_t count)
     }
 }
 
-static void relocateBranch(OptimizationWord* word, size_t position, size_t* positions)
+static void relocateBranch(OptimizationWord* word, size_t position, const size_t* positions)
 {
     int offset = (int)positions[word->destination] - (int)position - 1;
 
@@ -916,7 +916,7 @@ static void writeWords(CodeObject* code, OptimizationWord* words, size_t count, 
     }
 }
 
-void optimizeBytecode(ModuleObject* module, CodeObject* code, size_t persistentRegisters)
+void optimizeBytecode(const ModuleObject* module, CodeObject* code, size_t persistentRegisters)
 {
     size_t count = code->count / INSTRUCTION_SIZE;
 

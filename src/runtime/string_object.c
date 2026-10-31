@@ -60,7 +60,7 @@ bool compareStringObject(const StringObject* a, const StringObject* b)
     return compareStringView(left, right);
 }
 
-void printStringObject(StringObject* string)
+void printStringObject(const StringObject* string)
 {
     fwrite(string->chars, 1, string->length, stdout);
 }

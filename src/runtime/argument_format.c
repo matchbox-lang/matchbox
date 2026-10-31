@@ -5,16 +5,16 @@
 
 typedef struct FormattedArguments
 {
-    Value* frame;
+    const Value* frame;
     const ArgumentFormat* formats;
     size_t count;
 } FormattedArguments;
 
-void formatArguments(Writer* writer, Value* frame, const ArgumentFormat* formats, size_t count)
+void formatArguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
         const ArgumentFormat* format = &formats[i];
-        Value* argument = frame + format->slot;
+        const Value* argument = frame + format->slot;
 
         format->formatter(writer, argument);
     }
@@ -27,18 +27,18 @@ static void writeArgumentParts(Writer* writer, const void* context)
     formatArguments(writer, arguments->frame, arguments->formats, arguments->count);
 }
 
-static size_t argumentCapacity(Value* frame, const ArgumentFormat* format)
+static size_t argumentCapacity(const Value* frame, const ArgumentFormat* format)
 {
     if (format->capacity) {
         return format->capacity;
     }
 
-    StringObject* string = AS_POINTER(frame[format->slot]);
+    const StringObject* string = AS_POINTER(frame[format->slot]);
 
     return string->length;
 }
 
-static size_t addArgumentCapacity(size_t capacity, Value* frame, const ArgumentFormat* format)
+static size_t addArgumentCapacity(size_t capacity, const Value* frame, const ArgumentFormat* format)
 {
     size_t length = argumentCapacity(frame, format);
 
@@ -49,7 +49,7 @@ static size_t addArgumentCapacity(size_t capacity, Value* frame, const ArgumentF
     return capacity + length;
 }
 
-static size_t getArgumentsCapacity(Value* frame, const ArgumentFormat* formats, size_t count)
+static size_t getArgumentsCapacity(const Value* frame, const ArgumentFormat* formats, size_t count)
 {
     size_t capacity = 0;
 
@@ -60,7 +60,7 @@ static size_t getArgumentsCapacity(Value* frame, const ArgumentFormat* formats, 
     return capacity;
 }
 
-StringObject* concatenateArguments(Value* frame, const ArgumentFormat* formats, size_t count)
+StringObject* concatenateArguments(const Value* frame, const ArgumentFormat* formats, size_t count)
 {
     FormattedArguments arguments = {frame, formats, count};
     size_t capacity = getArgumentsCapacity(frame, formats, count);
@@ -68,107 +68,107 @@ StringObject* concatenateArguments(Value* frame, const ArgumentFormat* formats, 
     return concatenateStringParts(capacity, writeArgumentParts, &arguments);
 }
 
-void formatI8Argument(Writer* writer, Value* argument)
+void formatI8Argument(Writer* writer, const Value* argument)
 {
     int32_t value = AS_I8(argument[0]);
 
     formatI32(writer, value);
 }
 
-void formatI16Argument(Writer* writer, Value* argument)
+void formatI16Argument(Writer* writer, const Value* argument)
 {
     int32_t value = AS_I16(argument[0]);
 
     formatI32(writer, value);
 }
 
-void formatI32Argument(Writer* writer, Value* argument)
+void formatI32Argument(Writer* writer, const Value* argument)
 {
     int32_t value = AS_I32(argument[0]);
 
     formatI32(writer, value);
 }
 
-void formatI64Argument(Writer* writer, Value* argument)
+void formatI64Argument(Writer* writer, const Value* argument)
 {
     int64_t value = readI64(argument, 0);
 
     formatI64(writer, value);
 }
 
-void formatU8Argument(Writer* writer, Value* argument)
+void formatU8Argument(Writer* writer, const Value* argument)
 {
     uint32_t value = AS_U8(argument[0]);
 
     formatU32(writer, value);
 }
 
-void formatU16Argument(Writer* writer, Value* argument)
+void formatU16Argument(Writer* writer, const Value* argument)
 {
     uint32_t value = AS_U16(argument[0]);
 
     formatU32(writer, value);
 }
 
-void formatU32Argument(Writer* writer, Value* argument)
+void formatU32Argument(Writer* writer, const Value* argument)
 {
     uint32_t value = AS_U32(argument[0]);
 
     formatU32(writer, value);
 }
 
-void formatU64Argument(Writer* writer, Value* argument)
+void formatU64Argument(Writer* writer, const Value* argument)
 {
     uint64_t value = readU64(argument, 0);
 
     formatU64(writer, value);
 }
 
-static void formatIsizeArgument(Writer* writer, Value* argument)
+static void formatIsizeArgument(Writer* writer, const Value* argument)
 {
     intptr_t value = AS_SIGNED(argument[0]);
 
     formatI64(writer, value);
 }
 
-static void formatUsizeArgument(Writer* writer, Value* argument)
+static void formatUsizeArgument(Writer* writer, const Value* argument)
 {
     uintptr_t value = AS_UNSIGNED(argument[0]);
 
     formatU64(writer, value);
 }
 
-void formatF32Argument(Writer* writer, Value* argument)
+void formatF32Argument(Writer* writer, const Value* argument)
 {
     float value = AS_F32(argument[0]);
 
     formatF32(writer, value);
 }
 
-void formatF64Argument(Writer* writer, Value* argument)
+void formatF64Argument(Writer* writer, const Value* argument)
 {
     double value = readF64(argument, 0);
 
     formatF64(writer, value);
 }
 
-void formatBoolArgument(Writer* writer, Value* argument)
+void formatBoolArgument(Writer* writer, const Value* argument)
 {
     bool value = AS_BOOL(argument[0]);
 
     formatBool(writer, value);
 }
 
-void formatCharArgument(Writer* writer, Value* argument)
+void formatCharArgument(Writer* writer, const Value* argument)
 {
     uint32_t value = AS_U32(argument[0]);
 
     formatChar(writer, value);
 }
 
-void formatStringArgument(Writer* writer, Value* argument)
+void formatStringArgument(Writer* writer, const Value* argument)
 {
-    StringObject* value = AS_POINTER(argument[0]);
+    const StringObject* value = AS_POINTER(argument[0]);
 
     formatString(writer, value);
 }

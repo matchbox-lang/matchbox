@@ -94,7 +94,7 @@ typedef struct ASTNode
 
         struct {
             Vector args;
-            Builtin* builtin;
+            const Builtin* builtin;
             Token token;
         } builtinCall;
 
@@ -228,7 +228,7 @@ ASTNode* createASTNode(ASTNodeType type);
 ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr);
 ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token token);
 ASTNode* createBooleanNode(Token token, bool value);
-ASTNode* createBuiltinCallNode(Token token, Builtin* builtin);
+ASTNode* createBuiltinCallNode(Token token, const Builtin* builtin);
 ASTNode* createCharacterNode(Token token, uint32_t value);
 ASTNode* createCompoundNode(Scope* scope);
 ASTNode* createConditionalNode(Token token, ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);

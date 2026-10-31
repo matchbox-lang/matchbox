@@ -19,13 +19,13 @@ typedef struct Scope
 
 Scope* createScope(Scope* parent);
 void freeScope(Scope* scope);
-size_t getMaxLocalCount(Scope* scope);
-size_t getNextLocalPosition(Scope* scope);
-size_t getScopeLevel(Scope* scope);
-bool isTopLevelScope(Scope* scope);
+size_t getMaxLocalCount(const Scope* scope);
+size_t getNextLocalPosition(const Scope* scope);
+size_t getScopeLevel(const Scope* scope);
+bool isTopLevelScope(const Scope* scope);
 ASTNode* setLocalSymbol(Scope* scope, StringView id, ASTNode* symbol);
 ASTNode* setLocalVariableSymbol(Scope* scope, StringView id, ASTNode* symbol);
-ASTNode* getLocalSymbol(Scope* scope, StringView id);
-ASTNode* getSymbol(Scope* scope, StringView id);
+ASTNode* getLocalSymbol(const Scope* scope, StringView id);
+ASTNode* getSymbol(const Scope* scope, StringView id);
 
 #endif

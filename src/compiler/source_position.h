@@ -3,7 +3,7 @@
 
 typedef struct SourcePosition
 {
-    char* chars;
+    const char* chars;
     int line;
     int column;
 } SourcePosition;

@@ -144,7 +144,7 @@ typedef enum TokenType
 typedef struct Token
 {
     TokenType type;
-    char* chars;
+    const char* chars;
     size_t length;
     int line;
     int column;

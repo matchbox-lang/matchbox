@@ -68,16 +68,16 @@ void initValueArray(ValueArray* array);
 void freeValueArray(ValueArray* array);
 int32_t readSignedValue(Value value, DataType type);
 uint32_t readUnsignedValue(Value value, DataType type);
-int64_t readI64(Value* frame, size_t position);
-uint64_t readU64(Value* frame, size_t position);
-double readF64(Value* frame, size_t position);
+int64_t readI64(const Value* frame, size_t position);
+uint64_t readU64(const Value* frame, size_t position);
+double readF64(const Value* frame, size_t position);
 void writeI64(Value* frame, int64_t value);
 void writeF64(Value* frame, double value);
-size_t countValueArray(ValueArray* array);
+size_t countValueArray(const ValueArray* array);
 void reserveValueArray(ValueArray* array, size_t capacity);
 void resizeValueArray(ValueArray* array, size_t size);
 size_t pushValue(ValueArray* array, Value value);
-void* getValueAsPointer(ValueArray* array, size_t index);
+void* getValueAsPointer(const ValueArray* array, size_t index);
 void setValueAt(ValueArray* array, size_t index, Value item);
 
 #endif

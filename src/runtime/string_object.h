@@ -19,6 +19,6 @@ StringObject* copyStringObject(const char* chars, size_t length);
 StringView getStringView(const StringObject* string);
 void freeStringObject(StringObject* string);
 bool compareStringObject(const StringObject* a, const StringObject* b);
-void printStringObject(StringObject* string);
+void printStringObject(const StringObject* string);
 
 #endif

@@ -1,0 +1,32 @@
+func shadow() {
+    var value = 10
+    let reference = ^value
+
+    if true {
+        let reference = 20
+
+        value += 1
+        print(reference)
+    }
+
+    if value != 11 {
+        exit(1)
+    }
+}
+
+shadow()
+
+var value = 30
+let reference = &value
+
+match reference + 0 {
+    case reference if reference == 30:
+        value += 1
+        print(reference)
+    default:
+        exit(1)
+}
+
+if value != 31 {
+    exit(1)
+}

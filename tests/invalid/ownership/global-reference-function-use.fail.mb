@@ -1,0 +1,10 @@
+var value = 10
+let reference = &value
+
+value += 1
+
+func read() {
+    print(reference)
+}
+
+read()

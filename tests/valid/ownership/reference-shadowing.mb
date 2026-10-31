@@ -1,0 +1,23 @@
+var value = 10
+let reference = &value
+
+print(reference)
+value += 1
+
+func unrelated() {
+    let local = 20
+    let reference = &local
+
+    print(reference)
+}
+
+func parameter(reference: i32) {
+    print(reference)
+}
+
+unrelated()
+parameter(30)
+
+if value != 11 {
+    exit(1)
+}

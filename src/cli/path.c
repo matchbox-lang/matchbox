@@ -36,6 +36,31 @@ static bool pathNeedsSeparator(const char* path)
     return !pathEndsWithSeparator(path);
 }
 
+static bool getPathInfo(const char* path, struct stat* info)
+{
+    if (!pathEndsWithSeparator(path)) {
+        return stat(path, info) == 0;
+    }
+
+    size_t length = strlen(path);
+
+    while (length > 1 && (path[length - 1] == '/' || path[length - 1] == '\\') &&
+        (length != 3 || path[1] != ':')) {
+        length--;
+    }
+
+    char* normalized = createPath(length);
+
+    memcpy(normalized, path, length);
+
+    normalized[length] = '\0';
+    int status = stat(normalized, info);
+
+    freeMemory(normalized);
+
+    return status == 0;
+}
+
 char* joinPath(const char* directory, const char* name)
 {
     const char* separator = pathNeedsSeparator(directory) ? "\\" : "";
@@ -56,7 +81,7 @@ bool pathExists(const char* path)
 {
     struct stat info;
 
-    return stat(path, &info) == 0;
+    return getPathInfo(path, &info);
 }
 
 bool pathHasExtension(const char* path, const char* extension)
@@ -82,5 +107,5 @@ bool pathIsDirectory(const char* path)
 {
     struct stat info;
 
-    return stat(path, &info) == 0 && (info.st_mode & S_IFDIR);
+    return getPathInfo(path, &info) && (info.st_mode & S_IFDIR);
 }

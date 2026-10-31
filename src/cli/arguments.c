@@ -17,6 +17,11 @@ static void disassembleRequiresFileError()
     reportError("Cannot disassemble without a file");
 }
 
+static void disassembleDoesNotSupportCheckError()
+{
+    reportError("Cannot disassemble checks");
+}
+
 static void unexpectedArgumentError(char* arg)
 {
     reportError("Unexpected argument: %s", arg);
@@ -72,7 +77,7 @@ static bool isOptionDelimiter(char* arg)
     return strcmp(arg, "--") == 0;
 }
 
-static bool isTestCommand(Options* options, char* arg, bool parsingOptions)
+static bool isCommand(Options* options, char* arg, bool parsingOptions, const char* command)
 {
     if (!parsingOptions) {
         return false;
@@ -86,7 +91,7 @@ static bool isTestCommand(Options* options, char* arg, bool parsingOptions)
         return false;
     }
 
-    return strcmp(arg, "test") == 0;
+    return strcmp(arg, command) == 0;
 }
 
 static bool parseTestArgument(Options* options, char* arg)
@@ -127,7 +132,13 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
         return parseOption(options, arg);
     }
 
-    if (isTestCommand(options, arg, *parsingOptions)) {
+    if (isCommand(options, arg, *parsingOptions, "check")) {
+        options->mode = PROGRAM_CHECK;
+
+        return true;
+    }
+
+    if (isCommand(options, arg, *parsingOptions, "test")) {
         options->mode = PROGRAM_TEST;
 
         return true;
@@ -140,16 +151,30 @@ static bool parseArgument(Options* options, char* arg, bool* parsingOptions)
     return parseRunArgument(options, arg);
 }
 
-bool parseCommandLine(Options* options, int argc, char* argv[])
+static bool parseArguments(Options* options, int argc, char* argv[])
 {
     bool parsingOptions = true;
+    bool parsed = true;
 
     options->executablePath = argv[0];
 
-    for (int i = 1; i < argc; i++) {
-        if (!parseArgument(options, argv[i], &parsingOptions)) {
-            return false;
-        }
+    for (int i = 1; i < argc && parsed; i++) {
+        parsed = parseArgument(options, argv[i], &parsingOptions);
+    }
+
+    return parsed;
+}
+
+bool parseCommandLine(Options* options, int argc, char* argv[])
+{
+    if (!parseArguments(options, argc, argv)) {
+        return false;
+    }
+
+    if (options->disassemble && options->mode == PROGRAM_CHECK) {
+        disassembleDoesNotSupportCheckError();
+
+        return false;
     }
 
     if (options->disassemble && options->mode == PROGRAM_TEST) {

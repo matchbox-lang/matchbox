@@ -6,7 +6,6 @@
 Object* allocateObject(size_t size, ObjectType type)
 {
     Object* object = (Object*)allocateMemory(size);
-
     object->type = type;
     
     return object;

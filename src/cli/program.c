@@ -47,7 +47,6 @@ static void runSource(char* source, bool disassemble)
     }
 
     runModule(module, disassemble);
-    
     freeCompiler(&compiler);
     freeModuleObject(module);
 }

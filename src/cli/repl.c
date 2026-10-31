@@ -136,7 +136,6 @@ static SubmissionResult runSession(void)
 
     initCompiler(&compiler, module);
     initVM(&vm, module);
-
     reserveValueArray(&vm.globals, UINT16_MAX + 1u);
     finishSubmission(SUBMISSION_INCOMPLETE, &source, &size, &length);
 

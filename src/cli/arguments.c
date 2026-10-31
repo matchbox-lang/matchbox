@@ -1,7 +1,7 @@
 #include "cli/arguments.h"
-#include "common/errors.h"
 #include "cli/options.h"
 #include "cli/program.h"
+#include "common/errors.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

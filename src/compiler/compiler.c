@@ -12,12 +12,12 @@
 #include "compiler/parser.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
+#include "runtime/argument_format.h"
 #include "runtime/code_object.h"
 #include "runtime/function_object.h"
 #include "runtime/module_object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
-#include "runtime/argument_format.h"
 #include "vm/opcode.h"
 #include <stddef.h>
 #include <stdint.h>

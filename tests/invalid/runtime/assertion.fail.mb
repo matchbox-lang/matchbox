@@ -1,0 +1,6 @@
+func check(value: bool) {
+    assert(value)
+    exit()
+}
+
+check(false)

@@ -98,6 +98,8 @@ Builtin builtins[BUILTINS_MAX] = {
     {"string",      builtinString,             -1,  {TYPE_UNKNOWN},                         TYPE_STRING},
 
     // System
+    {"assert",      builtinAssert,              1,  {TYPE_BOOL},                            TYPE_VOID},
+    {"assert",      builtinAssertMessage,       2,  {TYPE_BOOL, TYPE_STRING},               TYPE_VOID},
     {"byteorder",   builtinByteorder,           0,  {},                                     TYPE_I32},
     {"exit",        builtinExit,                0,  {},                                     TYPE_VOID},
     {"exit",        builtinExitStatus,          1,  {TYPE_I32},                             TYPE_VOID},

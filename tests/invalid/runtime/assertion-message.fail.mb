@@ -1,0 +1,6 @@
+func check(value: bool, message: string) {
+    assert(value, message)
+    exit()
+}
+
+check(false, "Unexpected value")

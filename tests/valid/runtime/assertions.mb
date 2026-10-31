@@ -1,0 +1,23 @@
+assert(true)
+assert(true, "This should pass")
+
+func check(value: i32) {
+    let valid = value == 42
+
+    assert(valid, "Unexpected value")
+}
+
+check(42)
+
+var calls = 0
+
+func condition() -> bool {
+    calls += 1
+
+    return true
+}
+
+let valid = condition()
+
+assert(valid)
+assert(calls == 1)

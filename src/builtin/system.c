@@ -5,6 +5,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void builtinAssert(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    if (AS_BOOL(frame[0])) {
+        return;
+    }
+
+    fatalError("Assertion failed");
+}
+
+void builtinAssertMessage(VM* vm, FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    if (AS_BOOL(frame[0])) {
+        return;
+    }
+
+    StringObject* message = AS_STRING_OBJECT(frame[1]);
+
+    fputs("Error: Assertion failed: ", stderr);
+    fwrite(message->chars, 1, message->length, stderr);
+    fputc('\n', stderr);
+    raiseError();
+}
+
 void builtinByteorder(VM* vm, FunctionObject* function, Value* frame)
 {
     (void)vm;

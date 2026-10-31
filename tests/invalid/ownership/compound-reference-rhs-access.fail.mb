@@ -1,0 +1,4 @@
+var value = 10
+let reference = ^value
+
+reference += value

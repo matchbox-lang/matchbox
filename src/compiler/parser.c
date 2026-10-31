@@ -432,6 +432,8 @@ static ASTNode* parsePrimary(Parser* parser)
         case TOKEN_U16:
         case TOKEN_U32:
         case TOKEN_U64:
+        case TOKEN_ISIZE:
+        case TOKEN_USIZE:
         case TOKEN_F32:
         case TOKEN_F64:
         case TOKEN_CHAR:

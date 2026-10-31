@@ -16,6 +16,8 @@ const char* getDataTypeName(DataType type)
         case TYPE_U16:      return "u16";
         case TYPE_U32:      return "u32";
         case TYPE_U64:      return "u64";
+        case TYPE_ISIZE:    return "isize";
+        case TYPE_USIZE:    return "usize";
         case TYPE_F32:      return "f32";
         case TYPE_F64:      return "f64";
         case TYPE_CHAR:     return "char";
@@ -44,6 +46,7 @@ bool isSignedIntegerType(DataType type)
         case TYPE_I16:
         case TYPE_I32:
         case TYPE_I64:
+        case TYPE_ISIZE:
             return true;
         default:
             return false;
@@ -65,6 +68,9 @@ size_t getIntegerTypeSize(DataType type)
         case TYPE_I64:
         case TYPE_U64:
             return 8;
+        case TYPE_ISIZE:
+        case TYPE_USIZE:
+            return sizeof(void*);
         default:
             return 0;
     }
@@ -90,7 +96,11 @@ bool canImplicitlyWidenInteger(DataType source, DataType destination)
         return false;
     }
 
-    return getIntegerTypeSize(source) < getIntegerTypeSize(destination);
+    size_t sourceSize = getIntegerTypeSize(source);
+    size_t destinationSize = getIntegerTypeSize(destination);
+    bool sameSign = isSignedIntegerType(source) == isSignedIntegerType(destination);
+
+    return sourceSize < destinationSize || (sourceSize == destinationSize && sameSign);
 }
 
 bool canImplicitlyWidenFloat(DataType source, DataType destination)

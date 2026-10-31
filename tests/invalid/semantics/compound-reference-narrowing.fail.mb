@@ -1,0 +1,3 @@
+func update(value: ^i8, increment: i32) {
+    value += increment
+}

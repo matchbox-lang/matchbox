@@ -124,6 +124,20 @@ void formatU64Argument(Writer* writer, Value* argument)
     formatU64(writer, value);
 }
 
+static void formatIsizeArgument(Writer* writer, Value* argument)
+{
+    intptr_t value = AS_SIGNED(argument[0]);
+
+    formatI64(writer, value);
+}
+
+static void formatUsizeArgument(Writer* writer, Value* argument)
+{
+    uintptr_t value = AS_UNSIGNED(argument[0]);
+
+    formatU64(writer, value);
+}
+
 void formatF32Argument(Writer* writer, Value* argument)
 {
     float value = AS_F32(argument[0]);
@@ -178,6 +192,10 @@ ArgumentFormat getArgumentFormat(DataType type)
             return (ArgumentFormat){.formatter = formatU32Argument, .capacity = 10};
         case TYPE_U64:
             return (ArgumentFormat){.formatter = formatU64Argument, .capacity = 20};
+        case TYPE_ISIZE:
+            return (ArgumentFormat){.formatter = formatIsizeArgument, .capacity = 20};
+        case TYPE_USIZE:
+            return (ArgumentFormat){.formatter = formatUsizeArgument, .capacity = 20};
         case TYPE_F32:
             return (ArgumentFormat){.formatter = formatF32Argument, .capacity = 32};
         case TYPE_F64:

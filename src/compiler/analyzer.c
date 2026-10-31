@@ -51,6 +51,13 @@ typedef struct OwnershipState
     bool referenceAccessActive;
 } OwnershipState;
 
+typedef struct ScopedUses
+{
+    VisitId visit;
+    void* context;
+    Vector shadowed;
+} ScopedUses;
+
 typedef struct ReferenceUse
 {
     size_t last;
@@ -456,6 +463,84 @@ static void setReferenceOriginsFromExpression(ASTNode* destination, ASTNode* exp
     copyReferenceOrigins(destinationOrigins, origins);
 }
 
+static bool matchesShadowedId(StringObject* shadowed, StringView id)
+{
+    StringView view = getStringView(shadowed);
+
+    return compareStringView(view, id);
+}
+
+static bool visitUnshadowedUse(StringView id, void* context)
+{
+    ScopedUses* scope = context;
+    size_t index = 0;
+
+    while (index < scope->shadowed.count && !matchesShadowedId(scope->shadowed.data[index], id)) {
+        index++;
+    }
+
+    if (index < scope->shadowed.count) {
+        return false;
+    }
+
+    return scope->visit(id, scope->context);
+}
+
+static bool visitScopedStatementUses(ASTNode* ast, ScopedUses* scope)
+{
+    bool found = visitNodeUses(ast, visitUnshadowedUse, scope);
+
+    if (ast->type == AST_VARIABLE_DEFINITION) {
+        pushVectorItem(&scope->shadowed, ast->variableDefinition.id);
+    }
+
+    return found;
+}
+
+static bool visitScopedStatementListUses(Vector* nodes, ScopedUses* scope)
+{
+    size_t count = countVector(nodes);
+    size_t index = 0;
+    bool found = false;
+
+    while (index < count && !found) {
+        ASTNode* node = getVectorAt(nodes, index);
+
+        found = visitScopedStatementUses(node, scope);
+        index++;
+    }
+
+    return found;
+}
+
+static bool visitScopedBlockUses(Vector* nodes, VisitId visit, void* context)
+{
+    ScopedUses scope = {.visit = visit, .context = context};
+    bool found = visitScopedStatementListUses(nodes, &scope);
+
+    freeVector(&scope.shadowed);
+
+    return found;
+}
+
+static bool visitFunctionUses(ASTNode* ast, VisitId visit, void* context)
+{
+    ScopedUses scope = {.visit = visit, .context = context};
+    Vector* params = &ast->functionDefinition.params;
+
+    for (size_t i = 0; i < params->count; i++) {
+        ASTNode* parameter = getVectorAt(params, i);
+
+        pushVectorItem(&scope.shadowed, parameter->parameter.id);
+    }
+
+    bool found = visitNodeUses(ast->functionDefinition.body, visitUnshadowedUse, &scope);
+
+    freeVector(&scope.shadowed);
+
+    return found;
+}
+
 static bool visitNodeListUses(Vector* nodes, VisitId visit, void* context)
 {
     size_t count = countVector(nodes);
@@ -472,6 +557,23 @@ static bool visitNodeListUses(Vector* nodes, VisitId visit, void* context)
     return false;
 }
 
+static bool visitMatchArmUses(MatchArm* arm, VisitId visit, void* context)
+{
+    if (visitNodeUses(arm->pattern, visit, context)) {
+        return true;
+    }
+
+    if (!arm->binding) {
+        return visitNodeUses(arm->guard, visit, context) || visitNodeUses(arm->branch, visit, context);
+    }
+
+    void* ids[] = {arm->binding->variableDefinition.id};
+    ScopedUses scope = {.visit = visit, .context = context, .shadowed = {.data = ids, .count = 1}};
+
+    return visitNodeUses(arm->guard, visitUnshadowedUse, &scope)
+        || visitNodeUses(arm->branch, visitUnshadowedUse, &scope);
+}
+
 static bool visitMatchUses(ASTNode* ast, VisitId visit, void* context)
 {
     if (visitNodeUses(ast->match.subject, visit, context)) {
@@ -482,8 +584,7 @@ static bool visitMatchUses(ASTNode* ast, VisitId visit, void* context)
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        bool found = visitNodeUses(arm->pattern, visit, context)
-            || visitNodeUses(arm->guard, visit, context) || visitNodeUses(arm->branch, visit, context);
+        bool found = visitMatchArmUses(arm, visit, context);
 
         if (found) {
             return true;
@@ -516,7 +617,7 @@ static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
         case AST_BUILTIN_CALL:
             return visitNodeListUses(&ast->builtinCall.args, visit, context);
         case AST_COMPOUND:
-            return visitNodeListUses(&ast->compound.statements, visit, context);
+            return visitScopedBlockUses(&ast->compound.statements, visit, context);
         case AST_WHILE:
             return visitNodeUses(ast->whileStatement.condition, visit, context)
                 || visitNodeUses(ast->whileStatement.body, visit, context);
@@ -529,7 +630,7 @@ static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
         case AST_FUNCTION_CALL:
             return visitNodeListUses(&ast->functionCall.args, visit, context);
         case AST_FUNCTION_DEFINITION:
-            return visitNodeUses(ast->functionDefinition.body, visit, context);
+            return visitFunctionUses(ast, visit, context);
         case AST_MATCH:
             return visitMatchUses(ast, visit, context);
         case AST_PREFIX:
@@ -919,13 +1020,17 @@ static void freeOwnershipStates(Vector* states)
     freeVector(states);
 }
 
-static bool branchUsesReference(ASTNode* branch, StringObject* id)
+static bool branchUsesReference(ASTNode* branch, StringObject* id, ASTNode* binding)
 {
     if (!branch) {
         return false;
     }
 
     StringView view = getStringView(id);
+
+    if (binding && matchesShadowedId(binding->variableDefinition.id, view)) {
+        return false;
+    }
 
     return visitNodeUses(branch, matchesReferenceId, &view);
 }
@@ -935,7 +1040,7 @@ static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
     LoopPath* loop = analyzer->loopPath;
 
     while (loop) {
-        if (branchUsesReference(loop->ast, id)) {
+        if (branchUsesReference(loop->ast, id, NULL)) {
             return true;
         }
 
@@ -954,7 +1059,7 @@ static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
     return use && use->last >= analyzer->nextNode;
 }
 
-static void releaseReferencesDeadOnBranch(Analyzer* analyzer, Vector* states, ASTNode* branch)
+static void releaseReferencesDeadOnBranch(Analyzer* analyzer, Vector* states, ASTNode* branch, ASTNode* binding)
 {
     for (size_t i = 0; i < countVector(states); i++) {
         OwnershipState* state = getVectorAt(states, i);
@@ -965,7 +1070,7 @@ static void releaseReferencesDeadOnBranch(Analyzer* analyzer, Vector* states, AS
         }
 
         StringObject* id = symbol->variableDefinition.id;
-        if (branchUsesReference(branch, id) || continuationUsesReference(analyzer, id)) {
+        if (branchUsesReference(branch, id, binding) || continuationUsesReference(analyzer, id)) {
             continue;
         }
 
@@ -981,7 +1086,7 @@ static void analyzeOwnershipBranch(
     DataType* type)
 {
     applyOwnershipStates(states);
-    releaseReferencesDeadOnBranch(analyzer, states, branch);
+    releaseReferencesDeadOnBranch(analyzer, states, branch, NULL);
     *type = analyzeElseBranch(analyzer, branch, expectedType);
     updateOwnershipStates(states);
 }
@@ -1134,7 +1239,7 @@ static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
 
     analyzer->currentNodes = continuationNodes;
     analyzer->nextNode = continuationStart;
-    releaseReferencesDeadOnBranch(analyzer, &thenStates, ast->conditional.thenBranch);
+    releaseReferencesDeadOnBranch(analyzer, &thenStates, ast->conditional.thenBranch, NULL);
 
     DataType type = ast->conditional.typeId;
     DataType thenType = analyzeScopedBranch(analyzer, ast->conditional.thenBranch, NULL, type);
@@ -1364,7 +1469,7 @@ static void analyzeMatchGuard(Analyzer* analyzer, MatchArm* arm, Vector* fallthr
         updateOwnershipStates(fallthroughStates);
     }
 
-    releaseReferencesDeadOnBranch(analyzer, &guardStates, arm->branch);
+    releaseReferencesDeadOnBranch(analyzer, &guardStates, arm->branch, arm->binding);
     freeOwnershipStates(&guardStates);
 }
 
@@ -1397,7 +1502,7 @@ static void analyzeMatchArmOwnership(Analyzer* analyzer, ASTNode* ast, MatchArm*
     applyOwnershipStates(&states);
 
     if (!arm->guard) {
-        releaseReferencesDeadOnBranch(analyzer, &states, arm->branch);
+        releaseReferencesDeadOnBranch(analyzer, &states, arm->branch, arm->binding);
     }
 
     analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType, initialStates);
@@ -1440,7 +1545,7 @@ static void analyzeMatchDefault(Analyzer* analyzer, ASTNode* ast, Vector* contin
     copyOwnershipState(&states, initialStates);
     applyOwnershipStates(&states);
     restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
-    releaseReferencesDeadOnBranch(analyzer, &states, ast->match.defaultBranch);
+    releaseReferencesDeadOnBranch(analyzer, &states, ast->match.defaultBranch, NULL);
 
     DataType branchType = analyzeScopedBranch(analyzer, ast->match.defaultBranch, NULL, ast->match.typeId);
     
@@ -2610,6 +2715,21 @@ static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
     return symbol;
 }
 
+static void validateCompoundAssignmentTarget(ASTNode* ast, ASTNode* symbol)
+{
+    if (ast->assignment.operator.type == TOKEN_EQUAL) {
+        return;
+    }
+
+    if (!isInitialized(symbol)) {
+        symbolError(" is uninitialized", ast->assignment.token);
+    }
+
+    if (getReferenceType(symbol) == REFERENCE_SHARED) {
+        semanticTokenError("Cannot mutate through shared reference ", ast->assignment.token);
+    }
+}
+
 static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
@@ -2637,12 +2757,15 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
     ASTNode* expression = ast->assignment.expr;
     DataType expressionType = getNodeDataType(expression);
     DataType bindingType = getNodeDataType(symbol);
-    bool compatibleValue = bindingType == expressionType || (getReferenceType(symbol) == REFERENCE_NONE
-            && getReferenceType(expression) == REFERENCE_NONE
-            && canImplicitlyWidenType(expressionType, bindingType));
-
     ReferenceType bindingReferenceType = getReferenceType(symbol);
     ReferenceType expressionReferenceType = getReferenceType(expression);
+
+    if (ast->assignment.operator.type != TOKEN_EQUAL && bindingReferenceType == REFERENCE_EXCLUSIVE) {
+        bindingReferenceType = REFERENCE_NONE;
+    }
+
+    bool compatibleValue = bindingType == expressionType || (bindingReferenceType == REFERENCE_NONE
+        && expressionReferenceType == REFERENCE_NONE && canImplicitlyWidenType(expressionType, bindingType));
 
     if (compatibleValue && bindingReferenceType == expressionReferenceType) {
         return;
@@ -2657,7 +2780,7 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
 
 static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializesBinding)
 {
-    if (getReferenceType(symbol) == REFERENCE_NONE) {
+    if (ast->assignment.operator.type != TOKEN_EQUAL || getReferenceType(symbol) == REFERENCE_NONE) {
         return;
     }
 
@@ -2677,11 +2800,13 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
     bool initializesBinding = !isInitialized(symbol);
-    validateAssignmentTarget(ast, symbol);
 
+    validateAssignmentTarget(ast, symbol);
+    validateCompoundAssignmentTarget(ast, symbol);
     trackVariableRead(symbol);
 
-    if (!initializesBinding && symbol->variableDefinition.referenceAccessActive) {
+    if (ast->assignment.operator.type == TOKEN_EQUAL && isVariableDefinition(symbol)
+        && !initializesBinding && symbol->variableDefinition.referenceAccessActive) {
         releaseReferenceAccess(symbol);
     }
 

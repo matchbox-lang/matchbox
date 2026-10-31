@@ -1,0 +1,12 @@
+var value = 10
+let reference = ^value
+
+if true {
+    let reference = 20
+
+    print(reference)
+}
+
+value += 1
+
+print(reference)

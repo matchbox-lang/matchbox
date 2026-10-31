@@ -68,6 +68,8 @@ const char* getTokenTypeName(TokenType type)
         case TOKEN_U16:                 return "u16";
         case TOKEN_U32:                 return "u32";
         case TOKEN_U64:                 return "u64";
+        case TOKEN_ISIZE:               return "isize";
+        case TOKEN_USIZE:               return "usize";
         case TOKEN_F32:                 return "f32";
         case TOKEN_F64:                 return "f64";
         case TOKEN_CHAR:                return "char";
@@ -197,6 +199,10 @@ DataType getTokenDataType(TokenType type)
             return TYPE_U32;
         case TOKEN_U64:
             return TYPE_U64;
+        case TOKEN_ISIZE:
+            return TYPE_ISIZE;
+        case TOKEN_USIZE:
+            return TYPE_USIZE;
         case TOKEN_F32:
             return TYPE_F32;
         case TOKEN_F64:

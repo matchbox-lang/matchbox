@@ -1,0 +1,2 @@
+let value: usize = 1
+let negative = -value

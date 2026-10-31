@@ -76,6 +76,7 @@ static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
 static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
 static size_t getNodeSlotCount(ASTNode* ast);
 static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
+static Operand compileIntegerCast(Compiler* compiler, Operand operand, DataType source, DataType destination);
 static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
@@ -734,7 +735,7 @@ static bool isNarrowIntegerImmediate(uint64_t value, DataType type)
         return value <= INT16_MAX;
     }
 
-    int32_t signedValue = (int32_t)value;
+    int64_t signedValue = (int64_t)value;
 
     return signedValue >= INT16_MIN && signedValue <= INT16_MAX;
 }
@@ -1150,11 +1151,15 @@ static Opcode getFloat64ThreeWayOpcode(TokenType operatorType)
 
 static Opcode getThreeWayOpcode(DataType type, TokenType operatorType)
 {
+    size_t size = getIntegerTypeSize(type);
+
+    if (size == 8) {
+        bool signedType = isSignedIntegerType(type);
+
+        return signedType ? OP_CMP_I64 : OP_CMP_U64;
+    }
+
     switch (type) {
-        case TYPE_I64:
-            return OP_CMP_I64;
-        case TYPE_U64:
-            return OP_CMP_U64;
         case TYPE_F32:
             return getFloat32ThreeWayOpcode(operatorType);
         case TYPE_F64:
@@ -1203,7 +1208,7 @@ static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
     DataType type, Operand left, Operand right)
 {
     bool floating = isFloatType(type);
-    bool wide = type == TYPE_I64 || type == TYPE_U64;
+    bool wide = getIntegerTypeSize(type) == 8;
 
     if (!floating && !wide && operatorType != TOKEN_SPACESHIP) {
         return emitIntegerComparison(compiler, operatorType, type, left, right);
@@ -1524,6 +1529,16 @@ static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast,
 
 static Operand normalizeUnsignedOperand(Compiler* compiler, Operand operand, DataType source)
 {
+#if UINTPTR_MAX == UINT64_MAX
+    if (source == TYPE_U32) {
+        operand = materializeOperand(compiler, operand);
+
+        emitInstruction(compiler, OP_LSRI_I32, operand.reg, operand.reg, 0);
+
+        return operand;
+    }
+#endif
+
     if (source != TYPE_U8 && source != TYPE_U16) {
         return operand;
     }
@@ -1543,6 +1558,12 @@ static Operand extendIntegerOperand(Compiler* compiler, Operand operand, DataTyp
 
     int highRegister = allocateRegister(compiler);
 
+#if UINTPTR_MAX == UINT64_MAX
+    (void)highRegister;
+    (void)source;
+
+    return makeWideOperand(destinationRegister, true);
+#else
     if (isSignedIntegerType(source)) {
         emitInstruction(compiler, OP_ASRI_I32, highRegister, destinationRegister, 31);
 
@@ -1552,6 +1573,7 @@ static Operand extendIntegerOperand(Compiler* compiler, Operand operand, DataTyp
     emitInstruction(compiler, OP_LDI, highRegister, 0, 0);
 
     return makeWideOperand(destinationRegister, true);
+#endif
 }
 
 static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
@@ -1562,7 +1584,7 @@ static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
         return operand;
     }
 
-    return extendIntegerOperand(compiler, operand, source);
+    return compileIntegerCast(compiler, operand, source, destination);
 }
 
 static Operand widenFloatOperand(Compiler* compiler, Operand operand,
@@ -1741,6 +1763,10 @@ static Operand compileIntegerCast(Compiler* compiler, Operand operand, DataType 
 
     size_t size = getIntegerTypeSize(destination);
 
+    if (size == 8) {
+        return operand;
+    }
+
     if (size < 4) {
         return normalizeIntegerOperand(compiler, operand, destination);
     }
@@ -1768,7 +1794,7 @@ static Opcode getFloatToIntegerOpcode(DataType source, DataType destination)
         index++;
     }
 
-    if (getTypeSlotCount(destination) == 2) {
+    if (getIntegerTypeSize(destination) == 8) {
         index += 2;
     }
 
@@ -1785,7 +1811,7 @@ static Opcode getIntegerToFloatOpcode(DataType source, DataType destination)
         {OP_U32_TO_F32, OP_U32_TO_F64},
         {OP_U64_TO_F32, OP_U64_TO_F64}
     };
-    bool wideSource = getTypeSlotCount(source) == 2;
+    bool wideSource = getIntegerTypeSize(source) == 8;
     bool wideDestination = destination == TYPE_F64;
 
     if (isSignedIntegerType(source)) {
@@ -2975,14 +3001,16 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
         return 0;
     }
 
+    DataType subjectType = getNodeDataType(ast->match.subject);
+    size_t subjectSize = getIntegerTypeSize(subjectType);
+
     if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
-        && isLiteralMatchPattern(arm->pattern) && getNodeDataType(ast->match.subject) != TYPE_I64
-        && getNodeDataType(ast->match.subject) != TYPE_U64) {
+        && isLiteralMatchPattern(arm->pattern) && subjectSize != 8) {
         return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
     }
 
     DataType patternType = getNodeDataType(arm->pattern);
-    bool numericCompare = patternType == TYPE_I64 || patternType == TYPE_U64 || isFloatType(patternType);
+    bool numericCompare = getIntegerTypeSize(patternType) == 8 || isFloatType(patternType);
 
     if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm) || numericCompare) {
         Operand condition = compileMatchCondition(compiler, ast, arm, subject);

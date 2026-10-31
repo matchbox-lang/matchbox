@@ -15,6 +15,8 @@ typedef enum DataType
     TYPE_U16,
     TYPE_U32,
     TYPE_U64,
+    TYPE_ISIZE,
+    TYPE_USIZE,
     TYPE_F32,
     TYPE_F64,
     TYPE_CHAR,

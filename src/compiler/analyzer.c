@@ -1548,21 +1548,6 @@ static void applyBinaryFloatLiteralTypes(ASTNode* left, ASTNode* right)
     applyLiteralType(right, type);
 }
 
-static bool isCharacterComparison(TokenType type)
-{
-    switch (type) {
-        case TOKEN_EQUAL_EQUAL:
-        case TOKEN_NOT_EQUAL:
-        case TOKEN_LESS:
-        case TOKEN_LESS_EQUAL:
-        case TOKEN_GREATER:
-        case TOKEN_GREATER_EQUAL:
-            return true;
-        default:
-            return false;
-    }
-}
-
 static void applyBinaryIntegerLiteralTypes(ASTNode* left, ASTNode* right)
 {
     DataType leftType = getTypeId(left);
@@ -1635,7 +1620,7 @@ static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
         semanticError("Invalid operator for string operands", ast->binary.operator);
     }
 
-    if (leftType == TYPE_CHAR && !isCharacterComparison(ast->binary.operator.type)) {
+    if (leftType == TYPE_CHAR && !isCharacterComparisonToken(ast->binary.operator.type)) {
         semanticError("Invalid operator for char operands", ast->binary.operator);
     }
 
@@ -2686,12 +2671,6 @@ static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializ
 
     symbol->variableDefinition.referenceAccessActive = true;
     ast->assignment.initializesBinding = initializesBinding;
-}
-
-static bool isFloatAssignmentToken(TokenType type)
-{
-    return type == TOKEN_EQUAL || type == TOKEN_PLUS_EQUAL || type == TOKEN_MINUS_EQUAL
-        || type == TOKEN_STAR_EQUAL || type == TOKEN_SLASH_EQUAL || type == TOKEN_PERCENT_EQUAL;
 }
 
 static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)

@@ -151,6 +151,12 @@ const char* getTokenTypeName(TokenType type)
     return "unknown token";
 }
 
+bool isFloatAssignmentToken(TokenType type)
+{
+    return type == TOKEN_EQUAL || type == TOKEN_PLUS_EQUAL || type == TOKEN_MINUS_EQUAL
+        || type == TOKEN_STAR_EQUAL || type == TOKEN_SLASH_EQUAL || type == TOKEN_PERCENT_EQUAL;
+}
+
 bool isAssignmentToken(TokenType type)
 {
     switch (type) {
@@ -213,6 +219,21 @@ bool isTypeToken(TokenType type)
     DataType dataType = getTokenDataType(type);
 
     return dataType != TYPE_UNKNOWN;
+}
+
+bool isCharacterComparisonToken(TokenType type)
+{
+    switch (type) {
+        case TOKEN_EQUAL_EQUAL:
+        case TOKEN_NOT_EQUAL:
+        case TOKEN_LESS:
+        case TOKEN_LESS_EQUAL:
+        case TOKEN_GREATER:
+        case TOKEN_GREATER_EQUAL:
+            return true;
+        default:
+            return false;
+    }
 }
 
 bool isComparisonToken(TokenType type)
@@ -298,4 +319,14 @@ bool isPrefixToken(TokenType type)
         default:
             return false;
     }
+}
+
+bool isMatchArmEndToken(TokenType type)
+{
+    return type == TOKEN_CASE || type == TOKEN_DEFAULT || type == TOKEN_RBRACE;
+}
+
+bool isWildcardToken(Token token)
+{
+    return token.type == TOKEN_IDENTIFIER && token.length == 1 && token.chars[0] == '_';
 }

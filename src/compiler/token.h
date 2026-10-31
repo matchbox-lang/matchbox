@@ -150,9 +150,11 @@ typedef struct Token
 
 void printTokenValue(Token token);
 const char* getTokenTypeName(TokenType type);
+bool isFloatAssignmentToken(TokenType type);
 bool isAssignmentToken(TokenType type);
 bool isTypeToken(TokenType type);
 DataType getTokenDataType(TokenType type);
+bool isCharacterComparisonToken(TokenType type);
 bool isComparisonToken(TokenType type);
 bool isEqualityToken(TokenType type);
 bool isLogicalToken(TokenType type);
@@ -161,5 +163,7 @@ bool isShiftToken(TokenType type);
 bool isTermToken(TokenType type);
 bool isFactorToken(TokenType type);
 bool isPrefixToken(TokenType type);
+bool isMatchArmEndToken(TokenType type);
+bool isWildcardToken(Token token);
 
 #endif

@@ -108,8 +108,7 @@ static ReferenceType parseReferenceType(Parser* parser)
 
 static bool isEndOfFile(Parser* parser)
 {
-    return parser->currentToken.type == TOKEN_INCOMPLETE_INPUT
-        || parser->currentToken.type == TOKEN_EOF;
+    return parser->currentToken.type == TOKEN_INCOMPLETE_INPUT || parser->currentToken.type == TOKEN_EOF;
 }
 
 static DataType inferIntegerLiteralType(uint64_t value)
@@ -689,20 +688,15 @@ static void markConditionalStatement(ASTNode* ast)
     }
 }
 
-static bool isMatchArmEnd(TokenType type)
-{
-    return type == TOKEN_CASE || type == TOKEN_DEFAULT || type == TOKEN_RBRACE;
-}
-
 static bool isMatchBranchEnd(Parser* parser)
 {
-    return isMatchArmEnd(parser->currentToken.type) || isEndOfFile(parser);
+    return isMatchArmEndToken(parser->currentToken.type) || isEndOfFile(parser);
 }
 
 static void consumeMatchStatementSeparator(Parser* parser, Token token)
 {
     bool sameLineStatement = parser->currentToken.line == token.line
-        && !isMatchArmEnd(parser->currentToken.type)
+        && !isMatchArmEndToken(parser->currentToken.type)
         && parser->previousToken.type != TOKEN_RBRACE;
 
     if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
@@ -736,7 +730,7 @@ static ASTNode* parseMatchBranch(Parser* parser)
         return NULL;
     }
 
-    if (isMatchArmEnd(parser->currentToken.type)) {
+    if (isMatchArmEndToken(parser->currentToken.type)) {
         freeASTNode(branch);
         expectedExpressionError(parser->currentToken);
     }
@@ -750,11 +744,6 @@ static ASTNode* parseMatchBranch(Parser* parser)
     }
 
     return branch;
-}
-
-static bool isWildcardToken(Token token)
-{
-    return token.type == TOKEN_IDENTIFIER && token.length == 1 && token.chars[0] == '_';
 }
 
 static ASTNode* parseMatchBinding(Parser* parser)

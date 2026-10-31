@@ -4,9 +4,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define PROGRAM_COMMAND "matchbox"
-#define PROGRAM_VERSION "Matchbox 0.3.0"
-
 typedef enum ProgramMode
 {
     PROGRAM_RUN,

@@ -7,6 +7,7 @@
 #include "common/memory.h"
 #include "compiler/compiler.h"
 #include "compiler/diagnostics.h"
+#include "config.h"
 #include "runtime/module_object.h"
 #include "vm/disassembler.h"
 #include "vm/vm.h"
@@ -80,7 +81,7 @@ void printUsage(FILE* stream)
 
 void printVersion()
 {
-    printf("%s\n", PROGRAM_VERSION);
+    printf("%s %s\n", PROGRAM_NAME, PROGRAM_VERSION);
 }
 
 bool runProgram(Options* options)

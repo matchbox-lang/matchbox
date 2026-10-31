@@ -1,10 +1,10 @@
 #include "cli/test_runner.h"
 #include "cli/options.h"
 #include "cli/path.h"
-#include "cli/program.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/util.h"
+#include "config.h"
 #include <dirent.h>
 #include <stdbool.h>
 #include <stdio.h>

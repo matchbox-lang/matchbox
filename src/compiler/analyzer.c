@@ -2610,6 +2610,21 @@ static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
     return symbol;
 }
 
+static void validateCompoundAssignmentTarget(ASTNode* ast, ASTNode* symbol)
+{
+    if (ast->assignment.operator.type == TOKEN_EQUAL) {
+        return;
+    }
+
+    if (!isInitialized(symbol)) {
+        symbolError(" is uninitialized", ast->assignment.token);
+    }
+
+    if (getReferenceType(symbol) == REFERENCE_SHARED) {
+        semanticTokenError("Cannot mutate through shared reference ", ast->assignment.token);
+    }
+}
+
 static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
@@ -2637,12 +2652,15 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
     ASTNode* expression = ast->assignment.expr;
     DataType expressionType = getNodeDataType(expression);
     DataType bindingType = getNodeDataType(symbol);
-    bool compatibleValue = bindingType == expressionType || (getReferenceType(symbol) == REFERENCE_NONE
-            && getReferenceType(expression) == REFERENCE_NONE
-            && canImplicitlyWidenType(expressionType, bindingType));
-
     ReferenceType bindingReferenceType = getReferenceType(symbol);
     ReferenceType expressionReferenceType = getReferenceType(expression);
+
+    if (ast->assignment.operator.type != TOKEN_EQUAL && bindingReferenceType == REFERENCE_EXCLUSIVE) {
+        bindingReferenceType = REFERENCE_NONE;
+    }
+
+    bool compatibleValue = bindingType == expressionType || (bindingReferenceType == REFERENCE_NONE
+        && expressionReferenceType == REFERENCE_NONE && canImplicitlyWidenType(expressionType, bindingType));
 
     if (compatibleValue && bindingReferenceType == expressionReferenceType) {
         return;
@@ -2657,7 +2675,7 @@ static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
 
 static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializesBinding)
 {
-    if (getReferenceType(symbol) == REFERENCE_NONE) {
+    if (ast->assignment.operator.type != TOKEN_EQUAL || getReferenceType(symbol) == REFERENCE_NONE) {
         return;
     }
 
@@ -2677,11 +2695,13 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
     bool initializesBinding = !isInitialized(symbol);
-    validateAssignmentTarget(ast, symbol);
 
+    validateAssignmentTarget(ast, symbol);
+    validateCompoundAssignmentTarget(ast, symbol);
     trackVariableRead(symbol);
 
-    if (!initializesBinding && symbol->variableDefinition.referenceAccessActive) {
+    if (ast->assignment.operator.type == TOKEN_EQUAL && isVariableDefinition(symbol)
+        && !initializesBinding && symbol->variableDefinition.referenceAccessActive) {
         releaseReferenceAccess(symbol);
     }
 

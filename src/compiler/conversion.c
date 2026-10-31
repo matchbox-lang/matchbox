@@ -1,9 +1,7 @@
 #include "compiler/conversion.h"
 #include "common/memory.h"
 #include "common/unicode.h"
-#include "common/util.h"
 #include "compiler/diagnostics.h"
-#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -17,75 +15,11 @@ typedef struct NumericConstant
 
 static bool getNumericConstant(ASTNode* ast, NumericConstant* value);
 
-static _Noreturn void floatOutsideSupportedRangeError(Token token)
-{
-    fatalSourceError(token.line, token.column, "Float is outside the supported range");
-}
-
-static _Noreturn void integerExceedsMaximumSizeError(Token token)
-{
-    fatalSourceError(token.line, token.column, "Integer exceeds the maximum supported size");
-}
-
 static _Noreturn void invalidConstantConversionError(Token token, DataType destination)
 {
     const char* name = getDataTypeName(destination);
 
     fatalSourceError(token.line, token.column, "Constant is outside the supported domain of conversion to %s", name);
-}
-
-static uint64_t integerLiteralToValueInBase(Token token, size_t offset, int base)
-{
-    size_t length = token.length - offset;
-    char* tmp = strndup(token.chars + offset, length);
-    stripUnderscores(tmp, &length);
-    errno = 0;
-    uint64_t value = strtoull(tmp, NULL, base);
-
-    if (errno == ERANGE) {
-        integerExceedsMaximumSizeError(token);
-    }
-
-    freeMemory(tmp);
-
-    return value;
-}
-
-uint64_t integerLiteralToValue(Token token)
-{
-    return integerLiteralToValueInBase(token, 0, 10);
-}
-
-uint64_t binaryLiteralToValue(Token token)
-{
-    return integerLiteralToValueInBase(token, 2, 2);
-}
-
-uint64_t hexadecimalLiteralToValue(Token token)
-{
-    return integerLiteralToValueInBase(token, 2, 16);
-}
-
-uint64_t octalLiteralToValue(Token token)
-{
-    return integerLiteralToValueInBase(token, 2, 8);
-}
-
-double floatLiteralToValue(Token token)
-{
-    size_t length = token.length;
-    char* tmp = strndup(token.chars, length);
-    stripUnderscores(tmp, &length);
-    errno = 0;
-    double value = strtod(tmp, NULL);
-
-    if (errno == ERANGE) {
-        floatOutsideSupportedRangeError(token);
-    }
-
-    freeMemory(tmp);
-
-    return value;
 }
 
 static uint64_t normalizeIntegerConstant(uint64_t value, DataType type)
@@ -124,7 +58,7 @@ static bool getNegatedNumericConstant(ASTNode* ast, NumericConstant* value)
         return false;
     }
 
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
     uint64_t negated = 0 - value->integer;
 
     value->integer = normalizeIntegerConstant(negated, type);
@@ -135,7 +69,7 @@ static bool getNegatedNumericConstant(ASTNode* ast, NumericConstant* value)
 
 static bool getNumericConstant(ASTNode* ast, NumericConstant* value)
 {
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
 
     if (ast->type == AST_CONVERSION) {
         return getNumericConstant(ast->conversion.expr, value);
@@ -274,7 +208,7 @@ static ASTNode* createConvertedConstant(NumericConstant value, DataType type, To
 void foldExplicitConversion(ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = getTypeId(expression);
+    DataType source = getNodeDataType(expression);
     DataType destination = ast->conversion.typeId;
     Token token = ast->conversion.token;
     NumericConstant value = {0};

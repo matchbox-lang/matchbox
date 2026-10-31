@@ -158,3 +158,37 @@ void formatStringArgument(Writer* writer, Value* argument)
 
     formatString(writer, value);
 }
+
+ArgumentFormat getArgumentFormat(DataType type)
+{
+    switch (type) {
+        case TYPE_I8:
+            return (ArgumentFormat){.formatter = formatI8Argument, .capacity = 4};
+        case TYPE_I16:
+            return (ArgumentFormat){.formatter = formatI16Argument, .capacity = 6};
+        case TYPE_I32:
+            return (ArgumentFormat){.formatter = formatI32Argument, .capacity = 11};
+        case TYPE_I64:
+            return (ArgumentFormat){.formatter = formatI64Argument, .capacity = 20};
+        case TYPE_U8:
+            return (ArgumentFormat){.formatter = formatU8Argument, .capacity = 3};
+        case TYPE_U16:
+            return (ArgumentFormat){.formatter = formatU16Argument, .capacity = 5};
+        case TYPE_U32:
+            return (ArgumentFormat){.formatter = formatU32Argument, .capacity = 10};
+        case TYPE_U64:
+            return (ArgumentFormat){.formatter = formatU64Argument, .capacity = 20};
+        case TYPE_F32:
+            return (ArgumentFormat){.formatter = formatF32Argument, .capacity = 32};
+        case TYPE_F64:
+            return (ArgumentFormat){.formatter = formatF64Argument, .capacity = 32};
+        case TYPE_CHAR:
+            return (ArgumentFormat){.formatter = formatCharArgument, .capacity = 4};
+        case TYPE_STRING:
+            return (ArgumentFormat){.formatter = formatStringArgument};
+        case TYPE_BOOL:
+            return (ArgumentFormat){.formatter = formatBoolArgument, .capacity = 5};
+        default:
+            return (ArgumentFormat){0};
+    }
+}

@@ -24,7 +24,7 @@ static bool appendLine(char** source, size_t* size, size_t* length)
 {
     char* line = NULL;
     size_t lineSize = 0;
-    int count = getStreamContents(&line, &lineSize, stdin);
+    int count = readStreamLine(&line, &lineSize, stdin);
 
     if (count < 0) {
         freeMemory(line);

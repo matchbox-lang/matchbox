@@ -185,7 +185,7 @@ Scope* getScope(const ASTNode* ast)
     }
 }
 
-DataType getTypeId(const ASTNode* ast)
+DataType getNodeDataType(const ASTNode* ast)
 {
     if (!ast) {
         return TYPE_VOID;
@@ -207,17 +207,17 @@ DataType getTypeId(const ASTNode* ast)
         case AST_FLOAT:
             return ast->floatLiteral.typeId;
         case AST_FUNCTION_CALL:
-            return getTypeId(ast->functionCall.symbol);
+            return getNodeDataType(ast->functionCall.symbol);
         case AST_FUNCTION_DEFINITION:
             return ast->functionDefinition.returnTypeId;
         case AST_PARAMETER:
             return ast->parameter.typeId;
         case AST_VARIABLE:
-            return getTypeId(ast->variable.symbol);
+            return getNodeDataType(ast->variable.symbol);
         case AST_VARIABLE_DEFINITION:
             return ast->variableDefinition.typeId;
         case AST_PREFIX:
-            return getTypeId(ast->prefix.expr);
+            return getNodeDataType(ast->prefix.expr);
         case AST_INTEGER:
             return ast->integerLiteral.typeId;
         case AST_MATCH:

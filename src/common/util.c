@@ -15,25 +15,6 @@ bool isLargerThan16BitSigned(int n)
     return n < SHRT_MIN || n > SHRT_MAX;
 }
 
-void stripUnderscores(char* str, size_t* length)
-{
-	char* source = str;
-    char* destination = str;
-
-	while (*source != '\0') {
-		if (*source != '_') {
-			*destination =* source;
-			destination++;
-		} else {
-			--(*length);
-		}
-
-		source++;
-	}
-
-	*destination = '\0';
-}
-
 char* strndup(const char* source, size_t length)
 {
     char* destination = allocateMemory(length + 1);

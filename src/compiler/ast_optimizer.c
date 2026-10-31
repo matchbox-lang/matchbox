@@ -13,6 +13,10 @@
 #include <math.h>
 #include <stdint.h>
 
+static void removeDiscardedExpressionReads(ASTNode* ast);
+static void removeDiscardedStatementReads(ASTNode* ast);
+static void markCalledFunctions(ASTNode* ast);
+static void resetFunctionCallCounts(ASTNode* ast);
 static void optimizeNode(ASTNode* ast, bool checkZero);
 static void optimizeMatchPattern(ASTNode* pattern, bool checkZero);
 static void optimizeConditional(ASTNode* ast, bool fold, bool checkZero);
@@ -262,8 +266,8 @@ static void foldBinary(ASTNode* ast)
         return;
     }
 
-    if (getTypeId(ast->binary.leftExpr) != TYPE_I32
-        || getTypeId(ast->binary.rightExpr) != TYPE_I32) {
+    if (getNodeDataType(ast->binary.leftExpr) != TYPE_I32
+        || getNodeDataType(ast->binary.rightExpr) != TYPE_I32) {
         return;
     }
 
@@ -289,7 +293,7 @@ static bool isLiteralOfType(ASTNode* ast, DataType type)
         return false;
     }
 
-    DataType literalType = getTypeId(ast);
+    DataType literalType = getNodeDataType(ast);
 
     return literalType == type;
 }
@@ -447,7 +451,7 @@ static void foldPrefix(ASTNode* ast)
         return;
     }
 
-    DataType type = getTypeId(ast->prefix.expr);
+    DataType type = getNodeDataType(ast->prefix.expr);
     bool integer = isSignedIntegerType(type);
 
     if (integer) {
@@ -532,7 +536,7 @@ static void foldConditional(ASTNode* ast)
         return;
     }
 
-    DataType type = getTypeId(result);
+    DataType type = getNodeDataType(result);
 
     if (type != ast->conditional.typeId) {
         return;
@@ -624,7 +628,7 @@ static void optimizeBuiltinCall(ASTNode* ast, bool checkZero)
 
     ASTNode* expression = ast->builtinCall.args.data[0];
 
-    if (getTypeId(expression) != builtin->returnTypeId || getReferenceType(expression) != REFERENCE_NONE) {
+    if (getNodeDataType(expression) != builtin->returnTypeId || getReferenceType(expression) != REFERENCE_NONE) {
         return;
     }
 
@@ -640,7 +644,7 @@ static void optimizeConversion(ASTNode* ast, bool checkZero)
     ASTNode* expression = ast->conversion.expr;
     bool literal = expression->type == AST_INTEGER || expression->type == AST_FLOAT
         || expression->type == AST_CHARACTER;
-    bool identity = getTypeId(expression) == ast->conversion.typeId;
+    bool identity = getNodeDataType(expression) == ast->conversion.typeId;
 
     if (!literal && !identity) {
         return;
@@ -702,7 +706,7 @@ static void optimizeAssignment(ASTNode* ast, bool checkZero)
 {
     optimizeNode(ast->assignment.expr, checkZero);
 
-    DataType type = getTypeId(ast->assignment.symbol);
+    DataType type = getNodeDataType(ast->assignment.symbol);
 
     validateZeroDivisor(ast->assignment.expr, ast->assignment.operator, type, checkZero);
 }
@@ -756,7 +760,7 @@ static void optimizeNode(ASTNode* ast, bool checkZero)
     }
 }
 
-void optimize(ASTNode* ast, size_t start)
+void optimizeAST(ASTNode* ast, size_t start)
 {
     size_t count = countVector(&ast->compound.statements);
 
@@ -764,5 +768,273 @@ void optimize(ASTNode* ast, size_t start)
         ASTNode* node = getVectorAt(&ast->compound.statements, i);
 
         optimizeNode(node, true);
+    }
+}
+
+static bool hasNoValueReads(ASTNode* ast)
+{
+    return ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
+}
+
+static void removeUnreadInitializerReads(ASTNode* ast)
+{
+    if (!hasNoValueReads(ast) || ast->variableDefinition.discardedReadsAnalyzed) {
+        return;
+    }
+
+    ast->variableDefinition.discardedReadsAnalyzed = true;
+
+    removeDiscardedExpressionReads(ast->variableDefinition.expr);
+}
+
+static void removeDiscardedVariableRead(ASTNode* ast)
+{
+    ASTNode* symbol = ast->variable.symbol;
+
+    if (!isVariableDefinition(symbol)) {
+        return;
+    }
+
+    symbol->variableDefinition.discardedReadCount++;
+
+    removeUnreadInitializerReads(symbol);
+}
+
+static void removeDiscardedExpressionReads(ASTNode* ast)
+{
+    switch (ast->type) {
+        case AST_VARIABLE:
+            removeDiscardedVariableRead(ast);
+            break;
+        case AST_PREFIX:
+            removeDiscardedExpressionReads(ast->prefix.expr);
+            break;
+        default:
+            break;
+    }
+}
+
+static void removeDiscardedStatementVectorReads(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* node = getVectorAt(nodes, i);
+
+        removeDiscardedStatementReads(node);
+    }
+}
+
+static void removeDiscardedStatementReads(ASTNode* ast)
+{
+    if (ast->type == AST_FUNCTION_DEFINITION) {
+        removeDiscardedStatementVectorReads(&ast->functionDefinition.body->compound.statements);
+
+        return;
+    }
+
+    if (ast->type == AST_VARIABLE_DEFINITION) {
+        removeUnreadInitializerReads(ast);
+
+        return;
+    }
+
+    removeDiscardedExpressionReads(ast);
+}
+
+void removeDiscardedReads(Vector* nodes, size_t start)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = start; i < count; i++) {
+        ASTNode* node = getVectorAt(nodes, i);
+
+        removeDiscardedStatementReads(node);
+    }
+}
+
+static void markCalledFunctionsInVector(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* node = getVectorAt(nodes, i);
+
+        markCalledFunctions(node);
+    }
+}
+
+static void markCalledFunction(ASTNode* ast)
+{
+    ASTNode* function = ast->functionCall.symbol;
+
+    markCalledFunctionsInVector(&ast->functionCall.args);
+
+    if (!function) {
+        return;
+    }
+
+    function->functionDefinition.callCount++;
+
+    if (function->functionDefinition.callCount > 1) {
+        return;
+    }
+
+    markCalledFunctions(function->functionDefinition.body);
+}
+
+static void markMatchCalledFunctions(ASTNode* ast)
+{
+    markCalledFunctions(ast->match.subject);
+
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+
+        markCalledFunctions(arm->pattern);
+        markCalledFunctions(arm->guard);
+        markCalledFunctions(arm->branch);
+    }
+
+    markCalledFunctions(ast->match.defaultBranch);
+}
+
+static void markCalledFunctions(ASTNode* ast)
+{
+    if (!ast) {
+        return;
+    }
+
+    switch (ast->type) {
+        case AST_ASSIGNMENT:
+            markCalledFunctions(ast->assignment.expr);
+            break;
+        case AST_BINARY:
+            markCalledFunctions(ast->binary.leftExpr);
+            markCalledFunctions(ast->binary.rightExpr);
+            break;
+        case AST_BUILTIN_CALL:
+            markCalledFunctionsInVector(&ast->builtinCall.args);
+            break;
+        case AST_WHILE:
+            markCalledFunctions(ast->whileStatement.condition);
+            markCalledFunctions(ast->whileStatement.body);
+            break;
+        case AST_COMPOUND:
+            markCalledFunctionsInVector(&ast->compound.statements);
+            break;
+        case AST_CONDITIONAL:
+            markCalledFunctions(ast->conditional.condition);
+            markCalledFunctions(ast->conditional.thenBranch);
+            markCalledFunctions(ast->conditional.elseBranch);
+            break;
+        case AST_CONVERSION:
+            markCalledFunctions(ast->conversion.expr);
+            break;
+        case AST_FUNCTION_CALL:
+            markCalledFunction(ast);
+            break;
+        case AST_MATCH:
+            markMatchCalledFunctions(ast);
+            break;
+        case AST_PREFIX:
+            markCalledFunctions(ast->prefix.expr);
+            break;
+        case AST_RETURN:
+            markCalledFunctions(ast->returnStatement.expr);
+            break;
+        case AST_VARIABLE_DEFINITION:
+            markCalledFunctions(ast->variableDefinition.expr);
+            break;
+        default:
+            break;
+    }
+}
+
+static void resetFunctionCallCountsInVector(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* node = getVectorAt(nodes, i);
+
+        resetFunctionCallCounts(node);
+    }
+}
+
+static void resetMatchFunctionCallCounts(ASTNode* ast)
+{
+    size_t count = countVector(&ast->match.arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+
+        resetFunctionCallCounts(arm->pattern);
+        resetFunctionCallCounts(arm->guard);
+        resetFunctionCallCounts(arm->branch);
+    }
+
+    resetFunctionCallCounts(ast->match.defaultBranch);
+}
+
+static void resetFunctionCallCounts(ASTNode* ast)
+{
+    if (!ast) {
+        return;
+    }
+
+    if (ast->type == AST_FUNCTION_DEFINITION) {
+        ast->functionDefinition.callCount = 0;
+
+        resetFunctionCallCounts(ast->functionDefinition.body);
+
+        return;
+    }
+
+    if (ast->type == AST_COMPOUND) {
+        resetFunctionCallCountsInVector(&ast->compound.statements);
+
+        return;
+    }
+
+    if (ast->type == AST_CONDITIONAL) {
+        resetFunctionCallCounts(ast->conditional.thenBranch);
+        resetFunctionCallCounts(ast->conditional.elseBranch);
+
+        return;
+    }
+
+    if (ast->type == AST_WHILE) {
+        resetFunctionCallCounts(ast->whileStatement.condition);
+        resetFunctionCallCounts(ast->whileStatement.body);
+
+        return;
+    }
+
+    if (ast->type == AST_MATCH) {
+        resetMatchFunctionCallCounts(ast);
+    }
+}
+
+static void markRootCalledFunctions(ASTNode* ast)
+{
+    if (ast->type == AST_FUNCTION_DEFINITION) {
+        return;
+    }
+
+    markCalledFunctions(ast);
+}
+
+void markReachableFunctions(Vector* nodes)
+{
+    size_t count = countVector(nodes);
+
+    resetFunctionCallCountsInVector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* ast = getVectorAt(nodes, i);
+
+        markRootCalledFunctions(ast);
     }
 }

@@ -6,9 +6,9 @@
 #include "common/vector.h"
 #include "compiler/ast.h"
 #include "compiler/diagnostics.h"
-#include "compiler/conversion.h"
 #include "compiler/lexer.h"
 #include "compiler/literal.h"
+#include "compiler/source_position.h"
 #include "compiler/token.h"
 #include "runtime/string_object.h"
 #include <float.h>
@@ -21,7 +21,7 @@
 typedef struct StringReader
 {
     Token token;
-    Position current;
+    SourcePosition current;
     const char* end;
     size_t width;
     bool raw;
@@ -139,10 +139,10 @@ static DataType inferFloatLiteralType(double value)
     return TYPE_F64;
 }
 
-static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
+static ASTNode* parseIntegerLiteralNode(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = integerLiteralToValue(token);
+    ast->integerLiteral.value = parseDecimalLiteral(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
@@ -151,10 +151,10 @@ static ASTNode* parseIntegerLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static ASTNode* parseFloatLiteral(Parser* parser, Token token)
+static ASTNode* parseFloatLiteralNode(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_FLOAT);
-    ast->floatLiteral.value = floatLiteralToValue(token);
+    ast->floatLiteral.value = parseFloatLiteral(token);
     ast->floatLiteral.token = token;
     ast->floatLiteral.typeId = inferFloatLiteralType(ast->floatLiteral.value);
 
@@ -163,10 +163,10 @@ static ASTNode* parseFloatLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
+static ASTNode* parseBinaryLiteralNode(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = binaryLiteralToValue(token);
+    ast->integerLiteral.value = parseBinaryLiteral(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
@@ -175,10 +175,10 @@ static ASTNode* parseBinaryLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
+static ASTNode* parseHexadecimalLiteralNode(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = hexadecimalLiteralToValue(token);
+    ast->integerLiteral.value = parseHexadecimalLiteral(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
@@ -187,10 +187,10 @@ static ASTNode* parseHexadecimalLiteral(Parser* parser, Token token)
     return ast;
 }
 
-static ASTNode* parseOctalLiteral(Parser* parser, Token token)
+static ASTNode* parseOctalLiteralNode(Parser* parser, Token token)
 {
     ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = octalLiteralToValue(token);
+    ast->integerLiteral.value = parseOctalLiteral(token);
     ast->integerLiteral.token = token;
     ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
 
@@ -479,15 +479,15 @@ static ASTNode* parsePrimary(Parser* parser)
         case TOKEN_CHARACTER_LITERAL:
             return parseCharacterLiteral(parser);
         case TOKEN_INTEGER_LITERAL:
-            return parseIntegerLiteral(parser, parser->currentToken);
+            return parseIntegerLiteralNode(parser, parser->currentToken);
         case TOKEN_FLOAT_LITERAL:
-            return parseFloatLiteral(parser, parser->currentToken);
+            return parseFloatLiteralNode(parser, parser->currentToken);
         case TOKEN_BINARY_LITERAL:
-            return parseBinaryLiteral(parser, parser->currentToken);
+            return parseBinaryLiteralNode(parser, parser->currentToken);
         case TOKEN_HEXADECIMAL_LITERAL:
-            return parseHexadecimalLiteral(parser, parser->currentToken);
+            return parseHexadecimalLiteralNode(parser, parser->currentToken);
         case TOKEN_OCTAL_LITERAL:
-            return parseOctalLiteral(parser, parser->currentToken);
+            return parseOctalLiteralNode(parser, parser->currentToken);
         case TOKEN_LPAREN:
             return parseGroupExpression(parser);
         case TOKEN_IDENTIFIER:

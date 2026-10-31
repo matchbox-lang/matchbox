@@ -13,6 +13,7 @@ typedef struct ArgumentFormat
     size_t capacity;
 } ArgumentFormat;
 
+ArgumentFormat getArgumentFormat(DataType type);
 void formatArguments(Writer* writer, Value* frame, const ArgumentFormat* formats, size_t count);
 StringObject* concatenateArguments(Value* frame, const ArgumentFormat* formats, size_t count);
 void formatI8Argument(Writer* writer, Value* argument);

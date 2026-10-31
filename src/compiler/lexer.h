@@ -1,19 +1,13 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include "compiler/source_position.h"
 #include "compiler/token.h"
-
-typedef struct Position
-{
-    char* chars;
-    int line;
-    int column;
-} Position;
 
 typedef struct Lexer
 {
-    Position current;
-    Position start;
+    SourcePosition current;
+    SourcePosition start;
 } Lexer;
 
 void initLexer(Lexer* lexer, char* source);

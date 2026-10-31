@@ -1,4 +1,9 @@
 #include "compiler/literal.h"
+#include "common/memory.h"
+#include "common/util.h"
+#include "compiler/diagnostics.h"
+#include <errno.h>
+#include <stdlib.h>
 
 static bool decodeHexDigit(char c, uint32_t* value)
 {
@@ -128,4 +133,98 @@ bool decodeStringContents(const char* chars, size_t length, char* bytes, size_t*
     }
 
     return true;
+}
+
+static _Noreturn void floatOutsideSupportedRangeError(Token token)
+{
+    fatalSourceError(token.line, token.column, "Float is outside the supported range");
+}
+
+static _Noreturn void integerExceedsMaximumSizeError(Token token)
+{
+    fatalSourceError(token.line, token.column, "Integer exceeds the maximum supported size");
+}
+
+static void copyLiteralDigit(char c, char** destination, size_t* length)
+{
+    if (c == '_') {
+        --(*length);
+
+        return;
+    }
+
+    **destination = c;
+    (*destination)++;
+}
+
+static void stripUnderscores(char* str, size_t* length)
+{
+    char* source = str;
+    char* destination = str;
+
+    while (*source != '\0') {
+        copyLiteralDigit(*source, &destination, length);
+
+        source++;
+    }
+
+    *destination = '\0';
+}
+
+static uint64_t parseIntegerLiteralInBase(Token token, size_t offset, int base)
+{
+    size_t length = token.length - offset;
+    char* tmp = strndup(token.chars + offset, length);
+
+    stripUnderscores(tmp, &length);
+
+    errno = 0;
+    uint64_t value = strtoull(tmp, NULL, base);
+
+    if (errno == ERANGE) {
+        integerExceedsMaximumSizeError(token);
+    }
+
+    freeMemory(tmp);
+
+    return value;
+}
+
+uint64_t parseDecimalLiteral(Token token)
+{
+    return parseIntegerLiteralInBase(token, 0, 10);
+}
+
+uint64_t parseBinaryLiteral(Token token)
+{
+    return parseIntegerLiteralInBase(token, 2, 2);
+}
+
+uint64_t parseHexadecimalLiteral(Token token)
+{
+    return parseIntegerLiteralInBase(token, 2, 16);
+}
+
+uint64_t parseOctalLiteral(Token token)
+{
+    return parseIntegerLiteralInBase(token, 2, 8);
+}
+
+double parseFloatLiteral(Token token)
+{
+    size_t length = token.length;
+    char* tmp = strndup(token.chars, length);
+
+    stripUnderscores(tmp, &length);
+
+    errno = 0;
+    double value = strtod(tmp, NULL);
+
+    if (errno == ERANGE) {
+        floatOutsideSupportedRangeError(token);
+    }
+
+    freeMemory(tmp);
+
+    return value;
 }

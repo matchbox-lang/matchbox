@@ -80,10 +80,6 @@ static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
 static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
 static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
-static void removeDiscardedExpressionReads(ASTNode* ast);
-static void removeDiscardedStatementReads(ASTNode* ast);
-static void markCalledFunctions(ASTNode* ast);
-static void resetFunctionCallCounts(ASTNode* ast);
 static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
 static bool isMatchAlternative(ASTNode* pattern);
 static bool isSimpleMatchValue(ASTNode* ast);
@@ -746,7 +742,7 @@ static bool isNarrowIntegerImmediate(uint64_t value, DataType type)
 static Operand compileNumber(Compiler* compiler, ASTNode* ast)
 {
     uint64_t value = ast->integerLiteral.value;
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
 
     if (type == TYPE_F64) {
         size_t position = makeF64Constant(compiler, (double)value);
@@ -796,7 +792,7 @@ static Operand compileFloatValue(Compiler* compiler, double value, DataType type
 static Operand compileFloat(Compiler* compiler, ASTNode* ast)
 {
     double value = ast->floatLiteral.value;
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
 
     return compileFloatValue(compiler, value, type);
 }
@@ -843,7 +839,7 @@ static size_t getNodeSlotCount(ASTNode* ast)
         return 1;
     }
 
-    return getTypeSlotCount(getTypeId(ast));
+    return getTypeSlotCount(getNodeDataType(ast));
 }
 
 static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
@@ -1110,7 +1106,7 @@ static Operand emitFloatOperands(Compiler* compiler, Opcode opcode,
 
 static Operand compileFloatBinary(Compiler* compiler, ASTNode* ast)
 {
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
     Operand left = compileConvertedExpression(compiler, ast->binary.leftExpr, type, false);
 
     if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
@@ -1307,7 +1303,7 @@ static Operand compileLogicalBinary(Compiler* compiler, ASTNode* ast)
 
 static Operand compileBinary(Compiler* compiler, ASTNode* ast)
 {
-    DataType resultType = getTypeId(ast);
+    DataType resultType = getNodeDataType(ast);
 
     if (resultType == TYPE_STRING) {
         return compileConcatenation(compiler, ast);
@@ -1329,7 +1325,7 @@ static Operand compileBinary(Compiler* compiler, ASTNode* ast)
         return compileNumericComparison(compiler, ast);
     }
 
-    if (isFloatType(getTypeId(ast))) {
+    if (isFloatType(getNodeDataType(ast))) {
         return compileFloatBinary(compiler, ast);
     }
 
@@ -1376,7 +1372,7 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 {
     if (getReferenceType(ast) != REFERENCE_NONE) {
         return dereferenceOperand(
-            compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getTypeId(ast)));
+            compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getNodeDataType(ast)));
     }
 
     Operand operand = compileExpression(compiler, ast->prefix.expr, false);
@@ -1386,9 +1382,9 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
             return emitUnaryOperand(compiler, OP_NOT, operand);
         case TOKEN_TILDE:
             return emitUnaryOperand(
-                compiler, getIntegerOpcode(getTypeId(ast), INTEGER_BNOT), operand);
+                compiler, getIntegerOpcode(getNodeDataType(ast), INTEGER_BNOT), operand);
         case TOKEN_MINUS: {
-            DataType type = getTypeId(ast);
+            DataType type = getNodeDataType(ast);
             Opcode opcode = getNegationOpcode(type);
 
             return emitUnaryOperand(compiler, opcode, operand);
@@ -1406,7 +1402,7 @@ static Operand compileVariable(Compiler* compiler, ASTNode* ast)
         return value;
     }
 
-    return dereferenceOperand(compiler, value, getTypeSlotCount(getTypeId(ast)));
+    return dereferenceOperand(compiler, value, getTypeSlotCount(getNodeDataType(ast)));
 }
 
 static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand value)
@@ -1428,13 +1424,13 @@ static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand va
 static void compileCompoundAssignment(
     Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
-    DataType type = getTypeId(ast->assignment.symbol);
+    DataType type = getNodeDataType(ast->assignment.symbol);
 
     Operand left = loadVariable(compiler, ast->assignment.symbol);
 
     if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
         left = dereferenceOperand(
-            compiler, left, getTypeSlotCount(getTypeId(ast->assignment.symbol)));
+            compiler, left, getTypeSlotCount(getNodeDataType(ast->assignment.symbol)));
     }
 
     if (!left.temporary && !isDirectVariable(compiler, ast->assignment.expr)) {
@@ -1464,7 +1460,7 @@ static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
     }
 
     Operand value = compileConvertedExpression(
-        compiler, ast->assignment.expr, getTypeId(ast->assignment.symbol), false);
+        compiler, ast->assignment.expr, getNodeDataType(ast->assignment.symbol), false);
 
     storeAssignmentValue(compiler, ast->assignment.symbol, value);
 }
@@ -1632,7 +1628,7 @@ static uint64_t getWidenedIntegerLiteralValue(ASTNode* ast, DataType source)
 
 static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, DataType destination)
 {
-    DataType source = getTypeId(ast);
+    DataType source = getNodeDataType(ast);
     ASTNode literal = *ast;
 
     literal.integerLiteral.value = getWidenedIntegerLiteralValue(ast, source);
@@ -1643,7 +1639,7 @@ static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, Da
 
 static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, DataType destination)
 {
-    DataType source = getTypeId(ast);
+    DataType source = getNodeDataType(ast);
     uint64_t integer = getWidenedIntegerLiteralValue(ast, source);
     double number = integer;
 
@@ -1661,7 +1657,7 @@ static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, Da
 static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
     DataType destination, bool reference)
 {
-    DataType source = getTypeId(ast);
+    DataType source = getNodeDataType(ast);
     bool integerToFloat = canImplicitlyConvertIntegerToFloat(source, destination);
     bool floatWidening = canImplicitlyWidenFloat(source, destination);
 
@@ -1816,7 +1812,7 @@ static Operand emitConversionOperand(Compiler* compiler, Operand operand, DataTy
 static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = getTypeId(expression);
+    DataType source = getNodeDataType(expression);
     DataType destination = ast->conversion.typeId;
 
     if (destination == TYPE_CHAR && source != TYPE_U8) {
@@ -1850,7 +1846,7 @@ static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, 
 static Operand compileExplicitConversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = getTypeId(expression);
+    DataType source = getNodeDataType(expression);
     DataType destination = ast->conversion.typeId;
 
     if (source == destination || canImplicitlyWidenType(source, destination)) {
@@ -1924,7 +1920,7 @@ static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vecto
     bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
 
     ASTNode* argument = args->data[position];
-    DataType destination = parameter ? getTypeId(parameter) : getTypeId(argument);
+    DataType destination = parameter ? getNodeDataType(parameter) : getNodeDataType(argument);
     Operand expression = compileConvertedExpression(compiler, argument, destination, reference);
 
     return expression;
@@ -2065,41 +2061,7 @@ static DataType getBuiltinArgumentType(Builtin* builtin, ASTNode* argument)
         return builtin->params[0];
     }
 
-    return getTypeId(argument);
-}
-
-static ArgumentFormat getArgumentFormat(DataType type)
-{
-    switch (type) {
-        case TYPE_I8:
-            return (ArgumentFormat){.formatter = formatI8Argument, .capacity = 4};
-        case TYPE_I16:
-            return (ArgumentFormat){.formatter = formatI16Argument, .capacity = 6};
-        case TYPE_I32:
-            return (ArgumentFormat){.formatter = formatI32Argument, .capacity = 11};
-        case TYPE_I64:
-            return (ArgumentFormat){.formatter = formatI64Argument, .capacity = 20};
-        case TYPE_U8:
-            return (ArgumentFormat){.formatter = formatU8Argument, .capacity = 3};
-        case TYPE_U16:
-            return (ArgumentFormat){.formatter = formatU16Argument, .capacity = 5};
-        case TYPE_U32:
-            return (ArgumentFormat){.formatter = formatU32Argument, .capacity = 10};
-        case TYPE_U64:
-            return (ArgumentFormat){.formatter = formatU64Argument, .capacity = 20};
-        case TYPE_F32:
-            return (ArgumentFormat){.formatter = formatF32Argument, .capacity = 32};
-        case TYPE_F64:
-            return (ArgumentFormat){.formatter = formatF64Argument, .capacity = 32};
-        case TYPE_CHAR:
-            return (ArgumentFormat){.formatter = formatCharArgument, .capacity = 4};
-        case TYPE_STRING:
-            return (ArgumentFormat){.formatter = formatStringArgument};
-        case TYPE_BOOL:
-            return (ArgumentFormat){.formatter = formatBoolArgument, .capacity = 5};
-        default:
-            return (ArgumentFormat){0};
-    }
+    return getNodeDataType(argument);
 }
 
 static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, Vector* args)
@@ -2117,7 +2079,7 @@ static bool matchesBuiltinArguments(FunctionObject* function, Builtin* builtin, 
 
     for (size_t i = 0; i < args->count && matches; i++) {
         ASTNode* argument = args->data[i];
-        DataType type = getTypeId(argument);
+        DataType type = getNodeDataType(argument);
         ArgumentFormat format = getArgumentFormat(type);
         matches = format.formatter == function->argumentFormats[i].formatter;
     }
@@ -2343,7 +2305,7 @@ static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discar
         return result;
     }
 
-    return dereferenceOperand(compiler, result, getTypeSlotCount(getTypeId(ast)));
+    return dereferenceOperand(compiler, result, getTypeSlotCount(getNodeDataType(ast)));
 }
 
 static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
@@ -2522,7 +2484,7 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
     } else {
         bool reference = getReferenceType(ast) != REFERENCE_NONE;
         value = compileConvertedExpression(
-            compiler, ast->variableDefinition.expr, getTypeId(ast), reference);
+            compiler, ast->variableDefinition.expr, getNodeDataType(ast), reference);
     }
 
     if (!value.temporary) {
@@ -2752,7 +2714,7 @@ static void compileConditionalBranches(
     Compiler* compiler, ASTNode* ast, int destination, bool reference, size_t elseJump)
 {
     ASTNode* condition = ast->conditional.condition;
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
 
     if (condition->type == AST_BOOLEAN) {
         ASTNode* branch = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
@@ -2790,7 +2752,7 @@ static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool referen
         releaseOperand(compiler, condition);
     }
 
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
     Operand result = allocateConditionalResult(compiler, type);
 
     compileConditionalBranches(compiler, ast, result.reg, reference, elseJump);
@@ -2833,7 +2795,7 @@ static void compileWhile(Compiler* compiler, ASTNode* ast)
 
 static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
 {
-    DataType type = getTypeId(subject);
+    DataType type = getNodeDataType(subject);
     Operand value = compileComparisonOperand(compiler, subject, type);
     value.temporary = false;
 
@@ -2848,7 +2810,7 @@ static bool isMatchAlternative(ASTNode* pattern)
 static Operand compileSubjectMatchCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
     if (!isMatchAlternative(pattern)) {
-        DataType type = getTypeId(pattern);
+        DataType type = getNodeDataType(pattern);
         Operand value = compileComparisonOperand(compiler, pattern, type);
 
         return emitNumericComparison(compiler, TOKEN_EQUAL_EQUAL, type, subject, value);
@@ -2978,7 +2940,7 @@ static size_t compileMatchAlternativeJumps(
         operatorType = TOKEN_EQUAL_EQUAL;
     }
 
-    DataType type = getTypeId(pattern);
+    DataType type = getNodeDataType(pattern);
     Operand condition = emitNumericComparison(compiler, operatorType, type, subject, value);
     size_t jump = emitConditionJump(compiler, condition);
 
@@ -3012,12 +2974,12 @@ static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchAr
     }
 
     if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
-        && isLiteralMatchPattern(arm->pattern) && getTypeId(ast->match.subject) != TYPE_I64
-        && getTypeId(ast->match.subject) != TYPE_U64) {
+        && isLiteralMatchPattern(arm->pattern) && getNodeDataType(ast->match.subject) != TYPE_I64
+        && getNodeDataType(ast->match.subject) != TYPE_U64) {
         return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
     }
 
-    DataType patternType = getTypeId(arm->pattern);
+    DataType patternType = getNodeDataType(arm->pattern);
     bool numericCompare = patternType == TYPE_I64 || patternType == TYPE_U64 || isFloatType(patternType);
 
     if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm) || numericCompare) {
@@ -3064,7 +3026,7 @@ static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subj
 
     emitOperandMov(compiler, position, subject);
 
-    DataType bindingType = getTypeId(binding);
+    DataType bindingType = getNodeDataType(binding);
     int bindingRegisterCount = position + getTypeSlotCount(bindingType);
 
     compiler->registerCount = MAX(compiler->registerCount, bindingRegisterCount);
@@ -3089,7 +3051,7 @@ static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, O
 {
     int branchRegisterCount = compiler->registerCount;
     size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
 
     storeMatchBinding(compiler, arm->binding, subject);
 
@@ -3155,7 +3117,7 @@ static void compileMatchDefault(
         return;
     }
 
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
 
     compileConditionalBranch(compiler, ast->match.defaultBranch, type, destination, reference);
     compiler->registerCount = branchRegisterCount;
@@ -3342,7 +3304,7 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference)
 {
     int previousLocalPositionOffset = compiler->localPositionOffset;
     int previousRegisterCount = compiler->registerCount;
-    DataType type = getTypeId(ast);
+    DataType type = getNodeDataType(ast);
     int destination = allocateMatchDestination(compiler, type);
 
     if (compileLiteralMatch(compiler, ast, type, destination, reference)) {
@@ -3391,250 +3353,6 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
             return true;
         default:
             return false;
-    }
-}
-
-static bool hasNoValueReads(ASTNode* ast)
-{
-    return ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
-}
-
-static void removeUnreadInitializerReads(ASTNode* ast)
-{
-    if (!hasNoValueReads(ast) || ast->variableDefinition.discardedReadsAnalyzed) {
-        return;
-    }
-
-    ast->variableDefinition.discardedReadsAnalyzed = true;
-    removeDiscardedExpressionReads(ast->variableDefinition.expr);
-}
-
-static void removeDiscardedVariableRead(ASTNode* ast)
-{
-    ASTNode* symbol = ast->variable.symbol;
-
-    if (!isVariableDefinition(symbol)) {
-        return;
-    }
-
-    symbol->variableDefinition.discardedReadCount++;
-    removeUnreadInitializerReads(symbol);
-}
-
-static void removeDiscardedExpressionReads(ASTNode* ast)
-{
-    switch (ast->type) {
-        case AST_VARIABLE:
-            removeDiscardedVariableRead(ast);
-            break;
-        case AST_PREFIX:
-            removeDiscardedExpressionReads(ast->prefix.expr);
-            break;
-        default:
-            break;
-    }
-}
-
-static void removeDiscardedStatementVectorReads(Vector* nodes)
-{
-    size_t count = countVector(nodes);
-
-    for (size_t i = 0; i < count; i++) {
-        removeDiscardedStatementReads(getVectorAt(nodes, i));
-    }
-}
-
-static void removeDiscardedStatementReads(ASTNode* ast)
-{
-    if (ast->type == AST_FUNCTION_DEFINITION) {
-        removeDiscardedStatementVectorReads(&ast->functionDefinition.body->compound.statements);
-
-        return;
-    }
-
-    if (ast->type == AST_VARIABLE_DEFINITION) {
-        removeUnreadInitializerReads(ast);
-
-        return;
-    }
-
-    removeDiscardedExpressionReads(ast);
-}
-
-static void removeDiscardedReads(Vector* nodes, size_t start)
-{
-    size_t count = countVector(nodes);
-
-    for (size_t i = start; i < count; i++) {
-        removeDiscardedStatementReads(getVectorAt(nodes, i));
-    }
-}
-
-static void markCalledFunctionsInVector(Vector* nodes)
-{
-    size_t count = countVector(nodes);
-
-    for (size_t i = 0; i < count; i++) {
-        markCalledFunctions(getVectorAt(nodes, i));
-    }
-}
-
-static void markCalledFunction(ASTNode* ast)
-{
-    ASTNode* function = ast->functionCall.symbol;
-
-    markCalledFunctionsInVector(&ast->functionCall.args);
-
-    if (!function) {
-        return;
-    }
-
-    function->functionDefinition.callCount++;
-
-    if (function->functionDefinition.callCount > 1) {
-        return;
-    }
-
-    markCalledFunctions(function->functionDefinition.body);
-}
-
-static void markCalledFunctions(ASTNode* ast)
-{
-    if (!ast) {
-        return;
-    }
-
-    switch (ast->type) {
-        case AST_ASSIGNMENT:
-            markCalledFunctions(ast->assignment.expr);
-            break;
-        case AST_BINARY:
-            markCalledFunctions(ast->binary.leftExpr);
-            markCalledFunctions(ast->binary.rightExpr);
-            break;
-        case AST_BUILTIN_CALL:
-            markCalledFunctionsInVector(&ast->builtinCall.args);
-            break;
-        case AST_WHILE:
-            markCalledFunctions(ast->whileStatement.condition);
-            markCalledFunctions(ast->whileStatement.body);
-            break;
-        case AST_COMPOUND:
-            markCalledFunctionsInVector(&ast->compound.statements);
-            break;
-        case AST_CONDITIONAL:
-            markCalledFunctions(ast->conditional.condition);
-            markCalledFunctions(ast->conditional.thenBranch);
-            markCalledFunctions(ast->conditional.elseBranch);
-            break;
-        case AST_CONVERSION:
-            markCalledFunctions(ast->conversion.expr);
-            break;
-        case AST_FUNCTION_CALL:
-            markCalledFunction(ast);
-            break;
-        case AST_MATCH: {
-            markCalledFunctions(ast->match.subject);
-
-            size_t count = countVector(&ast->match.arms);
-            for (size_t i = 0; i < count; i++) {
-                MatchArm* arm = getVectorAt(&ast->match.arms, i);
-                markCalledFunctions(arm->pattern);
-                markCalledFunctions(arm->guard);
-                markCalledFunctions(arm->branch);
-            }
-            
-            markCalledFunctions(ast->match.defaultBranch);
-            break;
-        }
-        case AST_PREFIX:
-            markCalledFunctions(ast->prefix.expr);
-            break;
-        case AST_RETURN:
-            markCalledFunctions(ast->returnStatement.expr);
-            break;
-        case AST_VARIABLE_DEFINITION:
-            markCalledFunctions(ast->variableDefinition.expr);
-            break;
-        default:
-            break;
-    }
-}
-
-static void resetFunctionCallCountsInVector(Vector* nodes)
-{
-    size_t count = countVector(nodes);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
-        resetFunctionCallCounts(node);
-    }
-}
-
-static void resetMatchFunctionCallCounts(ASTNode* ast)
-{
-    size_t count = countVector(&ast->match.arms);
-
-    for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        resetFunctionCallCounts(arm->pattern);
-        resetFunctionCallCounts(arm->guard);
-        resetFunctionCallCounts(arm->branch);
-    }
-
-    resetFunctionCallCounts(ast->match.defaultBranch);
-}
-
-static void resetFunctionCallCounts(ASTNode* ast)
-{
-    if (!ast) {
-        return;
-    }
-
-    if (ast->type == AST_FUNCTION_DEFINITION) {
-        ast->functionDefinition.callCount = 0;
-        resetFunctionCallCounts(ast->functionDefinition.body);
-
-        return;
-    }
-
-    if (ast->type == AST_COMPOUND) {
-        resetFunctionCallCountsInVector(&ast->compound.statements);
-
-        return;
-    }
-
-    if (ast->type == AST_CONDITIONAL) {
-        resetFunctionCallCounts(ast->conditional.thenBranch);
-        resetFunctionCallCounts(ast->conditional.elseBranch);
-
-        return;
-    }
-
-    if (ast->type == AST_WHILE) {
-        resetFunctionCallCounts(ast->whileStatement.condition);
-        resetFunctionCallCounts(ast->whileStatement.body);
-
-        return;
-    }
-
-    if (ast->type == AST_MATCH) {
-        resetMatchFunctionCallCounts(ast);
-    }
-}
-
-static void eliminateDeadFunctions(Vector* nodes)
-{
-    size_t count = countVector(nodes);
-
-    resetFunctionCallCountsInVector(nodes);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* ast = getVectorAt(nodes, i);
-
-        if (ast->type != AST_FUNCTION_DEFINITION) {
-            markCalledFunctions(ast);
-        }
     }
 }
 
@@ -3766,9 +3484,9 @@ static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
 
 static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
 {
-    bool display = isLast && isExpressionStatement(ast) && getTypeId(ast) != TYPE_VOID;
+    bool display = isLast && isExpressionStatement(ast) && getNodeDataType(ast) != TYPE_VOID;
 
-    if (display && getTypeId(ast) == TYPE_UNKNOWN) {
+    if (display && getNodeDataType(ast) == TYPE_UNKNOWN) {
         unresolvedReplExpressionTypeError();
     }
 
@@ -3778,7 +3496,7 @@ static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
         return;
     }
 
-    DataType argumentType = getTypeId(ast);
+    DataType argumentType = getNodeDataType(ast);
     void* items[] = {ast};
     Vector args = {.data = items, .capacity = 1, .count = 1};
     Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
@@ -3846,11 +3564,11 @@ static bool compileSource(Compiler* compiler, char* source, CompileStatements co
     }
 
     analyze(&compiler->analyzer, start);
-    optimize(compiler->ast, start);
+    optimizeAST(compiler->ast, start);
 
     if (compileStatements == compileTopLevelStatements) {
         removeDiscardedReads(&compiler->ast->compound.statements, start);
-        eliminateDeadFunctions(&compiler->ast->compound.statements);
+        markReachableFunctions(&compiler->ast->compound.statements);
     }
 
     clearCodeObject(currentCodeObject(compiler));

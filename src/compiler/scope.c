@@ -60,7 +60,7 @@ static size_t getSymbolSlotCount(ASTNode* symbol)
         return 1;
     }
 
-    return getTypeSlotCount(getTypeId(symbol));
+    return getTypeSlotCount(getNodeDataType(symbol));
 }
 
 size_t getMaxLocalCount(Scope* scope)

@@ -227,7 +227,7 @@ typedef struct ASTNode
 ASTNode* createASTNode(ASTNodeType type);
 void freeASTNode(ASTNode* ast);
 Scope* getScope(const ASTNode* ast);
-DataType getTypeId(const ASTNode* ast);
+DataType getNodeDataType(const ASTNode* ast);
 ASTNode* getReferenceOrigin(const ASTNode* ast);
 Vector* getReferenceOrigins(ASTNode* ast);
 ReferenceType getReferenceType(const ASTNode* ast);

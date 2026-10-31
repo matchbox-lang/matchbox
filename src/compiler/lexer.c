@@ -81,42 +81,42 @@ static const Keyword keywords[] = {
     {"yield",       5, TOKEN_YIELD}
 };
 
-static _Noreturn void emptyCharacterError(Position start)
+static _Noreturn void emptyCharacterError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Empty character literal");
 }
 
-static _Noreturn void invalidCharacterEscapeError(Position start)
+static _Noreturn void invalidCharacterEscapeError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Invalid character escape");
 }
 
-static _Noreturn void invalidNumberError(Position start)
+static _Noreturn void invalidNumberError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Invalid number literal");
 }
 
-static _Noreturn void invalidUtf8CharacterError(Position start)
+static _Noreturn void invalidUtf8CharacterError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Invalid UTF-8 character literal");
 }
 
-static _Noreturn void multipleCharacterError(Position start)
+static _Noreturn void multipleCharacterError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Character literal contains multiple characters");
 }
 
-static _Noreturn void newlineCharacterError(Position start)
+static _Noreturn void newlineCharacterError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Newline in character literal");
 }
 
-static _Noreturn void unescapedInterpolationBraceError(Position start)
+static _Noreturn void unescapedInterpolationBraceError(SourcePosition start)
 {
     fatalSourceError(start.line, start.column, "Unescaped } in interpolated string");
 }
 
-static _Noreturn void unterminatedLiteralError(Position start, char c)
+static _Noreturn void unterminatedLiteralError(SourcePosition start, char c)
 {
     fatalSourceError(start.line, start.column, "Missing terminating %c character", c);
 }
@@ -573,7 +573,7 @@ static size_t scanStringDelimiter(Lexer* lexer, char delimiter)
     return run;
 }
 
-static bool scanStringInterpolation(Lexer* lexer, char c, Position start)
+static bool scanStringInterpolation(Lexer* lexer, char c, SourcePosition start)
 {
     if (peek(lexer) == c) {
         advance(lexer);
@@ -601,7 +601,7 @@ static bool scanStringEnd(Lexer* lexer, char delimiter, size_t width)
     return true;
 }
 
-static void validateStringNewline(Lexer* lexer, char delimiter, size_t width, Position start)
+static void validateStringNewline(Lexer* lexer, char delimiter, size_t width, SourcePosition start)
 {
     char c = peek(lexer);
 
@@ -614,7 +614,7 @@ static void validateStringNewline(Lexer* lexer, char delimiter, size_t width, Po
     unterminatedLiteralError(lexer->start, delimiter);
 }
 
-static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool interpolated, Position start)
+static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool interpolated, SourcePosition start)
 {
     validateStringNewline(lexer, delimiter, width, start);
 
@@ -635,7 +635,7 @@ static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool
 
 static bool scanStringContents(Lexer* lexer, char delimiter, size_t width, bool interpolated)
 {
-    Position start = lexer->start;
+    SourcePosition start = lexer->start;
 
     while (!isEndOfFile(lexer)) {
         if (scanStringEnd(lexer, delimiter, width)) {
@@ -663,7 +663,7 @@ static Token incompleteStringLiteral(Lexer* lexer, char delimiter, size_t width,
 
 static Token scanStringLiteral(Lexer* lexer, char delimiter, bool interpolated)
 {
-    Position start = lexer->start;
+    SourcePosition start = lexer->start;
     size_t width = scanStringDelimiter(lexer, delimiter);
     bool complete = scanStringContents(lexer, delimiter, width, interpolated);
 

@@ -74,7 +74,7 @@ static void growStreamBuffer(char** lineptr, size_t* capacity)
     *capacity = newCapacity;
 }
 
-int getStreamContents(char **lineptr, size_t *n, FILE *stream)
+int readStreamLine(char **lineptr, size_t *n, FILE *stream)
 {
     if (lineptr == NULL || n == NULL || stream == NULL) {
         return -1;

@@ -110,13 +110,16 @@ static bool isEndOfFile(Parser* parser)
     return parser->currentToken.type == TOKEN_INCOMPLETE_INPUT || parser->currentToken.type == TOKEN_EOF;
 }
 
-static DataType inferIntegerLiteralType(uint64_t value)
+static DataType inferIntegerLiteralType(uint64_t value, bool negative)
 {
-    if (value <= INT32_MAX) {
+    uint64_t limit32 = (uint64_t)INT32_MAX + negative;
+    uint64_t limit64 = (uint64_t)INT64_MAX + negative;
+
+    if (value <= limit32) {
         return TYPE_I32;
     }
 
-    if (value <= INT64_MAX) {
+    if (value <= limit64) {
         return TYPE_I64;
     }
 
@@ -150,7 +153,7 @@ static ASTNode* parseBooleanLiteralNode(Parser* parser, Token token)
 
 static ASTNode* finishIntegerLiteralNode(Parser* parser, Token token, uint64_t value)
 {
-    DataType typeId = inferIntegerLiteralType(value);
+    DataType typeId = inferIntegerLiteralType(value, false);
     ASTNode* ast = createIntegerNode(token, value, typeId);
 
     consume(parser, token.type);
@@ -840,6 +843,10 @@ static ASTNode* parsePrefix(Parser* parser)
 
     if (!expr) {
         return NULL;
+    }
+
+    if (token.type == TOKEN_MINUS && expr->type == AST_INTEGER) {
+        expr->integerLiteral.typeId = inferIntegerLiteralType(expr->integerLiteral.value, true);
     }
 
     return createPrefixNode(token, expr);

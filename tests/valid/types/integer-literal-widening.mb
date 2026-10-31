@@ -14,3 +14,16 @@ func widen(value: i64) -> i64 {
 }
 
 print(widen(negative) == -25)
+
+let minimum = -2147483648
+let minimum32: i32 = minimum
+let minimum64: i64 = -2147483648
+let minimumBuiltin: i32 = min(-2147483648, 0)
+let belowMinimum = -2147483649
+let positiveBoundary = 2147483648
+
+print(minimum32)
+print(minimum64)
+print(minimumBuiltin)
+print(belowMinimum)
+print(positiveBoundary)

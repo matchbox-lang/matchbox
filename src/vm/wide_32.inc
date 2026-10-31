@@ -102,7 +102,6 @@ case OP_F64_TO_I64: {
 
     READ_F64(vm->fp, b, value);
     WRITE_U64(vm->fp, a, (uint64_t)(int64_t)value);
-
     break;
 }
 case OP_F64_TO_U64: {
@@ -110,7 +109,6 @@ case OP_F64_TO_U64: {
 
     READ_F64(vm->fp, b, value);
     WRITE_U64(vm->fp, a, (uint64_t)value);
-
     break;
 }
 case OP_I64_TO_F32: {
@@ -123,7 +121,6 @@ case OP_I64_TO_F64: {
     int64_t value = (int64_t)READ_U64(vm->fp, b);
 
     WRITE_F64(vm->fp, a, (double)value);
-
     break;
 }
 case OP_U64_TO_F32: {
@@ -136,7 +133,6 @@ case OP_U64_TO_F64: {
     uint64_t value = READ_U64(vm->fp, b);
 
     WRITE_F64(vm->fp, a, (double)value);
-
     break;
 }
 case OP_I32_TO_F64:

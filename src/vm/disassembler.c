@@ -149,8 +149,7 @@ static void printLoadCall(const char* name)
     uint16_t a = readRegister(0);
     uint16_t operands = READ_UINT16();
 
-    printf("%-15s R%d, #%u, #%u\n", name, a,
-        LOAD_CALL_OPERAND(operands), LOAD_CALL_FUNCTION(operands));
+    printf("%-15s R%d, #%u, #%u\n", name, a, LOAD_CALL_OPERAND(operands), LOAD_CALL_FUNCTION(operands));
 }
 
 static void printSignedLoadCall(const char* name)

@@ -36,7 +36,6 @@ static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
 static ASTNode* parseConditional(Parser* parser, bool allowSingleLineBody);
 static ASTNode* parseMatch(Parser* parser);
 static ASTNode* parseStatement(Parser* parser);
-static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
 
 static _Noreturn void expectedExpressionError(Token token)
 {
@@ -139,12 +138,21 @@ static DataType inferFloatLiteralType(double value)
     return TYPE_F64;
 }
 
+static ASTNode* parseBooleanLiteralNode(Parser* parser, Token token)
+{
+    bool value = token.type == TOKEN_TRUE;
+    ASTNode* ast = createBooleanNode(token, value);
+
+    consume(parser, token.type);
+
+    return ast;
+}
+
 static ASTNode* parseIntegerLiteralNode(Parser* parser, Token token)
 {
-    ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = parseDecimalLiteral(token);
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
+    uint64_t value = parseDecimalLiteral(token);
+    DataType typeId = inferIntegerLiteralType(value);
+    ASTNode* ast = createIntegerNode(token, value, typeId);
 
     consume(parser, token.type);
 
@@ -153,10 +161,9 @@ static ASTNode* parseIntegerLiteralNode(Parser* parser, Token token)
 
 static ASTNode* parseFloatLiteralNode(Parser* parser, Token token)
 {
-    ASTNode* ast = createASTNode(AST_FLOAT);
-    ast->floatLiteral.value = parseFloatLiteral(token);
-    ast->floatLiteral.token = token;
-    ast->floatLiteral.typeId = inferFloatLiteralType(ast->floatLiteral.value);
+    double value = parseFloatLiteral(token);
+    DataType typeId = inferFloatLiteralType(value);
+    ASTNode* ast = createFloatNode(token, value, typeId);
 
     consume(parser, token.type);
 
@@ -165,10 +172,9 @@ static ASTNode* parseFloatLiteralNode(Parser* parser, Token token)
 
 static ASTNode* parseBinaryLiteralNode(Parser* parser, Token token)
 {
-    ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = parseBinaryLiteral(token);
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
+    uint64_t value = parseBinaryLiteral(token);
+    DataType typeId = inferIntegerLiteralType(value);
+    ASTNode* ast = createIntegerNode(token, value, typeId);
 
     consume(parser, token.type);
 
@@ -177,10 +183,9 @@ static ASTNode* parseBinaryLiteralNode(Parser* parser, Token token)
 
 static ASTNode* parseHexadecimalLiteralNode(Parser* parser, Token token)
 {
-    ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = parseHexadecimalLiteral(token);
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
+    uint64_t value = parseHexadecimalLiteral(token);
+    DataType typeId = inferIntegerLiteralType(value);
+    ASTNode* ast = createIntegerNode(token, value, typeId);
 
     consume(parser, token.type);
 
@@ -189,10 +194,9 @@ static ASTNode* parseHexadecimalLiteralNode(Parser* parser, Token token)
 
 static ASTNode* parseOctalLiteralNode(Parser* parser, Token token)
 {
-    ASTNode* ast = createASTNode(AST_INTEGER);
-    ast->integerLiteral.value = parseOctalLiteral(token);
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = inferIntegerLiteralType(ast->integerLiteral.value);
+    uint64_t value = parseOctalLiteral(token);
+    DataType typeId = inferIntegerLiteralType(value);
+    ASTNode* ast = createIntegerNode(token, value, typeId);
 
     consume(parser, token.type);
 
@@ -220,32 +224,6 @@ static ASTNode* parseGroupExpression(Parser* parser)
     return ast;
 }
 
-static ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token token)
-{
-    if (!rightExpr) {
-        return NULL;
-    }
-
-    ASTNode* ast = createASTNode(AST_BINARY);
-    ast->binary.leftExpr = leftExpr;
-    ast->binary.operator = token;
-    ast->binary.rightExpr = rightExpr;
-    ast->binary.typeId = TYPE_UNKNOWN;
-
-    return ast;
-}
-
-static ASTNode* createVariableNode(Token token)
-{
-    ASTNode* ast = createASTNode(AST_VARIABLE);
-    ast->variable.scope = NULL;
-    ast->variable.id = copyStringObject(token.chars, token.length);
-    ast->variable.token = token;
-    ast->variable.symbol = NULL;
-
-    return ast;
-}
-
 static ASTNode* parseCharacterLiteral(Parser* parser)
 {
     Token token = parser->currentToken;
@@ -256,9 +234,7 @@ static ASTNode* parseCharacterLiteral(Parser* parser)
         expectedExpressionError(token);
     }
 
-    ASTNode* ast = createASTNode(AST_CHARACTER);
-    ast->characterLiteral.token = token;
-    ast->characterLiteral.value = scalar.value;
+    ASTNode* ast = createCharacterNode(token, scalar.value);
 
     consume(parser, TOKEN_CHARACTER_LITERAL);
 
@@ -349,9 +325,8 @@ static ASTNode* parseStringSegment(StringReader* reader)
         advanceStringReader(reader, scalar.length);
     }
 
-    ASTNode* ast = createASTNode(AST_STRING);
-    ast->stringLiteral.token = reader->token;
-    ast->stringLiteral.value = copyStringObject(bytes, count);
+    StringObject* value = copyStringObject(bytes, count);
+    ASTNode* ast = createStringNode(reader->token, value);
 
     freeMemory(bytes);
 
@@ -415,9 +390,8 @@ static ASTNode* parseStringLiteral(Parser* parser)
     ASTNode* ast = parseStringSegment(&reader);
 
     if (reader.current.chars < reader.end) {
-        ASTNode* call = createASTNode(AST_BUILTIN_CALL);
-        call->builtinCall.builtin = resolveBuiltin("string", NULL, 0);
-        call->builtinCall.token = token;
+        Builtin* builtin = resolveBuiltin("string", NULL, 0);
+        ASTNode* call = createBuiltinCallNode(token, builtin);
 
         appendStringPart(call, ast);
 
@@ -447,14 +421,8 @@ static ASTNode* parsePrimary(Parser* parser)
 {
     switch (parser->currentToken.type) {
         case TOKEN_TRUE:
-        case TOKEN_FALSE: {
-            ASTNode* ast = createASTNode(AST_BOOLEAN);
-            ast->booleanLiteral.value = parser->currentToken.type == TOKEN_TRUE;
-            ast->booleanLiteral.token = parser->currentToken;
-            consume(parser, parser->currentToken.type);
-
-            return ast;
-        }
+        case TOKEN_FALSE:
+            return parseBooleanLiteralNode(parser, parser->currentToken);
         case TOKEN_IF:
             return parseConditional(parser, false);
         case TOKEN_MATCH:
@@ -504,8 +472,8 @@ static ASTNode* parsePrimary(Parser* parser)
 static ASTNode* parseConditionalBranch(Parser* parser)
 {
     consume(parser, TOKEN_LBRACE);
-    ASTNode* branch = createASTNode(AST_COMPOUND);
-    branch->compound.scope = NULL;
+
+    ASTNode* branch = createCompoundNode(NULL);
 
     if (!parseBlocklevelStatements(parser, &branch->compound.statements)) {
         freeASTNode(branch);
@@ -530,21 +498,6 @@ static ASTNode* parseConditionalElse(Parser* parser, bool allowSingleLineBody)
     }
 
     return parseConditionalBranch(parser);
-}
-
-static ASTNode* createConditionalNode(
-    Token token, ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch)
-{
-    ASTNode* ast = createASTNode(AST_CONDITIONAL);
-    ast->conditional.token = token;
-    ast->conditional.condition = condition;
-    ast->conditional.thenBranch = thenBranch;
-    ast->conditional.elseBranch = elseBranch;
-    ast->conditional.typeId = TYPE_VOID;
-    ast->conditional.referenceType = REFERENCE_NONE;
-    ast->conditional.expression = true;
-
-    return ast;
 }
 
 static bool isParenthesizedCondition(Parser start, Token end)
@@ -613,8 +566,7 @@ static ASTNode* parseSingleLineIfBranch(Parser* parser, Token token)
 
     validateSingleLineIfBranchEnd(parser, token);
 
-    ASTNode* branch = createASTNode(AST_COMPOUND);
-    branch->compound.scope = NULL;
+    ASTNode* branch = createCompoundNode(NULL);
 
     pushVectorItem(&branch->compound.statements, statement);
 
@@ -721,8 +673,7 @@ static bool parseMatchBranchStatement(Parser* parser, ASTNode* branch)
 
 static ASTNode* parseMatchBranch(Parser* parser)
 {
-    ASTNode* branch = createASTNode(AST_COMPOUND);
-    branch->compound.scope = NULL;
+    ASTNode* branch = createCompoundNode(NULL);
 
     if (isEndOfFile(parser)) {
         freeASTNode(branch);
@@ -801,17 +752,6 @@ static bool parseMatchArm(Parser* parser, ASTNode* ast)
     arm->branch = parseMatchBranch(parser);
 
     return arm->branch != NULL;
-}
-
-static ASTNode* createMatchNode(Token token)
-{
-    ASTNode* ast = createASTNode(AST_MATCH);
-    ast->match.token = token;
-    ast->match.typeId = TYPE_VOID;
-    ast->match.referenceType = REFERENCE_NONE;
-    ast->match.expression = true;
-
-    return ast;
 }
 
 static bool parseMatchDefault(Parser* parser, ASTNode* ast)
@@ -909,11 +849,7 @@ static ASTNode* parsePrefix(Parser* parser)
         return NULL;
     }
 
-    ASTNode* ast = createASTNode(AST_PREFIX);
-    ast->prefix.expr = expr;
-    ast->prefix.operator = token;
-
-    return ast;
+    return createPrefixNode(token, expr);
 }
 
 static ASTNode* parseExponent(Parser* parser)
@@ -1077,8 +1013,7 @@ static ASTNode* parseTernaryBranch(Parser* parser)
         return NULL;
     }
 
-    ASTNode* branch = createASTNode(AST_COMPOUND);
-    branch->compound.scope = NULL;
+    ASTNode* branch = createCompoundNode(NULL);
 
     pushVectorItem(&branch->compound.statements, expression);
 
@@ -1135,11 +1070,7 @@ static ASTNode* parseReturnStatement(Parser* parser)
         return NULL;
     }
 
-    ASTNode* ast = createASTNode(AST_RETURN);
-    ast->returnStatement.token = token;
-    ast->returnStatement.expr = expr;
-
-    return ast;
+    return createReturnNode(token, expr);
 }
 
 static ASTNode* parseArgument(Parser* parser)
@@ -1189,18 +1120,6 @@ static bool parseArgumentList(Parser* parser, Vector* args)
     consume(parser, TOKEN_RPAREN);
 
     return true;
-}
-
-static ASTNode* createParameterNode(Token token, StringObject* id)
-{
-    ASTNode* ast = createASTNode(AST_PARAMETER);
-    ast->parameter.scope = NULL;
-    ast->parameter.id = id;
-    ast->parameter.token = token;
-    ast->parameter.typeId = TYPE_I32;
-    ast->parameter.referenceType = REFERENCE_NONE;
-
-    return ast;
 }
 
 static ASTNode* parseParameter(Parser* parser)
@@ -1275,17 +1194,6 @@ static bool parseParameterList(Parser* parser, Vector* params)
     return true;
 }
 
-static ASTNode* createFunctionCallNode(Token token)
-{
-    ASTNode* ast = createASTNode(AST_FUNCTION_CALL);
-    ast->functionCall.scope = NULL;
-    ast->functionCall.id = copyStringObject(token.chars, token.length);
-    ast->functionCall.token = token;
-    ast->functionCall.symbol = NULL;
-
-    return ast;
-}
-
 static ASTNode* parseFunctionCall(Parser* parser)
 {
     ASTNode* ast = createFunctionCallNode(parser->previousToken);
@@ -1295,21 +1203,6 @@ static ASTNode* parseFunctionCall(Parser* parser)
 
         return NULL;
     }
-
-    return ast;
-}
-
-static ASTNode* createFunctionDefinitionNode(Token token, StringObject* id)
-{
-    ASTNode* ast = createASTNode(AST_FUNCTION_DEFINITION);
-    ast->functionDefinition.scope = NULL;
-    ast->functionDefinition.id = id;
-    ast->functionDefinition.token = token;
-    ast->functionDefinition.returnTypeId = TYPE_I32;
-    ast->functionDefinition.returnReferenceType = REFERENCE_NONE;
-    ast->functionDefinition.returnReferenceOrigin = NULL;
-    ast->functionDefinition.hasExplicitReturnType = false;
-    ast->functionDefinition.body = NULL;
 
     return ast;
 }
@@ -1338,8 +1231,7 @@ static bool parseFunctionBody(Parser* parser, ASTNode* ast)
 
     consume(parser, TOKEN_LBRACE);
 
-    ASTNode* body = createASTNode(AST_COMPOUND);
-    body->compound.scope = NULL;
+    ASTNode* body = createCompoundNode(NULL);
     ast->functionDefinition.body = body;
 
     if (!parseBlocklevelStatements(parser, &body->compound.statements)) {
@@ -1391,19 +1283,6 @@ static ASTNode* parseFunctionDefinition(Parser* parser)
     return ast;
 }
 
-static ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr)
-{
-    ASTNode* ast = createASTNode(AST_ASSIGNMENT);
-    ast->assignment.scope = NULL;
-    ast->assignment.operator = operator;
-    ast->assignment.token = token;
-    ast->assignment.symbol = NULL;
-    ast->assignment.expr = expr;
-    ast->assignment.initializesBinding = false;
-
-    return ast;
-}
-
 static ASTNode* parseAssignment(Parser* parser)
 {
     Token operator = parser->currentToken;
@@ -1416,21 +1295,6 @@ static ASTNode* parseAssignment(Parser* parser)
     }
 
     ASTNode* ast = createAssignmentNode(operator, token, expr);
-
-    return ast;
-}
-
-static ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed)
-{
-    ASTNode* ast = createASTNode(AST_VARIABLE_DEFINITION);
-    ast->variableDefinition.scope = NULL;
-    ast->variableDefinition.id = id;
-    ast->variableDefinition.token = token;
-    ast->variableDefinition.fixed = fixed;
-    ast->variableDefinition.typeId = TYPE_UNKNOWN;
-    ast->variableDefinition.referenceType = REFERENCE_NONE;
-    ast->variableDefinition.position = 0;
-    ast->variableDefinition.expr = NULL;
 
     return ast;
 }
@@ -1539,12 +1403,7 @@ static ASTNode* parseWhileStatement(Parser* parser)
         return NULL;
     }
 
-    ASTNode* ast = createASTNode(AST_WHILE);
-    ast->whileStatement.token = token;
-    ast->whileStatement.condition = condition;
-    ast->whileStatement.body = body;
-
-    return ast;
+    return createWhileNode(token, condition, body);
 }
 
 static ASTNode* parseStatement(Parser* parser)
@@ -1561,13 +1420,11 @@ static ASTNode* parseStatement(Parser* parser)
             return parseWhileStatement(parser);
         case TOKEN_IF: {
             ASTNode* ast = parseConditional(parser, true);
-
             if (!ast) {
                 return NULL;
             }
 
             markConditionalStatement(ast);
-
             return ast;
         }
         case TOKEN_MATCH: {
@@ -1578,7 +1435,6 @@ static ASTNode* parseStatement(Parser* parser)
             }
 
             ast->match.expression = false;
-
             return ast;
         }
         default:

@@ -178,31 +178,14 @@ static NumericConstant convertNumericConstant(NumericConstant value, DataType so
 static ASTNode* createConvertedConstant(NumericConstant value, DataType type, Token token)
 {
     if (type == TYPE_CHAR) {
-        ASTNode* result = createASTNode(AST_CHARACTER);
-
-        result->characterLiteral.value = value.integer;
-        result->characterLiteral.token = token;
-
-        return result;
+        return createCharacterNode(token, value.integer);
     }
 
     if (isFloatType(type)) {
-        ASTNode* result = createASTNode(AST_FLOAT);
-
-        result->floatLiteral.value = value.floating;
-        result->floatLiteral.token = token;
-        result->floatLiteral.typeId = type;
-
-        return result;
+        return createFloatNode(token, value.floating, type);
     }
 
-    ASTNode* result = createASTNode(AST_INTEGER);
-
-    result->integerLiteral.value = value.integer;
-    result->integerLiteral.token = token;
-    result->integerLiteral.typeId = type;
-
-    return result;
+    return createIntegerNode(token, value.integer, type);
 }
 
 void foldExplicitConversion(ASTNode* ast)

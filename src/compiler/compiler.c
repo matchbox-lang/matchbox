@@ -1951,7 +1951,6 @@ static void compileArgument(Compiler* compiler, Vector* args, Vector* params, si
     Operand argument = compileArgumentExpression(compiler, args, params, position);
 
     storeArgument(compiler, argument, destination, reserved);
-
 }
 
 static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
@@ -3527,8 +3526,8 @@ void initCompiler(Compiler* compiler, ModuleObject* module)
         pushVectorItem(&compiler->functionReferences, NULL);
     }
 
-    ASTNode* ast = createASTNode(AST_COMPOUND);
-    ast->compound.scope = createScope(NULL);
+    Scope* scope = createScope(NULL);
+    ASTNode* ast = createCompoundNode(scope);
 
     initParser(&compiler->parser, ast);
     initAnalyzer(&compiler->analyzer, ast);

@@ -225,6 +225,25 @@ typedef struct ASTNode
 } ASTNode;
 
 ASTNode* createASTNode(ASTNodeType type);
+ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr);
+ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token token);
+ASTNode* createBooleanNode(Token token, bool value);
+ASTNode* createBuiltinCallNode(Token token, Builtin* builtin);
+ASTNode* createCharacterNode(Token token, uint32_t value);
+ASTNode* createCompoundNode(Scope* scope);
+ASTNode* createConditionalNode(Token token, ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
+ASTNode* createFloatNode(Token token, double value, DataType typeId);
+ASTNode* createFunctionCallNode(Token token);
+ASTNode* createFunctionDefinitionNode(Token token, StringObject* id);
+ASTNode* createIntegerNode(Token token, uint64_t value, DataType typeId);
+ASTNode* createMatchNode(Token token);
+ASTNode* createParameterNode(Token token, StringObject* id);
+ASTNode* createPrefixNode(Token token, ASTNode* expr);
+ASTNode* createReturnNode(Token token, ASTNode* expr);
+ASTNode* createStringNode(Token token, StringObject* value);
+ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
+ASTNode* createVariableNode(Token token);
+ASTNode* createWhileNode(Token token, ASTNode* condition, ASTNode* body);
 void freeASTNode(ASTNode* ast);
 Scope* getScope(const ASTNode* ast);
 DataType getNodeDataType(const ASTNode* ast);

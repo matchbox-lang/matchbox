@@ -52,6 +52,215 @@ ASTNode* createASTNode(ASTNodeType type)
     return ast;
 }
 
+ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr)
+{
+    ASTNode* ast = createASTNode(AST_ASSIGNMENT);
+    ast->assignment.scope = NULL;
+    ast->assignment.operator = operator;
+    ast->assignment.token = token;
+    ast->assignment.symbol = NULL;
+    ast->assignment.expr = expr;
+    ast->assignment.initializesBinding = false;
+
+    return ast;
+}
+
+ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token token)
+{
+    if (!rightExpr) {
+        return NULL;
+    }
+
+    ASTNode* ast = createASTNode(AST_BINARY);
+    ast->binary.leftExpr = leftExpr;
+    ast->binary.operator = token;
+    ast->binary.rightExpr = rightExpr;
+    ast->binary.typeId = TYPE_UNKNOWN;
+
+    return ast;
+}
+
+ASTNode* createBooleanNode(Token token, bool value)
+{
+    ASTNode* ast = createASTNode(AST_BOOLEAN);
+    ast->booleanLiteral.value = value;
+    ast->booleanLiteral.token = token;
+
+    return ast;
+}
+
+ASTNode* createBuiltinCallNode(Token token, Builtin* builtin)
+{
+    ASTNode* ast = createASTNode(AST_BUILTIN_CALL);
+    ast->builtinCall.builtin = builtin;
+    ast->builtinCall.token = token;
+
+    return ast;
+}
+
+ASTNode* createCharacterNode(Token token, uint32_t value)
+{
+    ASTNode* ast = createASTNode(AST_CHARACTER);
+    ast->characterLiteral.value = value;
+    ast->characterLiteral.token = token;
+
+    return ast;
+}
+
+ASTNode* createCompoundNode(Scope* scope)
+{
+    ASTNode* ast = createASTNode(AST_COMPOUND);
+    ast->compound.scope = scope;
+
+    return ast;
+}
+
+ASTNode* createConditionalNode(Token token, ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch)
+{
+    ASTNode* ast = createASTNode(AST_CONDITIONAL);
+    ast->conditional.token = token;
+    ast->conditional.condition = condition;
+    ast->conditional.thenBranch = thenBranch;
+    ast->conditional.elseBranch = elseBranch;
+    ast->conditional.typeId = TYPE_VOID;
+    ast->conditional.referenceType = REFERENCE_NONE;
+    ast->conditional.expression = true;
+
+    return ast;
+}
+
+ASTNode* createFloatNode(Token token, double value, DataType typeId)
+{
+    ASTNode* ast = createASTNode(AST_FLOAT);
+    ast->floatLiteral.value = value;
+    ast->floatLiteral.token = token;
+    ast->floatLiteral.typeId = typeId;
+
+    return ast;
+}
+
+ASTNode* createFunctionCallNode(Token token)
+{
+    ASTNode* ast = createASTNode(AST_FUNCTION_CALL);
+    ast->functionCall.scope = NULL;
+    ast->functionCall.id = copyStringObject(token.chars, token.length);
+    ast->functionCall.token = token;
+    ast->functionCall.symbol = NULL;
+
+    return ast;
+}
+
+ASTNode* createFunctionDefinitionNode(Token token, StringObject* id)
+{
+    ASTNode* ast = createASTNode(AST_FUNCTION_DEFINITION);
+    ast->functionDefinition.scope = NULL;
+    ast->functionDefinition.id = id;
+    ast->functionDefinition.token = token;
+    ast->functionDefinition.returnTypeId = TYPE_I32;
+    ast->functionDefinition.returnReferenceType = REFERENCE_NONE;
+    ast->functionDefinition.returnReferenceOrigin = NULL;
+    ast->functionDefinition.hasExplicitReturnType = false;
+    ast->functionDefinition.body = NULL;
+
+    return ast;
+}
+
+ASTNode* createIntegerNode(Token token, uint64_t value, DataType typeId)
+{
+    ASTNode* ast = createASTNode(AST_INTEGER);
+    ast->integerLiteral.value = value;
+    ast->integerLiteral.token = token;
+    ast->integerLiteral.typeId = typeId;
+
+    return ast;
+}
+
+ASTNode* createMatchNode(Token token)
+{
+    ASTNode* ast = createASTNode(AST_MATCH);
+    ast->match.token = token;
+    ast->match.typeId = TYPE_VOID;
+    ast->match.referenceType = REFERENCE_NONE;
+    ast->match.expression = true;
+
+    return ast;
+}
+
+ASTNode* createParameterNode(Token token, StringObject* id)
+{
+    ASTNode* ast = createASTNode(AST_PARAMETER);
+    ast->parameter.scope = NULL;
+    ast->parameter.id = id;
+    ast->parameter.token = token;
+    ast->parameter.typeId = TYPE_I32;
+    ast->parameter.referenceType = REFERENCE_NONE;
+
+    return ast;
+}
+
+ASTNode* createPrefixNode(Token token, ASTNode* expr)
+{
+    ASTNode* ast = createASTNode(AST_PREFIX);
+    ast->prefix.operator = token;
+    ast->prefix.expr = expr;
+
+    return ast;
+}
+
+ASTNode* createReturnNode(Token token, ASTNode* expr)
+{
+    ASTNode* ast = createASTNode(AST_RETURN);
+    ast->returnStatement.token = token;
+    ast->returnStatement.expr = expr;
+
+    return ast;
+}
+
+ASTNode* createStringNode(Token token, StringObject* value)
+{
+    ASTNode* ast = createASTNode(AST_STRING);
+    ast->stringLiteral.value = value;
+    ast->stringLiteral.token = token;
+
+    return ast;
+}
+
+ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed)
+{
+    ASTNode* ast = createASTNode(AST_VARIABLE_DEFINITION);
+    ast->variableDefinition.scope = NULL;
+    ast->variableDefinition.id = id;
+    ast->variableDefinition.token = token;
+    ast->variableDefinition.fixed = fixed;
+    ast->variableDefinition.typeId = TYPE_UNKNOWN;
+    ast->variableDefinition.referenceType = REFERENCE_NONE;
+    ast->variableDefinition.position = 0;
+    ast->variableDefinition.expr = NULL;
+
+    return ast;
+}
+
+ASTNode* createVariableNode(Token token)
+{
+    ASTNode* ast = createASTNode(AST_VARIABLE);
+    ast->variable.scope = NULL;
+    ast->variable.id = copyStringObject(token.chars, token.length);
+    ast->variable.token = token;
+    ast->variable.symbol = NULL;
+
+    return ast;
+}
+
+ASTNode* createWhileNode(Token token, ASTNode* condition, ASTNode* body)
+{
+    ASTNode* ast = createASTNode(AST_WHILE);
+    ast->whileStatement.token = token;
+    ast->whileStatement.condition = condition;
+    ast->whileStatement.body = body;
+
+    return ast;
+}
+
 static void freeASTNodeVector(Vector* nodes)
 {
     size_t count = countVector(nodes);

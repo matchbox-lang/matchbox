@@ -5,7 +5,6 @@
 #include <stddef.h>
 
 void optimizeAST(ASTNode* ast, size_t start);
-
 void removeDiscardedReads(Vector* nodes, size_t start);
 void markReachableFunctions(Vector* nodes);
 

@@ -8,8 +8,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 
+char* strndup(const char* source, size_t length);
 bool isLargerThan8BitSigned(int n);
 bool isLargerThan16BitSigned(int n);
-char* strndup(const char* source, size_t length);
 
 #endif

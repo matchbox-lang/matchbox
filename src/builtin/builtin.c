@@ -100,7 +100,8 @@ Builtin builtins[BUILTINS_MAX] = {
     // System
     {"byteorder",   builtinByteorder,           0,  {},                                     TYPE_I32},
     {"exit",        builtinExit,                0,  {},                                     TYPE_VOID},
-    {"exit",        builtinExitStatus,          1,  {TYPE_I32},                             TYPE_VOID}
+    {"exit",        builtinExitStatus,          1,  {TYPE_I32},                             TYPE_VOID},
+    {"panic",       builtinPanic,               1,  {TYPE_STRING},                          TYPE_VOID}
 };
 
 static bool builtinArgumentMatches(Builtin* builtin, DataType* argumentTypes, size_t position)

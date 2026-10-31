@@ -1,0 +1,9 @@
+func stop(message: string) {
+    panic(message)
+}
+
+func caller() {
+    stop("Invalid internal state")
+}
+
+caller()

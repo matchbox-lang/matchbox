@@ -7,7 +7,6 @@
 #include "compiler/ast.h"
 #include "compiler/ast_optimizer.h"
 #include "compiler/bytecode_optimizer.h"
-#include "compiler/conversion.h"
 #include "compiler/diagnostics.h"
 #include "compiler/parser.h"
 #include "compiler/scope.h"
@@ -116,11 +115,6 @@ static _Noreturn void functionRegisterIndexOverflowError(const char* name)
 static _Noreturn void globalIndexOverflowError(void)
 {
     fatalError("Cannot create more than %u globals", UINT16_MAX + 1u);
-}
-
-static _Noreturn void integerToCharacterConversionError(Token token)
-{
-    fatalSourceError(token.line, token.column, "Integer-to-char conversion requires a constant or u8 source");
 }
 
 static _Noreturn void topLevelRegisterIndexOverflowError(void)
@@ -1856,10 +1850,6 @@ static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
     ASTNode* expression = ast->conversion.expr;
     DataType source = getNodeDataType(expression);
     DataType destination = ast->conversion.typeId;
-
-    if (destination == TYPE_CHAR && source != TYPE_U8) {
-        integerToCharacterConversionError(ast->conversion.token);
-    }
 
     Operand operand = compileExpression(compiler, expression, false);
 

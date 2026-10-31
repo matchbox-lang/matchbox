@@ -4,185 +4,21 @@
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
-#include "compiler/conversion.h"
-#include "compiler/diagnostics.h"
+#include "compiler/constant.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
 #include "runtime/concatenation.h"
 #include "runtime/string_object.h"
-#include <math.h>
 #include <stdint.h>
 
 static void removeDiscardedExpressionReads(ASTNode* ast);
 static void removeDiscardedStatementReads(ASTNode* ast);
 static void markCalledFunctions(ASTNode* ast);
 static void resetFunctionCallCounts(ASTNode* ast);
-static void optimizeNode(ASTNode* ast, bool checkZero);
-static void optimizeMatchPattern(ASTNode* pattern, bool checkZero);
-static void optimizeConditional(ASTNode* ast, bool fold, bool checkZero);
-
-static int64_t signedI32Value(uint32_t value)
-{
-    if (value <= INT32_MAX) {
-        return value;
-    }
-
-    return (int64_t)value - (UINT64_C(1) << 32);
-}
-
-static bool foldDivision(uint32_t left, uint32_t right, uint64_t* value)
-{
-    if (!right) {
-        return false;
-    }
-
-    *value = (uint32_t)(signedI32Value(left) / signedI32Value(right));
-
-    return true;
-}
-
-static bool foldRemainder(uint32_t left, uint32_t right, uint64_t* value)
-{
-    if (!right) {
-        return false;
-    }
-
-    *value = (uint32_t)(signedI32Value(left) % signedI32Value(right));
-    
-    return true;
-}
-
-static bool foldBinaryValue(ASTNode* ast, uint64_t* value)
-{
-    uint32_t left = (uint32_t)ast->binary.leftExpr->integerLiteral.value;
-    uint32_t right = (uint32_t)ast->binary.rightExpr->integerLiteral.value;
-
-    switch (ast->binary.operator.type) {
-        case TOKEN_PLUS:
-            *value = left + right;
-            return true;
-        case TOKEN_MINUS:
-            *value = left - right;
-            return true;
-        case TOKEN_STAR:
-            *value = left * right;
-            return true;
-        case TOKEN_SLASH:
-            return foldDivision(left, right, value);
-        case TOKEN_PERCENT:
-            return foldRemainder(left, right, value);
-        case TOKEN_POWER:
-            *value = (int)pow(left, right);
-            return true;
-        case TOKEN_AMPERSAND:
-            *value = left & right;
-            return true;
-        case TOKEN_PIPE:
-            *value = left | right;
-            return true;
-        case TOKEN_CIRCUMFLEX:
-            *value = left ^ right;
-            return true;
-        default: return false;
-    }
-}
-
-static bool getLiteralComparisonOperand(ASTNode* ast, int64_t* value)
-{
-    if (ast->type == AST_BOOLEAN) {
-        *value = ast->booleanLiteral.value;
-
-        return true;
-    }
-
-    if (ast->type != AST_INTEGER) {
-        return false;
-    }
-
-    uint64_t integer = ast->integerLiteral.value;
-
-    switch (ast->integerLiteral.typeId) {
-        case TYPE_I8:
-            *value = (int8_t)integer;
-            break;
-        case TYPE_I16:
-            *value = (int16_t)integer;
-            break;
-        case TYPE_I32:
-            *value = signedI32Value(integer);
-            break;
-        case TYPE_U8:
-            *value = (uint8_t)integer;
-            break;
-        case TYPE_U16:
-            *value = (uint16_t)integer;
-            break;
-        case TYPE_U32:
-            *value = (uint32_t)integer;
-            break;
-        default: return false;
-    }
-
-    return true;
-}
-
-static bool foldBooleanValue(TokenType operator, int64_t left, int64_t right, bool* value)
-{
-    switch (operator) {
-        case TOKEN_EQUAL_EQUAL:
-            *value = left == right;
-            break;
-        case TOKEN_NOT_EQUAL:
-            *value = left != right;
-            break;
-        case TOKEN_LESS:
-            *value = left < right;
-            break;
-        case TOKEN_LESS_EQUAL:
-            *value = left <= right;
-            break;
-        case TOKEN_GREATER:
-            *value = left > right;
-            break;
-        case TOKEN_GREATER_EQUAL:
-            *value = left >= right;
-            break;
-        case TOKEN_AND:
-            *value = left && right;
-            break;
-        case TOKEN_OR:
-            *value = left || right;
-            break;
-        default: return false;
-    }
-
-    return true;
-}
-
-static bool foldBooleanBinary(ASTNode* ast)
-{
-    int64_t left;
-    int64_t right;
-    bool value;
-
-    if (ast->binary.typeId != TYPE_BOOL
-        || !getLiteralComparisonOperand(ast->binary.leftExpr, &left)
-        || !getLiteralComparisonOperand(ast->binary.rightExpr, &right)
-        || !foldBooleanValue(ast->binary.operator.type, left, right, &value)) {
-        return false;
-    }
-
-    Token token = ast->binary.operator;
-
-    freeASTNode(ast->binary.leftExpr);
-    freeASTNode(ast->binary.rightExpr);
-
-    ast->type = AST_BOOLEAN;
-    ast->booleanLiteral.value = value;
-    ast->booleanLiteral.token = token;
-
-    return true;
-}
+static void optimizeNode(ASTNode* ast);
+static void optimizeMatchPattern(ASTNode* pattern);
+static void optimizeConditional(ASTNode* ast, bool fold);
+static void replaceWithExpression(ASTNode* ast, ASTNode* expression);
 
 static void writeTextLiteral(Writer* writer, ASTNode* ast)
 {
@@ -254,37 +90,18 @@ static void foldBinary(ASTNode* ast)
         return;
     }
 
-    if (foldBooleanBinary(ast)) {
+    ConstantValue value = {0};
+    bool constant = evaluateConstant(ast, &value);
+
+    if (!constant) {
         return;
     }
 
-    if (ast->binary.leftExpr->type != AST_INTEGER) {
-        return;
-    }
-
-    if (ast->binary.rightExpr->type != AST_INTEGER) {
-        return;
-    }
-
-    if (getNodeDataType(ast->binary.leftExpr) != TYPE_I32
-        || getNodeDataType(ast->binary.rightExpr) != TYPE_I32) {
-        return;
-    }
-
-    uint64_t value;
-    Token token = ast->binary.operator;
-    
-    if (!foldBinaryValue(ast, &value)) {
-        return;
-    }
+    ASTNode* replacement = createConstantNode(value, ast->binary.typeId, ast->binary.operator);
 
     freeASTNode(ast->binary.leftExpr);
     freeASTNode(ast->binary.rightExpr);
-
-    ast->type = AST_INTEGER;
-    ast->integerLiteral.value = value;
-    ast->integerLiteral.token = token;
-    ast->integerLiteral.typeId = TYPE_I32;
+    replaceWithExpression(ast, replacement);
 }
 
 static bool isLiteralOfType(ASTNode* ast, DataType type)
@@ -356,137 +173,47 @@ static void propagateLiteralLet(ASTNode* ast)
     *ast = replacement;
 }
 
-static void replacePrefixWithLiteral(ASTNode* ast, ASTNode* literal)
-{
-    freeASTNode(ast->prefix.expr);
-    freeVector(&ast->prefix.referenceOrigins);
-
-    *ast = *literal;
-}
-
-static void foldLogicalNot(ASTNode* ast)
-{
-    ASTNode* operand = ast->prefix.expr;
-
-    if (operand->type != AST_BOOLEAN) {
-        return;
-    }
-
-    ASTNode replacement = *operand;
-
-    replacement.booleanLiteral.value = !operand->booleanLiteral.value;
-    replacement.booleanLiteral.token = ast->prefix.operator;
-
-    replacePrefixWithLiteral(ast, &replacement);
-}
-
-static uint64_t negateIntegerValue(uint64_t value, DataType type)
-{
-    uint64_t result = UINT64_C(0) - value;
-
-    switch (type) {
-        case TYPE_I8:
-            return (uint64_t)(int64_t)(int8_t)result;
-        case TYPE_I16:
-            return (uint64_t)(int64_t)(int16_t)result;
-        case TYPE_I32:
-            return (uint64_t)(int64_t)(int32_t)result;
-        default:
-            return result;
-    }
-}
-
-static void foldIntegerNegation(ASTNode* ast, DataType type)
-{
-    ASTNode* operand = ast->prefix.expr;
-
-    if (operand->type != AST_INTEGER) {
-        return;
-    }
-
-    ASTNode replacement = *operand;
-    uint64_t value = negateIntegerValue(operand->integerLiteral.value, type);
-
-    replacement.integerLiteral.value = value;
-    replacement.integerLiteral.token = ast->prefix.operator;
-
-    replacePrefixWithLiteral(ast, &replacement);
-}
-
-static void foldFloatNegation(ASTNode* ast, DataType type)
-{
-    ASTNode* operand = ast->prefix.expr;
-
-    if (type != TYPE_F32 && type != TYPE_F64) {
-        return;
-    }
-
-    if (operand->type != AST_FLOAT && operand->type != AST_INTEGER) {
-        return;
-    }
-
-    double value = operand->type == AST_FLOAT ? operand->floatLiteral.value : operand->integerLiteral.value;
-    ASTNode replacement = {.type = AST_FLOAT};
-
-    if (type == TYPE_F32) {
-        value = (float)value;
-    }
-
-    replacement.floatLiteral.value = -value;
-    replacement.floatLiteral.typeId = type;
-    replacement.floatLiteral.token = ast->prefix.operator;
-
-    replacePrefixWithLiteral(ast, &replacement);
-}
-
 static void foldPrefix(ASTNode* ast)
 {
-    if (ast->prefix.operator.type == TOKEN_NOT) {
-        foldLogicalNot(ast);
+    ConstantValue value = {0};
+    bool constant = evaluateConstant(ast, &value);
 
+    if (!constant) {
         return;
     }
 
-    if (ast->prefix.operator.type != TOKEN_MINUS) {
-        return;
-    }
+    DataType type = getNodeDataType(ast);
+    ASTNode* replacement = createConstantNode(value, type, ast->prefix.operator);
 
-    DataType type = getNodeDataType(ast->prefix.expr);
-    bool integer = isSignedIntegerType(type);
-
-    if (integer) {
-        foldIntegerNegation(ast, type);
-
-        return;
-    }
-
-    foldFloatNegation(ast, type);
+    freeASTNode(ast->prefix.expr);
+    freeVector(&ast->prefix.referenceOrigins);
+    replaceWithExpression(ast, replacement);
 }
 
-static void optimizeNodes(Vector* nodes, bool checkZero)
+static void optimizeNodes(Vector* nodes)
 {
     size_t count = countVector(nodes);
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* node = getVectorAt(nodes, i);
 
-        optimizeNode(node, checkZero);
+        optimizeNode(node);
     }
 }
 
-static void optimizeConditionalBranch(ASTNode* branch, bool checkZero)
+static void optimizeConditionalBranch(ASTNode* branch)
 {
     if (!branch) {
         return;
     }
 
     if (branch->type == AST_CONDITIONAL) {
-        optimizeConditional(branch, false, checkZero);
+        optimizeConditional(branch, false);
 
         return;
     }
 
-    optimizeNodes(&branch->compound.statements, checkZero);
+    optimizeNodes(&branch->compound.statements);
 }
 
 static ASTNode* getLiteralBranchResult(ASTNode* branch)
@@ -552,11 +279,11 @@ static void foldConditional(ASTNode* ast)
     *ast = replacement;
 }
 
-static void optimizeConditional(ASTNode* ast, bool fold, bool checkZero)
+static void optimizeConditional(ASTNode* ast, bool fold)
 {
-    optimizeNode(ast->conditional.condition, checkZero);
-    optimizeConditionalBranch(ast->conditional.thenBranch, checkZero);
-    optimizeConditionalBranch(ast->conditional.elseBranch, checkZero);
+    optimizeNode(ast->conditional.condition);
+    optimizeConditionalBranch(ast->conditional.thenBranch);
+    optimizeConditionalBranch(ast->conditional.elseBranch);
 
     if (!fold) {
         return;
@@ -565,35 +292,35 @@ static void optimizeConditional(ASTNode* ast, bool fold, bool checkZero)
     foldConditional(ast);
 }
 
-static void optimizeMatchPattern(ASTNode* pattern, bool checkZero)
+static void optimizeMatchPattern(ASTNode* pattern)
 {
     if (pattern->type != AST_BINARY || pattern->binary.operator.type != TOKEN_PIPE) {
-        optimizeNode(pattern, checkZero);
+        optimizeNode(pattern);
 
         return;
     }
 
-    optimizeMatchPattern(pattern->binary.leftExpr, checkZero);
-    optimizeMatchPattern(pattern->binary.rightExpr, checkZero);
+    optimizeMatchPattern(pattern->binary.leftExpr);
+    optimizeMatchPattern(pattern->binary.rightExpr);
 }
 
-static void optimizeMatchArm(MatchArm* arm, bool checkZero)
+static void optimizeMatchArm(MatchArm* arm)
 {
     if (arm->pattern) {
-        optimizeMatchPattern(arm->pattern, checkZero);
+        optimizeMatchPattern(arm->pattern);
     }
 
     if (arm->guard) {
-        optimizeNode(arm->guard, checkZero);
+        optimizeNode(arm->guard);
     }
 
-    optimizeConditionalBranch(arm->branch, checkZero);
+    optimizeConditionalBranch(arm->branch);
 }
 
-static void optimizeMatch(ASTNode* ast, bool checkZero)
+static void optimizeMatch(ASTNode* ast)
 {
     if (ast->match.subject) {
-        optimizeNode(ast->match.subject, checkZero);
+        optimizeNode(ast->match.subject);
     }
 
     size_t count = countVector(&ast->match.arms);
@@ -601,10 +328,10 @@ static void optimizeMatch(ASTNode* ast, bool checkZero)
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = getVectorAt(&ast->match.arms, i);
 
-        optimizeMatchArm(arm, checkZero);
+        optimizeMatchArm(arm);
     }
 
-    optimizeConditionalBranch(ast->match.defaultBranch, checkZero);
+    optimizeConditionalBranch(ast->match.defaultBranch);
 }
 
 static void replaceWithExpression(ASTNode* ast, ASTNode* expression)
@@ -616,9 +343,9 @@ static void replaceWithExpression(ASTNode* ast, ASTNode* expression)
     *ast = replacement;
 }
 
-static void optimizeBuiltinCall(ASTNode* ast, bool checkZero)
+static void optimizeBuiltinCall(ASTNode* ast)
 {
-    optimizeNodes(&ast->builtinCall.args, checkZero);
+    optimizeNodes(&ast->builtinCall.args);
 
     Builtin* builtin = ast->builtinCall.builtin;
 
@@ -636,9 +363,26 @@ static void optimizeBuiltinCall(ASTNode* ast, bool checkZero)
     replaceWithExpression(ast, expression);
 }
 
-static void optimizeConversion(ASTNode* ast, bool checkZero)
+static void foldExplicitConversion(ASTNode* ast)
 {
-    optimizeNode(ast->conversion.expr, checkZero);
+    ConstantValue value = {0};
+    bool constant = evaluateConstant(ast, &value);
+
+    if (!constant) {
+        return;
+    }
+
+    ASTNode* replacement = createConstantNode(value, ast->conversion.typeId, ast->conversion.token);
+    ASTNode* expression = ast->conversion.expr;
+
+    freeASTNode(expression);
+
+    ast->conversion.expr = replacement;
+}
+
+static void optimizeConversion(ASTNode* ast)
+{
+    optimizeNode(ast->conversion.expr);
     foldExplicitConversion(ast);
 
     ASTNode* expression = ast->conversion.expr;
@@ -653,107 +397,56 @@ static void optimizeConversion(ASTNode* ast, bool checkZero)
     replaceWithExpression(ast, expression);
 }
 
-static void validateZeroDivisor(ASTNode* divisor, Token operator, DataType type, bool checkZero)
+static void optimizeBinary(ASTNode* ast)
 {
-    if (!checkZero || divisor->type != AST_INTEGER || divisor->integerLiteral.value != 0) {
-        return;
-    }
-
-    bool integer = isIntegerType(type);
-    bool division = operator.type == TOKEN_SLASH || operator.type == TOKEN_SLASH_EQUAL;
-    bool remainder = operator.type == TOKEN_PERCENT || operator.type == TOKEN_PERCENT_EQUAL;
-
-    if (!integer || (!division && !remainder)) {
-        return;
-    }
-
-    fatalSourceError(operator.line, operator.column, "Division by zero");
-}
-
-static bool shouldCheckRightDivisor(ASTNode* ast, bool checkZero)
-{
-    if (!checkZero) {
-        return false;
-    }
-
-    bool logical = isLogicalToken(ast->binary.operator.type);
-
-    if (!logical) {
-        return true;
-    }
-
-    ASTNode* left = ast->binary.leftExpr;
-
-    if (left->type != AST_BOOLEAN) {
-        return false;
-    }
-
-    return left->booleanLiteral.value == (ast->binary.operator.type == TOKEN_AND);
-}
-
-static void optimizeBinary(ASTNode* ast, bool checkZero)
-{
-    optimizeNode(ast->binary.leftExpr, checkZero);
-
-    bool checkRight = shouldCheckRightDivisor(ast, checkZero);
-
-    optimizeNode(ast->binary.rightExpr, checkRight);
-    validateZeroDivisor(ast->binary.rightExpr, ast->binary.operator, ast->binary.operandType, checkZero);
+    optimizeNode(ast->binary.leftExpr);
+    optimizeNode(ast->binary.rightExpr);
     foldBinary(ast);
 }
 
-static void optimizeAssignment(ASTNode* ast, bool checkZero)
-{
-    optimizeNode(ast->assignment.expr, checkZero);
-
-    DataType type = getNodeDataType(ast->assignment.symbol);
-
-    validateZeroDivisor(ast->assignment.expr, ast->assignment.operator, type, checkZero);
-}
-
-static void optimizeNode(ASTNode* ast, bool checkZero)
+static void optimizeNode(ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT:
-            optimizeAssignment(ast, checkZero);
+            optimizeNode(ast->assignment.expr);
             break;
         case AST_BINARY:
-            optimizeBinary(ast, checkZero);
+            optimizeBinary(ast);
             break;
         case AST_BUILTIN_CALL:
-            optimizeBuiltinCall(ast, checkZero);
+            optimizeBuiltinCall(ast);
             break;
         case AST_WHILE:
-            optimizeNode(ast->whileStatement.condition, checkZero);
-            optimizeNodes(&ast->whileStatement.body->compound.statements, checkZero);
+            optimizeNode(ast->whileStatement.condition);
+            optimizeNodes(&ast->whileStatement.body->compound.statements);
             break;
         case AST_CONDITIONAL:
-            optimizeConditional(ast, true, checkZero);
+            optimizeConditional(ast, true);
             break;
         case AST_CONVERSION:
-            optimizeConversion(ast, checkZero);
+            optimizeConversion(ast);
             break;
         case AST_FUNCTION_CALL:
-            optimizeNodes(&ast->functionCall.args, checkZero);
+            optimizeNodes(&ast->functionCall.args);
             break;
         case AST_FUNCTION_DEFINITION:
-            optimizeNodes(&ast->functionDefinition.body->compound.statements, checkZero);
+            optimizeNodes(&ast->functionDefinition.body->compound.statements);
             break;
         case AST_MATCH:
-            optimizeMatch(ast, checkZero);
+            optimizeMatch(ast);
             break;
         case AST_PREFIX:
-            optimizeNode(ast->prefix.expr, checkZero);
+            optimizeNode(ast->prefix.expr);
             foldPrefix(ast);
             break;
         case AST_RETURN:
-            optimizeNode(ast->returnStatement.expr, checkZero);
+            optimizeNode(ast->returnStatement.expr);
             break;
         case AST_VARIABLE:
             propagateLiteralLet(ast);
             break;
         case AST_VARIABLE_DEFINITION:
-            optimizeNode(ast->variableDefinition.expr, checkZero);
+            optimizeNode(ast->variableDefinition.expr);
             break;
         default:
             break;
@@ -767,7 +460,7 @@ void optimizeAST(ASTNode* ast, size_t start)
     for (size_t i = start; i < count; i++) {
         ASTNode* node = getVectorAt(&ast->compound.statements, i);
 
-        optimizeNode(node, true);
+        optimizeNode(node);
     }
 }
 

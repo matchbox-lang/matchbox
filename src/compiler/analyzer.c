@@ -6,10 +6,10 @@
 #include "common/table.h"
 #include "common/util.h"
 #include "common/vector.h"
-#include "compiler/conversion.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
+#include "compiler/validation.h"
 #include "runtime/string_object.h"
 #include <float.h>
 #include <limits.h>
@@ -2513,8 +2513,6 @@ static void analyzeTypeConversion(ASTNode* ast)
     ast->conversion.expr = expression;
     ast->conversion.token = token;
     ast->conversion.typeId = destination;
-
-    foldExplicitConversion(ast);
 }
 
 static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
@@ -3228,6 +3226,7 @@ bool analyze(Analyzer* analyzer, size_t start)
 {
     analyzer->currentScope = analyzer->topLevel->compound.scope;
     analyzeNodes(analyzer, &analyzer->topLevel->compound.statements, start);
+    validateConstantExpressions(analyzer->topLevel, start);
 
     return true;
 }

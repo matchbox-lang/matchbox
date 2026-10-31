@@ -7,6 +7,7 @@
 typedef enum ProgramMode
 {
     PROGRAM_RUN,
+    PROGRAM_CHECK,
     PROGRAM_TEST
 } ProgramMode;
 

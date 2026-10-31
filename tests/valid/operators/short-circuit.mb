@@ -41,3 +41,11 @@ let safe = protected(true)
 if not safe {
     exit(1)
 }
+
+let falseCondition = 1 == 2
+let trueCondition = not falseCondition
+let skippedDivision = falseCondition and (1 / (2 - 2) == 0)
+let skippedRemainder = trueCondition or (1 % (3 - 3) == 0)
+
+assert(not skippedDivision)
+assert(skippedRemainder)

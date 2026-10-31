@@ -23,3 +23,10 @@ let narrowed = u8(letter)
 
 print(constant)
 print(narrowed)
+
+let base = 96
+let computed = char(base + 1)
+let selected = char(true ? 97 : 98)
+
+assert(computed == 'a')
+assert(selected == 'a')

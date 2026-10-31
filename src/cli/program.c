@@ -1,4 +1,5 @@
 #include "cli/program.h"
+#include "cli/check_runner.h"
 #include "cli/options.h"
 #include "cli/repl.h"
 #include "cli/test_runner.h"
@@ -78,10 +79,17 @@ static int runFile(Options* options)
 void printUsage(FILE* stream)
 {
     fprintf(stream, "Usage: %s [options] [--] [file]\n", PROGRAM_COMMAND);
+    fprintf(stream, "       %s check [path]\n", PROGRAM_COMMAND);
     fprintf(stream, "       %s test [-a | -p] [path]\n\n", PROGRAM_COMMAND);
+    fprintf(stream, "Commands:\n");
+    fprintf(stream, "  check [path]          Check source code for errors without building\n");
+    fprintf(stream, "                        Recursively check .mb files (default path: .)\n");
+    fprintf(stream, "                        Skip discovered tests/ directories; explicit paths are included\n");
+    fprintf(stream, "  test [path]           Run test files\n");
+    fprintf(stream, "\n");
     fprintf(stream, "Options:\n");
     fprintf(stream, "  -d, --disassemble     Print bytecode without running the program\n");
-    fprintf(stream, "  -h, --help            Show help options\n");
+    fprintf(stream, "  -h, --help            Show help information\n");
     fprintf(stream, "      --version         Show version information\n");
     fprintf(stream, "\nTest options:\n");
     fprintf(stream, "  -a                    Show all test results\n");
@@ -95,6 +103,10 @@ void printVersion()
 
 int runProgram(Options* options)
 {
+    if (options->mode == PROGRAM_CHECK) {
+        return runChecks(options);
+    }
+
     if (options->mode == PROGRAM_TEST) {
         return runTests(options);
     }

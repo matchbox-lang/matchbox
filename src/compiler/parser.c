@@ -1225,10 +1225,35 @@ static void parseFunctionReturnType(Parser* parser, ASTNode* ast)
     ast->functionDefinition.hasExplicitReturnType = true;
 }
 
+static bool parseFunctionExpressionBody(Parser* parser, ASTNode* ast)
+{
+    Token token = parser->currentToken;
+
+    consume(parser, TOKEN_EQUAL);
+
+    ASTNode* expression = parseExpression(parser);
+
+    if (!expression) {
+        return false;
+    }
+
+    ASTNode* body = createCompoundNode(NULL);
+    ASTNode* statement = createReturnNode(token, expression);
+    ast->functionDefinition.body = body;
+
+    pushVectorItem(&body->compound.statements, statement);
+
+    return true;
+}
+
 static bool parseFunctionBody(Parser* parser, ASTNode* ast)
 {
     if (isEndOfFile(parser)) {
         return false;
+    }
+
+    if (parser->currentToken.type == TOKEN_EQUAL) {
+        return parseFunctionExpressionBody(parser, ast);
     }
 
     consume(parser, TOKEN_LBRACE);

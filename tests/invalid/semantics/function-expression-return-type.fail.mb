@@ -1,0 +1,3 @@
+func neg(n: i32) -> bool = -n
+
+let value = neg(5)

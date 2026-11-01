@@ -1124,6 +1124,26 @@ static bool parseArgumentList(Parser* parser, Vector* args)
     return true;
 }
 
+static bool parseParameterDefault(Parser* parser, ASTNode* ast)
+{
+    if (parser->currentToken.type != TOKEN_EQUAL) {
+        return true;
+    }
+
+    Token token = parser->currentToken;
+    token.type = TOKEN_CONST;
+    consume(parser, TOKEN_EQUAL);
+
+    ASTNode* expression = parseExpression(parser);
+    if (!expression) {
+        return false;
+    }
+
+    ast->parameter.defaultValue = createPrefixNode(token, expression);
+
+    return true;
+}
+
 static ASTNode* parseParameter(Parser* parser)
 {
     if (isEndOfFile(parser)) {
@@ -1144,6 +1164,12 @@ static ASTNode* parseParameter(Parser* parser)
         ast->parameter.typeId = getTokenDataType(parser->currentToken.type);
 
         consumeType(parser);
+    }
+
+    if (!parseParameterDefault(parser, ast)) {
+        freeASTNode(ast);
+
+        return NULL;
     }
 
     return ast;

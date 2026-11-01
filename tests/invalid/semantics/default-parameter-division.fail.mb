@@ -1,0 +1,1 @@
+func invalid(n = 1 / 0) = n

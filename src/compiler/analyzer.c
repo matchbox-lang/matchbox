@@ -27,6 +27,7 @@ static void activateReferenceAccess(ASTNode* ast);
 static void transferExclusiveReference(ASTNode* expression);
 static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue);
 static ASTNode* findNodeReturn(ASTNode* ast);
+static void applyDeclaredType(ASTNode* expression, DataType type, ReferenceType referenceType);
 
 typedef struct FunctionPath
 {
@@ -1935,6 +1936,33 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
     trackVariableRead(symbol);
 }
 
+static void analyzeParameterDefault(Analyzer* analyzer, ASTNode* ast)
+{
+    ASTNode* value = ast->parameter.defaultValue;
+
+    if (!value) {
+        return;
+    }
+
+    if (ast->parameter.referenceType != REFERENCE_NONE) {
+        semanticTokenError("Reference parameter cannot have a default: ", ast->parameter.token);
+    }
+
+    Scope* previousScope = analyzer->currentScope;
+    analyzer->currentScope = previousScope->parent;
+    applyDeclaredType(value, ast->parameter.typeId, REFERENCE_NONE);
+    analyzeNode(analyzer, value);
+    analyzer->currentScope = previousScope;
+
+    DataType source = getNodeDataType(value);
+    DataType destination = ast->parameter.typeId;
+    bool compatible = source == destination || canImplicitlyWidenType(source, destination);
+
+    if (!compatible) {
+        semanticTokenError("Default value type does not match parameter ", ast->parameter.token);
+    }
+}
+
 static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
 {
     StringView id = getStringView(ast->parameter.id);
@@ -1944,6 +1972,8 @@ static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
     }
 
     ast->parameter.scope = analyzer->currentScope;
+
+    analyzeParameterDefault(analyzer, ast);
 
     if (getReferenceType(ast) != REFERENCE_NONE) {
         Vector* origins = getReferenceOrigins(ast);
@@ -2188,12 +2218,23 @@ static void analyzeBuiltinCall(ASTNode* ast)
     convertBuiltinCall(ast, builtin);
 }
 
+static bool hasRequiredOmittedParameter(ASTNode* callee, size_t count, size_t paramCount)
+{
+    if (count >= paramCount) {
+        return false;
+    }
+
+    ASTNode* firstOmitted = getVectorAt(&callee->functionDefinition.params, count);
+
+    return !firstOmitted->parameter.defaultValue;
+}
+
 static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = countVector(&caller->functionCall.args);
     size_t paramCount = countVector(&callee->functionDefinition.params);
 
-    if (count != paramCount) {
+    if (count > paramCount || hasRequiredOmittedParameter(callee, count, paramCount)) {
         semanticTokenError("Invalid arguments to function ", token);
     }
 
@@ -2749,6 +2790,31 @@ static void resolveFunctionReturnValueType(ASTNode* ast)
     ast->functionDefinition.returnTypeId = type;
 }
 
+static void validateParameterOrder(ASTNode* parameter, bool* hasDefault)
+{
+    if (parameter->parameter.defaultValue) {
+        *hasDefault = true;
+
+        return;
+    }
+
+    if (*hasDefault) {
+        semanticTokenError("Required parameter cannot follow a default parameter: ", parameter->parameter.token);
+    }
+}
+
+static void analyzeParameters(Analyzer* analyzer, Vector* parameters)
+{
+    bool hasDefault = false;
+
+    for (size_t i = 0; i < parameters->count; i++) {
+        ASTNode* parameter = parameters->data[i];
+
+        validateParameterOrder(parameter, &hasDefault);
+        analyzeNode(analyzer, parameter);
+    }
+}
+
 static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
 {
     StringView id = getStringView(ast->functionDefinition.id);
@@ -2771,7 +2837,7 @@ static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
     analyzer->loopPath = NULL;
 
     setLocalSymbol(scope, id, ast);
-    analyzeExpressionNodes(analyzer, &ast->functionDefinition.params);
+    analyzeParameters(analyzer, &ast->functionDefinition.params);
     setParameterPositions(ast);
     setLocalSymbol(parent, id, ast);
 
@@ -3434,6 +3500,7 @@ static void clearNodeAnalysis(ASTNode* ast, Vector* functions)
             ast->parameter.exclusiveAccessActive = false;
             ast->parameter.moved = false;
             ast->parameter.referenceOrigins.count = 0;
+            clearNodeAnalysis(ast->parameter.defaultValue, functions);
             break;
         case AST_VARIABLE:
             ast->variable.scope = NULL;

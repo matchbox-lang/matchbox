@@ -175,6 +175,7 @@ typedef struct ASTNode
             bool exclusiveAccessActive;
             bool moved;
             int position;
+            ASTNode* defaultValue;
         } parameter;
 
         struct {

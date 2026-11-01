@@ -2067,6 +2067,15 @@ static void reserveArgumentRegisters(Compiler* compiler, size_t count, bool rese
     }
 }
 
+static ASTNode* getArgumentExpression(Vector* args, ASTNode* parameter, size_t position)
+{
+    if (position < args->count) {
+        return args->data[position];
+    }
+
+    return parameter->parameter.defaultValue;
+}
+
 static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vector* params,
     size_t position)
 {
@@ -2078,7 +2087,7 @@ static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vecto
 
     bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
 
-    ASTNode* argument = args->data[position];
+    ASTNode* argument = getArgumentExpression(args, parameter, position);
     DataType destination = parameter ? getNodeDataType(parameter) : getNodeDataType(argument);
     Operand expression = compileConvertedExpression(compiler, argument, destination, reference);
 
@@ -2114,7 +2123,12 @@ static void compileArgument(Compiler* compiler, Vector* args, Vector* params, si
 
 static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
 {
-    size_t count = countVector(args);
+    size_t count = args->count;
+
+    if (params) {
+        count = params->count;
+    }
+
     size_t slotCount = 0;
     bool reserved = requiresReservedArguments(args, params);
     int firstRegister = compiler->registerCount;
@@ -2127,8 +2141,8 @@ static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
     reserveArgumentRegisters(compiler, slotCount, reserved);
 
     for (size_t i = 0, offset = 0; i < count; i++) {
-        ASTNode* argument = getVectorAt(args, i);
-        ASTNode* layout = params ? getVectorAt(params, i) : argument;
+        ASTNode* layout = params ? getVectorAt(params, i) : getVectorAt(args, i);
+
         compileArgument(compiler, args, params, i, firstRegister, offset, reserved);
         offset += getNodeSlotCount(layout);
     }

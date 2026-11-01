@@ -600,6 +600,7 @@ static void markCalledFunction(ASTNode* ast)
         return;
     }
 
+    markCalledFunctionsInVector(&function->functionDefinition.params);
     markCalledFunctions(function->functionDefinition.body);
 }
 
@@ -666,6 +667,9 @@ static void markCalledFunctions(ASTNode* ast)
             break;
         case AST_MATCH:
             markMatchCalledFunctions(ast);
+            break;
+        case AST_PARAMETER:
+            markCalledFunctions(ast->parameter.defaultValue);
             break;
         case AST_PREFIX:
             markPrefixCalledFunctions(ast);

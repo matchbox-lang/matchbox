@@ -1,0 +1,32 @@
+const BASE = 4
+
+func computed(n = BASE * 2 + 1) = n
+func countdown(n = 3) -> i32 = n <= 0 ? 0 : countdown(n - 1) + 1
+func text(value: string = "de" + "fault") = value
+
+let computedDefault = computed()
+let recursiveDefault = countdown()
+let textDefault = text()
+
+assert(computedDefault == 9)
+assert(recursiveDefault == 3)
+print(textDefault)
+
+func outer() {
+    const LOCAL = 6
+
+    func inner(n = LOCAL) = n
+
+    return inner()
+}
+
+let nestedDefault = outer()
+
+assert(nestedDefault == 6)
+
+func constantValue() = 7
+func fromFunction(n = constantValue()) = n
+
+let constantDefault = fromFunction()
+
+assert(constantDefault == 7)

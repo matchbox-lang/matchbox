@@ -144,10 +144,14 @@ static void validateNode(const ASTNode* ast, bool checkZero)
             validateNodes(&ast->functionCall.args, 0, checkZero);
             break;
         case AST_FUNCTION_DEFINITION:
+            validateNodes(&ast->functionDefinition.params, 0, checkZero);
             validateNode(ast->functionDefinition.body, checkZero);
             break;
         case AST_MATCH:
             validateMatch(ast, checkZero);
+            break;
+        case AST_PARAMETER:
+            validateNode(ast->parameter.defaultValue, checkZero);
             break;
         case AST_PREFIX:
             validateNode(ast->prefix.expr, checkZero);

@@ -1,0 +1,3 @@
+func required(first, second = 2) = first + second
+
+required()

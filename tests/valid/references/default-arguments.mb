@@ -1,0 +1,24 @@
+func shared(n: &i32, extra: i64 = 4) {
+    assert(extra == 4)
+
+    return n + 1
+}
+
+func exclusive(n: ^i32, extra = 2) {
+    n += extra
+}
+
+let input = 3
+let result = shared(input)
+var value = 5
+
+exclusive(value)
+
+assert(result == 4)
+assert(value == 7)
+
+func temporary(n: &i32, extra = 4) = n + extra
+
+let temporaryResult = temporary(1 + 2)
+
+assert(temporaryResult == 7)

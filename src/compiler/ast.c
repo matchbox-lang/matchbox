@@ -336,6 +336,7 @@ void freeASTNode(ASTNode* ast)
             freeVector(&ast->match.referenceOrigins);
             break;
         case AST_PARAMETER:
+            freeASTNode(ast->parameter.defaultValue);
             freeStringObject(ast->parameter.id);
             freeVector(&ast->parameter.referenceOrigins);
             break;

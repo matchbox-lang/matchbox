@@ -1,0 +1,17 @@
+func typed(n: i32 = 10) = n
+func untyped(n = 10) = n
+func sum(a, b = 2, c = 3) = a + b + c
+
+let typedDefault = typed()
+let untypedDefault = untyped()
+let overridden = typed(25)
+let trailingDefaults = sum(1)
+let partialDefaults = sum(1, 4)
+let explicitArguments = sum(1, 4, 5)
+
+assert(typedDefault == 10)
+assert(untypedDefault == 10)
+assert(overridden == 25)
+assert(trailingDefaults == 6)
+assert(partialDefaults == 8)
+assert(explicitArguments == 10)

@@ -1,0 +1,3 @@
+func optional(n = 10) = n
+
+optional(1, 2)

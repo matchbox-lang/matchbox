@@ -13,10 +13,12 @@ typedef struct Analyzer
     ASTNode* topLevel;
     ASTNode* function;
     Scope* currentScope;
+    Scope* constantScope;
     Vector* currentNodes;
     size_t nextNode;
     ReferenceLifetimes* referenceLifetimes;
     FunctionPath* functionPath;
+    FunctionPath* constantFunctions;
     LoopPath* loopPath;
 } Analyzer;
 

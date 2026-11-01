@@ -1,0 +1,12 @@
+print("runtime")
+
+func evaluate() {
+    print("constant")
+    return 42
+}
+
+const VALUE = evaluate()
+
+print(VALUE)
+print(VALUE)
+assert(VALUE == 42)

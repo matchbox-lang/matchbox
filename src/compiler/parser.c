@@ -1339,7 +1339,9 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
 
 static ASTNode* parseVariableDefinition(Parser* parser)
 {
-    bool fixed = parser->currentToken.type == TOKEN_LET;
+    Token keyword = parser->currentToken;
+    bool constant = keyword.type == TOKEN_CONST;
+    bool fixed = constant || keyword.type == TOKEN_LET;
 
     consume(parser, parser->currentToken.type);
 
@@ -1357,6 +1359,7 @@ static ASTNode* parseVariableDefinition(Parser* parser)
     }
 
     ASTNode* ast = createVariableDefinitionNode(token, id, fixed);
+    ast->variableDefinition.constant = constant;
 
     parseVariableType(parser, ast);
 
@@ -1367,6 +1370,10 @@ static ASTNode* parseVariableDefinition(Parser* parser)
     if (!parseVariableInitializer(parser, ast)) {
         freeASTNode(ast);
         return NULL;
+    }
+
+    if (constant) {
+        ast->variableDefinition.expr = createPrefixNode(keyword, ast->variableDefinition.expr);
     }
 
     return ast;
@@ -1432,11 +1439,31 @@ static ASTNode* parseMatchStatement(Parser* parser)
     return ast;
 }
 
+static ASTNode* parseConstantStatement(Parser* parser)
+{
+    Lexer lexer = parser->lexer;
+    Token name = scanToken(&lexer);
+
+    if (name.type != TOKEN_IDENTIFIER) {
+        return parseExpression(parser);
+    }
+
+    Token next = scanToken(&lexer);
+
+    if (next.type == TOKEN_EQUAL || next.type == TOKEN_COLON) {
+        return parseVariableDefinition(parser);
+    }
+
+    return parseExpression(parser);
+}
+
 static ASTNode* parseStatement(Parser* parser)
 {
     switch (parser->currentToken.type) {
         case TOKEN_FUNC:
             return parseFunctionDefinition(parser);
+        case TOKEN_CONST:
+            return parseConstantStatement(parser);
         case TOKEN_LET:
         case TOKEN_VAR:
             return parseVariableDefinition(parser);

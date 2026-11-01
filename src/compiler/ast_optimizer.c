@@ -404,6 +404,16 @@ static void optimizeBinary(ASTNode* ast)
     foldBinary(ast);
 }
 
+static void optimizePrefix(ASTNode* ast)
+{
+    if (ast->prefix.operator.type == TOKEN_CONST) {
+        return;
+    }
+
+    optimizeNode(ast->prefix.expr);
+    foldPrefix(ast);
+}
+
 static void optimizeNode(ASTNode* ast)
 {
     switch (ast->type) {
@@ -436,8 +446,7 @@ static void optimizeNode(ASTNode* ast)
             optimizeMatch(ast);
             break;
         case AST_PREFIX:
-            optimizeNode(ast->prefix.expr);
-            foldPrefix(ast);
+            optimizePrefix(ast);
             break;
         case AST_RETURN:
             optimizeNode(ast->returnStatement.expr);

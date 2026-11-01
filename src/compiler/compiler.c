@@ -18,6 +18,7 @@
 #include "runtime/string_object.h"
 #include "runtime/value.h"
 #include "vm/opcode.h"
+#include "vm/vm.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -86,6 +87,7 @@ static bool isSimpleMatchValue(ASTNode* ast);
 static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
 static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister);
 static void patchJump(Compiler* compiler, size_t position);
+static Operand compileConstant(Compiler* compiler, ASTNode* ast);
 
 static _Noreturn void branchOffsetOverflowError(void)
 {
@@ -1384,8 +1386,94 @@ static Opcode getNegationOpcode(DataType type)
     return getIntegerOpcode(type, INTEGER_NEG);
 }
 
+static void restoreConstantCompiler(Compiler* compiler, const Compiler* previous, FunctionObject* entry)
+{
+    Vector references = compiler->functionReferences;
+
+    *compiler = *previous;
+    compiler->functionReferences = references;
+    compiler->module->functions.data[0] = entry;
+}
+
+static void evaluateConstantExpression(Compiler* compiler, ASTNode* ast)
+{
+    Compiler previous = *compiler;
+    FunctionObject* entry = compiler->module->functions.data[0];
+    FunctionObject* function = createFunctionObject();
+    VM* vm = allocateZeroedMemory(1, sizeof(VM));
+    ErrorContext context;
+
+    beginErrorContext(&context, NULL);
+
+    if (setjmp(context.jump) != 0) {
+        endErrorContext(&context);
+        restoreConstantCompiler(compiler, &previous, entry);
+        freeVM(vm);
+        freeMemory(vm);
+        freeFunctionObject(function);
+        raiseError();
+    }
+
+    compiler->function = function;
+    compiler->module->functions.data[0] = function;
+    compiler->registerCount = 0;
+    compiler->frameBaseCount = 0;
+    compiler->localPositionOffset = 0;
+    compiler->peepholeBarrier = 0;
+
+    Operand result = compileExpression(compiler, ast->prefix.expr, false);
+
+    emitHlt(compiler);
+    initVM(vm, compiler->module);
+
+    interpret(vm);
+
+    if (vm->exitRequested) {
+        fatalError("Constant evaluation exited without a value");
+    }
+
+    size_t position = countValueArray(&compiler->module->constants);
+
+    for (size_t i = 0; i < result.slots; i++) {
+        makeConstant(compiler, vm->stack[result.reg + i]);
+    }
+
+    ast->prefix.constantPosition = position;
+    ast->prefix.evaluated = true;
+
+    endErrorContext(&context);
+    restoreConstantCompiler(compiler, &previous, entry);
+    freeVM(vm);
+    freeMemory(vm);
+    freeFunctionObject(function);
+}
+
+static Operand compileConstant(Compiler* compiler, ASTNode* ast)
+{
+    if (!ast->prefix.evaluated) {
+        evaluateConstantExpression(compiler, ast);
+    }
+
+    size_t position = ast->prefix.constantPosition;
+    size_t slots = getNodeSlotCount(ast);
+
+    if (slots == 2) {
+        int reg = emitLdcI64(compiler, position);
+
+        return makeWideOperand(reg, true);
+    }
+
+    int reg = emitLdc(compiler, position);
+
+    return makeOperand(reg, true);
+}
+
 static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->prefix.operator.type == TOKEN_CONST) {
+        return compileConstant(compiler, ast);
+    }
+
     if (getReferenceType(ast) != REFERENCE_NONE) {
         return dereferenceOperand(
             compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getNodeDataType(ast)));
@@ -1411,6 +1499,14 @@ static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
 
 static Operand compileVariable(Compiler* compiler, ASTNode* ast)
 {
+    ASTNode* symbol = ast->variable.symbol;
+
+    if (isVariableDefinition(symbol) && symbol->variableDefinition.constant) {
+        DataType type = getNodeDataType(symbol);
+
+        return compileConvertedExpression(compiler, symbol->variableDefinition.expr, type, false);
+    }
+
     Operand value = loadVariable(compiler, ast->variable.symbol);
 
     if (getReferenceType(ast) == REFERENCE_NONE) {
@@ -3359,6 +3455,17 @@ static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference)
     return matchResultOperand(type, destination);
 }
 
+static bool compileDiscardedPrefix(Compiler* compiler, ASTNode* ast)
+{
+    if (ast->prefix.operator.type == TOKEN_CONST) {
+        return false;
+    }
+
+    compileExpression(compiler, ast->prefix.expr, true);
+
+    return true;
+}
+
 static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
@@ -3370,8 +3477,7 @@ static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
         case AST_VARIABLE:
             return true;
         case AST_PREFIX:
-            compileExpression(compiler, ast->prefix.expr, true);
-            return true;
+            return compileDiscardedPrefix(compiler, ast);
         default:
             return false;
     }

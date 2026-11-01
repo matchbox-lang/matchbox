@@ -181,6 +181,8 @@ typedef struct ASTNode
             Token operator;
             ASTNode* expr;
             Vector referenceOrigins;
+            size_t constantPosition;
+            bool evaluated;
         } prefix;
 
         struct {
@@ -205,6 +207,7 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             bool fixed;
+            bool constant;
             bool initialized;
             DataType typeId;
             ReferenceType referenceType;

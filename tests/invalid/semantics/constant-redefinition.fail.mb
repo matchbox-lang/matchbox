@@ -1,0 +1,2 @@
+const VALUE = 10
+let VALUE = 20

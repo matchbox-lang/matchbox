@@ -1,0 +1,3 @@
+const VALUE = 10
+
+VALUE += 1

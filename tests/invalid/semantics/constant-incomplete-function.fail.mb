@@ -1,0 +1,5 @@
+func evaluate(x) -> i32 {
+    return const evaluate(1)
+}
+
+print(evaluate(0))

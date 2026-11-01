@@ -280,6 +280,12 @@ static ASTNode* getFloatLiteral(ASTNode* expression)
 
 static void applyLiteralType(ASTNode* expression, DataType type)
 {
+    if (expression->type == AST_PREFIX && expression->prefix.operator.type == TOKEN_CONST) {
+        applyLiteralType(expression->prefix.expr, type);
+
+        return;
+    }
+
     if (isIntegerType(type) || isFloatType(type)) {
         applyIntegerLiteralType(expression, type);
     }
@@ -1767,6 +1773,44 @@ static void trackVariableRead(ASTNode* symbol)
     symbol->variableDefinition.readCount++;
 }
 
+static void validateConstantBinding(Analyzer* analyzer, ASTNode* symbol, Token token)
+{
+    if (!analyzer->constantScope || (isVariableDefinition(symbol) && symbol->variableDefinition.constant)) {
+        return;
+    }
+
+    Scope* scope = getScope(symbol);
+
+    if (scope->level > analyzer->constantScope->level) {
+        return;
+    }
+
+    semanticTokenError("Cannot access runtime binding in constant expression ", token);
+}
+
+static void validateConstantReference(Analyzer* analyzer, ASTNode* symbol, Token token)
+{
+    if (!analyzer->constantScope || !symbol) {
+        return;
+    }
+
+    Scope* scope = getScope(symbol);
+    bool calledFunction = analyzer->functionPath != analyzer->constantFunctions;
+
+    if (scope->level > analyzer->constantScope->level || (calledFunction && !isTopLevelScope(scope))) {
+        return;
+    }
+
+    semanticTokenError("Cannot reference runtime binding in constant expression ", token);
+}
+
+static void validateConstantMutation(ASTNode* symbol, ReferenceType type, Token token)
+{
+    if (type == REFERENCE_EXCLUSIVE && isVariableDefinition(symbol) && symbol->variableDefinition.constant) {
+        semanticTokenError("Cannot mutate constant ", token);
+    }
+}
+
 static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
 {
     StringView id = getStringView(ast->variable.id);
@@ -1775,6 +1819,8 @@ static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
     if (!symbol || !isVariableType(symbol)) {
         symbolError(" is undefined", ast->variable.token);
     }
+
+    validateConstantBinding(analyzer, symbol, ast->variable.token);
 
     if (!isInitialized(symbol)) {
         symbolError(" is uninitialized", ast->variable.token);
@@ -1828,6 +1874,8 @@ static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* sy
     ReferenceType requested = getReferenceType(ast);
     ReferenceType existing = getReferenceType(symbol);
 
+    validateConstantMutation(symbol, requested, variable->variable.token);
+
     if (existing != REFERENCE_NONE) {
         semanticError("Cannot create a reference to another reference", ast->prefix.operator);
     }
@@ -1856,6 +1904,8 @@ static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
     ASTNode* variable = getReferenceVariable(ast);
     ASTNode* symbol = findReferenceSymbol(analyzer, variable);
 
+    validateConstantBinding(analyzer, symbol, variable->variable.token);
+    validateConstantReference(analyzer, symbol, variable->variable.token);
     validateReferenceAccess(ast, variable, symbol);
     markAddressTaken(symbol);
 
@@ -2152,11 +2202,15 @@ static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
     }
 }
 
-static void validateGlobalBindingAccess(ASTNode* origin, ReferenceType type, Token token)
+static void validateGlobalBindingAccess(Analyzer* analyzer, ASTNode* origin, ReferenceType type, Token token)
 {
+    validateConstantMutation(origin, type, token);
+
     if (!origin || !isTopLevelScope(getScope(origin))) {
         return;
     }
+
+    validateConstantBinding(analyzer, origin, token);
 
     if (type == REFERENCE_SHARED && hasExclusiveAccess(origin)) {
         bindingAccessError("Function requires shared access to binding ", token, " while exclusive access is active");
@@ -2173,7 +2227,7 @@ static bool referenceArgumentRequiresBinding(ReferenceType type)
     return type == REFERENCE_EXCLUSIVE;
 }
 
-static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token token)
+static void validateCallArgumentAccess(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = countVector(&caller->functionCall.args);
 
@@ -2201,7 +2255,8 @@ static void validateCallArgumentAccess(ASTNode* caller, ASTNode* callee, Token t
             semanticTokenError("Reference access requires a binding for ", token);
         }
 
-        validateGlobalBindingAccess(origin, type, token);
+        validateGlobalBindingAccess(analyzer, origin, type, token);
+        validateConstantReference(analyzer, origin, token);
         markAddressTaken(origin);
     }
 }
@@ -2228,6 +2283,10 @@ static void validateGlobalAccessInNodes(Analyzer* analyzer, Vector* nodes)
 
 static void validateFunctionGlobalAccess(Analyzer* analyzer, ASTNode* function)
 {
+    if (analyzer->constantScope && functionInPath(analyzer->constantFunctions, function)) {
+        semanticTokenError("Cannot evaluate incomplete function ", function->functionDefinition.token);
+    }
+
     if (functionInPath(analyzer->functionPath, function)) {
         return;
     }
@@ -2285,12 +2344,25 @@ static void validateMatchGlobalAccess(Analyzer* analyzer, ASTNode* ast)
     validateBranchGlobalAccess(analyzer, ast->match.defaultBranch);
 }
 
+static void validatePrefixGlobalAccess(Analyzer* analyzer, ASTNode* ast)
+{
+    ASTNode* origin = referenceOriginFromExpression(ast);
+    ReferenceType type = getReferenceType(ast);
+
+    if (type != REFERENCE_NONE) {
+        validateConstantReference(analyzer, origin, ast->prefix.operator);
+    }
+
+    validateGlobalBindingAccess(analyzer, origin, type, ast->prefix.operator);
+    validateNodeGlobalAccess(analyzer, ast->prefix.expr);
+}
+
 static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
         case AST_ASSIGNMENT: {
             ASTNode* origin = getReferenceOriginOrSelf(ast->assignment.symbol);
-            validateGlobalBindingAccess(origin, REFERENCE_EXCLUSIVE, ast->assignment.token);
+            validateGlobalBindingAccess(analyzer, origin, REFERENCE_EXCLUSIVE, ast->assignment.token);
             validateNodeGlobalAccess(analyzer, ast->assignment.expr);
             break;
         }
@@ -2317,21 +2389,19 @@ static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
             validateNodeGlobalAccess(analyzer, ast->conversion.expr);
             break;
         case AST_FUNCTION_CALL:
+            validateCallArgumentAccess(analyzer, ast, ast->functionCall.symbol, ast->functionCall.token);
             validateGlobalAccessInNodes(analyzer, &ast->functionCall.args);
             validateFunctionGlobalAccess(analyzer, ast->functionCall.symbol);
             break;
-        case AST_PREFIX: {
-            ASTNode* origin = referenceOriginFromExpression(ast);
-            ReferenceType type = getReferenceType(ast);
-            validateGlobalBindingAccess(origin, type, ast->prefix.operator);
+        case AST_PREFIX:
+            validatePrefixGlobalAccess(analyzer, ast);
             break;
-        }
         case AST_RETURN:
             validateNodeGlobalAccess(analyzer, ast->returnStatement.expr);
             break;
         case AST_VARIABLE: {
             ASTNode* origin = getReferenceOriginOrSelf(ast->variable.symbol);
-            validateGlobalBindingAccess(origin, REFERENCE_SHARED, ast->variable.token);
+            validateGlobalBindingAccess(analyzer, origin, REFERENCE_SHARED, ast->variable.token);
             break;
         }
         case AST_VARIABLE_DEFINITION:
@@ -2543,7 +2613,7 @@ static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
     ast->functionCall.scope = analyzer->currentScope;
     ast->functionCall.symbol = symbol;
     validateFunctionCall(ast, symbol, ast->functionCall.token);
-    validateCallArgumentAccess(ast, symbol, ast->functionCall.token);
+    validateCallArgumentAccess(analyzer, ast, symbol, ast->functionCall.token);
     validateArgumentAccesses(ast, symbol);
     validateFunctionGlobalAccess(analyzer, symbol);
     setCallReferenceOrigins(ast, symbol);
@@ -2732,6 +2802,10 @@ static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
 
+    if (isVariableDefinition(symbol) && symbol->variableDefinition.constant) {
+        semanticTokenError("Cannot reassign constant ", token);
+    }
+
     if (isMoved(symbol)) {
         symbolError(" is moved", token);
     }
@@ -2799,6 +2873,7 @@ static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
     ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
     bool initializesBinding = !isInitialized(symbol);
 
+    validateConstantBinding(analyzer, symbol, ast->assignment.token);
     validateAssignmentTarget(ast, symbol);
     validateCompoundAssignmentTarget(ast, symbol);
     trackVariableRead(symbol);
@@ -2875,6 +2950,12 @@ static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
 
 static void applyDeclaredType(ASTNode* expression, DataType type, ReferenceType referenceType)
 {
+    if (expression->type == AST_PREFIX && expression->prefix.operator.type == TOKEN_CONST) {
+        applyDeclaredType(expression->prefix.expr, type, referenceType);
+
+        return;
+    }
+
     if (type == TYPE_UNKNOWN) {
         return;
     }
@@ -3115,8 +3196,31 @@ static void inferNegatedIntegerLiteralType(ASTNode* ast)
     applyIntegerLiteralType(ast, TYPE_I64);
 }
 
+static void analyzeConstantExpression(Analyzer* analyzer, ASTNode* ast)
+{
+    Scope* previous = analyzer->constantScope;
+    FunctionPath* previousFunctions = analyzer->constantFunctions;
+    analyzer->constantScope = analyzer->currentScope;
+    analyzer->constantFunctions = analyzer->functionPath;
+
+    analyzeNode(analyzer, ast->prefix.expr);
+
+    analyzer->constantScope = previous;
+    analyzer->constantFunctions = previousFunctions;
+
+    if (getReferenceType(ast->prefix.expr) != REFERENCE_NONE || getNodeDataType(ast) == TYPE_VOID) {
+        semanticError("Constant expression must produce a value", ast->prefix.operator);
+    }
+}
+
 static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
 {
+    if (ast->prefix.operator.type == TOKEN_CONST) {
+        analyzeConstantExpression(analyzer, ast);
+
+        return;
+    }
+
     if (getReferenceType(ast) != REFERENCE_NONE) {
         analyzeReference(analyzer, ast);
 
@@ -3215,10 +3319,12 @@ void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
     analyzer->topLevel = ast;
     analyzer->function = NULL;
     analyzer->currentScope = ast->compound.scope;
+    analyzer->constantScope = NULL;
     analyzer->currentNodes = NULL;
     analyzer->nextNode = 0;
     analyzer->referenceLifetimes = NULL;
     analyzer->functionPath = NULL;
+    analyzer->constantFunctions = NULL;
     analyzer->loopPath = NULL;
 }
 

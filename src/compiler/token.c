@@ -316,6 +316,7 @@ bool isFactorToken(TokenType type)
 bool isPrefixToken(TokenType type)
 {
     switch (type) {
+        case TOKEN_CONST:
         case TOKEN_AMPERSAND:
         case TOKEN_CIRCUMFLEX:
         case TOKEN_NOT:

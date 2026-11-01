@@ -1,0 +1,11 @@
+func square(x) {
+    return x * x
+}
+
+func evaluate(x) {
+    return const square(x)
+}
+
+let result = evaluate(10)
+
+print(result)

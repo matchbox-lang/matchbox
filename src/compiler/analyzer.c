@@ -303,20 +303,25 @@ static void applyLiteralType(ASTNode* expression, DataType type)
     expression->floatLiteral.typeId = type;
 }
 
+static ASTNode* findFrameSymbol(Scope* scope, StringView id)
+{
+    Scope* frame = scope->frameScope;
+    ASTNode* symbol = NULL;
+
+    for (Scope* current = scope;
+        current && current->frameScope == frame && !symbol;
+        current = current->parent) {
+        symbol = getLocalSymbol(current, id);
+    }
+
+    return symbol;
+}
+
 static ASTNode* findSymbol(Analyzer* analyzer, StringView id)
 {
-    Scope* frame = analyzer->currentScope->frameScope;
-
-    for (Scope* scope = analyzer->currentScope; scope; scope = scope->parent) {
-        ASTNode* symbol = getLocalSymbol(scope, id);
-
-        if (symbol) {
-            return symbol;
-        }
-
-        if (scope == frame) {
-            break;
-        }
+    ASTNode* symbol = findFrameSymbol(analyzer->currentScope, id);
+    if (symbol) {
+        return symbol;
     }
 
     return getLocalSymbol(analyzer->topLevel->compound.scope, id);

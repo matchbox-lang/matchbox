@@ -1337,9 +1337,8 @@ static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
     return true;
 }
 
-static ASTNode* parseVariableDefinition(Parser* parser)
+static ASTNode* parseVariableBinding(Parser* parser, Token keyword)
 {
-    Token keyword = parser->currentToken;
     bool constant = keyword.type == TOKEN_CONST;
     bool fixed = constant || keyword.type == TOKEN_LET;
 
@@ -1350,7 +1349,6 @@ static ASTNode* parseVariableDefinition(Parser* parser)
     }
 
     Token token = parser->currentToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
 
     consume(parser, TOKEN_IDENTIFIER);
 
@@ -1358,12 +1356,18 @@ static ASTNode* parseVariableDefinition(Parser* parser)
         return NULL;
     }
 
+    StringObject* id = copyStringObject(token.chars, token.length);
     ASTNode* ast = createVariableDefinitionNode(token, id, fixed);
     ast->variableDefinition.constant = constant;
 
+    return ast;
+}
+
+static ASTNode* parseVariableValue(Parser* parser, ASTNode* ast, Token keyword)
+{
     parseVariableType(parser, ast);
 
-    if (fixed && parser->currentToken.type != TOKEN_EQUAL) {
+    if (ast->variableDefinition.fixed && parser->currentToken.type != TOKEN_EQUAL) {
         expectedTokenError(TOKEN_EQUAL, parser->currentToken);
     }
 
@@ -1372,11 +1376,23 @@ static ASTNode* parseVariableDefinition(Parser* parser)
         return NULL;
     }
 
-    if (constant) {
+    if (ast->variableDefinition.constant) {
         ast->variableDefinition.expr = createPrefixNode(keyword, ast->variableDefinition.expr);
     }
 
     return ast;
+}
+
+static ASTNode* parseVariableDefinition(Parser* parser)
+{
+    Token keyword = parser->currentToken;
+    ASTNode* ast = parseVariableBinding(parser, keyword);
+
+    if (!ast) {
+        return NULL;
+    }
+
+    return parseVariableValue(parser, ast, keyword);
 }
 
 static ASTNode* parseIdentifier(Parser* parser)

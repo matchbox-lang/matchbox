@@ -1395,6 +1395,45 @@ static void restoreConstantCompiler(Compiler* compiler, const Compiler* previous
     compiler->module->functions.data[0] = entry;
 }
 
+static void freeConstantEvaluation(VM* vm, FunctionObject* function)
+{
+    freeVM(vm);
+    freeMemory(vm);
+    freeFunctionObject(function);
+}
+
+static Operand compileConstantExpression(Compiler* compiler, ASTNode* ast, FunctionObject* function)
+{
+    compiler->function = function;
+    compiler->module->functions.data[0] = function;
+    compiler->registerCount = 0;
+    compiler->frameBaseCount = 0;
+    compiler->localPositionOffset = 0;
+    compiler->peepholeBarrier = 0;
+
+    Operand result = compileExpression(compiler, ast->prefix.expr, false);
+
+    emitHlt(compiler);
+
+    return result;
+}
+
+static void storeConstantResult(Compiler* compiler, ASTNode* ast, const VM* vm, Operand result)
+{
+    if (vm->exitRequested) {
+        fatalError("Constant evaluation exited without a value");
+    }
+
+    size_t position = countValueArray(&compiler->module->constants);
+
+    for (size_t i = 0; i < result.slots; i++) {
+        makeConstant(compiler, vm->stack[result.reg + i]);
+    }
+
+    ast->prefix.constantPosition = position;
+    ast->prefix.evaluated = true;
+}
+
 static void evaluateConstantExpression(Compiler* compiler, ASTNode* ast)
 {
     Compiler previous = *compiler;
@@ -1408,44 +1447,18 @@ static void evaluateConstantExpression(Compiler* compiler, ASTNode* ast)
     if (setjmp(context.jump) != 0) {
         endErrorContext(&context);
         restoreConstantCompiler(compiler, &previous, entry);
-        freeVM(vm);
-        freeMemory(vm);
-        freeFunctionObject(function);
+        freeConstantEvaluation(vm, function);
         raiseError();
     }
 
-    compiler->function = function;
-    compiler->module->functions.data[0] = function;
-    compiler->registerCount = 0;
-    compiler->frameBaseCount = 0;
-    compiler->localPositionOffset = 0;
-    compiler->peepholeBarrier = 0;
+    Operand result = compileConstantExpression(compiler, ast, function);
 
-    Operand result = compileExpression(compiler, ast->prefix.expr, false);
-
-    emitHlt(compiler);
     initVM(vm, compiler->module);
-
     interpret(vm);
-
-    if (vm->exitRequested) {
-        fatalError("Constant evaluation exited without a value");
-    }
-
-    size_t position = countValueArray(&compiler->module->constants);
-
-    for (size_t i = 0; i < result.slots; i++) {
-        makeConstant(compiler, vm->stack[result.reg + i]);
-    }
-
-    ast->prefix.constantPosition = position;
-    ast->prefix.evaluated = true;
-
+    storeConstantResult(compiler, ast, vm, result);
     endErrorContext(&context);
     restoreConstantCompiler(compiler, &previous, entry);
-    freeVM(vm);
-    freeMemory(vm);
-    freeFunctionObject(function);
+    freeConstantEvaluation(vm, function);
 }
 
 static Operand compileConstant(Compiler* compiler, ASTNode* ast)

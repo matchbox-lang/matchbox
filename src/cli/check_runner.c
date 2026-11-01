@@ -77,15 +77,6 @@ static bool checkFile(const char* path)
     return success;
 }
 
-static bool checkDiscoveredPath(const char* path, const char* name)
-{
-    if (pathIsDirectory(path) && strcmp(name, "tests") == 0) {
-        return true;
-    }
-
-    return checkPath(path);
-}
-
 static bool checkDirectoryEntry(const char* path, const char* name)
 {
     if (pathIsCurrentOrParentDirectory(name)) {
@@ -93,7 +84,7 @@ static bool checkDirectoryEntry(const char* path, const char* name)
     }
 
     char* child = joinPath(path, name);
-    bool success = checkDiscoveredPath(child, name);
+    bool success = checkPath(child);
 
     freePath(child);
 

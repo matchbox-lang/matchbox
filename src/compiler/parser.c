@@ -1336,6 +1336,80 @@ static ASTNode* parse_function_definition(Parser* parser)
     return ast;
 }
 
+static void parse_test_name(Parser* parser, ASTNode* ast)
+{
+    if (parser->current_token.type != TokenStringLiteral) {
+        return;
+    }
+
+    ast->function_definition.test_name = parser->current_token;
+    ASTNode* name = parse_string_literal(parser);
+
+    if (name->type != ASTString) {
+        Token token = ast->function_definition.test_name;
+
+        fatal_token_error(token, "", "Test name must be a string literal: ");
+    }
+
+    free_ast_node(name);
+}
+
+static StringObject* create_test_identifier(const Parser* parser, Token token)
+{
+    char name[64];
+    size_t statement_count = parser->top_level->compound.statements.count;
+
+    snprintf(name, sizeof(name), "$test_%lu_%d_%d", (unsigned long)statement_count, token.line, token.column);
+
+    size_t length = strlen(name);
+
+    return copy_string_object(name, length);
+}
+
+static ASTNode* create_test_definition_node(const Parser* parser, Token token)
+{
+    StringObject* id = create_test_identifier(parser, token);
+    ASTNode* ast = create_function_definition_node(token, id);
+
+    ast->function_definition.is_test = true;
+    ast->function_definition.has_explicit_return_type = true;
+    ast->function_definition.return_type_id = TypeVoid;
+
+    return ast;
+}
+
+static bool parse_test_body(Parser* parser, ASTNode* ast)
+{
+    if (is_end_of_file(parser)) {
+        return false;
+    }
+
+    if (parser->current_token.type != TokenLbrace) {
+        expected_token_error(TokenLbrace, parser->current_token);
+    }
+
+    return parse_function_body(parser, ast);
+}
+
+static ASTNode* parse_test_definition(Parser* parser)
+{
+    Token token = parser->current_token;
+
+    consume(parser, TokenKeywordTest);
+
+    ASTNode* ast = create_test_definition_node(parser, token);
+
+    parse_test_name(parser, ast);
+
+    if (!parse_test_body(parser, ast)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
+}
+
 static ASTNode* parse_assignment(Parser* parser)
 {
     Token operator = parser->current_token;
@@ -1529,6 +1603,8 @@ static ASTNode* parse_statement(Parser* parser)
     switch (parser->current_token.type) {
         case TokenKeywordFunc:
             return parse_function_definition(parser);
+        case TokenKeywordTest:
+            return parse_test_definition(parser);
         case TokenKeywordConst:
             return parse_constant_statement(parser);
         case TokenKeywordLet:

@@ -2817,6 +2817,10 @@ static void analyze_parameters(Analyzer* analyzer, Vector* parameters)
 
 static void analyze_function(Analyzer* analyzer, ASTNode* ast)
 {
+    if (ast->function_definition.is_test && analyzer->current_scope != analyzer->top_level->compound.scope) {
+        semantic_error("Test blocks are only allowed at file scope", ast->function_definition.token);
+    }
+
     StringView id = get_string_view(ast->function_definition.id);
 
     if (get_local_symbol(analyzer->current_scope, id)) {

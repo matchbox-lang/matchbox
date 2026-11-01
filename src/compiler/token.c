@@ -46,6 +46,7 @@ const char* get_token_type_name(TokenType type)
         case TokenKeywordGet:                 return "get";
         case TokenKeywordSet:                 return "set";
         case TokenKeywordFunc:                return "func";
+        case TokenKeywordTest:                return "test";
         case TokenKeywordType:                return "type";
         case TokenKeywordInternal:            return "internal";
         case TokenKeywordExternal:            return "external";

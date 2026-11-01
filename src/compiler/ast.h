@@ -139,6 +139,8 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             Vector params;
+            bool is_test;
+            Token test_name;
             bool has_explicit_return_type;
             DataType return_type_id;
             ReferenceType return_reference_type;

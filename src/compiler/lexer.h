@@ -12,5 +12,6 @@ typedef struct Lexer
 
 void init_lexer(Lexer* lexer, const char* source);
 Token scan_token(Lexer* lexer);
+bool source_has_test_keyword(const char* source);
 
 #endif

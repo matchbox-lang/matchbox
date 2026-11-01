@@ -2,6 +2,7 @@
 #include "cli/check_runner.h"
 #include "cli/options.h"
 #include "cli/repl.h"
+#include "cli/program_test_runner.h"
 #include "cli/test_runner.h"
 #include "common/errors.h"
 #include "common/io.h"
@@ -80,23 +81,33 @@ void print_usage(FILE* stream)
 {
     fprintf(stream, "Usage: %s [options] [--] [file]\n", PROGRAM_COMMAND);
     fprintf(stream, "       %s check [path]\n", PROGRAM_COMMAND);
-    fprintf(stream, "       %s test [-a | -p] [path]\n\n", PROGRAM_COMMAND);
+    fprintf(stream, "       %s test [-a | -p] [--program] [path]\n\n", PROGRAM_COMMAND);
     fprintf(stream, "Commands:\n");
-    fprintf(stream, "  check [path]          Check source code without building\n");
-    fprintf(stream, "  test [path]           Run test files\n");
+    fprintf(stream, "  check [path]         Check source code without building\n");
+    fprintf(stream, "  test [path]          Run test blocks\n");
     fprintf(stream, "\n");
     fprintf(stream, "Options:\n");
-    fprintf(stream, "  -d, --disassemble     Print bytecode without running the program\n");
-    fprintf(stream, "  -h, --help            Show help information\n");
-    fprintf(stream, "      --version         Show version information\n");
+    fprintf(stream, "  -d, --disassemble    Print bytecode without running the program\n");
+    fprintf(stream, "  -h, --help           Show help information\n");
+    fprintf(stream, "      --version        Show version information\n");
     fprintf(stream, "\nTest options:\n");
-    fprintf(stream, "  -a                    Show all test results\n");
-    fprintf(stream, "  -p                    Show passed test results\n");
+    fprintf(stream, "  -a                   Show all test results\n");
+    fprintf(stream, "  -p                   Show passed test results\n");
+    fprintf(stream, "      --program        Run program tests\n");
 }
 
 void print_version()
 {
     printf("%s %s\n", PROGRAM_NAME, PROGRAM_VERSION);
+}
+
+static int run_test_command(const Options* options)
+{
+    if (options->programs) {
+        return run_program_tests(options);
+    }
+
+    return run_tests(options);
 }
 
 int run_program(const Options* options)
@@ -106,7 +117,7 @@ int run_program(const Options* options)
     }
 
     if (options->mode == ProgramTest) {
-        return run_tests(options);
+        return run_test_command(options);
     }
 
     if (!options->filename) {

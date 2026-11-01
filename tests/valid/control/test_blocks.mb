@@ -1,0 +1,25 @@
+func square(n: i32) -> i32 {
+    return n * n
+}
+
+var count = 0
+
+test "square" {
+    let result = square(5)
+
+    assert(result == 25)
+}
+
+test "fresh globals" {
+    assert(count == 0)
+
+    count = 7
+}
+
+test {
+    const EXPECTED = 4
+    let result = 2 + 2
+
+    assert(result == EXPECTED)
+    assert(count == 0)
+}

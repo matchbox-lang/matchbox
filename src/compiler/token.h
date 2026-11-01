@@ -38,6 +38,7 @@ typedef enum TokenType
     TokenKeywordGet,
     TokenKeywordSet,
     TokenKeywordFunc,
+    TokenKeywordTest,
     TokenKeywordInternal,
     TokenKeywordExternal,
     TokenKeywordPublic,

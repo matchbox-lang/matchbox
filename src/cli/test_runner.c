@@ -2,299 +2,374 @@
 #include "cli/options.h"
 #include "cli/path.h"
 #include "common/errors.h"
+#include "common/io.h"
 #include "common/memory.h"
-#include "common/util.h"
-#include "config.h"
+#include "compiler/analyzer.h"
+#include "compiler/compiler.h"
+#include "compiler/diagnostics.h"
+#include "compiler/parser.h"
+#include "compiler/scope.h"
+#include "runtime/module_object.h"
+#include "vm/vm.h"
 #include <dirent.h>
-#include <stdbool.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define TEST_DEFAULT_PATH "tests"
+typedef struct TestCase
+{
+    const char* path;
+    char* name;
+    size_t statement_index;
+    int line;
+} TestCase;
 
-typedef struct TestRun {
+typedef struct TestRun
+{
     TestOutput output;
-    const char* executable_path;
+    Vector paths;
+    Vector cases;
     int passed;
     int failed;
-    int found;
+    int validation_failed;
 } TestRun;
 
-#ifdef _WIN32
-#define POPEN _popen
-#define PCLOSE _pclose
-#else
-#define POPEN popen
-#define PCLOSE pclose
-#endif
+static void discover_path(TestRun* run, const char* path);
 
-static void run_directory_tests(TestRun* run, const char* path);
-static int count_directory_tests(const char* path);
-
-static void expected_file_error(const char* path)
-{
-    report_error("Expected .mb file but found %s", path);
-}
-
-static void run_test_error(const char* path)
-{
-    report_error("Could not run %s", path);
-}
-
-static void test_directory_error(const char* path)
-{
-    report_error("Could not read directory %s", path);
-}
-
-static void test_path_error(const char* path)
-{
-    report_error("Could not find path %s", path);
-}
-
-static void tests_not_found_error(const char* path)
-{
-    report_error("Could not find tests in %s", path);
-}
-
-static char* quote_argument(const char* argument)
-{
-    size_t length = strlen(argument);
-    char* quoted = allocate_memory(length + 3);
-
-    quoted[0] = '"';
-    memcpy(quoted + 1, argument, length);
-    quoted[length + 1] = '"';
-    quoted[length + 2] = '\0';
-
-    return quoted;
-}
-
-static void free_test_command(char* command, char* quoted_executable_path, char* quoted_filename)
-{
-    free_memory(command);
-    free_memory(quoted_filename);
-    free_memory(quoted_executable_path);
-}
-
-static char* create_test_command(const char* executable_path, const char* filename,
-    char** quoted_executable_path, char** quoted_filename)
-{
-    size_t command_length;
-    char* command;
-
-    *quoted_executable_path = quote_argument(executable_path);
-    *quoted_filename = quote_argument(filename);
-    command_length = strlen(*quoted_executable_path) + strlen(*quoted_filename) + 9;
-    command = allocate_memory(command_length + 1);
-
-    snprintf(command, command_length + 1, "\"%s %s 2>&1\"", *quoted_executable_path, *quoted_filename);
-
-    return command;
-}
-
-static void discard_process_output(FILE* stream)
-{
-    char buffer[256];
-
-    while (fgets(buffer, sizeof(buffer), stream) != NULL) {
-        continue;
-    }
-}
-
-static bool run_test_command(const char* command, const char* filename, bool expects_failure)
-{
-    FILE* pipe = POPEN(command, "r");
-    int status;
-
-    if (!pipe) {
-        run_test_error(filename);
-
-        return false;
-    }
-
-    discard_process_output(pipe);
-    status = PCLOSE(pipe);
-
-    return expects_failure ? status != 0 : status == 0;
-}
-
-static bool should_print_test_result(TestOutput output, bool passed_test)
+static bool should_print_result(TestOutput output, bool passed)
 {
     if (output == TestOutputAll) {
         return true;
     }
 
-    return (output == TestOutputPassed) == passed_test;
+    return (output == TestOutputPassed) == passed;
 }
 
-static void print_test_result(TestOutput output, bool passed_test, const char* filename)
+static void print_test_location(FILE* stream, const TestCase* test)
 {
-    if (!should_print_test_result(output, passed_test)) {
+    fprintf(stream, "%s", test->path);
+
+    if (test->line > 0) {
+        fprintf(stream, ":%d", test->line);
+    }
+
+    if (test->name) {
+        fprintf(stream, " %s", test->name);
+    }
+}
+
+static void print_test_result(const TestRun* run, const TestCase* test, bool passed)
+{
+    if (!should_print_result(run->output, passed)) {
         return;
     }
 
-    if (passed_test) {
-        printf("PASS %s\n", filename);
+    const char* result = "FAIL";
+
+    if (passed) {
+        result = "PASS";
+    }
+
+    printf("%s ", result);
+    print_test_location(stdout, test);
+    printf("\n");
+}
+
+static void report_filtered_test_failure(const TestRun* run, const TestCase* test, bool passed)
+{
+    if (passed || run->output != TestOutputPassed) {
+        return;
+    }
+
+    fputs("Error: Test failed at ", stderr);
+    print_test_location(stderr, test);
+    fputc('\n', stderr);
+}
+
+static void add_test_case(TestRun* run, const char* path, ASTNode* ast, size_t index)
+{
+    TestCase* test = allocate_zeroed_memory(1, sizeof(TestCase));
+
+    test->path = path;
+    test->statement_index = index;
+
+    Token name = ast->function_definition.test_name;
+
+    test->line = ast->function_definition.token.line;
+
+    if (name.length > 0) {
+        test->name = allocate_memory(name.length + 1);
+
+        memcpy(test->name, name.chars, name.length);
+
+        test->name[name.length] = '\0';
+    }
+
+    push_vector_item(&run->cases, test);
+}
+
+static void collect_test_case(TestRun* run, const char* path, ASTNode* ast, size_t index)
+{
+    bool test = ast->type == ASTFunctionDefinition && ast->function_definition.is_test;
+
+    if (!test) {
+        return;
+    }
+
+    add_test_case(run, path, ast, index);
+}
+
+static void collect_test_cases(TestRun* run, const char* path, Vector* nodes)
+{
+    for (size_t i = 0; i < nodes->count; i++) {
+        ASTNode* ast = nodes->data[i];
+
+        collect_test_case(run, path, ast, i);
+    }
+}
+
+static char* read_test_source(const char* path)
+{
+    char* source = get_file_contents(path);
+
+    if (!source) {
+        const char* detail = strerror(errno);
+
+        fatal_error("Could not read file %s: %s", path, detail);
+    }
+
+    return source;
+}
+
+static void discover_source_tests(TestRun* run, const char* path, ErrorContext* context)
+{
+    char* source = read_test_source(path);
+
+    if (!source_has_test_keyword(source)) {
+        return;
+    }
+
+    Scope* scope = create_scope(NULL);
+    ASTNode* ast = create_compound_node(scope);
+    Parser parser;
+    Analyzer analyzer;
+
+    init_parser(&parser, ast);
+    init_analyzer(&analyzer, ast);
+
+    if (!parse(&parser, source)) {
+        unexpected_end_of_input_error(parser.current_token);
+    }
+
+    analyze(&analyzer, 0);
+    use_memory_group(context->previous_memory);
+    collect_test_cases(run, path, &ast->compound.statements);
+}
+
+static bool discover_file_with_context(TestRun* run, const char* path, MemoryGroup* memory)
+{
+    ErrorContext context;
+
+    begin_error_context(&context, memory);
+
+    if (setjmp(context.jump) != 0) {
+        end_error_context(&context);
+
+        return false;
+    }
+
+    discover_source_tests(run, path, &context);
+    end_error_context(&context);
+
+    return true;
+}
+
+static void discover_file(TestRun* run, const char* path)
+{
+    if (path_has_extension(path, ".fail.mb")) {
+        return;
+    }
+
+    MemoryGroup memory = {0};
+    bool valid = discover_file_with_context(run, path, &memory);
+
+    free_memory_group(&memory);
+
+    if (!valid) {
+        run->validation_failed++;
+
+        report_error("Validation failed for %s", path);
+    }
+}
+
+static void discover_directory_entry(TestRun* run, const char* path, const char* name)
+{
+    if (path_is_current_or_parent_directory(name)) {
+        return;
+    }
+
+    char* child = join_path(path, name);
+
+    discover_path(run, child);
+    free_path(child);
+}
+
+static void discover_directory(TestRun* run, const char* path)
+{
+    DIR* directory = opendir(path);
+    if (!directory) {
+        run->validation_failed++;
+
+        report_error("Could not read directory %s", path);
 
         return;
     }
 
-    printf("FAIL %s\n", filename);
+    struct dirent* entry;
+
+    errno = 0;
+
+    while ((entry = readdir(directory))) {
+        discover_directory_entry(run, path, entry->d_name);
+
+        errno = 0;
+    }
+
+    int read_error = errno;
+
+    closedir(directory);
+
+    if (read_error != 0) {
+        run->validation_failed++;
+
+        report_error("Could not read directory %s", path);
+    }
 }
 
-static bool run_test_file(const char* executable_path, const char* filename, TestOutput output)
+static void discover_path(TestRun* run, const char* path)
 {
-    char* quoted_executable_path;
-    char* quoted_filename;
-    char* command = create_test_command(executable_path, filename, &quoted_executable_path, &quoted_filename);
-    bool expects_failure = path_has_extension(filename, ".fail.mb");
-    bool passed_test = run_test_command(command, filename, expects_failure);
+    if (path_is_directory(path)) {
+        discover_directory(run, path);
 
-    free_test_command(command, quoted_executable_path, quoted_filename);
-    print_test_result(output, passed_test, filename);
+        return;
+    }
 
-    return passed_test;
+    if (!path_has_extension(path, ".mb")) {
+        return;
+    }
+
+    size_t length = strlen(path);
+    char* copy = allocate_memory(length + 1);
+
+    memcpy(copy, path, length + 1);
+    push_vector_item(&run->paths, copy);
 }
 
-static void count_test_result(TestRun* run, bool passed_test)
+static int compare_paths(const void* left, const void* right)
 {
-    if (passed_test) {
+    const char* left_path = *(const char* const*)left;
+    const char* right_path = *(const char* const*)right;
+
+    return strcmp(left_path, right_path);
+}
+
+static bool run_test_block(const TestCase* test)
+{
+    char* source = read_test_source(test->path);
+    ModuleObject* module = create_module_object();
+    Compiler compiler;
+    VM vm;
+
+    init_compiler(&compiler, module);
+
+    if (!compile_test(&compiler, source, test->statement_index)) {
+        unexpected_end_of_input_error(compiler.parser.current_token);
+    }
+
+    init_vm(&vm, module);
+
+    int status = interpret(&vm);
+
+    return status == EXIT_SUCCESS;
+}
+
+static bool run_block_with_context(const TestCase* test, MemoryGroup* memory)
+{
+    ErrorContext context;
+    
+    begin_error_context(&context, memory);
+
+    if (setjmp(context.jump) != 0) {
+        end_error_context(&context);
+
+        return false;
+    }
+
+    bool passed = run_test_block(test);
+
+    end_error_context(&context);
+
+    return passed;
+}
+
+static bool run_isolated_block(const TestCase* test)
+{
+    MemoryGroup memory = {0};
+    bool passed = run_block_with_context(test, &memory);
+
+    free_memory_group(&memory);
+
+    return passed;
+}
+
+static void run_test_case(TestRun* run, const TestCase* test)
+{
+    fflush(stdout);
+
+    bool passed = run_isolated_block(test);
+
+    report_filtered_test_failure(run, test, passed);
+    print_test_result(run, test, passed);
+
+    if (passed) {
         run->passed++;
-        
+
         return;
     }
 
     run->failed++;
 }
 
-static void run_test_file_path(TestRun* run, const char* path)
+static void free_test_run(TestRun* run)
 {
-    bool passed_test;
+    for (size_t i = 0; i < run->cases.count; i++) {
+        TestCase* test = run->cases.data[i];
 
-    if (!path_has_extension(path, ".mb")) {
-        return;
+        free_memory(test->name);
+        free_memory(test);
     }
 
-    run->found++;
-    passed_test = run_test_file(run->executable_path, path, run->output);
-    count_test_result(run, passed_test);
-}
+    for (size_t i = 0; i < run->paths.count; i++) {
+        char* path = run->paths.data[i];
 
-static char* get_directory_entry_path(const char* path, const char* name)
-{
-    if (path_is_current_or_parent_directory(name)) {
-        return NULL;
+        free_memory(path);
     }
 
-    return join_path(path, name);
-}
-
-static int count_directory_entry_tests(const char* path, const char* name)
-{
-    char* child = get_directory_entry_path(path, name);
-    int count;
-
-    if (!child) {
-        return 0;
-    }
-
-    if (!path_is_directory(child)) {
-        count = path_has_extension(child, ".mb") ? 1 : 0;
-        free_path(child);
-
-        return count;
-    }
-
-    count = count_directory_tests(child);
-    free_path(child);
-
-    return count;
-}
-
-static int count_directory_entries(DIR* directory, const char* path)
-{
-    struct dirent* entry;
-    int count = 0;
-
-    while ((entry = readdir(directory))) {
-        int entry_count = count_directory_entry_tests(path, entry->d_name);
-
-        if (entry_count < 0) {
-            return -1;
-        }
-
-        count += entry_count;
-    }
-
-    return count;
-}
-
-static int count_directory_tests(const char* path)
-{
-    DIR* directory = opendir(path);
-    int count;
-
-    if (!directory) {
-        test_directory_error(path);
-
-        return -1;
-    }
-
-    count = count_directory_entries(directory, path);
-    closedir(directory);
-
-    return count;
-}
-
-static void run_directory_entry(TestRun* run, const char* path, const char* name)
-{
-    char* child = get_directory_entry_path(path, name);
-
-    if (!child) {
-        return;
-    }
-
-    if (path_is_directory(child)) {
-        run_directory_tests(run, child);
-        free_path(child);
-
-        return;
-    }
-
-    run_test_file_path(run, child);
-    free_path(child);
-}
-
-static void run_directory_tests(TestRun* run, const char* path)
-{
-    DIR* directory = opendir(path);
-    struct dirent* entry;
-
-    if (!directory) {
-        test_directory_error(path);
-        run->failed++;
-
-        return;
-    }
-
-    while ((entry = readdir(directory))) {
-        run_directory_entry(run, path, entry->d_name);
-    }
-
-    closedir(directory);
+    free_vector(&run->cases);
+    free_vector(&run->paths);
 }
 
 static bool validate_test_path(const char* path)
 {
     if (!path_exists(path)) {
-        test_path_error(path);
+        report_error("Could not find path %s", path);
 
         return false;
     }
 
     if (!path_is_directory(path) && !path_has_extension(path, ".mb")) {
-        expected_file_error(path);
+        report_error("Expected .mb file but found %s", path);
 
         return false;
     }
@@ -302,92 +377,85 @@ static bool validate_test_path(const char* path)
     return true;
 }
 
-static void run_test_path(TestRun* run, const char* path)
+static const char* get_test_path(const Options* options)
 {
-    if (path_is_directory(path)) {
-        run_directory_tests(run, path);
-
-        return;
+    if (options->test_path) {
+        return options->test_path;
     }
 
-    run_test_file_path(run, path);
+    return ".";
 }
 
-static const char* configure_test_run(TestRun* run, const Options* options)
+static void init_test_run(TestRun* run, TestOutput output)
 {
-    if (options->executable_path) {
-        run->executable_path = options->executable_path;
-    }
+    *run = (TestRun){.output = output};
 
-    if (!options->test_path) {
-        return TEST_DEFAULT_PATH;
-    }
-
-    return options->test_path;
+    init_vector(&run->paths);
+    init_vector(&run->cases);
 }
 
-static int count_tests(const char* path)
+static void discover_tests(TestRun* run, const char* path)
 {
-    if (path_is_directory(path)) {
-        return count_directory_tests(path);
-    }
+    discover_path(run, path);
+    qsort(run->paths.data, run->paths.count, sizeof(void*), compare_paths);
 
-    return 1;
+    for (size_t i = 0; i < run->paths.count; i++) {
+        const char* filename = run->paths.data[i];
+
+        discover_file(run, filename);
+    }
 }
 
-static bool validate_test_count(const char* path, int test_count)
+static void run_test_cases(TestRun* run)
 {
-    if (test_count < 0) {
-        return false;
-    }
-
-    if (test_count > 0) {
-        return true;
-    }
-
-    tests_not_found_error(path);
-
-    return false;
-}
-
-static void print_test_start(int test_count)
-{
-    printf("Running %d %s...\n", test_count, test_count == 1 ? "test" : "tests");
+    printf("Running %lu test blocks...\n", (unsigned long)run->cases.count);
     fflush(stdout);
+
+    for (size_t i = 0; i < run->cases.count; i++) {
+        TestCase* test = run->cases.data[i];
+
+        run_test_case(run, test);
+    }
 }
 
-static void print_test_summary(const TestRun* run)
+static int report_test_run(const TestRun* run, const char* path)
 {
-    printf("%d %s passed, ", run->passed, run->passed == 1 ? "test" : "tests");
-    printf("%d %s failed.\n", run->failed, run->failed == 1 ? "test" : "tests");
+    printf("%d passed; %d failed.\n", run->passed, run->failed);
+
+    if (run->validation_failed > 0) {
+        report_error("%d paths failed validation", run->validation_failed);
+    }
+
+    if (run->cases.count == 0) {
+        report_error("No test found in %s", path);
+
+        return EXIT_FAILURE;
+    }
+
+    if (run->failed > 0 || run->validation_failed > 0) {
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 int run_tests(const Options* options)
 {
-    TestRun run = {options->test_output, PROGRAM_COMMAND, 0, 0, 0};
-    const char* path = configure_test_run(&run, options);
-    int test_count;
+    const char* path = get_test_path(options);
 
     if (!validate_test_path(path)) {
         return EXIT_FAILURE;
     }
 
-    test_count = count_tests(path);
+    TestRun run;
 
-    if (!validate_test_count(path, test_count)) {
-        return EXIT_FAILURE;
-    }
+    init_test_run(&run, options->test_output);
+    discover_tests(&run, path);
+    run_test_cases(&run);
 
-    print_test_start(test_count);
-    run_test_path(&run, path);
+    int status = report_test_run(&run, path);
 
-    if (run.found == 0) {
-        tests_not_found_error(path);
+    free_test_run(&run);
 
-        return EXIT_FAILURE;
-    }
-
-    print_test_summary(&run);
-
-    return run.failed == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return status;
 }

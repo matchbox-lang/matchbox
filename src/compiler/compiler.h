@@ -21,6 +21,7 @@ typedef struct Compiler
     Parser parser;
     Analyzer analyzer;
     Vector function_references;
+    Vector omitted_statements;
     ModuleObject* module;
     FunctionObject* function;
     ASTNode* ast;
@@ -29,12 +30,15 @@ typedef struct Compiler
     int register_count;
     int frame_base_count;
     int local_position_offset;
-    bool repl;
+    bool repl_mode;
+    bool test_mode;
+    size_t test_index;
 } Compiler;
 
 void init_compiler(Compiler* compiler, ModuleObject* module);
 void free_compiler(Compiler* compiler);
 bool compile(Compiler* compiler, const char* source);
+bool compile_test(Compiler* compiler, const char* source, size_t test_index);
 CompileResult compile_repl(Compiler* compiler, const char* source);
 
 #endif

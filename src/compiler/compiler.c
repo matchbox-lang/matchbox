@@ -2543,7 +2543,11 @@ static Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
 
 static void compile_function_definition(Compiler* compiler, ASTNode* ast)
 {
-    if (!compiler->repl && !ast->function_definition.call_count) {
+    if (ast->function_definition.is_test && !compiler->test_mode) {
+        return;
+    }
+
+    if (!compiler->repl_mode && !ast->function_definition.call_count) {
         return;
     }
 
@@ -2668,7 +2672,7 @@ static void compile_variable_definition(Compiler* compiler, ASTNode* ast)
     size_t slots = get_node_slot_count(ast);
     bool unused = ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
     bool constant_value = ast->variable_definition.constant && !ast->variable_definition.address_taken;
-    bool preserve = compiler->repl && is_compiling_top_level(compiler);
+    bool preserve = compiler->repl_mode && is_compiling_top_level(compiler);
 
     if (compile_unused_variable_definition(compiler, ast, slots, unused || constant_value, preserve)) {
         return;
@@ -3717,6 +3721,7 @@ static void compile_repl_statements(Compiler* compiler, Vector* nodes)
 void init_compiler(Compiler* compiler, ModuleObject* module)
 {
     init_vector(&compiler->function_references);
+    init_vector(&compiler->omitted_statements);
 
     for (size_t i = 0; i < count_vector(&module->functions); i++) {
         push_vector_item(&compiler->function_references, NULL);
@@ -3736,12 +3741,22 @@ void init_compiler(Compiler* compiler, ModuleObject* module)
     compiler->register_count = 0;
     compiler->frame_base_count = 0;
     compiler->local_position_offset = 0;
-    compiler->repl = false;
+    compiler->repl_mode = false;
+    compiler->test_mode = false;
+    compiler->test_index = 0;
 }
 
 void free_compiler(Compiler* compiler)
 {
     free_vector(&compiler->function_references);
+
+    for (size_t i = 0; i < compiler->omitted_statements.count; i++) {
+        ASTNode* ast = compiler->omitted_statements.data[i];
+
+        free_ast_node(ast);
+    }
+
+    free_vector(&compiler->omitted_statements);
     free_ast_node(compiler->ast);
 }
 
@@ -3787,7 +3802,7 @@ static void discard_compiled_functions(Compiler* compiler)
 
 static void eliminate_compile_time_functions(Compiler* compiler)
 {
-    if (compiler->repl) {
+    if (compiler->repl_mode) {
         return;
     }
 
@@ -3801,13 +3816,68 @@ static void eliminate_compile_time_functions(Compiler* compiler)
     compile_statement_bytecode(compiler, compile_top_level_statements);
 }
 
+static void retain_test_statement(Compiler* compiler, ASTNode* ast, size_t* retained)
+{
+    bool declaration = ast->type == ASTFunctionDefinition || ast->type == ASTVariableDefinition;
+
+    if (declaration) {
+        compiler->ast->compound.statements.data[(*retained)++] = ast;
+
+        return;
+    }
+
+    push_vector_item(&compiler->omitted_statements, ast);
+}
+
+static ASTNode* get_selected_test(Compiler* compiler)
+{
+    Vector* nodes = &compiler->ast->compound.statements;
+
+    if (compiler->test_index >= nodes->count) {
+        fatal_error("Test block index is out of range");
+    }
+
+    ASTNode* ast = nodes->data[compiler->test_index];
+
+    if (ast->type != ASTFunctionDefinition || !ast->function_definition.is_test) {
+        fatal_error("Selected statement is not a test block");
+    }
+
+    return ast;
+}
+
+static void select_test_statements(Compiler* compiler)
+{
+    Vector* nodes = &compiler->ast->compound.statements;
+    ASTNode* test = get_selected_test(compiler);
+    size_t retained = 0;
+    size_t count = nodes->count;
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* ast = nodes->data[i];
+
+        retain_test_statement(compiler, ast, &retained);
+    }
+
+    nodes->count = retained;
+
+    ASTNode* call = create_function_call_node(test->function_definition.token);
+    StringObject* id = test->function_definition.id;
+
+    call->function_call.id = copy_string_object(id->chars, id->length);
+    call->function_call.symbol = test;
+    call->function_call.scope = compiler->ast->compound.scope;
+
+    push_vector_item(nodes, call);
+}
+
 static bool compile_source(Compiler* compiler, const char* source, CompileStatements compile_statements)
 {
     if (!compiler->module) {
         return false;
     }
 
-    compiler->repl = compile_statements == compile_repl_statements;
+    compiler->repl_mode = compile_statements == compile_repl_statements;
     size_t start = count_vector(&compiler->ast->compound.statements);
 
     if (!parse(&compiler->parser, source)) {
@@ -3815,6 +3885,11 @@ static bool compile_source(Compiler* compiler, const char* source, CompileStatem
     }
 
     analyze(&compiler->analyzer, start);
+
+    if (compiler->test_mode) {
+        select_test_statements(compiler);
+    }
+
     optimize_ast(compiler->ast, start);
 
     if (compile_statements == compile_top_level_statements) {
@@ -3830,6 +3905,14 @@ static bool compile_source(Compiler* compiler, const char* source, CompileStatem
 
 bool compile(Compiler* compiler, const char* source)
 {
+    return compile_source(compiler, source, compile_top_level_statements);
+}
+
+bool compile_test(Compiler* compiler, const char* source, size_t test_index)
+{
+    compiler->test_mode = true;
+    compiler->test_index = test_index;
+
     return compile_source(compiler, source, compile_top_level_statements);
 }
 

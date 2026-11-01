@@ -50,13 +50,21 @@ static bool parse_option(Options* options, const char* arg)
         return true;
     }
 
-    if (options->mode == ProgramTest && strcmp(arg, "-a") == 0) {
+    bool test_command = options->mode == ProgramTest;
+
+    if (test_command && strcmp(arg, "--program") == 0) {
+        options->programs = true;
+
+        return true;
+    }
+
+    if (test_command && strcmp(arg, "-a") == 0) {
         options->test_output = TestOutputAll;
 
         return true;
     }
 
-    if (options->mode == ProgramTest && strcmp(arg, "-p") == 0) {
+    if (test_command && strcmp(arg, "-p") == 0) {
         options->test_output = TestOutputPassed;
 
         return true;
@@ -182,6 +190,7 @@ bool parse_command_line(Options* options, int argc, char* const argv[])
 
         return false;
     }
+
 
     if (options->disassemble && !options->filename) {
         disassemble_requires_file_error();

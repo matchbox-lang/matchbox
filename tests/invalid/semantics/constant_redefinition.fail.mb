@@ -1,2 +1,2 @@
-const value = 10
-let value = 20
+const VALUE = 10
+let VALUE = 20

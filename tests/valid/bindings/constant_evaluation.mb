@@ -1,18 +1,18 @@
-const base = 10
+const BASE = 10
 
 func square(x) {
     return x * x
 }
 
-const constant_result = square(base)
+const CONSTANT_RESULT = square(BASE)
 let result = const square(10)
 
-assert(constant_result == 100)
+assert(CONSTANT_RESULT == 100)
 assert(result == 100)
 
 func local(x) {
-    const offset = square(2)
-    return x + offset
+    const OFFSET = square(2)
+    return x + OFFSET
 }
 
 let first = local(3)

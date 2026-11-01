@@ -1,2 +1,2 @@
-const value = 10
-let reference = ^value
+const VALUE = 10
+let reference = ^VALUE

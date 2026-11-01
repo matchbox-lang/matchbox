@@ -1,6 +1,6 @@
-const base = 4
+const BASE = 4
 
-func computed(n = base * 2 + 1) = n
+func computed(n = BASE * 2 + 1) = n
 func countdown(n = 3) -> i32 = n <= 0 ? 0 : countdown(n - 1) + 1
 func text(value: string = "de" + "fault") = value
 
@@ -13,9 +13,9 @@ assert(recursive_default == 3)
 print(text_default)
 
 func outer() {
-    const local = 6
+    const LOCAL = 6
 
-    func inner(n = local) = n
+    func inner(n = LOCAL) = n
 
     return inner()
 }

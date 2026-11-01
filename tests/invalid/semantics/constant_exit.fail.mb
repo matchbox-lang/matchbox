@@ -3,4 +3,4 @@ func stop() {
     return 1
 }
 
-const result = stop()
+const RESULT = stop()

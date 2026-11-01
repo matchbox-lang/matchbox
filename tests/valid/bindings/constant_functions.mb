@@ -18,11 +18,11 @@ func sum(n) {
     return result
 }
 
-const factorial_result = factorial(5)
-const sum_result = sum(5)
+const FACTORIAL_RESULT = factorial(5)
+const SUM_RESULT = sum(5)
 
-assert(factorial_result == 120)
-assert(sum_result == 10)
+assert(FACTORIAL_RESULT == 120)
+assert(SUM_RESULT == 10)
 
 let runtime_result = factorial(6)
 

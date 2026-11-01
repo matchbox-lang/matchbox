@@ -2,4 +2,4 @@ func divide(x) {
     return 1 / x
 }
 
-const result = divide(0)
+const RESULT = divide(0)

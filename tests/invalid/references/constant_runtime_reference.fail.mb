@@ -1,8 +1,8 @@
-const base = 10
+const BASE = 10
 
 func read_value() {
-    let reference = &base
+    let reference = &BASE
     return reference + 1
 }
 
-const result = read_value()
+const RESULT = read_value()

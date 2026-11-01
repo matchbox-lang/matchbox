@@ -5,8 +5,8 @@ func evaluate() {
     return 42
 }
 
-const value = evaluate()
+const VALUE = evaluate()
 
-print(value)
-print(value)
-assert(value == 42)
+print(VALUE)
+print(VALUE)
+assert(VALUE == 42)

@@ -8,4 +8,4 @@ func indirect() {
     return read_value()
 }
 
-const result = indirect()
+const RESULT = indirect()

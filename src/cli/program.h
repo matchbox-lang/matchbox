@@ -6,15 +6,15 @@
 
 typedef enum ProgramMode
 {
-    PROGRAM_RUN,
-    PROGRAM_CHECK,
-    PROGRAM_TEST
+    ProgramRun,
+    ProgramCheck,
+    ProgramTest
 } ProgramMode;
 
 typedef struct Options Options;
 
-void printUsage(FILE* stream);
-void printVersion();
-int runProgram(const Options* options);
+void print_usage(FILE* stream);
+void print_version();
+int run_program(const Options* options);
 
 #endif

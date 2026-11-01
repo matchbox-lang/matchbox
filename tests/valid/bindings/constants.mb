@@ -1,6 +1,6 @@
-const PI = 3.1415926535
+const pi = 3.1415926535
 
-print(PI)
+print(pi)
 
 func square(x) {
     return x * x

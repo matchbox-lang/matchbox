@@ -22,13 +22,13 @@ typedef struct Table
     size_t count;
 } Table;
 
-TableItem* createTableItem(StringView key, void* value, TableItem* next);
-void freeTableItem(TableItem* item);
-void initTable(Table* table, size_t capacity);
-void freeTable(Table* table);
-size_t countTable(const Table* table);
-void* getTableAt(const Table* table, StringView key);
-bool setTableAt(Table* table, StringView key, void* value);
-bool deleteTableAt(Table* table, StringView key);
+TableItem* create_table_item(StringView key, void* value, TableItem* next);
+void free_table_item(TableItem* item);
+void init_table(Table* table, size_t capacity);
+void free_table(Table* table);
+size_t count_table(const Table* table);
+void* get_table_at(const Table* table, StringView key);
+bool set_table_at(Table* table, StringView key, void* value);
+bool delete_table_at(Table* table, StringView key);
 
 #endif

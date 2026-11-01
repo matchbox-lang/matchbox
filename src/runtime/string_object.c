@@ -9,14 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-StringObject* createStringObject(const char* chars, size_t length, size_t hash)
+StringObject* create_string_object(const char* chars, size_t length, size_t hash)
 {
     if (length > SIZE_MAX - sizeof(StringObject) - 1) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     size_t size = sizeof(StringObject) + length + 1;
-    StringObject* string = (StringObject*)allocateObject(size, OBJ_STRING);
+    StringObject* string = (StringObject*)allocate_object(size, ObjString);
 
     string->length = length;
     string->hash = hash;
@@ -30,14 +30,14 @@ StringObject* createStringObject(const char* chars, size_t length, size_t hash)
     return string;
 }
 
-StringObject* copyStringObject(const char* chars, size_t length)
+StringObject* copy_string_object(const char* chars, size_t length)
 {
-    size_t hash = hashStringView(chars, length);
+    size_t hash = hash_string_view(chars, length);
 
-    return createStringObject(chars, length, hash);
+    return create_string_object(chars, length, hash);
 }
 
-StringView getStringView(const StringObject* string)
+StringView get_string_view(const StringObject* string)
 {
     StringView view;
     view.chars = string->chars;
@@ -47,20 +47,20 @@ StringView getStringView(const StringObject* string)
     return view;
 }
 
-void freeStringObject(StringObject* string)
+void free_string_object(StringObject* string)
 {
-    freeMemory(string);
+    free_memory(string);
 }
 
-bool compareStringObject(const StringObject* a, const StringObject* b)
+bool compare_string_object(const StringObject* a, const StringObject* b)
 {
-    StringView left = getStringView(a);
-    StringView right = getStringView(b);
+    StringView left = get_string_view(a);
+    StringView right = get_string_view(b);
 
-    return compareStringView(left, right);
+    return compare_string_view(left, right);
 }
 
-void printStringObject(const StringObject* string)
+void print_string_object(const StringObject* string)
 {
     fwrite(string->chars, 1, string->length, stdout);
 }

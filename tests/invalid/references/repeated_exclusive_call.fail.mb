@@ -1,0 +1,8 @@
+func take_exclusive(a: ^i32, b: ^i32) {
+    print(a)
+    print(b)
+}
+
+var value = 10
+
+take_exclusive(value, value)

@@ -1,0 +1,7 @@
+func take_shared(n: &i32) {
+    print(n)
+}
+
+var value = 10
+
+take_shared(&(value + 1))

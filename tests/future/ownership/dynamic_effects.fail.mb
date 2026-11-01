@@ -1,0 +1,30 @@
+var count = 0
+
+func read_count() {
+    print(count)
+}
+
+func write_count() {
+    count += 1
+}
+
+protocol CounterOperation {
+    func run()
+}
+
+class IncrementOperation {
+    func run() {
+        write_count()
+    }
+}
+
+func invoke_operation(operation: &CounterOperation) {
+    operation.run()
+}
+
+func dynamic_effect(operation: &CounterOperation) {
+    let task = spawn invoke_operation(operation)
+
+    await task
+    read_count()
+}

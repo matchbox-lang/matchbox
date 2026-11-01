@@ -6,21 +6,21 @@
 
 typedef enum TestOutput
 {
-    TEST_OUTPUT_ALL,
-    TEST_OUTPUT_FAILED,
-    TEST_OUTPUT_PASSED
+    TestOutputAll,
+    TestOutputFailed,
+    TestOutputPassed
 } TestOutput;
 
 typedef struct Options
 {
     ProgramMode mode;
-    TestOutput testOutput;
+    TestOutput test_output;
     bool disassemble;
-    const char* executablePath;
+    const char* executable_path;
     const char* filename;
-    const char* testPath;
+    const char* test_path;
 } Options;
 
-void initOptions(Options* options);
+void init_options(Options* options);
 
 #endif

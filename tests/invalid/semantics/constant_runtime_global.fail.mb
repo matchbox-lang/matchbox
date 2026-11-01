@@ -1,0 +1,11 @@
+let value = 10
+
+func read_value() {
+    return -(value + 1)
+}
+
+func indirect() {
+    return read_value()
+}
+
+const result = indirect()

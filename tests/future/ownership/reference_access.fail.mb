@@ -1,0 +1,47 @@
+func read_list(values: &List<i32>) {
+    print(values.count())
+}
+
+func append_list(values: ^List<i32>) {
+    values.add(4)
+}
+
+func return_reference(values: &List<i32>) -> &List<i32> {
+    return values
+}
+
+func shared_reference() {
+    var values = List(1, 2, 3)
+    let reference = &values
+
+    print(reference.count())
+    values.add(4)
+}
+
+func exclusive_reference() {
+    let values = List(1, 2, 3)
+
+    append_list(^values)
+    print(values.count())
+}
+
+func shared_task_reference() {
+    let values = List(1, 2, 3)
+    let task = spawn read_list(&values)
+
+    print(values.count())
+    await task
+}
+
+func exclusive_task_reference() {
+    let values = List(1, 2, 3)
+    let task = spawn append_list(^values)
+    
+    await task
+    values.add(5)
+}
+
+shared_reference()
+exclusive_reference()
+shared_task_reference()
+exclusive_task_reference()

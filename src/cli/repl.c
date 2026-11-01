@@ -11,25 +11,25 @@
 
 typedef enum SubmissionResult
 {
-    SUBMISSION_RESET = -1,
-    SUBMISSION_INCOMPLETE,
-    SUBMISSION_COMPLETE,
-    SUBMISSION_EXIT
+    SubmissionReset = -1,
+    SubmissionIncomplete,
+    SubmissionComplete,
+    SubmissionExit
 } SubmissionResult;
 
-static void unexpectedEndOfInputError(Token token)
+static void unexpected_end_of_input_error(Token token)
 {
-    reportError("Unexpected end of input on line %d:%d", token.line, token.column);
+    report_error("Unexpected end of input on line %d:%d", token.line, token.column);
 }
 
-static bool appendLine(char** source, size_t* size, size_t* length)
+static bool append_line(char** source, size_t* size, size_t* length)
 {
     char* line = NULL;
-    size_t lineSize = 0;
-    int count = readStreamLine(&line, &lineSize, stdin);
+    size_t line_size = 0;
+    int count = read_stream_line(&line, &line_size, stdin);
 
     if (count < 0) {
-        freeMemory(line);
+        free_memory(line);
 
         return false;
     }
@@ -37,66 +37,66 @@ static bool appendLine(char** source, size_t* size, size_t* length)
     size_t required = *length + (size_t)count + 1;
 
     if (required > *size) {
-        *source = reallocateMemory(*source, required);
+        *source = reallocate_memory(*source, required);
         *size = required;
     }
 
     memcpy(*source + *length, line, (size_t)count + 1);
-    freeMemory(line);
+    free_memory(line);
 
     *length += (size_t)count;
 
     return true;
 }
 
-static SubmissionResult processSource(Compiler* compiler, VM* vm, const char* source, MemoryGroup* memory)
+static SubmissionResult process_source(Compiler* compiler, VM* vm, const char* source, MemoryGroup* memory)
 {
     ErrorContext context;
 
-    beginErrorContext(&context, memory);
+    begin_error_context(&context, memory);
 
     if (setjmp(context.jump) != 0) {
-        endErrorContext(&context);
+        end_error_context(&context);
 
-        return SUBMISSION_RESET;
+        return SubmissionReset;
     }
 
-    CompileResult result = compileRepl(compiler, source);
+    CompileResult result = compile_repl(compiler, source);
 
-    if (result == COMPILE_INCOMPLETE) {
-        endErrorContext(&context);
+    if (result == CompileIncomplete) {
+        end_error_context(&context);
 
-        return SUBMISSION_INCOMPLETE;
+        return SubmissionIncomplete;
     }
 
-    if (result == COMPILE_ERROR) {
-        endErrorContext(&context);
+    if (result == CompileError) {
+        end_error_context(&context);
 
-        return SUBMISSION_COMPLETE;
+        return SubmissionComplete;
     }
 
-    resizeValueArray(&vm->globals, vm->module->globalCount);
+    resize_value_array(&vm->globals, vm->module->global_count);
 
     vm->fp = vm->stack;
     vm->ip = NULL;
 
     interpret(vm);
-    endErrorContext(&context);
+    end_error_context(&context);
 
-    if (vm->exitRequested) {
-        return SUBMISSION_EXIT;
+    if (vm->exit_requested) {
+        return SubmissionExit;
     }
 
-    return SUBMISSION_COMPLETE;
+    return SubmissionComplete;
 }
 
-static void finishSubmission(SubmissionResult result, char** source, size_t* size, size_t* length)
+static void finish_submission(SubmissionResult result, char** source, size_t* size, size_t* length)
 {
-    if (result == SUBMISSION_RESET || result == SUBMISSION_EXIT) {
+    if (result == SubmissionReset || result == SubmissionExit) {
         return;
     }
 
-    if (result == SUBMISSION_COMPLETE) {
+    if (result == SubmissionComplete) {
         *source = NULL;
         *size = 0;
         *length = 0;
@@ -111,67 +111,67 @@ static void finishSubmission(SubmissionResult result, char** source, size_t* siz
     fflush(stdout);
 }
 
-static SubmissionResult finishInput(Compiler* compiler, size_t length, SubmissionResult result)
+static SubmissionResult finish_input(Compiler* compiler, size_t length, SubmissionResult result)
 {
-    if (result == SUBMISSION_RESET || result == SUBMISSION_EXIT) {
+    if (result == SubmissionReset || result == SubmissionExit) {
         return result;
     }
 
     printf("\n");
 
     if (length == 0) {
-        return SUBMISSION_COMPLETE;
+        return SubmissionComplete;
     }
 
-    unexpectedEndOfInputError(compiler->parser.currentToken);
+    unexpected_end_of_input_error(compiler->parser.current_token);
 
-    return SUBMISSION_INCOMPLETE;
+    return SubmissionIncomplete;
 }
 
-static SubmissionResult runSession(int* status)
+static SubmissionResult run_session(int* status)
 {
     MemoryGroup memory = {0};
-    MemoryGroup* previous = useMemoryGroup(&memory);
-    ModuleObject* module = createModuleObject();
+    MemoryGroup* previous = use_memory_group(&memory);
+    ModuleObject* module = create_module_object();
     char* source = NULL;
     size_t size = 0;
     size_t length = 0;
-    SubmissionResult result = SUBMISSION_COMPLETE;
+    SubmissionResult result = SubmissionComplete;
     Compiler compiler;
     VM vm;
 
-    initCompiler(&compiler, module);
-    initVM(&vm, module);
-    reserveValueArray(&vm.globals, UINT16_MAX + 1u);
-    finishSubmission(SUBMISSION_INCOMPLETE, &source, &size, &length);
+    init_compiler(&compiler, module);
+    init_vm(&vm, module);
+    reserve_value_array(&vm.globals, UINT16_MAX + 1u);
+    finish_submission(SubmissionIncomplete, &source, &size, &length);
 
-    while (result != SUBMISSION_RESET && result != SUBMISSION_EXIT && appendLine(&source, &size, &length)) {
-        result = processSource(&compiler, &vm, source, &memory);
+    while (result != SubmissionReset && result != SubmissionExit && append_line(&source, &size, &length)) {
+        result = process_source(&compiler, &vm, source, &memory);
 
-        finishSubmission(result, &source, &size, &length);
+        finish_submission(result, &source, &size, &length);
     }
 
-    *status = vm.exitStatus;
-    result = finishInput(&compiler, length, result);
+    *status = vm.exit_status;
+    result = finish_input(&compiler, length, result);
 
-    useMemoryGroup(previous);
-    freeMemoryGroup(&memory);
+    use_memory_group(previous);
+    free_memory_group(&memory);
 
     return result;
 }
 
-int runRepl(void)
+int run_repl(void)
 {
-    SubmissionResult result = SUBMISSION_RESET;
+    SubmissionResult result = SubmissionReset;
     int status = EXIT_SUCCESS;
 
-    while (result == SUBMISSION_RESET) {
-        result = runSession(&status);
+    while (result == SubmissionReset) {
+        result = run_session(&status);
     }
 
-    if (result == SUBMISSION_EXIT) {
+    if (result == SubmissionExit) {
         return status;
     }
 
-    return result == SUBMISSION_COMPLETE ? EXIT_SUCCESS : EXIT_FAILURE;
+    return result == SubmissionComplete ? EXIT_SUCCESS : EXIT_FAILURE;
 }

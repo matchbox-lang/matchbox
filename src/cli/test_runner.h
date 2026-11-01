@@ -3,6 +3,6 @@
 
 typedef struct Options Options;
 
-int runTests(const Options* options);
+int run_tests(const Options* options);
 
 #endif

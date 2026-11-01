@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char* readFileContents(FILE* file)
+static char* read_file_contents(FILE* file)
 {
     if (fseek(file, 0, SEEK_END) != 0) {
         return NULL;
@@ -18,11 +18,11 @@ static char* readFileContents(FILE* file)
     }
 
     size_t size = (size_t)length;
-    char* source = allocateMemory(size + 1);
+    char* source = allocate_memory(size + 1);
     size_t count = fread(source, 1, size, file);
 
     if (count != size || ferror(file)) {
-        freeMemory(source);
+        free_memory(source);
 
         return NULL;
     }
@@ -32,7 +32,7 @@ static char* readFileContents(FILE* file)
     return source;
 }
 
-char* getFileContents(const char* filename)
+char* get_file_contents(const char* filename)
 {
     FILE* file = fopen(filename, "rb");
 
@@ -40,11 +40,11 @@ char* getFileContents(const char* filename)
         return NULL;
     }
 
-    char* source = readFileContents(file);
+    char* source = read_file_contents(file);
     int closed = fclose(file);
 
     if (closed != 0) {
-        freeMemory(source);
+        free_memory(source);
 
         return NULL;
     }
@@ -52,7 +52,7 @@ char* getFileContents(const char* filename)
     return source;
 }
 
-size_t putFileContents(const char* filename, const void* data)
+size_t put_file_contents(const char* filename, const void* data)
 {
     FILE* fp = fopen(filename, "wb");
 
@@ -66,15 +66,15 @@ size_t putFileContents(const char* filename, const void* data)
     return size;
 }
 
-static void growStreamBuffer(char** lineptr, size_t* capacity)
+static void grow_stream_buffer(char** lineptr, size_t* capacity)
 {
-    size_t newCapacity = *capacity * 2;
-    char* resized = reallocateMemory(*lineptr, newCapacity);
+    size_t new_capacity = *capacity * 2;
+    char* resized = reallocate_memory(*lineptr, new_capacity);
     *lineptr = resized;
-    *capacity = newCapacity;
+    *capacity = new_capacity;
 }
 
-int readStreamLine(char **lineptr, size_t *n, FILE *stream)
+int read_stream_line(char **lineptr, size_t *n, FILE *stream)
 {
     if (lineptr == NULL || n == NULL || stream == NULL) {
         return -1;
@@ -85,12 +85,12 @@ int readStreamLine(char **lineptr, size_t *n, FILE *stream)
 
     if (*lineptr == NULL) {
         *n = 256;
-        *lineptr = allocateMemory(*n);
+        *lineptr = allocate_memory(*n);
     }
 
     while ((c = fgetc(stream)) != EOF) {
         if (length + 1 >= *n) {
-            growStreamBuffer(lineptr, n);
+            grow_stream_buffer(lineptr, n);
         }
 
         (*lineptr)[length++] = c;

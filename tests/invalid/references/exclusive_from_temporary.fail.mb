@@ -1,0 +1,7 @@
+func take_exclusive(n: ^i32) {
+    print(n)
+}
+
+var value = 10
+
+take_exclusive(^(value + 1))

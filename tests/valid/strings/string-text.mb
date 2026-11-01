@@ -1,9 +1,0 @@
-let chars = string('H', 'i')
-let stringChar = string("Hell", 'o')
-let charString = string('H', "ello")
-let strings = string("H", "ello")
-
-print(chars)
-print(stringChar)
-print(charString)
-print(strings)

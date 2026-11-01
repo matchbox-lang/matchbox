@@ -11,30 +11,30 @@
 
 typedef enum CompileResult
 {
-    COMPILE_ERROR,
-    COMPILE_INCOMPLETE,
-    COMPILE_SUCCESS
+    CompileError,
+    CompileIncomplete,
+    CompileSuccess
 } CompileResult;
 
 typedef struct Compiler
 {
     Parser parser;
     Analyzer analyzer;
-    Vector functionReferences;
+    Vector function_references;
     ModuleObject* module;
     FunctionObject* function;
     ASTNode* ast;
-    size_t statementIndex;
-    size_t peepholeBarrier;
-    int registerCount;
-    int frameBaseCount;
-    int localPositionOffset;
+    size_t statement_index;
+    size_t peephole_barrier;
+    int register_count;
+    int frame_base_count;
+    int local_position_offset;
     bool repl;
 } Compiler;
 
-void initCompiler(Compiler* compiler, ModuleObject* module);
-void freeCompiler(Compiler* compiler);
+void init_compiler(Compiler* compiler, ModuleObject* module);
+void free_compiler(Compiler* compiler);
 bool compile(Compiler* compiler, const char* source);
-CompileResult compileRepl(Compiler* compiler, const char* source);
+CompileResult compile_repl(Compiler* compiler, const char* source);
 
 #endif

@@ -1,5 +1,0 @@
-var value = 10
-
-func returnValue() -> i32 {
-    return ^value
-}

@@ -18,49 +18,49 @@ let wrapped16: u16 = unsigned16 + 1
 let wrapped32: u32 = unsigned32 + 1
 let wrapped64: u64 = unsigned64 + 1
 
-func preservePositions(first: i64, second: i32, third: u64) -> i32 {
+func preserve_positions(first: i64, second: i32, third: u64) -> i32 {
     return second
 }
 
-func preserveWide(value: u64) -> u64 {
+func preserve_wide(value: u64) -> u64 {
     return value
 }
 
-let returned64 = preserveWide(unsigned64)
-let preserved = preservePositions(signed64, inferred, returned64)
+let returned64 = preserve_wide(unsigned64)
+let preserved = preserve_positions(signed64, inferred, returned64)
 
 print(preserved)
 
-let promotedSum: i32 = sum(signed8, 1)
-let wideSum: u64 = sum(unsigned64, 1)
+let promoted_sum: i32 = sum(signed8, 1)
+let wide_sum: u64 = sum(unsigned64, 1)
 let lowest: i32 = min(signed8, minimum8, 0)
 let highest: u64 = max(unsigned64, 0, 1)
 
-print(promotedSum)
-print(wideSum)
+print(promoted_sum)
+print(wide_sum)
 print(lowest)
 print(highest)
 
-let mixedSum: i64 = sum(signed8, unsigned32, 1)
+let mixed_sum: i64 = sum(signed8, unsigned32, 1)
 
-print(mixedSum)
+print(mixed_sum)
 
-let signedTotal32: i32 = sum(minimum32, -1)
-let signedTotal64: i64 = sum(minimum64, -1)
-let unsignedTotal32: u32 = sum(unsigned32, 0)
-let unsignedTotal64: u64 = sum(unsigned64, 0)
+let signed_total32: i32 = sum(minimum32, -1)
+let signed_total64: i64 = sum(minimum64, -1)
+let unsigned_total32: u32 = sum(unsigned32, 0)
+let unsigned_total64: u64 = sum(unsigned64, 0)
 
-if signedTotal32 != signed32 or signedTotal64 != signed64 {
+if signed_total32 != signed32 or signed_total64 != signed64 {
     exit(1)
 }
 
-if unsignedTotal32 != unsigned32 or unsignedTotal64 != unsigned64 {
+if unsigned_total32 != unsigned32 or unsigned_total64 != unsigned64 {
     exit(1)
 }
 
-let unsignedWrap32: u32 = sum(unsigned32, 1, 1)
-let unsignedWrap64: u64 = sum(unsigned64, 1, 1)
+let unsigned_wrap32: u32 = sum(unsigned32, 1, 1)
+let unsigned_wrap64: u64 = sum(unsigned64, 1, 1)
 
-if unsignedWrap32 != 1 or unsignedWrap64 != 1 {
+if unsigned_wrap32 != 1 or unsigned_wrap64 != 1 {
     exit(1)
 }

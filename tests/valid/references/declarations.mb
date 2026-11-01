@@ -1,23 +1,23 @@
 var value = 10
-var copiedInferType = value
+var copied_infer_type = value
 var copied: i32 = value
-var inferredShared = &value
-var explicitShared: &i32 = &value
-var assignedShared: &i32
+var inferred_shared = &value
+var explicit_shared: &i32 = &value
+var assigned_shared: &i32
 
-assignedShared = &value
+assigned_shared = &value
 
-print(copiedInferType)
+print(copied_infer_type)
 print(copied)
-print(inferredShared)
-print(explicitShared)
-print(assignedShared)
+print(inferred_shared)
+print(explicit_shared)
+print(assigned_shared)
 
-var exclusiveValue = 20
-var inferredExclusive = ^exclusiveValue
-var explicitExclusive: ^i32 = inferredExclusive
-var assignedExclusive: ^i32
+var exclusive_value = 20
+var inferred_exclusive = ^exclusive_value
+var explicit_exclusive: ^i32 = inferred_exclusive
+var assigned_exclusive: ^i32
 
-assignedExclusive = explicitExclusive
+assigned_exclusive = explicit_exclusive
 
-print(assignedExclusive)
+print(assigned_exclusive)

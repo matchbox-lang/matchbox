@@ -6,51 +6,51 @@
 #include "runtime/value.h"
 #include <stdlib.h>
 
-ModuleObject* createModuleObject()
+ModuleObject* create_module_object()
 {
-    ModuleObject* module = ALLOCATE_OBJECT(ModuleObject, OBJ_MODULE);
-    FunctionObject* function = createFunctionObject();
+    ModuleObject* module = ALLOCATE_OBJECT(ModuleObject, ObjModule);
+    FunctionObject* function = create_function_object();
 
-    initValueArray(&module->constants);
-    initVector(&module->functions);
-    initVector(&module->objects);
-    pushVectorItem(&module->functions, function);
+    init_value_array(&module->constants);
+    init_vector(&module->functions);
+    init_vector(&module->objects);
+    push_vector_item(&module->functions, function);
     
-    module->globalCount = 0;
+    module->global_count = 0;
 
     return module;
 }
 
-static void freeModuleFunctions(ModuleObject* module)
+static void free_module_functions(ModuleObject* module)
 {
-    size_t functionCount = countVector(&module->functions);
+    size_t function_count = count_vector(&module->functions);
 
-    for (size_t i = 0; i < functionCount; i++) {
-        FunctionObject* function = getVectorAt(&module->functions, i);
+    for (size_t i = 0; i < function_count; i++) {
+        FunctionObject* function = get_vector_at(&module->functions, i);
 
-        freeFunctionObject(function);
+        free_function_object(function);
     }
 
-    freeVector(&module->functions);
+    free_vector(&module->functions);
 }
 
-static void freeModuleObjects(ModuleObject* module)
+static void free_module_objects(ModuleObject* module)
 {
-    size_t objectCount = countVector(&module->objects);
+    size_t object_count = count_vector(&module->objects);
 
-    for (size_t i = 0; i < objectCount; i++) {
-        StringObject* string = getVectorAt(&module->objects, i);
+    for (size_t i = 0; i < object_count; i++) {
+        StringObject* string = get_vector_at(&module->objects, i);
 
-        freeStringObject(string);
+        free_string_object(string);
     }
 
-    freeVector(&module->objects);
+    free_vector(&module->objects);
 }
 
-void freeModuleObject(ModuleObject* module)
+void free_module_object(ModuleObject* module)
 {
-    freeModuleFunctions(module);
-    freeModuleObjects(module);
-    freeValueArray(&module->constants);
-    freeMemory(module);
+    free_module_functions(module);
+    free_module_objects(module);
+    free_value_array(&module->constants);
+    free_memory(module);
 }

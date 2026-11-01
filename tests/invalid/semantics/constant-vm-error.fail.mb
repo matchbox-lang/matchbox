@@ -1,5 +1,0 @@
-func divide(x) {
-    return 1 / x
-}
-
-const RESULT = divide(0)

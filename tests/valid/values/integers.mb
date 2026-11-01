@@ -4,10 +4,10 @@ let c = 0o123
 let d = 0x1A
 let e = 0b11111111
 
-let largeDecimal = 2147483648
-let largeOctal = 0o20000000000
-let largeHexadecimal = 0x80000000
-let largeBinary = 0b10000000000000000000000000000000
+let large_decimal = 2147483648
+let large_octal = 0o20000000000
+let large_hexadecimal = 0x80000000
+let large_binary = 0b10000000000000000000000000000000
 
 print(a)
 print(b)
@@ -15,7 +15,7 @@ print(c)
 print(d)
 print(e)
 
-print(largeDecimal)
-print(largeOctal)
-print(largeHexadecimal)
-print(largeBinary)
+print(large_decimal)
+print(large_octal)
+print(large_hexadecimal)
+print(large_binary)

@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
-void initBufferWriter(Writer* writer, char* bytes, size_t capacity)
+void init_buffer_writer(Writer* writer, char* bytes, size_t capacity)
 {
     writer->bytes = bytes;
     writer->capacity = capacity;
@@ -14,30 +14,30 @@ void initBufferWriter(Writer* writer, char* bytes, size_t capacity)
     writer->stream = NULL;
 }
 
-void initOutputWriter(Writer* writer, FILE* stream)
+void init_output_writer(Writer* writer, FILE* stream)
 {
-    initBufferWriter(writer, NULL, 0);
+    init_buffer_writer(writer, NULL, 0);
 
     writer->stream = stream;
 }
 
-static void writeBufferBytes(Writer* writer, const char* bytes, size_t length)
+static void write_buffer_bytes(Writer* writer, const char* bytes, size_t length)
 {
     if (writer->length > writer->capacity || length > writer->capacity - writer->length) {
-        fatalError("Formatting buffer capacity exceeded");
+        fatal_error("Formatting buffer capacity exceeded");
     }
 
     memcpy(writer->bytes + writer->length, bytes, length);
 }
 
-void writeBytes(Writer* writer, const char* bytes, size_t length)
+void write_bytes(Writer* writer, const char* bytes, size_t length)
 {
     if (length > SIZE_MAX - writer->length) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     if (writer->bytes) {
-        writeBufferBytes(writer, bytes, length);
+        write_buffer_bytes(writer, bytes, length);
     }
 
     if (writer->stream) {
@@ -47,80 +47,80 @@ void writeBytes(Writer* writer, const char* bytes, size_t length)
     writer->length += length;
 }
 
-void formatI32(Writer* writer, int32_t value)
+void format_i32(Writer* writer, int32_t value)
 {
     char bytes[32];
     int length = snprintf(bytes, sizeof(bytes), "%" PRId32, value);
 
-    writeBytes(writer, bytes, (size_t)length);
+    write_bytes(writer, bytes, (size_t)length);
 }
 
-void formatI64(Writer* writer, int64_t value)
+void format_i64(Writer* writer, int64_t value)
 {
     char bytes[32];
     int length = snprintf(bytes, sizeof(bytes), "%" PRId64, value);
 
-    writeBytes(writer, bytes, (size_t)length);
+    write_bytes(writer, bytes, (size_t)length);
 }
 
-void formatU32(Writer* writer, uint32_t value)
+void format_u32(Writer* writer, uint32_t value)
 {
     char bytes[32];
     int length = snprintf(bytes, sizeof(bytes), "%" PRIu32, value);
 
-    writeBytes(writer, bytes, (size_t)length);
+    write_bytes(writer, bytes, (size_t)length);
 }
 
-void formatU64(Writer* writer, uint64_t value)
+void format_u64(Writer* writer, uint64_t value)
 {
     char bytes[32];
     int length = snprintf(bytes, sizeof(bytes), "%" PRIu64, value);
 
-    writeBytes(writer, bytes, (size_t)length);
+    write_bytes(writer, bytes, (size_t)length);
 }
 
-void formatF32(Writer* writer, float value)
+void format_f32(Writer* writer, float value)
 {
     char bytes[32];
 
-    formatShortestF32(bytes, sizeof(bytes), value);
+    format_shortest_f32(bytes, sizeof(bytes), value);
 
     size_t length = strlen(bytes);
 
-    writeBytes(writer, bytes, length);
+    write_bytes(writer, bytes, length);
 }
 
-void formatF64(Writer* writer, double value)
+void format_f64(Writer* writer, double value)
 {
     char bytes[32];
 
-    formatShortestF64(bytes, sizeof(bytes), value);
+    format_shortest_f64(bytes, sizeof(bytes), value);
 
     size_t length = strlen(bytes);
 
-    writeBytes(writer, bytes, length);
+    write_bytes(writer, bytes, length);
 }
 
-void formatBool(Writer* writer, bool value)
+void format_bool(Writer* writer, bool value)
 {
     if (value) {
-        writeBytes(writer, "true", 4);
+        write_bytes(writer, "true", 4);
 
         return;
     }
 
-    writeBytes(writer, "false", 5);
+    write_bytes(writer, "false", 5);
 }
 
-void formatChar(Writer* writer, uint32_t value)
+void format_char(Writer* writer, uint32_t value)
 {
     char bytes[4];
-    size_t length = encodeUtf8(value, bytes);
+    size_t length = encode_utf8(value, bytes);
 
-    writeBytes(writer, bytes, length);
+    write_bytes(writer, bytes, length);
 }
 
-void formatString(Writer* writer, const StringObject* value)
+void format_string(Writer* writer, const StringObject* value)
 {
-    writeBytes(writer, value->chars, value->length);
+    write_bytes(writer, value->chars, value->length);
 }

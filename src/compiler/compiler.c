@@ -36,8 +36,8 @@ typedef struct Operand
 
 typedef struct CallArea
 {
-    int resultRegister;
-    int frameRegister;
+    int result_register;
+    int frame_register;
 } CallArea;
 
 typedef struct PreviousInstruction
@@ -52,97 +52,97 @@ typedef struct PreviousInstruction
 
 typedef enum IntegerOperation
 {
-    INTEGER_ADD,
-    INTEGER_SUB,
-    INTEGER_MUL,
-    INTEGER_DIV,
-    INTEGER_REM,
-    INTEGER_BAND,
-    INTEGER_BOR,
-    INTEGER_BXOR,
-    INTEGER_BNOT,
-    INTEGER_LSL,
-    INTEGER_LSR,
-    INTEGER_NEG
+    IntAdd,
+    IntSub,
+    IntMul,
+    IntDiv,
+    IntRem,
+    IntBand,
+    IntBor,
+    IntBxor,
+    IntBnot,
+    IntLsl,
+    IntLsr,
+    IntNeg
 } IntegerOperation;
 
-static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard);
-static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard);
-static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast);
-static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference);
-static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference);
-static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast, DataType destination, bool reference);
-static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes);
-static void compileTopLevelStatements(Compiler* compiler, Vector* nodes);
-static size_t getNodeSlotCount(ASTNode* ast);
-static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression);
-static Operand compileIntegerCast(Compiler* compiler, Operand operand, DataType source, DataType destination);
-static Operand compileConcatenation(Compiler* compiler, ASTNode* ast);
-static void compilePowerAssignment(Compiler* compiler, ASTNode* ast);
-static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand);
-static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast);
-static ASTNode* getCurrentFunctionDefinition(Compiler* compiler);
-static bool isMatchAlternative(ASTNode* pattern);
-static bool isSimpleMatchValue(ASTNode* ast);
-static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value);
-static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister);
-static void patchJump(Compiler* compiler, size_t position);
-static Operand compileConstant(Compiler* compiler, ASTNode* ast);
+static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard);
+static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard);
+static Operand compile_reference_expression(Compiler* compiler, ASTNode* ast);
+static Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool reference);
+static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference);
+static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast, DataType destination, bool reference);
+static void compile_blocklevel_statements(Compiler* compiler, Vector* nodes);
+static void compile_top_level_statements(Compiler* compiler, Vector* nodes);
+static size_t get_node_slot_count(ASTNode* ast);
+static Operand compile_power(Compiler* compiler, ASTNode* left_expression, ASTNode* right_expression);
+static Operand compile_integer_cast(Compiler* compiler, Operand operand, DataType source, DataType destination);
+static Operand compile_concatenation(Compiler* compiler, ASTNode* ast);
+static void compile_power_assignment(Compiler* compiler, ASTNode* ast);
+static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand);
+static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast);
+static ASTNode* get_current_function_definition(Compiler* compiler);
+static bool is_match_alternative(ASTNode* pattern);
+static bool is_simple_match_value(ASTNode* ast);
+static bool get_literal_match_value(ASTNode* ast, uint64_t* value);
+static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
+static void patch_jump(Compiler* compiler, size_t position);
+static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 
-static _Noreturn void branchOffsetOverflowError(void)
+static _Noreturn void branch_offset_overflow_error(void)
 {
-    fatalError("Branch offset exceeds instruction range");
+    fatal_error("Branch offset exceeds instruction range");
 }
 
-static _Noreturn void constantIndexOverflowError(void)
+static _Noreturn void constant_index_overflow_error(void)
 {
-    fatalError("Cannot create more than %u constants", UINT16_MAX + 1u);
+    fatal_error("Cannot create more than %u constants", UINT16_MAX + 1u);
 }
 
-static _Noreturn void functionIndexOverflowError(void)
+static _Noreturn void function_index_overflow_error(void)
 {
-    fatalError("Cannot create more than %u functions", UINT16_MAX + 1u);
+    fatal_error("Cannot create more than %u functions", UINT16_MAX + 1u);
 }
 
-static _Noreturn void functionNotFoundError(ASTNode* ast)
+static _Noreturn void function_not_found_error(ASTNode* ast)
 {
-    fatalError("Could not find function %s", ast->functionDefinition.id->chars);
+    fatal_error("Could not find function %s", ast->function_definition.id->chars);
 }
 
-static _Noreturn void functionRegisterIndexOverflowError(const char* name)
+static _Noreturn void function_register_index_overflow_error(const char* name)
 {
-    fatalError("Function %s requires more than %u virtual registers", name, UINT16_MAX + 1u);
+    fatal_error("Function %s requires more than %u virtual registers", name, UINT16_MAX + 1u);
 }
 
-static _Noreturn void globalIndexOverflowError(void)
+static _Noreturn void global_index_overflow_error(void)
 {
-    fatalError("Cannot create more than %u globals", UINT16_MAX + 1u);
+    fatal_error("Cannot create more than %u globals", UINT16_MAX + 1u);
 }
 
-static _Noreturn void topLevelRegisterIndexOverflowError(void)
+static _Noreturn void top_level_register_index_overflow_error(void)
 {
-    fatalError("Top-level code requires more than %u virtual registers", UINT16_MAX + 1u);
+    fatal_error("Top-level code requires more than %u virtual registers", UINT16_MAX + 1u);
 }
 
-static _Noreturn void unresolvedReplExpressionTypeError(void)
+static _Noreturn void unresolved_repl_expression_type_error(void)
 {
-    fatalError("Cannot display expression with an unresolved type");
+    fatal_error("Cannot display expression with an unresolved type");
 }
 
-static void discardReplStatements(Compiler* compiler, size_t start)
+static void discard_repl_statements(Compiler* compiler, size_t start)
 {
     Vector* statements = &compiler->ast->compound.statements;
 
     while (statements->count > start) {
-        ASTNode* ast = popVectorItem(statements);
+        ASTNode* ast = pop_vector_item(statements);
 
-        freeASTNode(ast);
+        free_ast_node(ast);
     }
 
-    compiler->statementIndex = start;
+    compiler->statement_index = start;
 }
 
-static bool containsFunction(Vector* functions, ASTNode* ast)
+static bool contains_function(Vector* functions, ASTNode* ast)
 {
     if (!ast) {
         return true;
@@ -157,149 +157,149 @@ static bool containsFunction(Vector* functions, ASTNode* ast)
     return i < functions->count;
 }
 
-static void discardAbandonedFunctions(Compiler* compiler, Vector* functions)
+static void discard_abandoned_functions(Compiler* compiler, Vector* functions)
 {
-    Vector* references = &compiler->functionReferences;
+    Vector* references = &compiler->function_references;
     size_t count = 0;
 
-    while (count < references->count && containsFunction(functions, references->data[count])) {
+    while (count < references->count && contains_function(functions, references->data[count])) {
         count++;
     }
 
     while (compiler->module->functions.count > count) {
-        FunctionObject* function = popVectorItem(&compiler->module->functions);
+        FunctionObject* function = pop_vector_item(&compiler->module->functions);
 
-        freeFunctionObject(function);
+        free_function_object(function);
     }
 
     references->count = count;
 }
 
-static void recoverCompiler(Compiler* compiler)
+static void recover_compiler(Compiler* compiler)
 {
     Vector functions;
 
-    rebuildAnalyzer(&compiler->analyzer, &functions);
-    discardAbandonedFunctions(compiler, &functions);
-    freeVector(&functions);
+    rebuild_analyzer(&compiler->analyzer, &functions);
+    discard_abandoned_functions(compiler, &functions);
+    free_vector(&functions);
 
-    compiler->module->globalCount = compiler->ast->compound.scope->localCount;
-    compiler->statementIndex = compiler->ast->compound.statements.count;
+    compiler->module->global_count = compiler->ast->compound.scope->local_count;
+    compiler->statement_index = compiler->ast->compound.statements.count;
     compiler->function = compiler->module->functions.data[0];
-    compiler->registerCount = 0;
-    compiler->frameBaseCount = 0;
-    compiler->peepholeBarrier = 0;
-    compiler->localPositionOffset = -(int)compiler->module->globalCount;
-    compiler->function->maxStackCount = 0;
+    compiler->register_count = 0;
+    compiler->frame_base_count = 0;
+    compiler->peephole_barrier = 0;
+    compiler->local_position_offset = -(int)compiler->module->global_count;
+    compiler->function->max_stack_count = 0;
 }
 
-static void checkRegisterCount(Compiler* compiler, int count)
+static void check_register_count(Compiler* compiler, int count)
 {
     if (count <= (int)UINT16_MAX + 1) {
         return;
     }
 
-    ASTNode* function = getCurrentFunctionDefinition(compiler);
+    ASTNode* function = get_current_function_definition(compiler);
     if (!function) {
-        topLevelRegisterIndexOverflowError();
+        top_level_register_index_overflow_error();
     }
 
-    functionRegisterIndexOverflowError(function->functionDefinition.id->chars);
+    function_register_index_overflow_error(function->function_definition.id->chars);
 }
 
-static CodeObject* currentCodeObject(Compiler* compiler)
+static CodeObject* current_code_object(Compiler* compiler)
 {
     return &compiler->function->code;
 }
 
-static bool isCompilingTopLevel(Compiler* compiler)
+static bool is_compiling_top_level(Compiler* compiler)
 {
-    return compiler->function == getVectorAt(&compiler->module->functions, 0);
+    return compiler->function == get_vector_at(&compiler->module->functions, 0);
 }
 
-static int allocateRegister(Compiler* compiler)
+static int allocate_register(Compiler* compiler)
 {
-    checkRegisterCount(compiler, compiler->registerCount + 1);
+    check_register_count(compiler, compiler->register_count + 1);
 
-    int reg = compiler->registerCount++;
-    int extent = compiler->registerCount + 2;
+    int reg = compiler->register_count++;
+    int extent = compiler->register_count + 2;
 
-    compiler->function->maxStackCount = MAX(compiler->function->maxStackCount, extent);
+    compiler->function->max_stack_count = MAX(compiler->function->max_stack_count, extent);
 
     return reg;
 }
 
-static int releaseRegister(Compiler* compiler)
+static int release_register(Compiler* compiler)
 {
-    return --compiler->registerCount;
+    return --compiler->register_count;
 }
 
-static int allocateRegisters(Compiler* compiler, size_t count)
+static int allocate_registers(Compiler* compiler, size_t count)
 {
-    int first = compiler->registerCount;
+    int first = compiler->register_count;
 
     for (size_t i = 0; i < count; i++) {
-        allocateRegister(compiler);
+        allocate_register(compiler);
     }
 
     return first;
 }
 
-static void emitInstructionWord(Compiler* compiler, Opcode opcode, int a, int b, int c)
+static void emit_instruction_word(Compiler* compiler, Opcode opcode, int a, int b, int c)
 {
-    CodeObject* code = currentCodeObject(compiler);
+    CodeObject* code = current_code_object(compiler);
 
-    pushByte(code, opcode);
-    pushByte(code, (uint8_t)a);
-    pushByte(code, (uint8_t)b);
-    pushByte(code, (uint8_t)c);
+    push_byte(code, opcode);
+    push_byte(code, (uint8_t)a);
+    push_byte(code, (uint8_t)b);
+    push_byte(code, (uint8_t)c);
 }
 
-static int getRegisterHighByte(Compiler* compiler, int operand, OpcodeRegisterFlag flag, OpcodeRegisterFlag field)
+static int get_register_high_byte(Compiler* compiler, int operand, OpcodeRegisterFlag flag, OpcodeRegisterFlag field)
 {
     if (!(flag & field)) {
         return 0;
     }
 
-    checkRegisterCount(compiler, operand + 1);
+    check_register_count(compiler, operand + 1);
 
     return operand >> 8;
 }
 
-static void emitInstruction(Compiler* compiler, Opcode opcode, int a, int b, int c)
+static void emit_instruction(Compiler* compiler, Opcode opcode, int a, int b, int c)
 {
-    OpcodeRegisterFlag flag = getOpcodeRegisterFlag(opcode);
+    OpcodeRegisterFlag flag = get_opcode_register_flag(opcode);
     
-    int highA = getRegisterHighByte(compiler, a, flag, OP_REGISTER_A);
-    int highB = getRegisterHighByte(compiler, b, flag, OP_REGISTER_B);
-    int highC = getRegisterHighByte(compiler, c, flag, OP_REGISTER_C);
+    int high_a = get_register_high_byte(compiler, a, flag, OpRegisterA);
+    int high_b = get_register_high_byte(compiler, b, flag, OpRegisterB);
+    int high_c = get_register_high_byte(compiler, c, flag, OpRegisterC);
 
-    if (highA || highB || highC) {
-        emitInstructionWord(compiler, OP_WIDE, highA, highB, highC);
+    if (high_a || high_b || high_c) {
+        emit_instruction_word(compiler, OpWide, high_a, high_b, high_c);
     }
 
-    emitInstructionWord(compiler, opcode, a, b, c);
+    emit_instruction_word(compiler, opcode, a, b, c);
 }
 
-static void emitHlt(Compiler* compiler)
+static void emit_hlt(Compiler* compiler)
 {
-    emitInstruction(compiler, OP_HLT, 0, 0, 0);
+    emit_instruction(compiler, OpHlt, 0, 0, 0);
 }
 
-static bool getInstructionBefore(Compiler* compiler, size_t count, PreviousInstruction* instruction)
+static bool get_instruction_before(Compiler* compiler, size_t count, PreviousInstruction* instruction)
 {
-    CodeObject* code = currentCodeObject(compiler);
+    CodeObject* code = current_code_object(compiler);
 
     if (count < INSTRUCTION_SIZE) {
         return false;
     }
 
     size_t start = count - INSTRUCTION_SIZE;
-    if (start < compiler->peepholeBarrier) {
+    if (start < compiler->peephole_barrier) {
         return false;
     }
 
-    if (start >= INSTRUCTION_SIZE && code->data[start - INSTRUCTION_SIZE] == OP_WIDE) {
+    if (start >= INSTRUCTION_SIZE && code->data[start - INSTRUCTION_SIZE] == OpWide) {
         return false;
     }
 
@@ -313,27 +313,27 @@ static bool getInstructionBefore(Compiler* compiler, size_t count, PreviousInstr
     return true;
 }
 
-static bool getPreviousInstruction(Compiler* compiler, PreviousInstruction* instruction)
+static bool get_previous_instruction(Compiler* compiler, PreviousInstruction* instruction)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t count = countCodeObject(code);
+    CodeObject* code = current_code_object(compiler);
+    size_t count = count_code_object(code);
 
-    return getInstructionBefore(compiler, count, instruction);
+    return get_instruction_before(compiler, count, instruction);
 }
 
-static void emitMov(Compiler* compiler, int destination, int source)
+static void emit_mov(Compiler* compiler, int destination, int source)
 {
     if (destination == source) {
         return;
     }
 
-    emitInstruction(compiler, OP_MOV, destination, source, 0);
+    emit_instruction(compiler, OpMov, destination, source, 0);
 }
 
-static void emitOperandMov(Compiler* compiler, int destination, Operand operand)
+static void emit_operand_mov(Compiler* compiler, int destination, Operand operand)
 {
     if (operand.slots != 2) {
-        emitMov(compiler, destination, operand.reg);
+        emit_mov(compiler, destination, operand.reg);
         return;
     }
 
@@ -341,354 +341,354 @@ static void emitOperandMov(Compiler* compiler, int destination, Operand operand)
         return;
     }
 
-    emitInstruction(compiler, OP_MOV_64, destination, operand.reg, 0);
+    emit_instruction(compiler, OpMov64, destination, operand.reg, 0);
 }
 
-static Operand makeOperand(int reg, bool temporary)
+static Operand make_operand(int reg, bool temporary)
 {
     Operand operand = {reg, temporary, 1};
 
     return operand;
 }
 
-static Operand makeWideOperand(int reg, bool temporary)
+static Operand make_wide_operand(int reg, bool temporary)
 {
     Operand operand = {reg, temporary, 2};
 
     return operand;
 }
 
-static Operand noOperand(void)
+static Operand no_operand(void)
 {
-    return makeOperand(-1, false);
+    return make_operand(-1, false);
 }
 
-static void releaseOperand(Compiler* compiler, Operand operand)
+static void release_operand(Compiler* compiler, Operand operand)
 {
     for (size_t i = 0; operand.temporary && i < operand.slots; i++) {
-        releaseRegister(compiler);
+        release_register(compiler);
     }
 }
 
-static Operand materializeOperand(Compiler* compiler, Operand operand)
+static Operand materialize_operand(Compiler* compiler, Operand operand)
 {
     if (operand.temporary) {
         return operand;
     }
 
-    int reg = allocateRegisters(compiler, operand.slots);
-    emitOperandMov(compiler, reg, operand);
+    int reg = allocate_registers(compiler, operand.slots);
+    emit_operand_mov(compiler, reg, operand);
 
-    return operand.slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
+    return operand.slots == 2 ? make_wide_operand(reg, true) : make_operand(reg, true);
 }
 
-static int emitLdc(Compiler* compiler, uint16_t imm)
+static int emit_ldc(Compiler* compiler, uint16_t imm)
 {
-    int reg = allocateRegister(compiler);
+    int reg = allocate_register(compiler);
 
-    emitInstruction(compiler, OP_LDC, reg, imm >> 8, imm);
+    emit_instruction(compiler, OpLdc, reg, imm >> 8, imm);
 
     return reg;
 }
 
-static int emitLdcI64(Compiler* compiler, uint16_t position)
+static int emit_ldc_i64(Compiler* compiler, uint16_t position)
 {
-    int reg = allocateRegisters(compiler, 2);
+    int reg = allocate_registers(compiler, 2);
 
-    emitInstruction(compiler, OP_LDC_64, reg, position >> 8, position);
+    emit_instruction(compiler, OpLdc64, reg, position >> 8, position);
 
     return reg;
 }
 
-static int emitLdi(Compiler* compiler, int16_t imm)
+static int emit_ldi(Compiler* compiler, int16_t imm)
 {
-    int reg = allocateRegister(compiler);
+    int reg = allocate_register(compiler);
 
-    emitInstruction(compiler, OP_LDI, reg, imm >> 8, imm);
+    emit_instruction(compiler, OpLdi, reg, imm >> 8, imm);
 
     return reg;
 }
 
-static void emitGlobalInstruction(Compiler* compiler, Opcode opcode, int reg, size_t position)
+static void emit_global_instruction(Compiler* compiler, Opcode opcode, int reg, size_t position)
 {
     if (position > UINT16_MAX) {
-        globalIndexOverflowError();
+        global_index_overflow_error();
     }
 
-    emitInstruction(compiler, opcode, reg, position >> 8, position);
+    emit_instruction(compiler, opcode, reg, position >> 8, position);
 }
 
-static int emitLdg(Compiler* compiler, size_t position)
+static int emit_ldg(Compiler* compiler, size_t position)
 {
-    int reg = allocateRegister(compiler);
+    int reg = allocate_register(compiler);
 
-    emitGlobalInstruction(compiler, OP_LDG, reg, position);
+    emit_global_instruction(compiler, OpLdg, reg, position);
 
     return reg;
 }
 
-static void emitCallInstruction(Compiler* compiler, int frameRegister, uint16_t functionPosition)
+static void emit_call_instruction(Compiler* compiler, int frame_register, uint16_t function_position)
 {
-    checkRegisterCount(compiler, frameRegister + 1);
+    check_register_count(compiler, frame_register + 1);
 
-    emitInstruction(compiler, OP_CALL, frameRegister, functionPosition >> 8, functionPosition);
+    emit_instruction(compiler, OpCall, frame_register, function_position >> 8, function_position);
 }
 
-static void emitRet(Compiler* compiler)
+static void emit_ret(Compiler* compiler)
 {
-    emitInstruction(compiler, OP_RET, 0, 0, 0);
+    emit_instruction(compiler, OpRet, 0, 0, 0);
 }
 
-static void emitRetv(Compiler* compiler, Operand operand)
+static void emit_retv(Compiler* compiler, Operand operand)
 {
-    Opcode opcode = operand.slots == 2 ? OP_RET_64 : OP_RETV;
+    Opcode opcode = operand.slots == 2 ? OpRet64 : OpRetv;
 
-    emitInstruction(compiler, opcode, operand.reg, 0, 0);
+    emit_instruction(compiler, opcode, operand.reg, 0, 0);
 }
 
-static int getCallAreaCount(const FunctionObject* function)
+static int get_call_area_count(const FunctionObject* function)
 {
-    return function->paramCount;
+    return function->param_count;
 }
 
-static size_t makeConstant(Compiler* compiler, Value value)
+static size_t make_constant(Compiler* compiler, Value value)
 {
-    size_t position = countValueArray(&compiler->module->constants);
+    size_t position = count_value_array(&compiler->module->constants);
 
     if (position > UINT16_MAX) {
-        constantIndexOverflowError();
+        constant_index_overflow_error();
     }
 
-    return pushValue(&compiler->module->constants, value) - 1;
+    return push_value(&compiler->module->constants, value) - 1;
 }
 
-static size_t makeI64Constant(Compiler* compiler, uint64_t value)
+static size_t make_i64_constant(Compiler* compiler, uint64_t value)
 {
-    size_t position = countValueArray(&compiler->module->constants);
+    size_t position = count_value_array(&compiler->module->constants);
 
     if (position > (size_t)UINT16_MAX - 1) {
-        constantIndexOverflowError();
+        constant_index_overflow_error();
     }
 
 #if UINTPTR_MAX == UINT32_MAX
-    pushValue(&compiler->module->constants, U32_VALUE(value));
-    pushValue(&compiler->module->constants, U32_VALUE(value >> 32));
+    push_value(&compiler->module->constants, U32_VALUE(value));
+    push_value(&compiler->module->constants, U32_VALUE(value >> 32));
 #else
-    pushValue(&compiler->module->constants, UNSIGNED_VALUE(value));
-    pushValue(&compiler->module->constants, UNSIGNED_VALUE(0));
+    push_value(&compiler->module->constants, UNSIGNED_VALUE(value));
+    push_value(&compiler->module->constants, UNSIGNED_VALUE(0));
 #endif
 
     return position;
 }
 
-static size_t makeF32Constant(Compiler* compiler, float value)
+static size_t make_f32_constant(Compiler* compiler, float value)
 {
     Value constant = F32_VALUE(value);
 
-    return makeConstant(compiler, constant);
+    return make_constant(compiler, constant);
 }
 
-static size_t makeF64Constant(Compiler* compiler, double value)
+static size_t make_f64_constant(Compiler* compiler, double value)
 {
     uint64_t bits;
     memcpy(&bits, &value, sizeof(bits));
 
-    return makeI64Constant(compiler, bits);
+    return make_i64_constant(compiler, bits);
 }
 
-static CallArea openCallArea(Compiler* compiler)
+static CallArea open_call_area(Compiler* compiler)
 {
-    CallArea call = { .resultRegister = compiler->registerCount };
+    CallArea call = { .result_register = compiler->register_count };
 
-    allocateRegister(compiler);
-    allocateRegister(compiler);
-    call.frameRegister = compiler->registerCount;
+    allocate_register(compiler);
+    allocate_register(compiler);
+    call.frame_register = compiler->register_count;
 
     return call;
 }
 
-static void relocateCallArea(Compiler* compiler, CallArea* call, size_t argumentSlots)
+static void relocate_call_area(Compiler* compiler, CallArea* call, size_t argument_slots)
 {
-    int firstArgument = call->frameRegister;
-    CallArea relocated = openCallArea(compiler);
+    int first_argument = call->frame_register;
+    CallArea relocated = open_call_area(compiler);
 
-    for (size_t i = 0; i < argumentSlots; i++) {
-        int destination = allocateRegister(compiler);
+    for (size_t i = 0; i < argument_slots; i++) {
+        int destination = allocate_register(compiler);
 
-        emitMov(compiler, destination, firstArgument + i);
+        emit_mov(compiler, destination, first_argument + i);
     }
 
-    call->frameRegister = relocated.frameRegister;
+    call->frame_register = relocated.frame_register;
 }
 
-static void allocateCallAreaRegister(Compiler* compiler)
+static void allocate_call_area_register(Compiler* compiler)
 {
-    emitLdi(compiler, 0);
+    emit_ldi(compiler, 0);
 }
 
-static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
-    uint16_t functionPosition, CallArea call, bool discard)
+static Operand close_call_area(Compiler* compiler, FunctionObject* function,
+    uint16_t function_position, CallArea call, bool discard)
 {
-    int end = call.frameRegister + getCallAreaCount(function);
+    int end = call.frame_register + get_call_area_count(function);
 
-    while (compiler->registerCount < end) {
-        allocateCallAreaRegister(compiler);
+    while (compiler->register_count < end) {
+        allocate_call_area_register(compiler);
     }
 
-    emitCallInstruction(compiler, call.frameRegister, functionPosition);
+    emit_call_instruction(compiler, call.frame_register, function_position);
 
-    if (!discard && function->returnCount) {
-        Operand result = {call.frameRegister - 2, true, function->returnCount};
+    if (!discard && function->return_count) {
+        Operand result = {call.frame_register - 2, true, function->return_count};
 
-        emitOperandMov(compiler, call.resultRegister, result);
+        emit_operand_mov(compiler, call.result_register, result);
 
-        result.reg = call.resultRegister;
-        compiler->registerCount = call.resultRegister + function->returnCount;
+        result.reg = call.result_register;
+        compiler->register_count = call.result_register + function->return_count;
 
         return result;
     }
 
-    compiler->registerCount = call.resultRegister;
+    compiler->register_count = call.result_register;
 
-    return noOperand();
+    return no_operand();
 }
 
-static int getLocalPosition(Compiler* compiler, ASTNode* ast)
+static int get_local_position(Compiler* compiler, ASTNode* ast)
 {
     int position;
 
-    if (isParameter(ast)) {
+    if (is_parameter(ast)) {
         position = ast->parameter.position;
     } else {
-        position = ast->variableDefinition.registerPosition;
+        position = ast->variable_definition.register_position;
     }
 
-    size_t slots = getNodeSlotCount(ast);
+    size_t slots = get_node_slot_count(ast);
     int extent = position + slots;
 
-    checkRegisterCount(compiler, extent);
+    check_register_count(compiler, extent);
 
     return position;
 }
 
-static Operand loadGlobalWithStoreForwarding(Compiler* compiler, size_t position)
+static Operand load_global_with_store_forwarding(Compiler* compiler, size_t position)
 {
     PreviousInstruction previous;
-    uint16_t storedPosition;
+    uint16_t stored_position;
 
-    if (!getPreviousInstruction(compiler, &previous)) {
-        return makeOperand(emitLdg(compiler, position), true);
+    if (!get_previous_instruction(compiler, &previous)) {
+        return make_operand(emit_ldg(compiler, position), true);
     }
 
-    if (previous.opcode == OP_STG) {
-        storedPosition = previous.b << 8 | previous.c;
-    } else if (previous.opcode == OP_STGI) {
-        storedPosition = previous.c;
+    if (previous.opcode == OpStg) {
+        stored_position = previous.b << 8 | previous.c;
+    } else if (previous.opcode == OpStgi) {
+        stored_position = previous.c;
     } else {
-        return makeOperand(emitLdg(compiler, position), true);
+        return make_operand(emit_ldg(compiler, position), true);
     }
 
-    if (storedPosition != position || previous.a > compiler->registerCount) {
-        return makeOperand(emitLdg(compiler, position), true);
+    if (stored_position != position || previous.a > compiler->register_count) {
+        return make_operand(emit_ldg(compiler, position), true);
     }
 
-    if (previous.a == compiler->registerCount) {
-        int reg = allocateRegister(compiler);
+    if (previous.a == compiler->register_count) {
+        int reg = allocate_register(compiler);
 
-        return makeOperand(reg, true);
+        return make_operand(reg, true);
     }
 
-    return makeOperand(previous.a, false);
+    return make_operand(previous.a, false);
 }
 
-static Operand loadGlobalVariable(Compiler* compiler, ASTNode* ast)
+static Operand load_global_variable(Compiler* compiler, ASTNode* ast)
 {
-    size_t position = ast->variableDefinition.position;
-    bool wide = getNodeSlotCount(ast) == 2;
+    size_t position = ast->variable_definition.position;
+    bool wide = get_node_slot_count(ast) == 2;
 
     if (wide) {
-        int reg = allocateRegisters(compiler, 2);
-        emitGlobalInstruction(compiler, OP_LDG_64, reg, position);
+        int reg = allocate_registers(compiler, 2);
+        emit_global_instruction(compiler, OpLdg64, reg, position);
 
-        return makeWideOperand(reg, true);
+        return make_wide_operand(reg, true);
     }
 
-    return loadGlobalWithStoreForwarding(compiler, position);
+    return load_global_with_store_forwarding(compiler, position);
 }
 
-static Operand loadLocalVariable(Compiler* compiler, ASTNode* ast)
+static Operand load_local_variable(Compiler* compiler, ASTNode* ast)
 {
-    int position = getLocalPosition(compiler, ast);
+    int position = get_local_position(compiler, ast);
 
-    return getNodeSlotCount(ast) == 2
-        ? makeWideOperand(position, false)
-        : makeOperand(position, false);
+    return get_node_slot_count(ast) == 2
+        ? make_wide_operand(position, false)
+        : make_operand(position, false);
 }
 
-static Operand loadVariable(Compiler* compiler, ASTNode* ast)
+static Operand load_variable(Compiler* compiler, ASTNode* ast)
 {
-    if (isTopLevelScope(ast->variableDefinition.scope)) {
-        return loadGlobalVariable(compiler, ast);
+    if (is_top_level_scope(ast->variable_definition.scope)) {
+        return load_global_variable(compiler, ast);
     }
 
-    return loadLocalVariable(compiler, ast);
+    return load_local_variable(compiler, ast);
 }
 
-static Operand referenceVariable(Compiler* compiler, ASTNode* ast)
+static Operand reference_variable(Compiler* compiler, ASTNode* ast)
 {
-    if (getReferenceType(ast) != REFERENCE_NONE) {
-        return loadVariable(compiler, ast);
+    if (get_reference_type(ast) != RefNone) {
+        return load_variable(compiler, ast);
     }
 
-    int reg = allocateRegister(compiler);
+    int reg = allocate_register(compiler);
 
-    if (isTopLevelScope(getScope(ast))) {
-        size_t position = ast->variableDefinition.position;
-        emitGlobalInstruction(compiler, OP_REFG, reg, position);
+    if (is_top_level_scope(get_scope(ast))) {
+        size_t position = ast->variable_definition.position;
+        emit_global_instruction(compiler, OpRefg, reg, position);
 
-        return makeOperand(reg, true);
+        return make_operand(reg, true);
     }
 
-    emitInstruction(compiler, OP_REFL, reg, getLocalPosition(compiler, ast), 0);
+    emit_instruction(compiler, OpRefl, reg, get_local_position(compiler, ast), 0);
 
-    return makeOperand(reg, true);
+    return make_operand(reg, true);
 }
 
-static Operand dereferenceOperand(Compiler* compiler, Operand operand, size_t slots)
+static Operand dereference_operand(Compiler* compiler, Operand operand, size_t slots)
 {
-    Opcode opcode = slots == 2 ? OP_LDR_64 : OP_LDR;
+    Opcode opcode = slots == 2 ? OpLdr64 : OpLdr;
 
     if (!operand.temporary) {
-        int reg = allocateRegisters(compiler, slots);
+        int reg = allocate_registers(compiler, slots);
 
-        emitInstruction(compiler, opcode, reg, operand.reg, 0);
+        emit_instruction(compiler, opcode, reg, operand.reg, 0);
 
-        return slots == 2 ? makeWideOperand(reg, true) : makeOperand(reg, true);
+        return slots == 2 ? make_wide_operand(reg, true) : make_operand(reg, true);
     }
 
     if (slots == 2) {
-        allocateRegister(compiler);
+        allocate_register(compiler);
     }
 
-    emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
+    emit_instruction(compiler, opcode, operand.reg, operand.reg, 0);
 
-    return slots == 2 ? makeWideOperand(operand.reg, true) : operand;
+    return slots == 2 ? make_wide_operand(operand.reg, true) : operand;
 }
 
-static void storeGlobalVariable(Compiler* compiler, ASTNode* ast, Operand value)
+static void store_global_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    size_t position = ast->variableDefinition.position;
+    size_t position = ast->variable_definition.position;
 
     if (value.slots == 2) {
-        emitGlobalInstruction(compiler, OP_STG_64, value.reg, position);
+        emit_global_instruction(compiler, OpStg64, value.reg, position);
 
         return;
     }
 
-    emitGlobalInstruction(compiler, OP_STG, value.reg, position);
+    emit_global_instruction(compiler, OpStg, value.reg, position);
 }
 
-static bool retargetTemporary(Compiler* compiler, Operand value, int destination)
+static bool retarget_temporary(Compiler* compiler, Operand value, int destination)
 {
     PreviousInstruction previous;
 
@@ -696,181 +696,181 @@ static bool retargetTemporary(Compiler* compiler, Operand value, int destination
         return false;
     }
 
-    if (!getPreviousInstruction(compiler, &previous)
+    if (!get_previous_instruction(compiler, &previous)
         || previous.a != value.reg) {
         return false;
     }
 
-    if (!(getOpcodeFlags(previous.opcode) & OP_FLAG_WRITES_A)) {
+    if (!(get_opcode_flags(previous.opcode) & OpFlagWritesA)) {
         return false;
     }
 
-    setByteAt(previous.code, previous.start + OPERAND_A_OFFSET, destination);
+    set_byte_at(previous.code, previous.start + OPERAND_A_OFFSET, destination);
 
     return true;
 }
 
-static void storeLocalVariable(Compiler* compiler, ASTNode* ast, Operand value)
+static void store_local_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    int position = getLocalPosition(compiler, ast);
+    int position = get_local_position(compiler, ast);
 
-    if (retargetTemporary(compiler, value, position)) {
+    if (retarget_temporary(compiler, value, position)) {
         return;
     }
 
-    emitOperandMov(compiler, position, value);
+    emit_operand_mov(compiler, position, value);
 }
 
-static void storeVariable(Compiler* compiler, ASTNode* ast, Operand value)
+static void store_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    if (isTopLevelScope(ast->variableDefinition.scope)) {
-        storeGlobalVariable(compiler, ast, value);
+    if (is_top_level_scope(ast->variable_definition.scope)) {
+        store_global_variable(compiler, ast, value);
     } else {
-        storeLocalVariable(compiler, ast, value);
+        store_local_variable(compiler, ast, value);
     }
 
-    releaseOperand(compiler, value);
+    release_operand(compiler, value);
 }
 
-static Operand compileWideNumber(Compiler* compiler, uint64_t value)
+static Operand compile_wide_number(Compiler* compiler, uint64_t value)
 {
-    size_t position = makeI64Constant(compiler, value);
-    int reg = emitLdcI64(compiler, position);
+    size_t position = make_i64_constant(compiler, value);
+    int reg = emit_ldc_i64(compiler, position);
 
-    return makeWideOperand(reg, true);
+    return make_wide_operand(reg, true);
 }
 
-static bool isNarrowIntegerImmediate(uint64_t value, DataType type)
+static bool is_narrow_integer_immediate(uint64_t value, DataType type)
 {
-    bool signedType = isSignedIntegerType(type);
+    bool signed_type = is_signed_integer_type(type);
 
-    if (!signedType) {
+    if (!signed_type) {
         return value <= INT16_MAX;
     }
 
-    int64_t signedValue = (int64_t)value;
+    int64_t signed_value = (int64_t)value;
 
-    return signedValue >= INT16_MIN && signedValue <= INT16_MAX;
+    return signed_value >= INT16_MIN && signed_value <= INT16_MAX;
 }
 
-static Operand compileNumber(Compiler* compiler, ASTNode* ast)
+static Operand compile_number(Compiler* compiler, ASTNode* ast)
 {
-    uint64_t value = ast->integerLiteral.value;
-    DataType type = getNodeDataType(ast);
+    uint64_t value = ast->integer_literal.value;
+    DataType type = get_node_data_type(ast);
 
-    if (type == TYPE_F64) {
-        size_t position = makeF64Constant(compiler, (double)value);
+    if (type == TypeF64) {
+        size_t position = make_f64_constant(compiler, (double)value);
 
-        return makeWideOperand(emitLdcI64(compiler, position), true);
+        return make_wide_operand(emit_ldc_i64(compiler, position), true);
     }
 
-    if (type == TYPE_F32) {
-        size_t position = makeF32Constant(compiler, (float)value);
+    if (type == TypeF32) {
+        size_t position = make_f32_constant(compiler, (float)value);
 
-        return makeOperand(emitLdc(compiler, position), true);
+        return make_operand(emit_ldc(compiler, position), true);
     }
 
-    if (getNodeSlotCount(ast) == 2) {
-        return compileWideNumber(compiler, value);
+    if (get_node_slot_count(ast) == 2) {
+        return compile_wide_number(compiler, value);
     }
 
-    bool immediate = isNarrowIntegerImmediate(value, type);
+    bool immediate = is_narrow_integer_immediate(value, type);
 
     if (!immediate) {
-        Value constant = isSignedIntegerType(type)
+        Value constant = is_signed_integer_type(type)
             ? SIGNED_VALUE((int64_t)value)
             : UNSIGNED_VALUE(value);
-        size_t position = makeConstant(compiler, constant);
+        size_t position = make_constant(compiler, constant);
 
-        return makeOperand(emitLdc(compiler, position), true);
+        return make_operand(emit_ldc(compiler, position), true);
     }
 
-    return makeOperand(emitLdi(compiler, (int16_t)value), true);
+    return make_operand(emit_ldi(compiler, (int16_t)value), true);
 }
 
-static Operand compileFloatValue(Compiler* compiler, double value, DataType type)
+static Operand compile_float_value(Compiler* compiler, double value, DataType type)
 {
-    if (type == TYPE_F64) {
-        size_t position = makeF64Constant(compiler, value);
-        int reg = emitLdcI64(compiler, position);
+    if (type == TypeF64) {
+        size_t position = make_f64_constant(compiler, value);
+        int reg = emit_ldc_i64(compiler, position);
 
-        return makeWideOperand(reg, true);
+        return make_wide_operand(reg, true);
     }
 
-    size_t position = makeF32Constant(compiler, (float)value);
-    int reg = emitLdc(compiler, position);
+    size_t position = make_f32_constant(compiler, (float)value);
+    int reg = emit_ldc(compiler, position);
 
-    return makeOperand(reg, true);
+    return make_operand(reg, true);
 }
 
-static Operand compileFloat(Compiler* compiler, ASTNode* ast)
+static Operand compile_float(Compiler* compiler, ASTNode* ast)
 {
-    double value = ast->floatLiteral.value;
-    DataType type = getNodeDataType(ast);
+    double value = ast->float_literal.value;
+    DataType type = get_node_data_type(ast);
 
-    return compileFloatValue(compiler, value, type);
+    return compile_float_value(compiler, value, type);
 }
 
-static Operand compileString(Compiler* compiler, ASTNode* ast)
+static Operand compile_string(Compiler* compiler, ASTNode* ast)
 {
-    StringObject* literal = ast->stringLiteral.value;
-    StringObject* string = copyStringObject(literal->chars, literal->length);
+    StringObject* literal = ast->string_literal.value;
+    StringObject* string = copy_string_object(literal->chars, literal->length);
     Value value = POINTER_VALUE(string);
 
-    pushVectorItem(&compiler->module->objects, string);
+    push_vector_item(&compiler->module->objects, string);
 
-    size_t position = makeConstant(compiler, value);
-    int reg = emitLdc(compiler, position);
+    size_t position = make_constant(compiler, value);
+    int reg = emit_ldc(compiler, position);
 
-    return makeOperand(reg, true);
+    return make_operand(reg, true);
 }
 
-static Operand compileCharacter(Compiler* compiler, ASTNode* ast)
+static Operand compile_character(Compiler* compiler, ASTNode* ast)
 {
-    uint32_t value = ast->characterLiteral.value;
+    uint32_t value = ast->character_literal.value;
     int reg;
 
     if (value <= INT16_MAX) {
-        reg = emitLdi(compiler, (int16_t)value);
+        reg = emit_ldi(compiler, (int16_t)value);
     } else {
         Value constant = U32_VALUE(value);
-        size_t position = makeConstant(compiler, constant);
+        size_t position = make_constant(compiler, constant);
 
-        reg = emitLdc(compiler, position);
+        reg = emit_ldc(compiler, position);
     }
 
-    return makeOperand(reg, true);
+    return make_operand(reg, true);
 }
 
-static Operand compileBoolean(Compiler* compiler, ASTNode* ast)
+static Operand compile_boolean(Compiler* compiler, ASTNode* ast)
 {
-    return makeOperand(emitLdi(compiler, ast->booleanLiteral.value), true);
+    return make_operand(emit_ldi(compiler, ast->boolean_literal.value), true);
 }
 
-static size_t getNodeSlotCount(ASTNode* ast)
+static size_t get_node_slot_count(ASTNode* ast)
 {
-    if (getReferenceType(ast) != REFERENCE_NONE) {
+    if (get_reference_type(ast) != RefNone) {
         return 1;
     }
 
-    return getTypeSlotCount(getNodeDataType(ast));
+    return get_type_slot_count(get_node_data_type(ast));
 }
 
-static bool isDirectVariable(Compiler* compiler, ASTNode* ast)
+static bool is_direct_variable(Compiler* compiler, ASTNode* ast)
 {
-    if (!isVariable(ast)) {
+    if (!is_variable(ast)) {
         return false;
     }
 
     ASTNode* symbol = ast->variable.symbol;
 
-    return !isTopLevelScope(symbol->variableDefinition.scope)
-        || isCompilingTopLevel(compiler);
+    return !is_top_level_scope(symbol->variable_definition.scope)
+        || is_compiling_top_level(compiler);
 }
 
-static Opcode getWidthOpcode(DataType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
+static Opcode get_width_opcode(DataType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
 {
-    size_t size = getIntegerTypeSize(type);
+    size_t size = get_integer_type_size(type);
     
     switch (size) {
         case 8:
@@ -882,73 +882,73 @@ static Opcode getWidthOpcode(DataType type, Opcode opcode64, Opcode opcode32, Op
         case 1:
             return opcode8;
         default:
-            return OP_HLT;
+            return OpHlt;
     }
 }
 
-static Opcode getDivisionOpcode(DataType type)
+static Opcode get_division_opcode(DataType type)
 {
-    if (isSignedIntegerType(type)) {
-        return getWidthOpcode(type, OP_IDIV_I64, OP_IDIV_I32, OP_IDIV_I16, OP_IDIV_I8);
+    if (is_signed_integer_type(type)) {
+        return get_width_opcode(type, OpIdivI64, OpIdivI32, OpIdivI16, OpIdivI8);
     }
 
-    return getWidthOpcode(type, OP_IDIV_U64, OP_IDIV_U32, OP_IDIV_U16, OP_IDIV_U8);
+    return get_width_opcode(type, OpIdivU64, OpIdivU32, OpIdivU16, OpIdivU8);
 }
 
-static Opcode getRemainderOpcode(DataType type)
+static Opcode get_remainder_opcode(DataType type)
 {
-    if (isSignedIntegerType(type)) {
-        return getWidthOpcode(type, OP_REM_I64, OP_REM_I32, OP_REM_I16, OP_REM_I8);
+    if (is_signed_integer_type(type)) {
+        return get_width_opcode(type, OpRemI64, OpRemI32, OpRemI16, OpRemI8);
     }
 
-    return getWidthOpcode(type, OP_REM_U64, OP_REM_U32, OP_REM_U16, OP_REM_U8);
+    return get_width_opcode(type, OpRemU64, OpRemU32, OpRemU16, OpRemU8);
 }
 
-static Opcode getRightShiftOpcode(DataType type)
+static Opcode get_right_shift_opcode(DataType type)
 {
-    if (isSignedIntegerType(type)) {
-        return getWidthOpcode(type, OP_ASR_I64, OP_ASR_I32, OP_ASR_I16, OP_ASR_I8);
+    if (is_signed_integer_type(type)) {
+        return get_width_opcode(type, OpAsrI64, OpAsrI32, OpAsrI16, OpAsrI8);
     }
 
-    return getWidthOpcode(type, OP_LSR_I64, OP_LSR_I32, OP_LSR_I16, OP_LSR_I8);
+    return get_width_opcode(type, OpLsrI64, OpLsrI32, OpLsrI16, OpLsrI8);
 }
 
-static Opcode getIntegerOpcode(DataType type, IntegerOperation operation)
+static Opcode get_integer_opcode(DataType type, IntegerOperation operation)
 {
     switch (operation) {
-        case INTEGER_ADD:
-            return getWidthOpcode(type, OP_ADD_I64, OP_ADD_I32, OP_ADD_I16, OP_ADD_I8);
-        case INTEGER_SUB:
-            return getWidthOpcode(type, OP_SUB_I64, OP_SUB_I32, OP_SUB_I16, OP_SUB_I8);
-        case INTEGER_MUL:
-            return getWidthOpcode(type, OP_MUL_I64, OP_MUL_I32, OP_MUL_I16, OP_MUL_I8);
-        case INTEGER_DIV:
-            return getDivisionOpcode(type);
-        case INTEGER_REM:
-            return getRemainderOpcode(type);
-        case INTEGER_BAND:
-            return getWidthOpcode(type, OP_BAND_I64, OP_BAND_I32, OP_BAND_I16, OP_BAND_I8);
-        case INTEGER_BOR:
-            return getWidthOpcode(type, OP_BOR_I64, OP_BOR_I32, OP_BOR_I16, OP_BOR_I8);
-        case INTEGER_BXOR:
-            return getWidthOpcode(type, OP_BXOR_I64, OP_BXOR_I32, OP_BXOR_I16, OP_BXOR_I8);
-        case INTEGER_BNOT:
-            return getWidthOpcode(type, OP_BNOT_I64, OP_BNOT_I32, OP_BNOT_I16, OP_BNOT_I8);
-        case INTEGER_LSL:
-            return getWidthOpcode(type, OP_LSL_I64, OP_LSL_I32, OP_LSL_I16, OP_LSL_I8);
-        case INTEGER_LSR:
-            return getRightShiftOpcode(type);
-        case INTEGER_NEG:
-            return getWidthOpcode(type, OP_NEG_I64, OP_NEG_I32, OP_NEG_I16, OP_NEG_I8);
+        case IntAdd:
+            return get_width_opcode(type, OpAddI64, OpAddI32, OpAddI16, OpAddI8);
+        case IntSub:
+            return get_width_opcode(type, OpSubI64, OpSubI32, OpSubI16, OpSubI8);
+        case IntMul:
+            return get_width_opcode(type, OpMulI64, OpMulI32, OpMulI16, OpMulI8);
+        case IntDiv:
+            return get_division_opcode(type);
+        case IntRem:
+            return get_remainder_opcode(type);
+        case IntBand:
+            return get_width_opcode(type, OpBandI64, OpBandI32, OpBandI16, OpBandI8);
+        case IntBor:
+            return get_width_opcode(type, OpBorI64, OpBorI32, OpBorI16, OpBorI8);
+        case IntBxor:
+            return get_width_opcode(type, OpBxorI64, OpBxorI32, OpBxorI16, OpBxorI8);
+        case IntBnot:
+            return get_width_opcode(type, OpBnotI64, OpBnotI32, OpBnotI16, OpBnotI8);
+        case IntLsl:
+            return get_width_opcode(type, OpLslI64, OpLslI32, OpLslI16, OpLslI8);
+        case IntLsr:
+            return get_right_shift_opcode(type);
+        case IntNeg:
+            return get_width_opcode(type, OpNegI64, OpNegI32, OpNegI16, OpNegI8);
     }
 
-    return OP_HLT;
+    return OpHlt;
 }
 
-static int selectBinaryDestination(Compiler* compiler, Operand left, Operand right, size_t slots)
+static int select_binary_destination(Compiler* compiler, Operand left, Operand right, size_t slots)
 {
     if (left.temporary) {
-        releaseOperand(compiler, right);
+        release_operand(compiler, right);
 
         return left.reg;
     }
@@ -957,24 +957,24 @@ static int selectBinaryDestination(Compiler* compiler, Operand left, Operand rig
         return right.reg;
     }
 
-    return allocateRegisters(compiler, slots);
+    return allocate_registers(compiler, slots);
 }
 
-static Operand emitBinaryOperands(
+static Operand emit_binary_operands(
     Compiler* compiler, IntegerOperation operation, DataType type, Operand left, Operand right)
 {
-    int destination = selectBinaryDestination(compiler, left, right, left.slots);
-    Opcode opcode = getIntegerOpcode(type, operation);
+    int destination = select_binary_destination(compiler, left, right, left.slots);
+    Opcode opcode = get_integer_opcode(type, operation);
 
-    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
+    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
 
-    return left.slots == 2 ? makeWideOperand(destination, true) : makeOperand(destination, true);
+    return left.slots == 2 ? make_wide_operand(destination, true) : make_operand(destination, true);
 }
 
-static bool prepareImmediateComparison(
+static bool prepare_immediate_comparison(
     Compiler* compiler, Opcode opcode, Operand* left, Operand* right, PreviousInstruction* load)
 {
-    if ((opcode != OP_EQ && opcode != OP_NE) || !getPreviousInstruction(compiler, load)|| load->opcode != OP_LDI) {
+    if ((opcode != OpEq && opcode != OpNe) || !get_previous_instruction(compiler, load)|| load->opcode != OpLdi) {
         return false;
     }
 
@@ -990,1086 +990,1086 @@ static bool prepareImmediateComparison(
         && value >= INT8_MIN && value <= INT8_MAX;
 }
 
-static Operand emitImmediateComparisonValue(Compiler* compiler, Opcode opcode, Operand left, int8_t value)
+static Operand emit_immediate_comparison_value(Compiler* compiler, Opcode opcode, Operand left, int8_t value)
 {
     int destination = left.reg;
 
     if (!left.temporary) {
-        destination = allocateRegister(compiler);
+        destination = allocate_register(compiler);
     }
 
-    Opcode immediate = OP_EQI;
+    Opcode immediate = OpEqi;
 
-    if (opcode == OP_NE) {
-        immediate = OP_NEI;
+    if (opcode == OpNe) {
+        immediate = OpNei;
     }
 
-    emitInstruction(compiler, immediate, destination, left.reg, value);
+    emit_instruction(compiler, immediate, destination, left.reg, value);
 
-    return makeOperand(destination, true);
+    return make_operand(destination, true);
 }
 
-static Operand emitImmediateComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+static Operand emit_immediate_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
     PreviousInstruction load;
 
-    if (!prepareImmediateComparison(compiler, opcode, &left, &right, &load)) {
-        return noOperand();
+    if (!prepare_immediate_comparison(compiler, opcode, &left, &right, &load)) {
+        return no_operand();
     }
 
-    resizeCodeObject(load.code, load.start);
-    releaseOperand(compiler, right);
+    resize_code_object(load.code, load.start);
+    release_operand(compiler, right);
 
-    return emitImmediateComparisonValue(compiler, opcode, left, load.c);
+    return emit_immediate_comparison_value(compiler, opcode, left, load.c);
 }
 
-static Operand emitComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+static Operand emit_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
-    Operand immediate = emitImmediateComparison(compiler, opcode, left, right);
+    Operand immediate = emit_immediate_comparison(compiler, opcode, left, right);
 
     if (immediate.reg >= 0) {
         return immediate;
     }
 
     if (left.temporary) {
-        releaseOperand(compiler, right);
-        emitInstruction(compiler, opcode, left.reg, left.reg, right.reg);
+        release_operand(compiler, right);
+        emit_instruction(compiler, opcode, left.reg, left.reg, right.reg);
 
-        return makeOperand(left.reg, true);
+        return make_operand(left.reg, true);
     }
 
-    int destination = right.temporary ? right.reg : allocateRegister(compiler);
-    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
+    int destination = right.temporary ? right.reg : allocate_register(compiler);
+    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
 
-    return makeOperand(destination, true);
+    return make_operand(destination, true);
 }
 
-static Operand emitReversedComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+static Operand emit_reversed_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
     if (left.temporary) {
-        releaseOperand(compiler, right);
-        emitInstruction(compiler, opcode, left.reg, right.reg, left.reg);
+        release_operand(compiler, right);
+        emit_instruction(compiler, opcode, left.reg, right.reg, left.reg);
 
-        return makeOperand(left.reg, true);
+        return make_operand(left.reg, true);
     }
 
-    int destination = right.temporary ? right.reg : allocateRegister(compiler);
-    emitInstruction(compiler, opcode, destination, right.reg, left.reg);
+    int destination = right.temporary ? right.reg : allocate_register(compiler);
+    emit_instruction(compiler, opcode, destination, right.reg, left.reg);
 
-    return makeOperand(destination, true);
+    return make_operand(destination, true);
 }
 
-static Opcode getComparisonOpcode(DataType type, bool orEqual)
+static Opcode get_comparison_opcode(DataType type, bool or_equal)
 {
-    if (isSignedIntegerType(type)) {
-        return orEqual ? OP_LE_I32 : OP_LT_I32;
+    if (is_signed_integer_type(type)) {
+        return or_equal ? OpLeI32 : OpLtI32;
     }
 
-    return orEqual ? OP_LE_U32 : OP_LT_U32;
+    return or_equal ? OpLeU32 : OpLtU32;
 }
 
-static Opcode getFloatOpcode(DataType type, TokenType operatorType)
+static Opcode get_float_opcode(DataType type, TokenType operator_type)
 {
-    switch (operatorType) {
-        case TOKEN_PLUS:
-            return type == TYPE_F64 ? OP_ADD_F64 : OP_ADD_F32;
-        case TOKEN_MINUS:
-            return type == TYPE_F64 ? OP_SUB_F64 : OP_SUB_F32;
-        case TOKEN_STAR:
-            return type == TYPE_F64 ? OP_MUL_F64 : OP_MUL_F32;
-        case TOKEN_SLASH:
-            return type == TYPE_F64 ? OP_DIV_F64 : OP_DIV_F32;
-        case TOKEN_PERCENT:
-            return type == TYPE_F64 ? OP_REM_F64 : OP_REM_F32;
+    switch (operator_type) {
+        case TokenPlus:
+            return type == TypeF64 ? OpAddF64 : OpAddF32;
+        case TokenMinus:
+            return type == TypeF64 ? OpSubF64 : OpSubF32;
+        case TokenStar:
+            return type == TypeF64 ? OpMulF64 : OpMulF32;
+        case TokenSlash:
+            return type == TypeF64 ? OpDivF64 : OpDivF32;
+        case TokenPercent:
+            return type == TypeF64 ? OpRemF64 : OpRemF32;
         default:
-            return OP_HLT;
+            return OpHlt;
     }
 }
 
-static Opcode getFloatOperationOpcode(DataType type, IntegerOperation operation)
+static Opcode get_float_operation_opcode(DataType type, IntegerOperation operation)
 {
     switch (operation) {
-        case INTEGER_ADD:
-            return type == TYPE_F64 ? OP_ADD_F64 : OP_ADD_F32;
-        case INTEGER_SUB:
-            return type == TYPE_F64 ? OP_SUB_F64 : OP_SUB_F32;
-        case INTEGER_MUL:
-            return type == TYPE_F64 ? OP_MUL_F64 : OP_MUL_F32;
-        case INTEGER_DIV:
-            return type == TYPE_F64 ? OP_DIV_F64 : OP_DIV_F32;
-        case INTEGER_REM:
-            return type == TYPE_F64 ? OP_REM_F64 : OP_REM_F32;
+        case IntAdd:
+            return type == TypeF64 ? OpAddF64 : OpAddF32;
+        case IntSub:
+            return type == TypeF64 ? OpSubF64 : OpSubF32;
+        case IntMul:
+            return type == TypeF64 ? OpMulF64 : OpMulF32;
+        case IntDiv:
+            return type == TypeF64 ? OpDivF64 : OpDivF32;
+        case IntRem:
+            return type == TypeF64 ? OpRemF64 : OpRemF32;
         default:
-            return OP_HLT;
+            return OpHlt;
     }
 }
 
-static Operand emitFloatOperands(Compiler* compiler, Opcode opcode,
+static Operand emit_float_operands(Compiler* compiler, Opcode opcode,
     DataType type, Operand left, Operand right)
 {
-    size_t slots = getTypeSlotCount(type);
-    int destination = selectBinaryDestination(compiler, left, right, slots);
+    size_t slots = get_type_slot_count(type);
+    int destination = select_binary_destination(compiler, left, right, slots);
 
-    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
+    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
 
-    return type == TYPE_F64
-        ? makeWideOperand(destination, true)
-        : makeOperand(destination, true);
+    return type == TypeF64
+        ? make_wide_operand(destination, true)
+        : make_operand(destination, true);
 }
 
-static Operand compileFloatBinary(Compiler* compiler, ASTNode* ast)
+static Operand compile_float_binary(Compiler* compiler, ASTNode* ast)
 {
-    DataType type = getNodeDataType(ast);
-    Operand left = compileConvertedExpression(compiler, ast->binary.leftExpr, type, false);
+    DataType type = get_node_data_type(ast);
+    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, type, false);
 
-    if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
-        left = materializeOperand(compiler, left);
+    if (!left.temporary && !is_direct_variable(compiler, ast->binary.right_expr)) {
+        left = materialize_operand(compiler, left);
     }
 
-    Operand right = compileConvertedExpression(compiler, ast->binary.rightExpr, type, false);
-    Opcode opcode = getFloatOpcode(type, ast->binary.operator.type);
+    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, type, false);
+    Opcode opcode = get_float_opcode(type, ast->binary.operator.type);
 
-    return emitFloatOperands(compiler, opcode, type, left, right);
+    return emit_float_operands(compiler, opcode, type, left, right);
 }
 
-static Operand emitOrderedComparison(Compiler* compiler, DataType type,
-    Operand left, Operand right, bool orEqual, bool reversed)
+static Operand emit_ordered_comparison(Compiler* compiler, DataType type,
+    Operand left, Operand right, bool or_equal, bool reversed)
 {
-    Opcode opcode = getComparisonOpcode(type, orEqual);
+    Opcode opcode = get_comparison_opcode(type, or_equal);
 
     if (reversed) {
-        return emitReversedComparison(compiler, opcode, left, right);
+        return emit_reversed_comparison(compiler, opcode, left, right);
     }
 
-    return emitComparison(compiler, opcode, left, right);
+    return emit_comparison(compiler, opcode, left, right);
 }
 
-static Opcode getFloat32ThreeWayOpcode(TokenType operatorType)
+static Opcode get_float32_three_way_opcode(TokenType operator_type)
 {
-    if (operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL) {
-        return OP_CMPG_F32;
+    if (operator_type == TokenLess || operator_type == TokenLessEqual) {
+        return OpCmpgF32;
     }
 
-    return OP_CMPL_F32;
+    return OpCmplF32;
 }
 
-static Opcode getFloat64ThreeWayOpcode(TokenType operatorType)
+static Opcode get_float64_three_way_opcode(TokenType operator_type)
 {
-    if (operatorType == TOKEN_LESS || operatorType == TOKEN_LESS_EQUAL) {
-        return OP_CMPG_F64;
+    if (operator_type == TokenLess || operator_type == TokenLessEqual) {
+        return OpCmpgF64;
     }
 
-    return OP_CMPL_F64;
+    return OpCmplF64;
 }
 
-static Opcode getThreeWayOpcode(DataType type, TokenType operatorType)
+static Opcode get_three_way_opcode(DataType type, TokenType operator_type)
 {
-    size_t size = getIntegerTypeSize(type);
+    size_t size = get_integer_type_size(type);
 
     if (size == 8) {
-        bool signedType = isSignedIntegerType(type);
+        bool signed_type = is_signed_integer_type(type);
 
-        return signedType ? OP_CMP_I64 : OP_CMP_U64;
+        return signed_type ? OpCmpI64 : OpCmpU64;
     }
 
     switch (type) {
-        case TYPE_F32:
-            return getFloat32ThreeWayOpcode(operatorType);
-        case TYPE_F64:
-            return getFloat64ThreeWayOpcode(operatorType);
+        case TypeF32:
+            return get_float32_three_way_opcode(operator_type);
+        case TypeF64:
+            return get_float64_three_way_opcode(operator_type);
         default:
             break;
     }
 
-    bool signedType = isSignedIntegerType(type);
+    bool signed_type = is_signed_integer_type(type);
 
-    return signedType ? OP_CMP_I32 : OP_CMP_U32;
+    return signed_type ? OpCmpI32 : OpCmpU32;
 }
 
-static Operand emitThreeWayComparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+static Operand emit_three_way_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
-    releaseOperand(compiler, right);
-    releaseOperand(compiler, left);
+    release_operand(compiler, right);
+    release_operand(compiler, left);
 
-    int destination = allocateRegister(compiler);
+    int destination = allocate_register(compiler);
 
-    emitInstruction(compiler, opcode, destination, left.reg, right.reg);
+    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
 
-    return makeOperand(destination, true);
+    return make_operand(destination, true);
 }
 
-static Operand emitIntegerComparison(Compiler* compiler, TokenType operatorType,
+static Operand emit_integer_comparison(Compiler* compiler, TokenType operator_type,
     DataType type, Operand left, Operand right)
 {
-    switch (operatorType) {
-        case TOKEN_EQUAL_EQUAL:
-            return emitComparison(compiler, OP_EQ, left, right);
-        case TOKEN_NOT_EQUAL:
-            return emitComparison(compiler, OP_NE, left, right);
-        case TOKEN_LESS:
-            return emitOrderedComparison(compiler, type, left, right, false, false);
-        case TOKEN_LESS_EQUAL:
-            return emitOrderedComparison(compiler, type, left, right, true, false);
-        case TOKEN_GREATER:
-            return emitOrderedComparison(compiler, type, left, right, false, true);
+    switch (operator_type) {
+        case TokenEqualEqual:
+            return emit_comparison(compiler, OpEq, left, right);
+        case TokenNotEqual:
+            return emit_comparison(compiler, OpNe, left, right);
+        case TokenLess:
+            return emit_ordered_comparison(compiler, type, left, right, false, false);
+        case TokenLessEqual:
+            return emit_ordered_comparison(compiler, type, left, right, true, false);
+        case TokenGreater:
+            return emit_ordered_comparison(compiler, type, left, right, false, true);
         default:
-            return emitOrderedComparison(compiler, type, left, right, true, true);
+            return emit_ordered_comparison(compiler, type, left, right, true, true);
     }
 }
 
-static Operand emitNumericComparison(Compiler* compiler, TokenType operatorType,
+static Operand emit_numeric_comparison(Compiler* compiler, TokenType operator_type,
     DataType type, Operand left, Operand right)
 {
-    bool floating = isFloatType(type);
-    bool wide = getIntegerTypeSize(type) == 8;
+    bool floating = is_float_type(type);
+    bool wide = get_integer_type_size(type) == 8;
 
-    if (!floating && !wide && operatorType != TOKEN_SPACESHIP) {
-        return emitIntegerComparison(compiler, operatorType, type, left, right);
+    if (!floating && !wide && operator_type != TokenSpaceship) {
+        return emit_integer_comparison(compiler, operator_type, type, left, right);
     }
 
-    Opcode opcode = getThreeWayOpcode(type, operatorType);
-    Operand ordering = emitThreeWayComparison(compiler, opcode, left, right);
+    Opcode opcode = get_three_way_opcode(type, operator_type);
+    Operand ordering = emit_three_way_comparison(compiler, opcode, left, right);
 
-    if (operatorType == TOKEN_SPACESHIP) {
+    if (operator_type == TokenSpaceship) {
         return ordering;
     }
 
-    int zeroRegister = allocateRegister(compiler);
-    Operand zero = makeOperand(zeroRegister, true);
+    int zero_register = allocate_register(compiler);
+    Operand zero = make_operand(zero_register, true);
 
-    emitInstruction(compiler, OP_LDI, zeroRegister, 0, 0);
+    emit_instruction(compiler, OpLdi, zero_register, 0, 0);
 
-    return emitNumericComparison(compiler, operatorType, TYPE_I32, ordering, zero);
+    return emit_numeric_comparison(compiler, operator_type, TypeI32, ordering, zero);
 }
 
-static Operand normalizeIntegerOperand(Compiler* compiler, Operand operand, DataType type)
+static Operand normalize_integer_operand(Compiler* compiler, Operand operand, DataType type)
 {
-    size_t size = getIntegerTypeSize(type);
+    size_t size = get_integer_type_size(type);
 
     if (size != 1 && size != 2) {
         return operand;
     }
 
-    operand = materializeOperand(compiler, operand);
+    operand = materialize_operand(compiler, operand);
 
-    Opcode opcode = OP_ZEXT_I32;
+    Opcode opcode = OpZextI32;
     int width = size * 8;
 
-    if (isSignedIntegerType(type)) {
-        opcode = OP_SEXT_I32;
+    if (is_signed_integer_type(type)) {
+        opcode = OpSextI32;
     }
 
-    emitInstruction(compiler, opcode, operand.reg, operand.reg, width);
+    emit_instruction(compiler, opcode, operand.reg, operand.reg, width);
 
     return operand;
 }
 
-static Operand compileComparisonOperand(Compiler* compiler, ASTNode* ast, DataType type)
+static Operand compile_comparison_operand(Compiler* compiler, ASTNode* ast, DataType type)
 {
-    Operand value = compileConvertedExpression(compiler, ast, type, false);
+    Operand value = compile_converted_expression(compiler, ast, type, false);
 
-    return normalizeIntegerOperand(compiler, value, type);
+    return normalize_integer_operand(compiler, value, type);
 }
 
-static Operand compileNumericComparison(Compiler* compiler, ASTNode* ast)
+static Operand compile_numeric_comparison(Compiler* compiler, ASTNode* ast)
 {
-    DataType type = ast->binary.operandType;
-    Operand left = compileComparisonOperand(compiler, ast->binary.leftExpr, type);
-    bool direct = isDirectVariable(compiler, ast->binary.rightExpr);
+    DataType type = ast->binary.operand_type;
+    Operand left = compile_comparison_operand(compiler, ast->binary.left_expr, type);
+    bool direct = is_direct_variable(compiler, ast->binary.right_expr);
 
     if (!left.temporary && !direct) {
-        left = materializeOperand(compiler, left);
+        left = materialize_operand(compiler, left);
     }
 
-    Operand right = compileComparisonOperand(compiler, ast->binary.rightExpr, type);
+    Operand right = compile_comparison_operand(compiler, ast->binary.right_expr, type);
 
-    return emitNumericComparison(compiler, ast->binary.operator.type, type, left, right);
+    return emit_numeric_comparison(compiler, ast->binary.operator.type, type, left, right);
 }
 
-static Operand emitBinaryOperator(Compiler* compiler, TokenType operatorType,
+static Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
     DataType type, Operand left, Operand right)
 {
-    switch (operatorType) {
-        case TOKEN_PLUS:
-            return emitBinaryOperands(compiler, INTEGER_ADD, type, left, right);
-        case TOKEN_MINUS:
-            return emitBinaryOperands(compiler, INTEGER_SUB, type, left, right);
-        case TOKEN_STAR:
-            return emitBinaryOperands(compiler, INTEGER_MUL, type, left, right);
-        case TOKEN_SLASH:
-            return emitBinaryOperands(compiler, INTEGER_DIV, type, left, right);
-        case TOKEN_PERCENT:
-            return emitBinaryOperands(compiler, INTEGER_REM, type, left, right);
-        case TOKEN_AMPERSAND:
-            return emitBinaryOperands(compiler, INTEGER_BAND, type, left, right);
-        case TOKEN_PIPE:
-            return emitBinaryOperands(compiler, INTEGER_BOR, type, left, right);
-        case TOKEN_CIRCUMFLEX:
-            return emitBinaryOperands(compiler, INTEGER_BXOR, type, left, right);
-        case TOKEN_LSHIFT:
-            return emitBinaryOperands(compiler, INTEGER_LSL, type, left, right);
-        case TOKEN_RSHIFT:
-            return emitBinaryOperands(compiler, INTEGER_LSR, type, left, right);
+    switch (operator_type) {
+        case TokenPlus:
+            return emit_binary_operands(compiler, IntAdd, type, left, right);
+        case TokenMinus:
+            return emit_binary_operands(compiler, IntSub, type, left, right);
+        case TokenStar:
+            return emit_binary_operands(compiler, IntMul, type, left, right);
+        case TokenSlash:
+            return emit_binary_operands(compiler, IntDiv, type, left, right);
+        case TokenPercent:
+            return emit_binary_operands(compiler, IntRem, type, left, right);
+        case TokenAmpersand:
+            return emit_binary_operands(compiler, IntBand, type, left, right);
+        case TokenPipe:
+            return emit_binary_operands(compiler, IntBor, type, left, right);
+        case TokenCircumflex:
+            return emit_binary_operands(compiler, IntBxor, type, left, right);
+        case TokenLshift:
+            return emit_binary_operands(compiler, IntLsl, type, left, right);
+        case TokenRshift:
+            return emit_binary_operands(compiler, IntLsr, type, left, right);
         default:
-            return noOperand();
+            return no_operand();
     }
 }
 
-static Operand compileLogicalBinary(Compiler* compiler, ASTNode* ast)
+static Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)
 {
-    Operand result = compileExpression(compiler, ast->binary.leftExpr, false);
-    Opcode opcode = OP_BZ;
+    Operand result = compile_expression(compiler, ast->binary.left_expr, false);
+    Opcode opcode = OpBz;
 
-    result = materializeOperand(compiler, result);
+    result = materialize_operand(compiler, result);
 
-    if (ast->binary.operator.type == TOKEN_OR) {
-        opcode = OP_BNZ;
+    if (ast->binary.operator.type == TokenKeywordOr) {
+        opcode = OpBnz;
     }
 
-    size_t endJump = emitJump(compiler, opcode, result.reg);
-    Operand right = compileExpression(compiler, ast->binary.rightExpr, false);
+    size_t end_jump = emit_jump(compiler, opcode, result.reg);
+    Operand right = compile_expression(compiler, ast->binary.right_expr, false);
 
-    emitOperandMov(compiler, result.reg, right);
-    releaseOperand(compiler, right);
-    patchJump(compiler, endJump);
+    emit_operand_mov(compiler, result.reg, right);
+    release_operand(compiler, right);
+    patch_jump(compiler, end_jump);
 
     return result;
 }
 
-static Operand compileBinary(Compiler* compiler, ASTNode* ast)
+static Operand compile_binary(Compiler* compiler, ASTNode* ast)
 {
-    DataType resultType = getNodeDataType(ast);
+    DataType result_type = get_node_data_type(ast);
 
-    if (resultType == TYPE_STRING) {
-        return compileConcatenation(compiler, ast);
+    if (result_type == TypeString) {
+        return compile_concatenation(compiler, ast);
     }
 
-    if (ast->binary.operator.type == TOKEN_POWER) {
-        return compilePower(compiler, ast->binary.leftExpr, ast->binary.rightExpr);
+    if (ast->binary.operator.type == TokenPower) {
+        return compile_power(compiler, ast->binary.left_expr, ast->binary.right_expr);
     }
 
-    TokenType operatorType = ast->binary.operator.type;
+    TokenType operator_type = ast->binary.operator.type;
 
-    bool logical = isLogicalToken(operatorType);
+    bool logical = is_logical_token(operator_type);
     if (logical) {
-        return compileLogicalBinary(compiler, ast);
+        return compile_logical_binary(compiler, ast);
     }
 
-    bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
+    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
     if (comparison) {
-        return compileNumericComparison(compiler, ast);
+        return compile_numeric_comparison(compiler, ast);
     }
 
-    if (isFloatType(getNodeDataType(ast))) {
-        return compileFloatBinary(compiler, ast);
+    if (is_float_type(get_node_data_type(ast))) {
+        return compile_float_binary(compiler, ast);
     }
 
-    DataType type = ast->binary.operandType;
-    Operand left = compileConvertedExpression(compiler, ast->binary.leftExpr, type, false);
+    DataType type = ast->binary.operand_type;
+    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, type, false);
 
-    if (!left.temporary && !isDirectVariable(compiler, ast->binary.rightExpr)) {
-        left = materializeOperand(compiler, left);
+    if (!left.temporary && !is_direct_variable(compiler, ast->binary.right_expr)) {
+        left = materialize_operand(compiler, left);
     }
 
-    Operand right = compileConvertedExpression(compiler, ast->binary.rightExpr, type, false);
+    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, type, false);
 
-    return emitBinaryOperator(compiler, ast->binary.operator.type, type, left, right);
+    return emit_binary_operator(compiler, ast->binary.operator.type, type, left, right);
 }
 
-static Operand emitUnaryOperand(Compiler* compiler, Opcode opcode, Operand operand)
+static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand)
 {
     if (operand.temporary) {
-        emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
+        emit_instruction(compiler, opcode, operand.reg, operand.reg, 0);
 
         return operand;
     }
 
-    int destination = allocateRegisters(compiler, operand.slots);
-    emitInstruction(compiler, opcode, destination, operand.reg, 0);
+    int destination = allocate_registers(compiler, operand.slots);
+    emit_instruction(compiler, opcode, destination, operand.reg, 0);
 
-    return operand.slots == 2 ? makeWideOperand(destination, true) : makeOperand(destination, true);
+    return operand.slots == 2 ? make_wide_operand(destination, true) : make_operand(destination, true);
 }
 
-static Opcode getNegationOpcode(DataType type)
+static Opcode get_negation_opcode(DataType type)
 {
-    if (type == TYPE_F32) {
-        return OP_NEG_F32;
+    if (type == TypeF32) {
+        return OpNegF32;
     }
 
-    if (type == TYPE_F64) {
-        return OP_NEG_F64;
+    if (type == TypeF64) {
+        return OpNegF64;
     }
 
-    return getIntegerOpcode(type, INTEGER_NEG);
+    return get_integer_opcode(type, IntNeg);
 }
 
-static void restoreConstantCompiler(Compiler* compiler, const Compiler* previous, FunctionObject* entry)
+static void restore_constant_compiler(Compiler* compiler, const Compiler* previous, FunctionObject* entry)
 {
-    Vector references = compiler->functionReferences;
+    Vector references = compiler->function_references;
 
     *compiler = *previous;
-    compiler->functionReferences = references;
+    compiler->function_references = references;
     compiler->module->functions.data[0] = entry;
 }
 
-static void freeConstantEvaluation(VM* vm, FunctionObject* function)
+static void free_constant_evaluation(VM* vm, FunctionObject* function)
 {
-    freeVM(vm);
-    freeMemory(vm);
-    freeFunctionObject(function);
+    free_vm(vm);
+    free_memory(vm);
+    free_function_object(function);
 }
 
-static Operand compileConstantExpression(Compiler* compiler, ASTNode* ast, FunctionObject* function)
+static Operand compile_constant_expression(Compiler* compiler, ASTNode* ast, FunctionObject* function)
 {
     compiler->function = function;
     compiler->module->functions.data[0] = function;
-    compiler->registerCount = 0;
-    compiler->frameBaseCount = 0;
-    compiler->localPositionOffset = 0;
-    compiler->peepholeBarrier = 0;
+    compiler->register_count = 0;
+    compiler->frame_base_count = 0;
+    compiler->local_position_offset = 0;
+    compiler->peephole_barrier = 0;
 
-    Operand result = compileExpression(compiler, ast->prefix.expr, false);
+    Operand result = compile_expression(compiler, ast->prefix.expr, false);
 
-    emitHlt(compiler);
+    emit_hlt(compiler);
 
     return result;
 }
 
-static void storeConstantResult(Compiler* compiler, ASTNode* ast, const VM* vm, Operand result)
+static void store_constant_result(Compiler* compiler, ASTNode* ast, const VM* vm, Operand result)
 {
-    if (vm->exitRequested) {
-        fatalError("Constant evaluation exited without a value");
+    if (vm->exit_requested) {
+        fatal_error("Constant evaluation exited without a value");
     }
 
-    size_t position = countValueArray(&compiler->module->constants);
+    size_t position = count_value_array(&compiler->module->constants);
 
     for (size_t i = 0; i < result.slots; i++) {
-        makeConstant(compiler, vm->stack[result.reg + i]);
+        make_constant(compiler, vm->stack[result.reg + i]);
     }
 
-    ast->prefix.constantPosition = position;
+    ast->prefix.constant_position = position;
     ast->prefix.evaluated = true;
 }
 
-static void evaluateConstantExpression(Compiler* compiler, ASTNode* ast)
+static void evaluate_constant_expression(Compiler* compiler, ASTNode* ast)
 {
     Compiler previous = *compiler;
     FunctionObject* entry = compiler->module->functions.data[0];
-    FunctionObject* function = createFunctionObject();
-    VM* vm = allocateZeroedMemory(1, sizeof(VM));
+    FunctionObject* function = create_function_object();
+    VM* vm = allocate_zeroed_memory(1, sizeof(VM));
     ErrorContext context;
 
-    beginErrorContext(&context, NULL);
+    begin_error_context(&context, NULL);
 
     if (setjmp(context.jump) != 0) {
-        endErrorContext(&context);
-        restoreConstantCompiler(compiler, &previous, entry);
-        freeConstantEvaluation(vm, function);
-        raiseError();
+        end_error_context(&context);
+        restore_constant_compiler(compiler, &previous, entry);
+        free_constant_evaluation(vm, function);
+        raise_error();
     }
 
-    Operand result = compileConstantExpression(compiler, ast, function);
+    Operand result = compile_constant_expression(compiler, ast, function);
 
-    initVM(vm, compiler->module);
+    init_vm(vm, compiler->module);
     interpret(vm);
-    storeConstantResult(compiler, ast, vm, result);
-    endErrorContext(&context);
-    restoreConstantCompiler(compiler, &previous, entry);
-    freeConstantEvaluation(vm, function);
+    store_constant_result(compiler, ast, vm, result);
+    end_error_context(&context);
+    restore_constant_compiler(compiler, &previous, entry);
+    free_constant_evaluation(vm, function);
 }
 
-static int emitScalarConstant(Compiler* compiler, ASTNode* ast, size_t position)
+static int emit_scalar_constant(Compiler* compiler, ASTNode* ast, size_t position)
 {
-    DataType type = getNodeDataType(ast);
+    DataType type = get_node_data_type(ast);
     Value value = compiler->module->constants.data[position];
     uint64_t integer = AS_UNSIGNED(value);
-    bool scalar = isIntegerType(type) || type == TYPE_BOOL || type == TYPE_CHAR;
+    bool scalar = is_integer_type(type) || type == TypeBool || type == TypeChar;
 
-    if (type == TYPE_BOOL) {
+    if (type == TypeBool) {
         integer = AS_BOOL(value);
     }
 
-    if (scalar && isNarrowIntegerImmediate(integer, type)) {
-        return emitLdi(compiler, (int16_t)integer);
+    if (scalar && is_narrow_integer_immediate(integer, type)) {
+        return emit_ldi(compiler, (int16_t)integer);
     }
 
-    return emitLdc(compiler, position);
+    return emit_ldc(compiler, position);
 }
 
-static Operand compileConstant(Compiler* compiler, ASTNode* ast)
+static Operand compile_constant(Compiler* compiler, ASTNode* ast)
 {
     if (!ast->prefix.evaluated) {
-        evaluateConstantExpression(compiler, ast);
+        evaluate_constant_expression(compiler, ast);
     }
 
-    size_t position = ast->prefix.constantPosition;
-    size_t slots = getNodeSlotCount(ast);
+    size_t position = ast->prefix.constant_position;
+    size_t slots = get_node_slot_count(ast);
 
     if (slots == 2) {
-        int reg = emitLdcI64(compiler, position);
+        int reg = emit_ldc_i64(compiler, position);
 
-        return makeWideOperand(reg, true);
+        return make_wide_operand(reg, true);
     }
 
-    int reg = emitScalarConstant(compiler, ast, position);
+    int reg = emit_scalar_constant(compiler, ast, position);
 
-    return makeOperand(reg, true);
+    return make_operand(reg, true);
 }
 
-static Operand compilePrefix(Compiler* compiler, ASTNode* ast)
+static Operand compile_prefix(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->prefix.operator.type == TOKEN_CONST) {
-        return compileConstant(compiler, ast);
+    if (ast->prefix.operator.type == TokenKeywordConst) {
+        return compile_constant(compiler, ast);
     }
 
-    if (getReferenceType(ast) != REFERENCE_NONE) {
-        return dereferenceOperand(
-            compiler, compileReferenceExpression(compiler, ast), getTypeSlotCount(getNodeDataType(ast)));
+    if (get_reference_type(ast) != RefNone) {
+        return dereference_operand(
+            compiler, compile_reference_expression(compiler, ast), get_type_slot_count(get_node_data_type(ast)));
     }
 
-    Operand operand = compileExpression(compiler, ast->prefix.expr, false);
+    Operand operand = compile_expression(compiler, ast->prefix.expr, false);
 
     switch (ast->prefix.operator.type) {
-        case TOKEN_NOT:
-            return emitUnaryOperand(compiler, OP_NOT, operand);
-        case TOKEN_TILDE:
-            return emitUnaryOperand(compiler, getIntegerOpcode(getNodeDataType(ast), INTEGER_BNOT), operand);
-        case TOKEN_MINUS: {
-            DataType type = getNodeDataType(ast);
-            Opcode opcode = getNegationOpcode(type);
+        case TokenKeywordNot:
+            return emit_unary_operand(compiler, OpNot, operand);
+        case TokenTilde:
+            return emit_unary_operand(compiler, get_integer_opcode(get_node_data_type(ast), IntBnot), operand);
+        case TokenMinus: {
+            DataType type = get_node_data_type(ast);
+            Opcode opcode = get_negation_opcode(type);
 
-            return emitUnaryOperand(compiler, opcode, operand);
+            return emit_unary_operand(compiler, opcode, operand);
         }
         default:
-            return noOperand();
+            return no_operand();
     }
 }
 
-static Operand compileVariable(Compiler* compiler, ASTNode* ast)
+static Operand compile_variable(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
 
-    if (isVariableDefinition(symbol) && symbol->variableDefinition.constant) {
-        DataType type = getNodeDataType(symbol);
+    if (is_variable_definition(symbol) && symbol->variable_definition.constant) {
+        DataType type = get_node_data_type(symbol);
 
-        return compileConvertedExpression(compiler, symbol->variableDefinition.expr, type, false);
+        return compile_converted_expression(compiler, symbol->variable_definition.expr, type, false);
     }
 
-    Operand value = loadVariable(compiler, ast->variable.symbol);
+    Operand value = load_variable(compiler, ast->variable.symbol);
 
-    if (getReferenceType(ast) == REFERENCE_NONE) {
+    if (get_reference_type(ast) == RefNone) {
         return value;
     }
 
-    return dereferenceOperand(compiler, value, getTypeSlotCount(getNodeDataType(ast)));
+    return dereference_operand(compiler, value, get_type_slot_count(get_node_data_type(ast)));
 }
 
-static void storeAssignmentValue(Compiler* compiler, ASTNode* symbol, Operand value)
+static void store_assignment_value(Compiler* compiler, ASTNode* symbol, Operand value)
 {
-    if (getReferenceType(symbol) == REFERENCE_NONE) {
-        storeVariable(compiler, symbol, value);
+    if (get_reference_type(symbol) == RefNone) {
+        store_variable(compiler, symbol, value);
 
         return;
     }
 
-    Operand reference = loadVariable(compiler, symbol);
-    Opcode opcode = value.slots == 2 ? OP_STR_64 : OP_STR;
+    Operand reference = load_variable(compiler, symbol);
+    Opcode opcode = value.slots == 2 ? OpStr64 : OpStr;
 
-    emitInstruction(compiler, opcode, value.reg, reference.reg, 0);
-    releaseOperand(compiler, value);
-    releaseOperand(compiler, reference);
+    emit_instruction(compiler, opcode, value.reg, reference.reg, 0);
+    release_operand(compiler, value);
+    release_operand(compiler, reference);
 }
 
-static void compileCompoundAssignment(
+static void compile_compound_assignment(
     Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
-    DataType type = getNodeDataType(ast->assignment.symbol);
+    DataType type = get_node_data_type(ast->assignment.symbol);
 
-    Operand left = loadVariable(compiler, ast->assignment.symbol);
+    Operand left = load_variable(compiler, ast->assignment.symbol);
 
-    if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
-        left = dereferenceOperand(
-            compiler, left, getTypeSlotCount(getNodeDataType(ast->assignment.symbol)));
+    if (get_reference_type(ast->assignment.symbol) != RefNone) {
+        left = dereference_operand(
+            compiler, left, get_type_slot_count(get_node_data_type(ast->assignment.symbol)));
     }
 
-    if (!left.temporary && !isDirectVariable(compiler, ast->assignment.expr)) {
-        left = materializeOperand(compiler, left);
+    if (!left.temporary && !is_direct_variable(compiler, ast->assignment.expr)) {
+        left = materialize_operand(compiler, left);
     }
 
-    Operand right = compileConvertedExpression(compiler, ast->assignment.expr, type, false);
+    Operand right = compile_converted_expression(compiler, ast->assignment.expr, type, false);
     Operand result;
 
-    if (isFloatType(type)) {
-        Opcode opcode = getFloatOperationOpcode(type, operation);
-        result = emitFloatOperands(compiler, opcode, type, left, right);
+    if (is_float_type(type)) {
+        Opcode opcode = get_float_operation_opcode(type, operation);
+        result = emit_float_operands(compiler, opcode, type, left, right);
     } else {
-        result = emitBinaryOperands(compiler, operation, type, left, right);
+        result = emit_binary_operands(compiler, operation, type, left, right);
     }
 
-    storeAssignmentValue(compiler, ast->assignment.symbol, result);
+    store_assignment_value(compiler, ast->assignment.symbol, result);
 }
 
-static void compileSimpleAssignment(Compiler* compiler, ASTNode* ast)
+static void compile_simple_assignment(Compiler* compiler, ASTNode* ast)
 {
-    if (getReferenceType(ast->assignment.symbol) != REFERENCE_NONE) {
-        Operand reference = compileReferenceExpression(compiler, ast->assignment.expr);
-        storeVariable(compiler, ast->assignment.symbol, reference);
+    if (get_reference_type(ast->assignment.symbol) != RefNone) {
+        Operand reference = compile_reference_expression(compiler, ast->assignment.expr);
+        store_variable(compiler, ast->assignment.symbol, reference);
 
         return;
     }
 
-    Operand value = compileConvertedExpression(
-        compiler, ast->assignment.expr, getNodeDataType(ast->assignment.symbol), false);
+    Operand value = compile_converted_expression(
+        compiler, ast->assignment.expr, get_node_data_type(ast->assignment.symbol), false);
 
-    storeAssignmentValue(compiler, ast->assignment.symbol, value);
+    store_assignment_value(compiler, ast->assignment.symbol, value);
 }
 
-static void compileAssignment(Compiler* compiler, ASTNode* ast)
+static void compile_assignment(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->assignment.operator.type) {
-        case TOKEN_PLUS_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_ADD);
-        case TOKEN_MINUS_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_SUB);
-        case TOKEN_STAR_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_MUL);
-        case TOKEN_SLASH_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_DIV);
-        case TOKEN_PERCENT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_REM);
-        case TOKEN_AND_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_BAND);
-        case TOKEN_OR_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_BOR);
-        case TOKEN_CIRCUMFLEX_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_BXOR);
-        case TOKEN_LSHIFT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_LSL);
-        case TOKEN_RSHIFT_EQUAL:
-            return compileCompoundAssignment(compiler, ast, INTEGER_LSR);
-        case TOKEN_POWER_EQUAL:
-            return compilePowerAssignment(compiler, ast);
-        case TOKEN_EQUAL:
-            return compileSimpleAssignment(compiler, ast);
+        case TokenPlusEqual:
+            return compile_compound_assignment(compiler, ast, IntAdd);
+        case TokenMinusEqual:
+            return compile_compound_assignment(compiler, ast, IntSub);
+        case TokenStarEqual:
+            return compile_compound_assignment(compiler, ast, IntMul);
+        case TokenSlashEqual:
+            return compile_compound_assignment(compiler, ast, IntDiv);
+        case TokenPercentEqual:
+            return compile_compound_assignment(compiler, ast, IntRem);
+        case TokenAndEqual:
+            return compile_compound_assignment(compiler, ast, IntBand);
+        case TokenOrEqual:
+            return compile_compound_assignment(compiler, ast, IntBor);
+        case TokenCircumflexEqual:
+            return compile_compound_assignment(compiler, ast, IntBxor);
+        case TokenLshiftEqual:
+            return compile_compound_assignment(compiler, ast, IntLsl);
+        case TokenRshiftEqual:
+            return compile_compound_assignment(compiler, ast, IntLsr);
+        case TokenPowerEqual:
+            return compile_power_assignment(compiler, ast);
+        case TokenEqual:
+            return compile_simple_assignment(compiler, ast);
         default:
             return;
     }
 }
 
-static Operand compileReferenceAwareExpression(Compiler* compiler, ASTNode* ast, bool reference)
+static Operand compile_reference_aware_expression(Compiler* compiler, ASTNode* ast, bool reference)
 {
     if (reference) {
-        return compileReferenceExpression(compiler, ast);
+        return compile_reference_expression(compiler, ast);
     }
 
-    return compileExpression(compiler, ast, false);
+    return compile_expression(compiler, ast, false);
 }
 
-static Operand normalizeUnsignedOperand(Compiler* compiler, Operand operand, DataType source)
+static Operand normalize_unsigned_operand(Compiler* compiler, Operand operand, DataType source)
 {
 #if UINTPTR_MAX == UINT64_MAX
-    if (source == TYPE_U32) {
-        operand = materializeOperand(compiler, operand);
+    if (source == TypeU32) {
+        operand = materialize_operand(compiler, operand);
 
-        emitInstruction(compiler, OP_LSRI_I32, operand.reg, operand.reg, 0);
+        emit_instruction(compiler, OpLsriI32, operand.reg, operand.reg, 0);
 
         return operand;
     }
 #endif
 
-    if (source != TYPE_U8 && source != TYPE_U16) {
+    if (source != TypeU8 && source != TypeU16) {
         return operand;
     }
 
-    return normalizeIntegerOperand(compiler, operand, source);
+    return normalize_integer_operand(compiler, operand, source);
 }
 
-static Operand extendIntegerOperand(Compiler* compiler, Operand operand, DataType source)
+static Operand extend_integer_operand(Compiler* compiler, Operand operand, DataType source)
 {
-    int destinationRegister = operand.reg;
+    int destination_register = operand.reg;
 
     if (!operand.temporary) {
-        destinationRegister = allocateRegister(compiler);
+        destination_register = allocate_register(compiler);
 
-        emitMov(compiler, destinationRegister, operand.reg);
+        emit_mov(compiler, destination_register, operand.reg);
     }
 
-    int highRegister = allocateRegister(compiler);
+    int high_register = allocate_register(compiler);
 
 #if UINTPTR_MAX == UINT64_MAX
-    (void)highRegister;
+    (void)high_register;
     (void)source;
 
-    return makeWideOperand(destinationRegister, true);
+    return make_wide_operand(destination_register, true);
 #else
-    if (isSignedIntegerType(source)) {
-        emitInstruction(compiler, OP_ASRI_I32, highRegister, destinationRegister, 31);
+    if (is_signed_integer_type(source)) {
+        emit_instruction(compiler, OpAsriI32, high_register, destination_register, 31);
 
-        return makeWideOperand(destinationRegister, true);
+        return make_wide_operand(destination_register, true);
     }
 
-    emitInstruction(compiler, OP_LDI, highRegister, 0, 0);
+    emit_instruction(compiler, OpLdi, high_register, 0, 0);
 
-    return makeWideOperand(destinationRegister, true);
+    return make_wide_operand(destination_register, true);
 #endif
 }
 
-static Operand widenIntegerOperand(Compiler* compiler, Operand operand,
+static Operand widen_integer_operand(Compiler* compiler, Operand operand,
     DataType source, DataType destination)
 {
-    if (!canImplicitlyWidenInteger(source, destination)
-        || getTypeSlotCount(destination) == operand.slots) {
+    if (!can_implicitly_widen_integer(source, destination)
+        || get_type_slot_count(destination) == operand.slots) {
         return operand;
     }
 
-    return compileIntegerCast(compiler, operand, source, destination);
+    return compile_integer_cast(compiler, operand, source, destination);
 }
 
-static Operand widenFloatOperand(Compiler* compiler, Operand operand,
+static Operand widen_float_operand(Compiler* compiler, Operand operand,
     DataType source, DataType destination)
 {
-    if (source != TYPE_F32 || destination != TYPE_F64) {
+    if (source != TypeF32 || destination != TypeF64) {
         return operand;
     }
 
-    int destinationRegister;
+    int destination_register;
 
     if (operand.temporary) {
-        destinationRegister = operand.reg;
-        allocateRegister(compiler);
+        destination_register = operand.reg;
+        allocate_register(compiler);
     } else {
-        destinationRegister = allocateRegisters(compiler, 2);
+        destination_register = allocate_registers(compiler, 2);
     }
 
-    emitInstruction(compiler, OP_F32_TO_F64, destinationRegister, operand.reg, 0);
+    emit_instruction(compiler, OpF32ToF64, destination_register, operand.reg, 0);
 
-    return makeWideOperand(destinationRegister, true);
+    return make_wide_operand(destination_register, true);
 }
 
-static Operand convertIntegerToFloatOperand(Compiler* compiler, Operand operand,
+static Operand convert_integer_to_float_operand(Compiler* compiler, Operand operand,
     DataType source, DataType destination)
 {
-    if (!canImplicitlyConvertIntegerToFloat(source, destination)) {
+    if (!can_implicitly_convert_integer_to_float(source, destination)) {
         return operand;
     }
 
-    bool wide = destination == TYPE_F64;
-    int destinationRegister = operand.reg;
+    bool wide = destination == TypeF64;
+    int destination_register = operand.reg;
 
     if (!operand.temporary) {
-        destinationRegister = allocateRegisters(compiler, wide ? 2 : 1);
+        destination_register = allocate_registers(compiler, wide ? 2 : 1);
     } else if (wide) {
-        allocateRegister(compiler);
+        allocate_register(compiler);
     }
 
-    bool signedInteger = isSignedIntegerType(source);
+    bool signed_integer = is_signed_integer_type(source);
     Opcode opcode;
 
     if (wide) {
-        opcode = signedInteger ? OP_I32_TO_F64 : OP_U32_TO_F64;
+        opcode = signed_integer ? OpI32ToF64 : OpU32ToF64;
     } else {
-        opcode = signedInteger ? OP_I32_TO_F32 : OP_U32_TO_F32;
+        opcode = signed_integer ? OpI32ToF32 : OpU32ToF32;
     }
 
-    emitInstruction(compiler, opcode, destinationRegister, operand.reg, 0);
+    emit_instruction(compiler, opcode, destination_register, operand.reg, 0);
 
     if (wide) {
-        return makeWideOperand(destinationRegister, true);
+        return make_wide_operand(destination_register, true);
     }
 
-    return makeOperand(destinationRegister, true);
+    return make_operand(destination_register, true);
 }
 
-static uint64_t getWidenedIntegerLiteralValue(ASTNode* ast, DataType source)
+static uint64_t get_widened_integer_literal_value(ASTNode* ast, DataType source)
 {
-    uint64_t value = ast->integerLiteral.value;
+    uint64_t value = ast->integer_literal.value;
 
     switch (source) {
-        case TYPE_I8:
+        case TypeI8:
             return (uint64_t)(int64_t)(int8_t)value;
-        case TYPE_I16:
+        case TypeI16:
             return (uint64_t)(int64_t)(int16_t)value;
-        case TYPE_I32:
+        case TypeI32:
             return (uint64_t)(int64_t)(int32_t)value;
-        case TYPE_U8:
+        case TypeU8:
             return (uint8_t)value;
-        case TYPE_U16:
+        case TypeU16:
             return (uint16_t)value;
-        case TYPE_U32:
+        case TypeU32:
             return (uint32_t)value;
         default:
             return value;
     }
 }
 
-static Operand compileWidenedIntegerLiteral(Compiler* compiler, ASTNode* ast, DataType destination)
+static Operand compile_widened_integer_literal(Compiler* compiler, ASTNode* ast, DataType destination)
 {
-    DataType source = getNodeDataType(ast);
+    DataType source = get_node_data_type(ast);
     ASTNode literal = *ast;
 
-    literal.integerLiteral.value = getWidenedIntegerLiteralValue(ast, source);
-    literal.integerLiteral.typeId = destination;
+    literal.integer_literal.value = get_widened_integer_literal_value(ast, source);
+    literal.integer_literal.type_id = destination;
 
-    return compileNumber(compiler, &literal);
+    return compile_number(compiler, &literal);
 }
 
-static Operand compileIntegerLiteralAsFloat(Compiler* compiler, ASTNode* ast, DataType destination)
+static Operand compile_integer_literal_as_float(Compiler* compiler, ASTNode* ast, DataType destination)
 {
-    DataType source = getNodeDataType(ast);
-    uint64_t integer = getWidenedIntegerLiteralValue(ast, source);
+    DataType source = get_node_data_type(ast);
+    uint64_t integer = get_widened_integer_literal_value(ast, source);
     double number = integer;
 
-    if (isSignedIntegerType(source)) {
+    if (is_signed_integer_type(source)) {
         number = (int64_t)integer;
     }
 
-    if (source == TYPE_F32) {
+    if (source == TypeF32) {
         number = (float)number;
     }
 
-    return compileFloatValue(compiler, number, destination);
+    return compile_float_value(compiler, number, destination);
 }
 
-static Operand compileConvertedExpression(Compiler* compiler, ASTNode* ast,
+static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast,
     DataType destination, bool reference)
 {
-    DataType source = getNodeDataType(ast);
-    bool integerToFloat = canImplicitlyConvertIntegerToFloat(source, destination);
-    bool floatWidening = canImplicitlyWidenFloat(source, destination);
+    DataType source = get_node_data_type(ast);
+    bool integer_to_float = can_implicitly_convert_integer_to_float(source, destination);
+    bool float_widening = can_implicitly_widen_float(source, destination);
 
-    if (!reference && ast->type == AST_INTEGER && (integerToFloat || floatWidening)) {
-        return compileIntegerLiteralAsFloat(compiler, ast, destination);
+    if (!reference && ast->type == ASTInteger && (integer_to_float || float_widening)) {
+        return compile_integer_literal_as_float(compiler, ast, destination);
     }
 
-    if (!reference && ast->type == AST_INTEGER && canImplicitlyWidenInteger(source, destination)) {
-        return compileWidenedIntegerLiteral(compiler, ast, destination);
+    if (!reference && ast->type == ASTInteger && can_implicitly_widen_integer(source, destination)) {
+        return compile_widened_integer_literal(compiler, ast, destination);
     }
 
-    if (!reference && ast->type == AST_FLOAT && source == TYPE_F32 && destination == TYPE_F64) {
-        double value = (float)ast->floatLiteral.value;
+    if (!reference && ast->type == ASTFloat && source == TypeF32 && destination == TypeF64) {
+        double value = (float)ast->float_literal.value;
 
-        return compileFloatValue(compiler, value, destination);
+        return compile_float_value(compiler, value, destination);
     }
 
-    Operand operand = compileReferenceAwareExpression(compiler, ast, reference);
+    Operand operand = compile_reference_aware_expression(compiler, ast, reference);
 
     if (reference) {
         return operand;
     }
 
-    if (source != destination && canImplicitlyWidenType(source, destination)) {
-        operand = normalizeUnsignedOperand(compiler, operand, source);
+    if (source != destination && can_implicitly_widen_type(source, destination)) {
+        operand = normalize_unsigned_operand(compiler, operand, source);
     }
 
-    operand = widenIntegerOperand(compiler, operand, source, destination);
-    operand = convertIntegerToFloatOperand(compiler, operand, source, destination);
+    operand = widen_integer_operand(compiler, operand, source, destination);
+    operand = convert_integer_to_float_operand(compiler, operand, source, destination);
 
-    return widenFloatOperand(compiler, operand, source, destination);
+    return widen_float_operand(compiler, operand, source, destination);
 }
 
-static Operand shrinkIntegerOperand(Compiler* compiler, Operand operand)
+static Operand shrink_integer_operand(Compiler* compiler, Operand operand)
 {
     if (operand.slots == 1) {
         return operand;
     }
 
     if (!operand.temporary) {
-        return makeOperand(operand.reg, false);
+        return make_operand(operand.reg, false);
     }
 
-    releaseOperand(compiler, operand);
+    release_operand(compiler, operand);
 
-    int result = allocateRegister(compiler);
+    int result = allocate_register(compiler);
 
-    return makeOperand(result, true);
+    return make_operand(result, true);
 }
 
-static Operand compileIntegerCast(Compiler* compiler, Operand operand, DataType source, DataType destination)
+static Operand compile_integer_cast(Compiler* compiler, Operand operand, DataType source, DataType destination)
 {
-    operand = normalizeUnsignedOperand(compiler, operand, source);
+    operand = normalize_unsigned_operand(compiler, operand, source);
 
-    if (getTypeSlotCount(destination) == 2 && operand.slots == 1) {
-        return extendIntegerOperand(compiler, operand, source);
+    if (get_type_slot_count(destination) == 2 && operand.slots == 1) {
+        return extend_integer_operand(compiler, operand, source);
     }
 
-    if (getTypeSlotCount(destination) == 2) {
+    if (get_type_slot_count(destination) == 2) {
         return operand;
     }
 
-    operand = shrinkIntegerOperand(compiler, operand);
-    operand = materializeOperand(compiler, operand);
+    operand = shrink_integer_operand(compiler, operand);
+    operand = materialize_operand(compiler, operand);
 
-    size_t size = getIntegerTypeSize(destination);
+    size_t size = get_integer_type_size(destination);
 
     if (size == 8) {
         return operand;
     }
 
     if (size < 4) {
-        return normalizeIntegerOperand(compiler, operand, destination);
+        return normalize_integer_operand(compiler, operand, destination);
     }
 
-    Opcode opcode = OP_LSRI_I32;
+    Opcode opcode = OpLsriI32;
 
-    if (isSignedIntegerType(destination)) {
-        opcode = OP_ASRI_I32;
+    if (is_signed_integer_type(destination)) {
+        opcode = OpAsriI32;
     }
 
-    emitInstruction(compiler, opcode, operand.reg, operand.reg, 0);
+    emit_instruction(compiler, opcode, operand.reg, operand.reg, 0);
 
     return operand;
 }
 
-static Opcode getFloatToIntegerOpcode(DataType source, DataType destination)
+static Opcode get_float_to_integer_opcode(DataType source, DataType destination)
 {
     static const Opcode opcodes[2][4] = {
-        {OP_F32_TO_I32, OP_F32_TO_U32, OP_F32_TO_I64, OP_F32_TO_U64},
-        {OP_F64_TO_I32, OP_F64_TO_U32, OP_F64_TO_I64, OP_F64_TO_U64}
+        {OpF32ToI32, OpF32ToU32, OpF32ToI64, OpF32ToU64},
+        {OpF64ToI32, OpF64ToU32, OpF64ToI64, OpF64ToU64}
     };
     int index = 0;
 
-    if (!isSignedIntegerType(destination)) {
+    if (!is_signed_integer_type(destination)) {
         index++;
     }
 
-    if (getIntegerTypeSize(destination) == 8) {
+    if (get_integer_type_size(destination) == 8) {
         index += 2;
     }
 
-    return opcodes[source == TYPE_F64][index];
+    return opcodes[source == TypeF64][index];
 }
 
-static Opcode getIntegerToFloatOpcode(DataType source, DataType destination)
+static Opcode get_integer_to_float_opcode(DataType source, DataType destination)
 {
-    static const Opcode signedOpcodes[2][2] = {
-        {OP_I32_TO_F32, OP_I32_TO_F64},
-        {OP_I64_TO_F32, OP_I64_TO_F64}
+    static const Opcode signed_opcodes[2][2] = {
+        {OpI32ToF32, OpI32ToF64},
+        {OpI64ToF32, OpI64ToF64}
     };
-    static const Opcode unsignedOpcodes[2][2] = {
-        {OP_U32_TO_F32, OP_U32_TO_F64},
-        {OP_U64_TO_F32, OP_U64_TO_F64}
+    static const Opcode unsigned_opcodes[2][2] = {
+        {OpU32ToF32, OpU32ToF64},
+        {OpU64ToF32, OpU64ToF64}
     };
-    bool wideSource = getIntegerTypeSize(source) == 8;
-    bool wideDestination = destination == TYPE_F64;
+    bool wide_source = get_integer_type_size(source) == 8;
+    bool wide_destination = destination == TypeF64;
 
-    if (isSignedIntegerType(source)) {
-        return signedOpcodes[wideSource][wideDestination];
+    if (is_signed_integer_type(source)) {
+        return signed_opcodes[wide_source][wide_destination];
     }
 
-    return unsignedOpcodes[wideSource][wideDestination];
+    return unsigned_opcodes[wide_source][wide_destination];
 }
 
-static Opcode getNumericConversionOpcode(DataType source, DataType destination)
+static Opcode get_numeric_conversion_opcode(DataType source, DataType destination)
 {
-    if (isIntegerType(destination)) {
-        return getFloatToIntegerOpcode(source, destination);
+    if (is_integer_type(destination)) {
+        return get_float_to_integer_opcode(source, destination);
     }
 
-    if (isIntegerType(source)) {
-        return getIntegerToFloatOpcode(source, destination);
+    if (is_integer_type(source)) {
+        return get_integer_to_float_opcode(source, destination);
     }
 
-    return OP_F64_TO_F32;
+    return OpF64ToF32;
 }
 
-static Operand emitConversionOperand(Compiler* compiler, Operand operand, DataType destination, Opcode opcode)
+static Operand emit_conversion_operand(Compiler* compiler, Operand operand, DataType destination, Opcode opcode)
 {
-    size_t slots = getTypeSlotCount(destination);
+    size_t slots = get_type_slot_count(destination);
 
-    releaseOperand(compiler, operand);
+    release_operand(compiler, operand);
 
-    int result = allocateRegisters(compiler, slots);
+    int result = allocate_registers(compiler, slots);
 
-    emitInstruction(compiler, opcode, result, operand.reg, 0);
+    emit_instruction(compiler, opcode, result, operand.reg, 0);
 
     if (slots == 2) {
-        return makeWideOperand(result, true);
+        return make_wide_operand(result, true);
     }
 
-    return makeOperand(result, true);
+    return make_operand(result, true);
 }
 
-static Operand compileCharacterConversion(Compiler* compiler, ASTNode* ast)
+static Operand compile_character_conversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = getNodeDataType(expression);
-    DataType destination = ast->conversion.typeId;
+    DataType source = get_node_data_type(expression);
+    DataType destination = ast->conversion.type_id;
 
-    Operand operand = compileExpression(compiler, expression, false);
+    Operand operand = compile_expression(compiler, expression, false);
 
-    if (destination == TYPE_CHAR) {
-        return normalizeUnsignedOperand(compiler, operand, source);
+    if (destination == TypeChar) {
+        return normalize_unsigned_operand(compiler, operand, source);
     }
 
-    return compileIntegerCast(compiler, operand, TYPE_U32, destination);
+    return compile_integer_cast(compiler, operand, TypeU32, destination);
 }
 
-static Operand compileBooleanToInteger(Compiler* compiler, ASTNode* expression, DataType destination)
+static Operand compile_boolean_to_integer(Compiler* compiler, ASTNode* expression, DataType destination)
 {
-    Operand operand = compileExpression(compiler, expression, false);
+    Operand operand = compile_expression(compiler, expression, false);
 
-    operand = materializeOperand(compiler, operand);
+    operand = materialize_operand(compiler, operand);
 
-    emitInstruction(compiler, OP_BANDI_I32, operand.reg, operand.reg, 1);
+    emit_instruction(compiler, OpBandiI32, operand.reg, operand.reg, 1);
 
-    if (getTypeSlotCount(destination) == 2) {
-        return extendIntegerOperand(compiler, operand, TYPE_U32);
+    if (get_type_slot_count(destination) == 2) {
+        return extend_integer_operand(compiler, operand, TypeU32);
     }
 
     return operand;
 }
 
-static Operand compileExplicitConversion(Compiler* compiler, ASTNode* ast)
+static Operand compile_explicit_conversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = getNodeDataType(expression);
-    DataType destination = ast->conversion.typeId;
+    DataType source = get_node_data_type(expression);
+    DataType destination = ast->conversion.type_id;
 
-    if (source == destination || canImplicitlyWidenType(source, destination)) {
-        return compileConvertedExpression(compiler, expression, destination, false);
+    if (source == destination || can_implicitly_widen_type(source, destination)) {
+        return compile_converted_expression(compiler, expression, destination, false);
     }
 
-    if (source == TYPE_BOOL) {
-        return compileBooleanToInteger(compiler, expression, destination);
+    if (source == TypeBool) {
+        return compile_boolean_to_integer(compiler, expression, destination);
     }
 
-    if (source == TYPE_CHAR || destination == TYPE_CHAR) {
-        return compileCharacterConversion(compiler, ast);
+    if (source == TypeChar || destination == TypeChar) {
+        return compile_character_conversion(compiler, ast);
     }
 
-    Operand operand = compileExpression(compiler, expression, false);
+    Operand operand = compile_expression(compiler, expression, false);
 
-    if (isIntegerType(source) && isIntegerType(destination)) {
-        return compileIntegerCast(compiler, operand, source, destination);
+    if (is_integer_type(source) && is_integer_type(destination)) {
+        return compile_integer_cast(compiler, operand, source, destination);
     }
 
-    operand = normalizeUnsignedOperand(compiler, operand, source);
+    operand = normalize_unsigned_operand(compiler, operand, source);
 
-    Opcode opcode = getNumericConversionOpcode(source, destination);
+    Opcode opcode = get_numeric_conversion_opcode(source, destination);
 
-    return emitConversionOperand(compiler, operand, destination, opcode);
+    return emit_conversion_operand(compiler, operand, destination, opcode);
 }
 
-static bool requiresReservedArgument(Vector* args, Vector* params, size_t position)
+static bool requires_reserved_argument(Vector* args, Vector* params, size_t position)
 {
     if (!params) {
         return false;
     }
 
-    ASTNode* argument = getVectorAt(args, position);
-    ASTNode* parameter = getVectorAt(params, position);
+    ASTNode* argument = get_vector_at(args, position);
+    ASTNode* parameter = get_vector_at(params, position);
 
-    return getReferenceType(parameter) != REFERENCE_NONE
-        && getReferenceType(argument) == REFERENCE_NONE
-        && argument->type != AST_VARIABLE;
+    return get_reference_type(parameter) != RefNone
+        && get_reference_type(argument) == RefNone
+        && argument->type != ASTVariable;
 }
 
-static bool requiresReservedArguments(Vector* args, Vector* params)
+static bool requires_reserved_arguments(Vector* args, Vector* params)
 {
-    size_t count = countVector(args);
+    size_t count = count_vector(args);
 
     for (size_t i = 0; i < count; i++) {
-        if (requiresReservedArgument(args, params, i)) {
+        if (requires_reserved_argument(args, params, i)) {
             return true;
         }
     }
@@ -2077,68 +2077,68 @@ static bool requiresReservedArguments(Vector* args, Vector* params)
     return false;
 }
 
-static void reserveArgumentRegisters(Compiler* compiler, size_t count, bool reserved)
+static void reserve_argument_registers(Compiler* compiler, size_t count, bool reserved)
 {
     for (size_t i = 0; reserved && i < count; i++) {
-        allocateRegister(compiler);
+        allocate_register(compiler);
     }
 }
 
-static ASTNode* getArgumentExpression(Vector* args, ASTNode* parameter, size_t position)
+static ASTNode* get_argument_expression(Vector* args, ASTNode* parameter, size_t position)
 {
     if (position < args->count) {
         return args->data[position];
     }
 
-    return parameter->parameter.defaultValue;
+    return parameter->parameter.default_value;
 }
 
-static Operand compileArgumentExpression(Compiler* compiler, Vector* args, Vector* params,
+static Operand compile_argument_expression(Compiler* compiler, Vector* args, Vector* params,
     size_t position)
 {
     ASTNode* parameter = NULL;
 
     if (params) {
-        parameter = getVectorAt(params, position);
+        parameter = get_vector_at(params, position);
     }
 
-    bool reference = parameter && getReferenceType(parameter) != REFERENCE_NONE;
+    bool reference = parameter && get_reference_type(parameter) != RefNone;
 
-    ASTNode* argument = getArgumentExpression(args, parameter, position);
-    DataType destination = parameter ? getNodeDataType(parameter) : getNodeDataType(argument);
-    Operand expression = compileConvertedExpression(compiler, argument, destination, reference);
+    ASTNode* argument = get_argument_expression(args, parameter, position);
+    DataType destination = parameter ? get_node_data_type(parameter) : get_node_data_type(argument);
+    Operand expression = compile_converted_expression(compiler, argument, destination, reference);
 
     return expression;
 }
 
-static void storeArgument(Compiler* compiler, Operand argument,int destination, bool reserved)
+static void store_argument(Compiler* compiler, Operand argument,int destination, bool reserved)
 {
     if (!reserved && argument.temporary) {
         return;
     }
 
     if (!reserved) {
-        allocateRegisters(compiler, argument.slots);
+        allocate_registers(compiler, argument.slots);
     }
 
-    emitOperandMov(compiler, destination, argument);
+    emit_operand_mov(compiler, destination, argument);
 }
 
-static void compileArgument(Compiler* compiler, Vector* args, Vector* params, size_t position,
-    int firstRegister, size_t destinationOffset, bool reserved)
+static void compile_argument(Compiler* compiler, Vector* args, Vector* params, size_t position,
+    int first_register, size_t destination_offset, bool reserved)
 {
-    int destination = compiler->registerCount;
+    int destination = compiler->register_count;
 
     if (reserved) {
-        destination = firstRegister + destinationOffset;
+        destination = first_register + destination_offset;
     }
 
-    Operand argument = compileArgumentExpression(compiler, args, params, position);
+    Operand argument = compile_argument_expression(compiler, args, params, position);
 
-    storeArgument(compiler, argument, destination, reserved);
+    store_argument(compiler, argument, destination, reserved);
 }
 
-static bool compileArguments(Compiler* compiler, Vector* args, Vector* params)
+static bool compile_arguments(Compiler* compiler, Vector* args, Vector* params)
 {
     size_t count = args->count;
 
@@ -2146,123 +2146,123 @@ static bool compileArguments(Compiler* compiler, Vector* args, Vector* params)
         count = params->count;
     }
 
-    size_t slotCount = 0;
-    bool reserved = requiresReservedArguments(args, params);
-    int firstRegister = compiler->registerCount;
+    size_t slot_count = 0;
+    bool reserved = requires_reserved_arguments(args, params);
+    int first_register = compiler->register_count;
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = params ? getVectorAt(params, i) : getVectorAt(args, i);
-        slotCount += getNodeSlotCount(node);
+        ASTNode* node = params ? get_vector_at(params, i) : get_vector_at(args, i);
+        slot_count += get_node_slot_count(node);
     }
 
-    reserveArgumentRegisters(compiler, slotCount, reserved);
+    reserve_argument_registers(compiler, slot_count, reserved);
 
     for (size_t i = 0, offset = 0; i < count; i++) {
-        ASTNode* layout = params ? getVectorAt(params, i) : getVectorAt(args, i);
+        ASTNode* layout = params ? get_vector_at(params, i) : get_vector_at(args, i);
 
-        compileArgument(compiler, args, params, i, firstRegister, offset, reserved);
-        offset += getNodeSlotCount(layout);
+        compile_argument(compiler, args, params, i, first_register, offset, reserved);
+        offset += get_node_slot_count(layout);
     }
 
     return reserved;
 }
 
-static uint16_t makeFunctionPosition(size_t position)
+static uint16_t make_function_position(size_t position)
 {
     if (position > UINT16_MAX) {
-        functionIndexOverflowError();
+        function_index_overflow_error();
     }
 
     return (uint16_t)position;
 }
 
-static FunctionObject* createBuiltinFunctionObject(const Builtin* builtin)
+static FunctionObject* create_builtin_function_object(const Builtin* builtin)
 {
-    FunctionObject* function = createFunctionObject();
-    function->type = FUNCTION_BUILTIN;
+    FunctionObject* function = create_function_object();
+    function->type = FuncBuiltin;
     function->entry = builtin->entry;
-    function->paramCount = 0;
-    function->returnCount = getTypeSlotCount(builtin->returnTypeId);
+    function->param_count = 0;
+    function->return_count = get_type_slot_count(builtin->return_type_id);
 
-    for (int i = 0; i < builtin->paramCount; i++) {
-        function->paramCount += getTypeSlotCount(builtin->params[i]);
+    for (int i = 0; i < builtin->param_count; i++) {
+        function->param_count += get_type_slot_count(builtin->params[i]);
     }
 
-    if (builtin->returnTypeId == TYPE_VOID) {
-        function->returnCount = 0;
+    if (builtin->return_type_id == TypeVoid) {
+        function->return_count = 0;
     }
 
-    function->maxStackCount = 2 + getCallAreaCount(function);
+    function->max_stack_count = 2 + get_call_area_count(function);
 
     return function;
 }
 
-static FunctionObject* createDefinedFunctionObject(ASTNode* ast)
+static FunctionObject* create_defined_function_object(ASTNode* ast)
 {
-    ASTNode* body = ast->functionDefinition.body;
-    FunctionObject* function = createFunctionObject();
-    function->paramCount = 0;
+    ASTNode* body = ast->function_definition.body;
+    FunctionObject* function = create_function_object();
+    function->param_count = 0;
 
-    for (size_t i = 0; i < countVector(&ast->functionDefinition.params); i++) {
-        function->paramCount += getNodeSlotCount(
-            getVectorAt(&ast->functionDefinition.params, i));
+    for (size_t i = 0; i < count_vector(&ast->function_definition.params); i++) {
+        function->param_count += get_node_slot_count(
+            get_vector_at(&ast->function_definition.params, i));
     }
-    function->returnCount = getTypeSlotCount(ast->functionDefinition.returnTypeId);
+    function->return_count = get_type_slot_count(ast->function_definition.return_type_id);
 
-    if (ast->functionDefinition.returnTypeId == TYPE_VOID) {
-        function->returnCount = 0;
+    if (ast->function_definition.return_type_id == TypeVoid) {
+        function->return_count = 0;
     }
 
-    function->localCount = getMaxLocalCount(body->compound.scope);
-    int base = getCallAreaCount(function);
+    function->local_count = get_max_local_count(body->compound.scope);
+    int base = get_call_area_count(function);
 
     if (base > (int)UINT16_MAX + 1) {
-        functionRegisterIndexOverflowError(ast->functionDefinition.id->chars);
+        function_register_index_overflow_error(ast->function_definition.id->chars);
     }
 
-    function->maxStackCount = base + 2;
+    function->max_stack_count = base + 2;
 
     return function;
 }
 
-static uint16_t getBuiltinFunctionPosition(Compiler* compiler, const Builtin* builtin)
+static uint16_t get_builtin_function_position(Compiler* compiler, const Builtin* builtin)
 {
-    size_t functionCount = countVector(&compiler->module->functions);
+    size_t function_count = count_vector(&compiler->module->functions);
 
-    for (size_t i = 0; i < functionCount; i++) {
-        FunctionObject* function = getVectorAt(&compiler->module->functions, i);
+    for (size_t i = 0; i < function_count; i++) {
+        FunctionObject* function = get_vector_at(&compiler->module->functions, i);
 
-        if (function->type == FUNCTION_BUILTIN && function->entry == builtin->entry) {
-            return makeFunctionPosition(i);
+        if (function->type == FuncBuiltin && function->entry == builtin->entry) {
+            return make_function_position(i);
         }
     }
 
-    uint16_t position = makeFunctionPosition(functionCount);
-    FunctionObject* function = createBuiltinFunctionObject(builtin);
+    uint16_t position = make_function_position(function_count);
+    FunctionObject* function = create_builtin_function_object(builtin);
 
-    pushVectorItem(&compiler->module->functions, function);
-    pushVectorItem(&compiler->functionReferences, NULL);
+    push_vector_item(&compiler->module->functions, function);
+    push_vector_item(&compiler->function_references, NULL);
 
     return position;
 }
 
-static DataType getBuiltinArgumentType(const Builtin* builtin, const ASTNode* argument)
+static DataType get_builtin_argument_type(const Builtin* builtin, const ASTNode* argument)
 {
-    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
+    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
         return builtin->params[0];
     }
 
-    return getNodeDataType(argument);
+    return get_node_data_type(argument);
 }
 
-static bool matchesBuiltinArguments(const FunctionObject* function, const Builtin* builtin, const Vector* args)
+static bool matches_builtin_arguments(const FunctionObject* function, const Builtin* builtin, const Vector* args)
 {
-    if (function->type != FUNCTION_BUILTIN || function->entry != builtin->entry
-        || function->argumentCount != args->count) {
+    if (function->type != FuncBuiltin || function->entry != builtin->entry
+        || function->argument_count != args->count) {
         return false;
     }
 
-    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
+    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
         return true;
     }
 
@@ -2270,350 +2270,350 @@ static bool matchesBuiltinArguments(const FunctionObject* function, const Builti
 
     for (size_t i = 0; i < args->count && matches; i++) {
         ASTNode* argument = args->data[i];
-        DataType type = getNodeDataType(argument);
-        ArgumentFormat format = getArgumentFormat(type);
-        matches = format.formatter == function->argumentFormats[i].formatter;
+        DataType type = get_node_data_type(argument);
+        ArgumentFormat format = get_argument_format(type);
+        matches = format.formatter == function->argument_formats[i].formatter;
     }
 
     return matches;
 }
 
-static void setBuiltinArgumentFormat(FunctionObject* function, DataType type, size_t index)
+static void set_builtin_argument_format(FunctionObject* function, DataType type, size_t index)
 {
-    if (!function->argumentFormats) {
+    if (!function->argument_formats) {
         return;
     }
 
-    ArgumentFormat format = getArgumentFormat(type);
-    format.slot = function->paramCount;
-    function->argumentFormats[index] = format;
+    ArgumentFormat format = get_argument_format(type);
+    format.slot = function->param_count;
+    function->argument_formats[index] = format;
 }
 
-static FunctionObject* createVariadicBuiltinFunction(const Builtin* builtin, const Vector* args)
+static FunctionObject* create_variadic_builtin_function(const Builtin* builtin, const Vector* args)
 {
-    FunctionObject* function = createBuiltinFunctionObject(builtin);
+    FunctionObject* function = create_builtin_function_object(builtin);
     size_t count = args->count;
 
     if (count > SIZE_MAX / sizeof(ArgumentFormat)) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
-    if (builtin->paramCount == BUILTIN_VARIADIC && count > 0) {
-        function->argumentFormats = allocateMemory(count * sizeof(ArgumentFormat));
+    if (builtin->param_count == BUILTIN_VARIADIC && count > 0) {
+        function->argument_formats = allocate_memory(count * sizeof(ArgumentFormat));
     }
 
-    function->argumentCount = count;
+    function->argument_count = count;
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* argument = args->data[i];
-        DataType type = getBuiltinArgumentType(builtin, argument);
+        DataType type = get_builtin_argument_type(builtin, argument);
 
-        setBuiltinArgumentFormat(function, type, i);
+        set_builtin_argument_format(function, type, i);
 
-        function->paramCount += getTypeSlotCount(type);
+        function->param_count += get_type_slot_count(type);
     }
 
-    function->maxStackCount = 2 + getCallAreaCount(function);
+    function->max_stack_count = 2 + get_call_area_count(function);
 
     return function;
 }
 
-static uint16_t getBuiltinCallPosition(Compiler* compiler, const Builtin* builtin, const Vector* args)
+static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* builtin, const Vector* args)
 {
-    if (builtin->paramCount >= 0) {
-        return getBuiltinFunctionPosition(compiler, builtin);
+    if (builtin->param_count >= 0) {
+        return get_builtin_function_position(compiler, builtin);
     }
 
     size_t count = compiler->module->functions.count;
 
     for (size_t i = 0; i < count; i++) {
         FunctionObject* function = compiler->module->functions.data[i];
-        bool matches = matchesBuiltinArguments(function, builtin, args);
+        bool matches = matches_builtin_arguments(function, builtin, args);
 
         if (matches) {
-            return makeFunctionPosition(i);
+            return make_function_position(i);
         }
     }
 
-    uint16_t position = makeFunctionPosition(count);
-    FunctionObject* function = createVariadicBuiltinFunction(builtin, args);
+    uint16_t position = make_function_position(count);
+    FunctionObject* function = create_variadic_builtin_function(builtin, args);
 
-    pushVectorItem(&compiler->module->functions, function);
-    pushVectorItem(&compiler->functionReferences, NULL);
+    push_vector_item(&compiler->module->functions, function);
+    push_vector_item(&compiler->function_references, NULL);
 
     return position;
 }
 
-static uint16_t getFunctionPosition(Compiler* compiler, ASTNode* ast)
+static uint16_t get_function_position(Compiler* compiler, ASTNode* ast)
 {
-    size_t functionCount = countVector(&compiler->functionReferences);
+    size_t function_count = count_vector(&compiler->function_references);
 
-    for (size_t i = 0; i < functionCount; i++) {
-        if (ast == compiler->functionReferences.data[i]) {
-            return makeFunctionPosition(i);
+    for (size_t i = 0; i < function_count; i++) {
+        if (ast == compiler->function_references.data[i]) {
+            return make_function_position(i);
         }
     }
 
-    functionNotFoundError(ast);
+    function_not_found_error(ast);
 
     return 0;
 }
 
-static Operand compileCall(Compiler* compiler, FunctionObject* function, uint16_t functionPosition,
+static Operand compile_call(Compiler* compiler, FunctionObject* function, uint16_t function_position,
     Vector* args, Vector* params, bool discard)
 {
-    size_t argumentCount = countVector(args);
+    size_t argument_count = count_vector(args);
 
-    if (function->type == FUNCTION_BUILTIN && !function->returnCount && argumentCount == 1) {
-        int previousRegisterCount = compiler->registerCount;
-        Operand argument = compileArgumentExpression(compiler, args, params, 0);
+    if (function->type == FuncBuiltin && !function->return_count && argument_count == 1) {
+        int previous_register_count = compiler->register_count;
+        Operand argument = compile_argument_expression(compiler, args, params, 0);
 
-        emitCallInstruction(compiler, argument.reg, functionPosition);
-        releaseOperand(compiler, argument);
-        compiler->registerCount = previousRegisterCount;
+        emit_call_instruction(compiler, argument.reg, function_position);
+        release_operand(compiler, argument);
+        compiler->register_count = previous_register_count;
 
-        return noOperand();
+        return no_operand();
     }
 
-    CallArea call = openCallArea(compiler);
-    bool reserved = compileArguments(compiler, args, params);
+    CallArea call = open_call_area(compiler);
+    bool reserved = compile_arguments(compiler, args, params);
 
     if (reserved) {
-        relocateCallArea(compiler, &call, function->paramCount);
+        relocate_call_area(compiler, &call, function->param_count);
     }
 
-    return closeCallArea(compiler, function, functionPosition, call, discard);
+    return close_call_area(compiler, function, function_position, call, discard);
 }
 
-static Operand compilePower(Compiler* compiler, ASTNode* leftExpression, ASTNode* rightExpression)
+static Operand compile_power(Compiler* compiler, ASTNode* left_expression, ASTNode* right_expression)
 {
-    void* items[] = {leftExpression, rightExpression};
+    void* items[] = {left_expression, right_expression};
     Vector args = {.data = items, .capacity = 2, .count = 2};
-    DataType argumentTypes[] = {TYPE_I32, TYPE_I32};
-    const Builtin* builtin = resolveBuiltin("pow", argumentTypes, 2);
-    uint16_t position = getBuiltinFunctionPosition(compiler, builtin);
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+    DataType argument_types[] = {TypeI32, TypeI32};
+    const Builtin* builtin = resolve_builtin("pow", argument_types, 2);
+    uint16_t position = get_builtin_function_position(compiler, builtin);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
-    return compileCall(compiler, function, position, &args, NULL, false);
+    return compile_call(compiler, function, position, &args, NULL, false);
 }
 
-static Operand compileConcatenation(Compiler* compiler, ASTNode* ast)
+static Operand compile_concatenation(Compiler* compiler, ASTNode* ast)
 {
-    ASTNode* left = ast->binary.leftExpr;
-    ASTNode* right = ast->binary.rightExpr;
+    ASTNode* left = ast->binary.left_expr;
+    ASTNode* right = ast->binary.right_expr;
     void* items[] = {left, right};
     Vector args = {.data = items, .capacity = 2, .count = 2};
-    const Builtin* builtin = resolveBuiltin("string", NULL, 0);
-    uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+    const Builtin* builtin = resolve_builtin("string", NULL, 0);
+    uint16_t position = get_builtin_call_position(compiler, builtin, &args);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
-    return compileCall(compiler, function, position, &args, NULL, false);
+    return compile_call(compiler, function, position, &args, NULL, false);
 }
 
-static void compilePowerAssignment(Compiler* compiler, ASTNode* ast)
+static void compile_power_assignment(Compiler* compiler, ASTNode* ast)
 {
-    ASTNode left = {.type = AST_VARIABLE};
+    ASTNode left = {.type = ASTVariable};
     left.variable.symbol = ast->assignment.symbol;
 
-    Operand result = compilePower(compiler, &left, ast->assignment.expr);
-    storeAssignmentValue(compiler, ast->assignment.symbol, result);
+    Operand result = compile_power(compiler, &left, ast->assignment.expr);
+    store_assignment_value(compiler, ast->assignment.symbol, result);
 }
 
-static void compileCallWithArgument(Compiler* compiler, FunctionObject* function,
-    uint16_t functionPosition, Operand argument, bool discard)
+static void compile_call_with_argument(Compiler* compiler, FunctionObject* function,
+    uint16_t function_position, Operand argument, bool discard)
 {
-    if (function->type == FUNCTION_BUILTIN && !function->returnCount) {
-        emitCallInstruction(compiler, argument.reg, functionPosition);
-        releaseOperand(compiler, argument);
+    if (function->type == FuncBuiltin && !function->return_count) {
+        emit_call_instruction(compiler, argument.reg, function_position);
+        release_operand(compiler, argument);
 
         return;
     }
 
-    CallArea call = openCallArea(compiler);
-    int callArgumentRegister = compiler->registerCount;
+    CallArea call = open_call_area(compiler);
+    int call_argument_register = compiler->register_count;
 
-    allocateRegisters(compiler, argument.slots);
-    emitOperandMov(compiler, callArgumentRegister, argument);
-    closeCallArea(compiler, function, functionPosition, call, discard);
-    releaseOperand(compiler, argument);
+    allocate_registers(compiler, argument.slots);
+    emit_operand_mov(compiler, call_argument_register, argument);
+    close_call_area(compiler, function, function_position, call, discard);
+    release_operand(compiler, argument);
 }
 
-static Operand compileTypedVariadicCall(Compiler* compiler, ASTNode* ast, FunctionObject* function,
+static Operand compile_typed_variadic_call(Compiler* compiler, ASTNode* ast, FunctionObject* function,
     uint16_t position, bool discard)
 {
-    ASTNode parameter = {.type = AST_PARAMETER};
-    parameter.parameter.typeId = ast->builtinCall.builtin->params[0];
-    parameter.parameter.referenceType = REFERENCE_NONE;
+    ASTNode parameter = {.type = ASTParameter};
+    parameter.parameter.type_id = ast->builtin_call.builtin->params[0];
+    parameter.parameter.reference_type = RefNone;
     Vector params;
 
-    initVector(&params);
+    init_vector(&params);
 
-    for (size_t i = 0; i < ast->builtinCall.args.count; i++) {
-        pushVectorItem(&params, &parameter);
+    for (size_t i = 0; i < ast->builtin_call.args.count; i++) {
+        push_vector_item(&params, &parameter);
     }
 
-    Operand result = compileCall(compiler, function, position, &ast->builtinCall.args, &params, discard);
+    Operand result = compile_call(compiler, function, position, &ast->builtin_call.args, &params, discard);
 
-    freeVector(&params);
+    free_vector(&params);
 
     return result;
 }
 
-static Operand compileBuiltinCall(Compiler* compiler, ASTNode* ast, bool discard)
+static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    const Builtin* builtin = ast->builtinCall.builtin;
-    uint16_t position = getBuiltinCallPosition(compiler, builtin, &ast->builtinCall.args);
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+    const Builtin* builtin = ast->builtin_call.builtin;
+    uint16_t position = get_builtin_call_position(compiler, builtin, &ast->builtin_call.args);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
-    if (builtin->paramCount == BUILTIN_VARIADIC) {
-        return compileCall(compiler, function, position, &ast->builtinCall.args, NULL, discard);
+    if (builtin->param_count == BUILTIN_VARIADIC) {
+        return compile_call(compiler, function, position, &ast->builtin_call.args, NULL, discard);
     }
 
-    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
-        return compileTypedVariadicCall(compiler, ast, function, position, discard);
+    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
+        return compile_typed_variadic_call(compiler, ast, function, position, discard);
     }
 
     ASTNode parameters[BUILTIN_PARAMS_MAX] = {0};
     void* items[BUILTIN_PARAMS_MAX];
-    size_t count = builtin->paramCount;
+    size_t count = builtin->param_count;
     Vector params = {.data = items, .capacity = count, .count = count};
 
     for (size_t i = 0; i < count; i++) {
-        parameters[i].type = AST_PARAMETER;
-        parameters[i].parameter.typeId = builtin->params[i];
-        parameters[i].parameter.referenceType = REFERENCE_NONE;
+        parameters[i].type = ASTParameter;
+        parameters[i].parameter.type_id = builtin->params[i];
+        parameters[i].parameter.reference_type = RefNone;
         items[i] = &parameters[i];
     }
 
-    return compileCall(compiler, function, position, &ast->builtinCall.args, &params, discard);
+    return compile_call(compiler, function, position, &ast->builtin_call.args, &params, discard);
 }
 
-static Operand compileFunctionCall(Compiler* compiler, ASTNode* ast, bool discard)
+static Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
-    Vector* params = &ast->functionCall.symbol->functionDefinition.params;
-    Operand result = compileCall(compiler, function, position, &ast->functionCall.args, params, discard);
+    uint16_t position = get_function_position(compiler, ast->function_call.symbol);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    Vector* params = &ast->function_call.symbol->function_definition.params;
+    Operand result = compile_call(compiler, function, position, &ast->function_call.args, params, discard);
 
-    if (discard || getReferenceType(ast) == REFERENCE_NONE) {
+    if (discard || get_reference_type(ast) == RefNone) {
         return result;
     }
 
-    return dereferenceOperand(compiler, result, getTypeSlotCount(getNodeDataType(ast)));
+    return dereference_operand(compiler, result, get_type_slot_count(get_node_data_type(ast)));
 }
 
-static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
+static Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->type == AST_CONDITIONAL) {
-        return compileConditional(compiler, ast, true);
+    if (ast->type == ASTConditional) {
+        return compile_conditional(compiler, ast, true);
     }
 
-    if (ast->type == AST_MATCH) {
-        return compileMatch(compiler, ast, true);
+    if (ast->type == ASTMatch) {
+        return compile_match(compiler, ast, true);
     }
 
-    if (getReferenceType(ast) == REFERENCE_NONE && ast->type != AST_VARIABLE) {
-        Operand value = compileExpression(compiler, ast, false);
-        int valueRegister = allocateRegisters(compiler, value.slots);
+    if (get_reference_type(ast) == RefNone && ast->type != ASTVariable) {
+        Operand value = compile_expression(compiler, ast, false);
+        int value_register = allocate_registers(compiler, value.slots);
 
-        emitOperandMov(compiler, valueRegister, value);
-        emitInstruction(compiler, OP_REFL, value.reg, valueRegister, 0);
+        emit_operand_mov(compiler, value_register, value);
+        emit_instruction(compiler, OpRefl, value.reg, value_register, 0);
 
-        return makeOperand(value.reg, true);
+        return make_operand(value.reg, true);
     }
 
-    if (ast->type == AST_PREFIX) {
-        return referenceVariable(compiler, ast->prefix.expr->variable.symbol);
+    if (ast->type == ASTPrefix) {
+        return reference_variable(compiler, ast->prefix.expr->variable.symbol);
     }
 
-    if (ast->type == AST_VARIABLE) {
-        return referenceVariable(compiler, ast->variable.symbol);
+    if (ast->type == ASTVariable) {
+        return reference_variable(compiler, ast->variable.symbol);
     }
 
-    if (ast->type == AST_FUNCTION_CALL) {
-        uint16_t position = getFunctionPosition(compiler, ast->functionCall.symbol);
-        FunctionObject* function = getVectorAt(&compiler->module->functions, position);
-        Vector* params = &ast->functionCall.symbol->functionDefinition.params;
+    if (ast->type == ASTFunctionCall) {
+        uint16_t position = get_function_position(compiler, ast->function_call.symbol);
+        FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+        Vector* params = &ast->function_call.symbol->function_definition.params;
 
-        return compileCall(compiler, function, position, &ast->functionCall.args, params, false);
+        return compile_call(compiler, function, position, &ast->function_call.args, params, false);
     }
 
-    return noOperand();
+    return no_operand();
 }
 
-static void compileFunctionDefinition(Compiler* compiler, ASTNode* ast)
+static void compile_function_definition(Compiler* compiler, ASTNode* ast)
 {
-    if (!compiler->repl && !ast->functionDefinition.callCount) {
+    if (!compiler->repl && !ast->function_definition.call_count) {
         return;
     }
 
-    int previousFrameBaseCount = compiler->frameBaseCount;
-    int previousLocalPositionOffset = compiler->localPositionOffset;
-    int previousRegisterCount = compiler->registerCount;
-    size_t previousPeepholeBarrier = compiler->peepholeBarrier;
-    FunctionObject* previousFunction = compiler->function;
-    FunctionObject* function = createDefinedFunctionObject(ast);
-    ASTNode* body = ast->functionDefinition.body;
+    int previous_frame_base_count = compiler->frame_base_count;
+    int previous_local_position_offset = compiler->local_position_offset;
+    int previous_register_count = compiler->register_count;
+    size_t previous_peephole_barrier = compiler->peephole_barrier;
+    FunctionObject* previous_function = compiler->function;
+    FunctionObject* function = create_defined_function_object(ast);
+    ASTNode* body = ast->function_definition.body;
 
-    compiler->frameBaseCount = getCallAreaCount(function);
-    compiler->localPositionOffset = 0;
-    compiler->registerCount = compiler->frameBaseCount;
+    compiler->frame_base_count = get_call_area_count(function);
+    compiler->local_position_offset = 0;
+    compiler->register_count = compiler->frame_base_count;
     compiler->function = function;
-    compiler->peepholeBarrier = 0;
+    compiler->peephole_barrier = 0;
 
-    pushVectorItem(&compiler->module->functions, function);
-    pushVectorItem(&compiler->functionReferences, ast);
-    compileBlocklevelStatements(compiler, &body->compound.statements);
+    push_vector_item(&compiler->module->functions, function);
+    push_vector_item(&compiler->function_references, ast);
+    compile_blocklevel_statements(compiler, &body->compound.statements);
 
-    size_t statementCount = countVector(&body->compound.statements);
+    size_t statement_count = count_vector(&body->compound.statements);
     ASTNode* last = NULL;
 
-    if (statementCount > 0) {
-        last = getVectorAt(&body->compound.statements, statementCount - 1);
+    if (statement_count > 0) {
+        last = get_vector_at(&body->compound.statements, statement_count - 1);
     }
 
-    if (!last || last->type != AST_RETURN) {
-        compiler->registerCount = compiler->frameBaseCount;
-        emitRet(compiler);
+    if (!last || last->type != ASTReturn) {
+        compiler->register_count = compiler->frame_base_count;
+        emit_ret(compiler);
     }
 
-    optimizeBytecode(compiler->module, &function->code, 0);
+    optimize_bytecode(compiler->module, &function->code, 0);
 
-    compiler->function = previousFunction;
-    compiler->frameBaseCount = previousFrameBaseCount;
-    compiler->localPositionOffset = previousLocalPositionOffset;
-    compiler->registerCount = previousRegisterCount;
-    compiler->peepholeBarrier = previousPeepholeBarrier;
+    compiler->function = previous_function;
+    compiler->frame_base_count = previous_frame_base_count;
+    compiler->local_position_offset = previous_local_position_offset;
+    compiler->register_count = previous_register_count;
+    compiler->peephole_barrier = previous_peephole_barrier;
 }
 
-static void compileReturnStatement(Compiler* compiler, ASTNode* ast)
+static void compile_return_statement(Compiler* compiler, ASTNode* ast)
 {
-    if (isNone(ast->returnStatement.expr)) {
-        compiler->registerCount = compiler->frameBaseCount;
+    if (is_none(ast->return_statement.expr)) {
+        compiler->register_count = compiler->frame_base_count;
 
-        return emitRet(compiler);
+        return emit_ret(compiler);
     }
 
-    bool reference = getReferenceType(ast->returnStatement.expr) != REFERENCE_NONE;
-    ASTNode* function = getCurrentFunctionDefinition(compiler);
-    DataType returnType = function->functionDefinition.returnTypeId;
-    Operand value = compileConvertedExpression(
-        compiler, ast->returnStatement.expr, returnType, reference);
+    bool reference = get_reference_type(ast->return_statement.expr) != RefNone;
+    ASTNode* function = get_current_function_definition(compiler);
+    DataType return_type = function->function_definition.return_type_id;
+    Operand value = compile_converted_expression(
+        compiler, ast->return_statement.expr, return_type, reference);
 
-    emitRetv(compiler, value);
-    releaseOperand(compiler, value);
-    compiler->registerCount = compiler->frameBaseCount;
+    emit_retv(compiler, value);
+    release_operand(compiler, value);
+    compiler->register_count = compiler->frame_base_count;
 }
 
-static ASTNode* getCurrentFunctionDefinition(Compiler* compiler)
+static ASTNode* get_current_function_definition(Compiler* compiler)
 {
-    size_t count = countVector(&compiler->module->functions);
+    size_t count = count_vector(&compiler->module->functions);
 
     for (size_t i = 0; i < count; i++) {
-        FunctionObject* function = getVectorAt(&compiler->module->functions, i);
+        FunctionObject* function = get_vector_at(&compiler->module->functions, i);
 
         if (function == compiler->function) {
-            ASTNode* reference = getVectorAt(&compiler->functionReferences, i);
+            ASTNode* reference = get_vector_at(&compiler->function_references, i);
 
             return reference;
         }
@@ -2622,436 +2622,436 @@ static ASTNode* getCurrentFunctionDefinition(Compiler* compiler)
     return NULL;
 }
 
-static Operand compileZeroValue(Compiler* compiler, size_t slots)
+static Operand compile_zero_value(Compiler* compiler, size_t slots)
 {
     if (slots == 2) {
-        size_t position = makeI64Constant(compiler, 0);
+        size_t position = make_i64_constant(compiler, 0);
 
-        return makeWideOperand(emitLdcI64(compiler, position), true);
+        return make_wide_operand(emit_ldc_i64(compiler, position), true);
     }
 
-    return makeOperand(emitLdi(compiler, 0), true);
+    return make_operand(emit_ldi(compiler, 0), true);
 }
 
-static bool compileUnusedVariableDefinition(
+static bool compile_unused_variable_definition(
     Compiler* compiler, ASTNode* ast, size_t slots, bool unused, bool preserve)
 {
     if (!unused || preserve) {
         return false;
     }
 
-    compileExpression(compiler, ast->variableDefinition.expr, true);
+    compile_expression(compiler, ast->variable_definition.expr, true);
 
-    if (isTopLevelScope(ast->variableDefinition.scope)) {
+    if (is_top_level_scope(ast->variable_definition.scope)) {
         return true;
     }
 
-    allocateRegisters(compiler, slots);
+    allocate_registers(compiler, slots);
 
     return true;
 }
 
-static void finishGlobalDefinition(Compiler* compiler, ASTNode* ast, Operand value)
+static void finish_global_definition(Compiler* compiler, ASTNode* ast, Operand value)
 {
-    if (!isTopLevelScope(ast->variableDefinition.scope)) {
+    if (!is_top_level_scope(ast->variable_definition.scope)) {
         return;
     }
 
-    storeGlobalVariable(compiler, ast, value);
-    releaseOperand(compiler, value);
+    store_global_variable(compiler, ast, value);
+    release_operand(compiler, value);
 }
 
-static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
+static void compile_variable_definition(Compiler* compiler, ASTNode* ast)
 {
-    ast->variableDefinition.registerPosition = compiler->registerCount;
+    ast->variable_definition.register_position = compiler->register_count;
     Operand value;
-    size_t slots = getNodeSlotCount(ast);
-    bool unused = ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
-    bool constantValue = ast->variableDefinition.constant && !ast->variableDefinition.addressTaken;
-    bool preserve = compiler->repl && isCompilingTopLevel(compiler);
+    size_t slots = get_node_slot_count(ast);
+    bool unused = ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
+    bool constant_value = ast->variable_definition.constant && !ast->variable_definition.address_taken;
+    bool preserve = compiler->repl && is_compiling_top_level(compiler);
 
-    if (compileUnusedVariableDefinition(compiler, ast, slots, unused || constantValue, preserve)) {
+    if (compile_unused_variable_definition(compiler, ast, slots, unused || constant_value, preserve)) {
         return;
     }
 
-    if (isNone(ast->variableDefinition.expr)) {
-        value = compileZeroValue(compiler, slots);
+    if (is_none(ast->variable_definition.expr)) {
+        value = compile_zero_value(compiler, slots);
     } else {
-        bool reference = getReferenceType(ast) != REFERENCE_NONE;
-        value = compileConvertedExpression(
-            compiler, ast->variableDefinition.expr, getNodeDataType(ast), reference);
+        bool reference = get_reference_type(ast) != RefNone;
+        value = compile_converted_expression(
+            compiler, ast->variable_definition.expr, get_node_data_type(ast), reference);
     }
 
     if (!value.temporary) {
-        int reg = allocateRegisters(compiler, slots);
+        int reg = allocate_registers(compiler, slots);
 
-        emitOperandMov(compiler, reg, value);
+        emit_operand_mov(compiler, reg, value);
 
         value.reg = reg;
         value.temporary = true;
     }
 
-    finishGlobalDefinition(compiler, ast, value);
+    finish_global_definition(compiler, ast, value);
 }
 
-static size_t emitJump(Compiler* compiler, Opcode opcode, int conditionRegister)
+static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register)
 {
-    size_t position = countCodeObject(currentCodeObject(compiler));
-    emitInstruction(compiler, opcode, conditionRegister, 0, 0);
+    size_t position = count_code_object(current_code_object(compiler));
+    emit_instruction(compiler, opcode, condition_register, 0, 0);
 
     return position;
 }
 
-static Opcode getConditionJumpOpcode(Opcode comparison)
+static Opcode get_condition_jump_opcode(Opcode comparison)
 {
     switch (comparison) {
-        case OP_EQ:     return OP_BNE;
-        case OP_NE:     return OP_BEQ;
-        case OP_EQI:    return OP_BNEI;
-        case OP_NEI:    return OP_BEQI;
-        case OP_LT_I32: return OP_BLE_I32;
-        case OP_LT_U32: return OP_BLE_U32;
-        case OP_LE_I32: return OP_BLT_I32;
-        case OP_LE_U32: return OP_BLT_U32;
-        default:        return OP_HLT;
+        case OpEq:     return OpBne;
+        case OpNe:     return OpBeq;
+        case OpEqi:    return OpBnei;
+        case OpNei:    return OpBeqi;
+        case OpLtI32: return OpBleI32;
+        case OpLtU32: return OpBleU32;
+        case OpLeI32: return OpBltI32;
+        case OpLeU32: return OpBltU32;
+        default:        return OpHlt;
     }
 }
 
-static size_t emitConditionJump(Compiler* compiler, Operand condition)
+static size_t emit_condition_jump(Compiler* compiler, Operand condition)
 {
     PreviousInstruction comparison;
 
-    if (!condition.temporary || !getPreviousInstruction(compiler, &comparison) || comparison.a != condition.reg) {
-        return emitJump(compiler, OP_BZ, condition.reg);
+    if (!condition.temporary || !get_previous_instruction(compiler, &comparison) || comparison.a != condition.reg) {
+        return emit_jump(compiler, OpBz, condition.reg);
     }
 
-    Opcode opcode = getConditionJumpOpcode(comparison.opcode);
+    Opcode opcode = get_condition_jump_opcode(comparison.opcode);
 
-    if (opcode == OP_HLT) {
-        return emitJump(compiler, OP_BZ, condition.reg);
+    if (opcode == OpHlt) {
+        return emit_jump(compiler, OpBz, condition.reg);
     }
 
     size_t position = comparison.start + INSTRUCTION_SIZE;
     int left = comparison.b;
     int right = comparison.c;
 
-    if (opcode >= OP_BLT_I32 && opcode <= OP_BLE_U32) {
+    if (opcode >= OpBltI32 && opcode <= OpBleU32) {
         left = comparison.c;
         right = comparison.b;
     }
 
-    setByteAt(comparison.code, comparison.start, OP_NOP);
-    emitInstruction(compiler, opcode, left, right, 0);
+    set_byte_at(comparison.code, comparison.start, OpNop);
+    emit_instruction(compiler, opcode, left, right, 0);
 
     return position;
 }
 
-static Opcode getJumpComparisonOpcode(Opcode opcode)
+static Opcode get_jump_comparison_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OP_BNE:        return OP_EQ;
-        case OP_BEQ:        return OP_NE;
-        case OP_BNEI:       return OP_EQI;
-        case OP_BEQI:       return OP_NEI;
-        case OP_BLE_I32:    return OP_LT_I32;
-        case OP_BLE_U32:    return OP_LT_U32;
-        case OP_BLT_I32:    return OP_LE_I32;
-        case OP_BLT_U32:    return OP_LE_U32;
-        default:            return OP_HLT;
+        case OpBne:        return OpEq;
+        case OpBeq:        return OpNe;
+        case OpBnei:       return OpEqi;
+        case OpBeqi:       return OpNei;
+        case OpBleI32:    return OpLtI32;
+        case OpBleU32:    return OpLtU32;
+        case OpBltI32:    return OpLeI32;
+        case OpBltU32:    return OpLeU32;
+        default:            return OpHlt;
     }
 }
 
-static Opcode expandConditionJump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
+static Opcode expand_condition_jump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
 {
-    if (opcode < OP_BEQ || opcode > OP_BLE_U32 || offset <= INT8_MAX) {
+    if (opcode < OpBeq || opcode > OpBleU32 || offset <= INT8_MAX) {
         return opcode;
     }
 
     size_t comparison = position - INSTRUCTION_SIZE;
-    Opcode comparisonOpcode = getJumpComparisonOpcode(opcode);
+    Opcode comparison_opcode = get_jump_comparison_opcode(opcode);
 
-    setByteAt(code, comparison, comparisonOpcode);
-    setByteAt(code, position, OP_BZ);
-    setByteAt(code, position + 1, code->data[comparison + 1]);
+    set_byte_at(code, comparison, comparison_opcode);
+    set_byte_at(code, position, OpBz);
+    set_byte_at(code, position + 1, code->data[comparison + 1]);
 
-    return OP_BZ;
+    return OpBz;
 }
 
-static void checkJumpOffset(Opcode opcode, size_t offset)
+static void check_jump_offset(Opcode opcode, size_t offset)
 {
     size_t maximum = INT32_MAX >> 8;
 
-    if (opcode == OP_BZ || opcode == OP_BNZ) {
+    if (opcode == OpBz || opcode == OpBnz) {
         maximum = INT16_MAX;
     }
 
-    if (opcode >= OP_BEQ && opcode <= OP_BLE_U32) {
+    if (opcode >= OpBeq && opcode <= OpBleU32) {
         maximum = INT8_MAX;
     }
 
     if (offset > maximum) {
-        branchOffsetOverflowError();
+        branch_offset_overflow_error();
     }
 }
 
-static void patchJump(Compiler* compiler, size_t position)
+static void patch_jump(Compiler* compiler, size_t position)
 {
-    CodeObject* code = currentCodeObject(compiler);
+    CodeObject* code = current_code_object(compiler);
 
-    if (code->data[position] == OP_WIDE) {
+    if (code->data[position] == OpWide) {
         position += INSTRUCTION_SIZE;
     }
 
-    size_t count = countCodeObject(code);
-    size_t wordOffset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
+    size_t count = count_code_object(code);
+    size_t word_offset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
     Opcode opcode = (Opcode)code->data[position];
-    compiler->peepholeBarrier = count;
-    opcode = expandConditionJump(code, position, opcode, wordOffset);
+    compiler->peephole_barrier = count;
+    opcode = expand_condition_jump(code, position, opcode, word_offset);
 
-    checkJumpOffset(opcode, wordOffset);
+    check_jump_offset(opcode, word_offset);
 
-    int offset = (int)wordOffset;
+    int offset = (int)word_offset;
 
-    if (opcode == OP_BZ || opcode == OP_BNZ) {
-        setByteAt(code, position + 2, offset >> 8);
-        setByteAt(code, position + 3, offset);
-
-        return;
-    }
-
-    if (opcode >= OP_BEQ && opcode <= OP_BLE_U32) {
-        setByteAt(code, position + 3, offset);
+    if (opcode == OpBz || opcode == OpBnz) {
+        set_byte_at(code, position + 2, offset >> 8);
+        set_byte_at(code, position + 3, offset);
 
         return;
     }
 
-    setByteAt(code, position + 1, offset >> 16);
-    setByteAt(code, position + 2, offset >> 8);
-    setByteAt(code, position + 3, offset);
+    if (opcode >= OpBeq && opcode <= OpBleU32) {
+        set_byte_at(code, position + 3, offset);
+
+        return;
+    }
+
+    set_byte_at(code, position + 1, offset >> 16);
+    set_byte_at(code, position + 2, offset >> 8);
+    set_byte_at(code, position + 3, offset);
 }
 
-static void storeConditionalValue(
+static void store_conditional_value(
     Compiler* compiler, DataType type, int destination, Operand value)
 {
-    if (type == TYPE_VOID) {
+    if (type == TypeVoid) {
         return;
     }
 
-    if (retargetTemporary(compiler, value, destination)) {
+    if (retarget_temporary(compiler, value, destination)) {
         return;
     }
 
-    emitOperandMov(compiler, destination, value);
+    emit_operand_mov(compiler, destination, value);
 }
 
-static Operand compileConditionalBranch(
+static Operand compile_conditional_branch(
     Compiler* compiler, ASTNode* branch, DataType type, int destination, bool reference)
 {
-    if (branch->type == AST_CONDITIONAL) {
-        Operand value = compileConvertedExpression(compiler, branch, type, reference);
+    if (branch->type == ASTConditional) {
+        Operand value = compile_converted_expression(compiler, branch, type, reference);
 
-        storeConditionalValue(compiler, type, destination, value);
+        store_conditional_value(compiler, type, destination, value);
 
         return value;
     }
 
-    size_t count = countVector(&branch->compound.statements);
+    size_t count = count_vector(&branch->compound.statements);
 
     for (size_t i = 0; i < count; i++) {
-        bool discard = type == TYPE_VOID || i + 1 < count;
-        ASTNode* statement = getVectorAt(&branch->compound.statements, i);
+        bool discard = type == TypeVoid || i + 1 < count;
+        ASTNode* statement = get_vector_at(&branch->compound.statements, i);
 
         if (discard) {
-            compileStatement(compiler, statement, true);
+            compile_statement(compiler, statement, true);
 
             continue;
         }
 
-        Operand value = compileConvertedExpression(compiler, statement, type, reference);
+        Operand value = compile_converted_expression(compiler, statement, type, reference);
 
-        storeConditionalValue(compiler, type, destination, value);
+        store_conditional_value(compiler, type, destination, value);
 
         return value;
     }
 
-    return noOperand();
+    return no_operand();
 }
 
-static Operand allocateBranchResult(Compiler* compiler, DataType type)
+static Operand allocate_branch_result(Compiler* compiler, DataType type)
 {
-    if (type == TYPE_VOID) {
-        return noOperand();
+    if (type == TypeVoid) {
+        return no_operand();
     }
 
-    size_t slots = getTypeSlotCount(type);
-    int reg = allocateRegisters(compiler, slots);
+    size_t slots = get_type_slot_count(type);
+    int reg = allocate_registers(compiler, slots);
     Operand result = {reg, true, slots};
-    compiler->localPositionOffset += slots;
+    compiler->local_position_offset += slots;
 
     return result;
 }
 
-static void compileScopedConditionalBranch(
+static void compile_scoped_conditional_branch(
     Compiler* compiler, ASTNode* branch, DataType type, int destination, bool reference)
 {
     if (!branch) {
         return;
     }
 
-    int registerCount = compiler->registerCount;
+    int register_count = compiler->register_count;
 
-    compileConditionalBranch(compiler, branch, type, destination, reference);
+    compile_conditional_branch(compiler, branch, type, destination, reference);
 
-    compiler->registerCount = registerCount;
+    compiler->register_count = register_count;
 }
 
-static void compileConditionalBranches(
-    Compiler* compiler, ASTNode* ast, int destination, bool reference, size_t elseJump)
+static void compile_conditional_branches(
+    Compiler* compiler, ASTNode* ast, int destination, bool reference, size_t else_jump)
 {
     ASTNode* condition = ast->conditional.condition;
-    DataType type = getNodeDataType(ast);
+    DataType type = get_node_data_type(ast);
 
-    if (condition->type == AST_BOOLEAN) {
-        ASTNode* branch = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
+    if (condition->type == ASTBoolean) {
+        ASTNode* branch = condition->boolean_literal.value ? ast->conditional.then_branch : ast->conditional.else_branch;
 
-        compileScopedConditionalBranch(compiler, branch, type, destination, reference);
-
-        return;
-    }
-
-    compileScopedConditionalBranch(compiler, ast->conditional.thenBranch, type, destination, reference);
-
-    if (!ast->conditional.elseBranch) {
-        patchJump(compiler, elseJump);
+        compile_scoped_conditional_branch(compiler, branch, type, destination, reference);
 
         return;
     }
 
-    size_t endJump = emitJump(compiler, OP_JMP, 0);
+    compile_scoped_conditional_branch(compiler, ast->conditional.then_branch, type, destination, reference);
 
-    patchJump(compiler, elseJump);
-    compileScopedConditionalBranch(compiler, ast->conditional.elseBranch, type, destination, reference);
-    patchJump(compiler, endJump);
+    if (!ast->conditional.else_branch) {
+        patch_jump(compiler, else_jump);
+
+        return;
+    }
+
+    size_t end_jump = emit_jump(compiler, OpJmp, 0);
+
+    patch_jump(compiler, else_jump);
+    compile_scoped_conditional_branch(compiler, ast->conditional.else_branch, type, destination, reference);
+    patch_jump(compiler, end_jump);
 }
 
-static Operand compileConditional(Compiler* compiler, ASTNode* ast, bool reference)
+static Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool reference)
 {
-    int previousLocalPositionOffset = compiler->localPositionOffset;
-    ASTNode* conditionNode = ast->conditional.condition;
-    size_t elseJump = 0;
+    int previous_local_position_offset = compiler->local_position_offset;
+    ASTNode* condition_node = ast->conditional.condition;
+    size_t else_jump = 0;
 
-    if (conditionNode->type != AST_BOOLEAN) {
-        Operand condition = compileExpression(compiler, conditionNode, false);
-        elseJump = emitConditionJump(compiler, condition);
+    if (condition_node->type != ASTBoolean) {
+        Operand condition = compile_expression(compiler, condition_node, false);
+        else_jump = emit_condition_jump(compiler, condition);
 
-        releaseOperand(compiler, condition);
+        release_operand(compiler, condition);
     }
 
-    DataType type = getNodeDataType(ast);
-    Operand result = allocateBranchResult(compiler, type);
+    DataType type = get_node_data_type(ast);
+    Operand result = allocate_branch_result(compiler, type);
 
-    compileConditionalBranches(compiler, ast, result.reg, reference, elseJump);
+    compile_conditional_branches(compiler, ast, result.reg, reference, else_jump);
 
-    compiler->localPositionOffset = previousLocalPositionOffset;
+    compiler->local_position_offset = previous_local_position_offset;
 
     return result;
 }
 
-static void emitLoopJump(Compiler* compiler, size_t target)
+static void emit_loop_jump(Compiler* compiler, size_t target)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t position = countCodeObject(code);
+    CodeObject* code = current_code_object(compiler);
+    size_t position = count_code_object(code);
     size_t distance = (position + INSTRUCTION_SIZE - target) / INSTRUCTION_SIZE;
 
-    checkJumpOffset(OP_JMP, distance);
+    check_jump_offset(OpJmp, distance);
 
     int offset = -(int)distance;
 
-    emitInstruction(compiler, OP_JMP, (offset >> 16) & 255, (offset >> 8) & 255, offset & 255);
+    emit_instruction(compiler, OpJmp, (offset >> 16) & 255, (offset >> 8) & 255, offset & 255);
 }
 
-static void compileWhile(Compiler* compiler, ASTNode* ast)
+static void compile_while(Compiler* compiler, ASTNode* ast)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    size_t start = countCodeObject(code);
-    int registerCount = compiler->registerCount;
-    compiler->peepholeBarrier = start;
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    int register_count = compiler->register_count;
+    compiler->peephole_barrier = start;
 
-    Operand condition = compileExpression(compiler, ast->whileStatement.condition, false);
-    size_t exitJump = emitConditionJump(compiler, condition);
+    Operand condition = compile_expression(compiler, ast->while_statement.condition, false);
+    size_t exit_jump = emit_condition_jump(compiler, condition);
 
-    releaseOperand(compiler, condition);
-    compileScopedConditionalBranch(compiler, ast->whileStatement.body, TYPE_VOID, 0, false);
-    emitLoopJump(compiler, start);
-    patchJump(compiler, exitJump);
+    release_operand(compiler, condition);
+    compile_scoped_conditional_branch(compiler, ast->while_statement.body, TypeVoid, 0, false);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
 
-    compiler->registerCount = registerCount;
+    compiler->register_count = register_count;
 }
 
-static Operand compileMatchSubject(Compiler* compiler, ASTNode* subject)
+static Operand compile_match_subject(Compiler* compiler, ASTNode* subject)
 {
-    DataType type = getNodeDataType(subject);
-    Operand value = compileComparisonOperand(compiler, subject, type);
+    DataType type = get_node_data_type(subject);
+    Operand value = compile_comparison_operand(compiler, subject, type);
     value.temporary = false;
 
     return value;
 }
 
-static bool isMatchAlternative(ASTNode* pattern)
+static bool is_match_alternative(ASTNode* pattern)
 {
-    return pattern->type == AST_BINARY && pattern->binary.operator.type == TOKEN_PIPE;
+    return pattern->type == ASTBinary && pattern->binary.operator.type == TokenPipe;
 }
 
-static Operand compileSubjectMatchCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
+static Operand compile_subject_match_condition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
-    if (!isMatchAlternative(pattern)) {
-        DataType type = getNodeDataType(pattern);
-        Operand value = compileComparisonOperand(compiler, pattern, type);
+    if (!is_match_alternative(pattern)) {
+        DataType type = get_node_data_type(pattern);
+        Operand value = compile_comparison_operand(compiler, pattern, type);
 
-        return emitNumericComparison(compiler, TOKEN_EQUAL_EQUAL, type, subject, value);
+        return emit_numeric_comparison(compiler, TokenEqualEqual, type, subject, value);
     }
 
-    Operand left = compileSubjectMatchCondition(compiler, pattern->binary.leftExpr, subject);
-    Operand right = compileSubjectMatchCondition(compiler, pattern->binary.rightExpr, subject);
+    Operand left = compile_subject_match_condition(compiler, pattern->binary.left_expr, subject);
+    Operand right = compile_subject_match_condition(compiler, pattern->binary.right_expr, subject);
 
-    return emitComparison(compiler, OP_OR, left, right);
+    return emit_comparison(compiler, OpOr, left, right);
 }
 
-static Operand compileMatchCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
+static Operand compile_match_condition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
 {
     if (!ast->match.subject) {
-        return compileExpression(compiler, arm->pattern, false);
+        return compile_expression(compiler, arm->pattern, false);
     }
 
-    return compileSubjectMatchCondition(compiler, arm->pattern, subject);
+    return compile_subject_match_condition(compiler, arm->pattern, subject);
 }
 
-static void patchMatchJumps(Compiler* compiler, Vector* jumps)
+static void patch_match_jumps(Compiler* compiler, Vector* jumps)
 {
-    size_t count = countVector(jumps);
+    size_t count = count_vector(jumps);
 
     for (size_t i = 0; i < count; i++) {
-        void* jump = getVectorAt(jumps, i);
-        patchJump(compiler, (size_t)(uintptr_t)jump);
+        void* jump = get_vector_at(jumps, i);
+        patch_jump(compiler, (size_t)(uintptr_t)jump);
     }
 }
 
-static void markMatchJoin(Compiler* compiler, Vector* jumps)
+static void mark_match_join(Compiler* compiler, Vector* jumps)
 {
-    if (!countVector(jumps)) {
+    if (!count_vector(jumps)) {
         return;
     }
 
-    patchMatchJumps(compiler, jumps);
+    patch_match_jumps(compiler, jumps);
 }
 
-static bool areSimpleMatchValues(Vector* values)
+static bool are_simple_match_values(Vector* values)
 {
-    size_t count = countVector(values);
+    size_t count = count_vector(values);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* value = getVectorAt(values, i);
-        if (!isSimpleMatchValue(value)) {
+        ASTNode* value = get_vector_at(values, i);
+        if (!is_simple_match_value(value)) {
             return false;
         }
     }
@@ -3059,232 +3059,232 @@ static bool areSimpleMatchValues(Vector* values)
     return true;
 }
 
-static bool isSimpleMatchValue(ASTNode* ast)
+static bool is_simple_match_value(ASTNode* ast)
 {
     switch (ast->type) {
-        case AST_BOOLEAN:
-        case AST_CHARACTER:
-        case AST_INTEGER:
-        case AST_FLOAT:
-        case AST_VARIABLE:
+        case ASTBoolean:
+        case ASTCharacter:
+        case ASTInteger:
+        case ASTFloat:
+        case ASTVariable:
             return true;
-        case AST_BUILTIN_CALL:
-            return areSimpleMatchValues(&ast->builtinCall.args);
+        case ASTBuiltinCall:
+            return are_simple_match_values(&ast->builtin_call.args);
         default:
             return false;
     }
 }
 
-static bool canUseDirectMatchBranch(MatchArm* arm)
+static bool can_use_direct_match_branch(MatchArm* arm)
 {
-    size_t count = countVector(&arm->branch->compound.statements);
+    size_t count = count_vector(&arm->branch->compound.statements);
     if (count != 1) {
         return false;
     }
 
-    ASTNode* statement = getVectorAt(&arm->branch->compound.statements, 0);
+    ASTNode* statement = get_vector_at(&arm->branch->compound.statements, 0);
 
-    return isSimpleMatchValue(statement);
+    return is_simple_match_value(statement);
 }
 
-static bool isLiteralMatchPattern(ASTNode* pattern)
+static bool is_literal_match_pattern(ASTNode* pattern)
 {
-    if (pattern->type == AST_INTEGER || pattern->type == AST_BOOLEAN) {
+    if (pattern->type == ASTInteger || pattern->type == ASTBoolean) {
         return true;
     }
 
-    if (!isMatchAlternative(pattern)) {
+    if (!is_match_alternative(pattern)) {
         return false;
     }
 
-    return isLiteralMatchPattern(pattern->binary.leftExpr) && isLiteralMatchPattern(pattern->binary.rightExpr);
+    return is_literal_match_pattern(pattern->binary.left_expr) && is_literal_match_pattern(pattern->binary.right_expr);
 }
 
-static size_t compileMatchAlternativeJumps(
+static size_t compile_match_alternative_jumps(
     Compiler* compiler, ASTNode* pattern, Operand subject, bool last, Vector* matches)
 {
-    if (isMatchAlternative(pattern)) {
-        compileMatchAlternativeJumps(compiler, pattern->binary.leftExpr, subject, false, matches);
+    if (is_match_alternative(pattern)) {
+        compile_match_alternative_jumps(compiler, pattern->binary.left_expr, subject, false, matches);
 
-        return compileMatchAlternativeJumps(compiler, pattern->binary.rightExpr, subject, last, matches);
+        return compile_match_alternative_jumps(compiler, pattern->binary.right_expr, subject, last, matches);
     }
 
-    Opcode opcode = OP_NE;
+    Opcode opcode = OpNe;
 
     if (last) {
-        opcode = OP_EQ;
+        opcode = OpEq;
     }
 
-    Operand value = compileExpression(compiler, pattern, false);
-    TokenType operatorType = TOKEN_NOT_EQUAL;
+    Operand value = compile_expression(compiler, pattern, false);
+    TokenType operator_type = TokenNotEqual;
 
-    if (opcode == OP_EQ) {
-        operatorType = TOKEN_EQUAL_EQUAL;
+    if (opcode == OpEq) {
+        operator_type = TokenEqualEqual;
     }
 
-    DataType type = getNodeDataType(pattern);
-    Operand condition = emitNumericComparison(compiler, operatorType, type, subject, value);
-    size_t jump = emitConditionJump(compiler, condition);
+    DataType type = get_node_data_type(pattern);
+    Operand condition = emit_numeric_comparison(compiler, operator_type, type, subject, value);
+    size_t jump = emit_condition_jump(compiler, condition);
 
-    releaseOperand(compiler, condition);
+    release_operand(compiler, condition);
 
     if (!last) {
-        pushVectorItem(matches, (void*)(uintptr_t)jump);
+        push_vector_item(matches, (void*)(uintptr_t)jump);
     }
 
     return jump;
 }
 
-static size_t compileMatchAlternativeCondition(Compiler* compiler, ASTNode* pattern, Operand subject)
+static size_t compile_match_alternative_condition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
     Vector matches;
 
-    initVector(&matches);
+    init_vector(&matches);
 
-    size_t nextJump = compileMatchAlternativeJumps(compiler, pattern, subject, true, &matches);
+    size_t next_jump = compile_match_alternative_jumps(compiler, pattern, subject, true, &matches);
 
-    patchMatchJumps(compiler, &matches);
-    freeVector(&matches);
+    patch_match_jumps(compiler, &matches);
+    free_vector(&matches);
 
-    return nextJump;
+    return next_jump;
 }
 
-static size_t compileMatchArmCondition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
+static size_t compile_match_arm_condition(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject)
 {
     if (!arm->pattern) {
         return 0;
     }
 
-    DataType subjectType = getNodeDataType(ast->match.subject);
-    size_t subjectSize = getIntegerTypeSize(subjectType);
+    DataType subject_type = get_node_data_type(ast->match.subject);
+    size_t subject_size = get_integer_type_size(subject_type);
 
-    if (ast->match.subject && subject.slots == 1 && isMatchAlternative(arm->pattern)
-        && isLiteralMatchPattern(arm->pattern) && subjectSize != 8) {
-        return compileMatchAlternativeCondition(compiler, arm->pattern, subject);
+    if (ast->match.subject && subject.slots == 1 && is_match_alternative(arm->pattern)
+        && is_literal_match_pattern(arm->pattern) && subject_size != 8) {
+        return compile_match_alternative_condition(compiler, arm->pattern, subject);
     }
 
-    DataType patternType = getNodeDataType(arm->pattern);
-    bool numericCompare = getIntegerTypeSize(patternType) == 8 || isFloatType(patternType);
+    DataType pattern_type = get_node_data_type(arm->pattern);
+    bool numeric_compare = get_integer_type_size(pattern_type) == 8 || is_float_type(pattern_type);
 
-    if (!ast->match.subject || isMatchAlternative(arm->pattern) || !canUseDirectMatchBranch(arm) || numericCompare) {
-        Operand condition = compileMatchCondition(compiler, ast, arm, subject);
-        size_t nextJump = emitConditionJump(compiler, condition);
-        releaseOperand(compiler, condition);
+    if (!ast->match.subject || is_match_alternative(arm->pattern) || !can_use_direct_match_branch(arm) || numeric_compare) {
+        Operand condition = compile_match_condition(compiler, ast, arm, subject);
+        size_t next_jump = emit_condition_jump(compiler, condition);
+        release_operand(compiler, condition);
 
-        return nextJump;
+        return next_jump;
     }
 
-    uint64_t patternValue;
+    uint64_t pattern_value;
 
-    if (subject.slots == 1 && getLiteralMatchValue(arm->pattern, &patternValue) && patternValue == 0) {
-        return emitJump(compiler, OP_BNZ, subject.reg);
+    if (subject.slots == 1 && get_literal_match_value(arm->pattern, &pattern_value) && pattern_value == 0) {
+        return emit_jump(compiler, OpBnz, subject.reg);
     }
 
-    Operand pattern = compileExpression(compiler, arm->pattern, false);
-    Operand condition = emitImmediateComparison(compiler, OP_EQ, subject, pattern);
+    Operand pattern = compile_expression(compiler, arm->pattern, false);
+    Operand condition = emit_immediate_comparison(compiler, OpEq, subject, pattern);
 
     if (condition.reg >= 0) {
-        size_t nextJump = emitConditionJump(compiler, condition);
+        size_t next_jump = emit_condition_jump(compiler, condition);
 
-        releaseOperand(compiler, condition);
+        release_operand(compiler, condition);
 
-        return nextJump;
+        return next_jump;
     }
 
-    size_t nextJump = countCodeObject(currentCodeObject(compiler));
-    emitInstruction(compiler, OP_BNE, subject.reg, pattern.reg, 0);
-    releaseOperand(compiler, pattern);
+    size_t next_jump = count_code_object(current_code_object(compiler));
+    emit_instruction(compiler, OpBne, subject.reg, pattern.reg, 0);
+    release_operand(compiler, pattern);
 
-    return nextJump;
+    return next_jump;
 }
 
-static void storeMatchBinding(Compiler* compiler, ASTNode* binding, Operand subject)
+static void store_match_binding(Compiler* compiler, ASTNode* binding, Operand subject)
 {
     if (!binding) {
         return;
     }
 
-    binding->variableDefinition.registerPosition = compiler->frameBaseCount + compiler->localPositionOffset
-        + binding->variableDefinition.position;
-    int position = getLocalPosition(compiler, binding);
+    binding->variable_definition.register_position = compiler->frame_base_count + compiler->local_position_offset
+        + binding->variable_definition.position;
+    int position = get_local_position(compiler, binding);
 
-    emitOperandMov(compiler, position, subject);
+    emit_operand_mov(compiler, position, subject);
 
-    DataType bindingType = getNodeDataType(binding);
-    int bindingRegisterCount = position + getTypeSlotCount(bindingType);
+    DataType binding_type = get_node_data_type(binding);
+    int binding_register_count = position + get_type_slot_count(binding_type);
 
-    compiler->registerCount = MAX(compiler->registerCount, bindingRegisterCount);
+    compiler->register_count = MAX(compiler->register_count, binding_register_count);
 }
 
-static size_t compileMatchGuard(Compiler* compiler, MatchArm* arm)
+static size_t compile_match_guard(Compiler* compiler, MatchArm* arm)
 {
     if (!arm->guard) {
         return 0;
     }
 
-    Operand condition = compileExpression(compiler, arm->guard, false);
-    size_t nextJump = emitConditionJump(compiler, condition);
+    Operand condition = compile_expression(compiler, arm->guard, false);
+    size_t next_jump = emit_condition_jump(compiler, condition);
 
-    releaseOperand(compiler, condition);
+    release_operand(compiler, condition);
 
-    return nextJump;
+    return next_jump;
 }
 
-static size_t compileMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
-    bool needsEndJump, bool reference)
+static size_t compile_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
+    bool needs_end_jump, bool reference)
 {
-    int branchRegisterCount = compiler->registerCount;
-    size_t nextJump = compileMatchArmCondition(compiler, ast, arm, subject);
-    DataType type = getNodeDataType(ast);
+    int branch_register_count = compiler->register_count;
+    size_t next_jump = compile_match_arm_condition(compiler, ast, arm, subject);
+    DataType type = get_node_data_type(ast);
 
-    storeMatchBinding(compiler, arm->binding, subject);
+    store_match_binding(compiler, arm->binding, subject);
 
-    size_t guardJump = compileMatchGuard(compiler, arm);
+    size_t guard_jump = compile_match_guard(compiler, arm);
 
-    compileConditionalBranch(compiler, arm->branch, type, destination, reference);
-    compiler->registerCount = branchRegisterCount;
+    compile_conditional_branch(compiler, arm->branch, type, destination, reference);
+    compiler->register_count = branch_register_count;
 
-    size_t endJump = SIZE_MAX;
+    size_t end_jump = SIZE_MAX;
 
-    if (needsEndJump) {
-        endJump = emitJump(compiler, OP_JMP, 0);
+    if (needs_end_jump) {
+        end_jump = emit_jump(compiler, OpJmp, 0);
     }
 
     if (arm->pattern) {
-        patchJump(compiler, nextJump);
+        patch_jump(compiler, next_jump);
     }
 
     if (arm->guard) {
-        patchJump(compiler, guardJump);
+        patch_jump(compiler, guard_jump);
     }
 
-    return endJump;
+    return end_jump;
 }
 
-static bool compileNextMatchArm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
-    bool hasFollowingArm, Vector* endJumps, bool reference)
+static bool compile_next_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
+    bool has_following_arm, Vector* end_jumps, bool reference)
 {
     bool unconditional = !arm->pattern && !arm->guard;
-    bool needsEndJump = !unconditional && hasFollowingArm;
-    size_t endJump = compileMatchArm(compiler, ast, arm, subject, destination, needsEndJump, reference);
+    bool needs_end_jump = !unconditional && has_following_arm;
+    size_t end_jump = compile_match_arm(compiler, ast, arm, subject, destination, needs_end_jump, reference);
 
-    if (endJump != SIZE_MAX) {
-        pushVectorItem(endJumps, (void*)(uintptr_t)endJump);
+    if (end_jump != SIZE_MAX) {
+        push_vector_item(end_jumps, (void*)(uintptr_t)end_jump);
     }
 
     return unconditional;
 }
 
-static bool compileMatchArms(
-    Compiler* compiler, ASTNode* ast, Operand subject, int destination, Vector* endJumps, bool reference)
+static bool compile_match_arms(
+    Compiler* compiler, ASTNode* ast, Operand subject, int destination, Vector* end_jumps, bool reference)
 {
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        bool hasFollowingArm = i + 1 < count || ast->match.defaultBranch;
-        bool unconditional = compileNextMatchArm(compiler, ast, arm, subject, destination, hasFollowingArm,
-            endJumps, reference);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        bool has_following_arm = i + 1 < count || ast->match.default_branch;
+        bool unconditional = compile_next_match_arm(compiler, ast, arm, subject, destination, has_following_arm,
+            end_jumps, reference);
 
         if (unconditional) {
             return true;
@@ -3294,60 +3294,60 @@ static bool compileMatchArms(
     return false;
 }
 
-static void compileMatchDefault(
-    Compiler* compiler, ASTNode* ast, int destination, int branchRegisterCount, bool reference)
+static void compile_match_default(
+    Compiler* compiler, ASTNode* ast, int destination, int branch_register_count, bool reference)
 {
-    if (!ast->match.defaultBranch) {
+    if (!ast->match.default_branch) {
         return;
     }
 
-    DataType type = getNodeDataType(ast);
+    DataType type = get_node_data_type(ast);
 
-    compileConditionalBranch(compiler, ast->match.defaultBranch, type, destination, reference);
-    compiler->registerCount = branchRegisterCount;
+    compile_conditional_branch(compiler, ast->match.default_branch, type, destination, reference);
+    compiler->register_count = branch_register_count;
 }
 
-static Operand matchResultOperand(DataType type, int destination)
+static Operand match_result_operand(DataType type, int destination)
 {
-    if (type == TYPE_VOID) {
-        return noOperand();
+    if (type == TypeVoid) {
+        return no_operand();
     }
 
-    if (getTypeSlotCount(type) == 2) {
-        return makeWideOperand(destination, true);
+    if (get_type_slot_count(type) == 2) {
+        return make_wide_operand(destination, true);
     }
 
-    return makeOperand(destination, true);
+    return make_operand(destination, true);
 }
 
-static bool getLiteralMatchValue(ASTNode* ast, uint64_t* value)
+static bool get_literal_match_value(ASTNode* ast, uint64_t* value)
 {
-    if (ast->type == AST_BOOLEAN) {
-        *value = ast->booleanLiteral.value;
+    if (ast->type == ASTBoolean) {
+        *value = ast->boolean_literal.value;
 
         return true;
     }
 
-    if (ast->type == AST_CHARACTER) {
-        *value = ast->characterLiteral.value;
+    if (ast->type == ASTCharacter) {
+        *value = ast->character_literal.value;
 
         return true;
     }
 
-    if (ast->type != AST_INTEGER) {
+    if (ast->type != ASTInteger) {
         return false;
     }
 
-    *value = ast->integerLiteral.value;
+    *value = ast->integer_literal.value;
 
-    if (ast->integerLiteral.typeId == TYPE_I32) {
+    if (ast->integer_literal.type_id == TypeI32) {
         *value = (uint64_t)(int64_t)(int32_t)*value;
     }
 
     return true;
 }
 
-static bool getLiteralMatchSubject(ASTNode* ast, uint64_t* value)
+static bool get_literal_match_subject(ASTNode* ast, uint64_t* value)
 {
     if (!ast->match.subject) {
         *value = true;
@@ -3355,35 +3355,35 @@ static bool getLiteralMatchSubject(ASTNode* ast, uint64_t* value)
         return true;
     }
 
-    return getLiteralMatchValue(ast->match.subject, value);
+    return get_literal_match_value(ast->match.subject, value);
 }
 
 typedef enum LiteralMatchArmResult
 {
-    LITERAL_MATCH_ARM_UNAVAILABLE,
-    LITERAL_MATCH_ARM_SKIPPED,
-    LITERAL_MATCH_ARM_SELECTED
+    LiteralMatchArmUnavailable,
+    LiteralMatchArmSkipped,
+    LiteralMatchArmSelected
 } LiteralMatchArmResult;
 
-static bool evaluateLiteralMatchPattern(ASTNode* pattern, uint64_t subjectValue, bool* matches)
+static bool evaluate_literal_match_pattern(ASTNode* pattern, uint64_t subject_value, bool* matches)
 {
-    uint64_t patternValue;
+    uint64_t pattern_value;
 
-    if (getLiteralMatchValue(pattern, &patternValue)) {
-        *matches = subjectValue == patternValue;
+    if (get_literal_match_value(pattern, &pattern_value)) {
+        *matches = subject_value == pattern_value;
 
         return true;
     }
 
-    if (!isMatchAlternative(pattern)) {
+    if (!is_match_alternative(pattern)) {
         return false;
     }
 
     bool left;
     bool right;
 
-    if (!evaluateLiteralMatchPattern(pattern->binary.leftExpr, subjectValue, &left)
-        || !evaluateLiteralMatchPattern(pattern->binary.rightExpr, subjectValue, &right)) {
+    if (!evaluate_literal_match_pattern(pattern->binary.left_expr, subject_value, &left)
+        || !evaluate_literal_match_pattern(pattern->binary.right_expr, subject_value, &right)) {
         return false;
     }
 
@@ -3392,70 +3392,70 @@ static bool evaluateLiteralMatchPattern(ASTNode* pattern, uint64_t subjectValue,
     return true;
 }
 
-static LiteralMatchArmResult selectLiteralMatchArm(
-    MatchArm* arm, uint64_t subjectValue, ASTNode** branch, ASTNode** binding)
+static LiteralMatchArmResult select_literal_match_arm(
+    MatchArm* arm, uint64_t subject_value, ASTNode** branch, ASTNode** binding)
 {
     if (arm->guard) {
-        return LITERAL_MATCH_ARM_UNAVAILABLE;
+        return LiteralMatchArmUnavailable;
     }
 
     if (!arm->pattern) {
         *branch = arm->branch;
         *binding = arm->binding;
 
-        return LITERAL_MATCH_ARM_SELECTED;
+        return LiteralMatchArmSelected;
     }
 
     bool matches;
 
-    if (!evaluateLiteralMatchPattern(arm->pattern, subjectValue, &matches)) {
-        return LITERAL_MATCH_ARM_UNAVAILABLE;
+    if (!evaluate_literal_match_pattern(arm->pattern, subject_value, &matches)) {
+        return LiteralMatchArmUnavailable;
     }
 
     if (!matches) {
-        return LITERAL_MATCH_ARM_SKIPPED;
+        return LiteralMatchArmSkipped;
     }
 
     *branch = arm->branch;
     *binding = NULL;
 
-    return LITERAL_MATCH_ARM_SELECTED;
+    return LiteralMatchArmSelected;
 }
 
-static bool findLiteralMatchBranch(ASTNode* ast, ASTNode** branch, ASTNode** binding)
+static bool find_literal_match_branch(ASTNode* ast, ASTNode** branch, ASTNode** binding)
 {
-    uint64_t subjectValue;
-    if (!getLiteralMatchSubject(ast, &subjectValue)) {
+    uint64_t subject_value;
+    if (!get_literal_match_subject(ast, &subject_value)) {
         return false;
     }
 
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        LiteralMatchArmResult result = selectLiteralMatchArm(arm, subjectValue, branch, binding);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        LiteralMatchArmResult result = select_literal_match_arm(arm, subject_value, branch, binding);
 
         switch (result) {
-            case LITERAL_MATCH_ARM_UNAVAILABLE:
+            case LiteralMatchArmUnavailable:
                 return false;
-            case LITERAL_MATCH_ARM_SELECTED:
+            case LiteralMatchArmSelected:
                 return true;
-            case LITERAL_MATCH_ARM_SKIPPED:
+            case LiteralMatchArmSkipped:
                 break;
         }
     }
 
-    *branch = ast->match.defaultBranch;
+    *branch = ast->match.default_branch;
     *binding = NULL;
 
     return true;
 }
 
-static bool compileLiteralMatch(
+static bool compile_literal_match(
     Compiler* compiler, ASTNode* ast, DataType type, int destination, bool reference)
 {
     ASTNode* branch;
     ASTNode* binding;
-    if (!findLiteralMatchBranch(ast, &branch, &binding)) {
+    if (!find_literal_match_branch(ast, &branch, &binding)) {
         return false;
     }
 
@@ -3464,399 +3464,399 @@ static bool compileLiteralMatch(
     }
 
     if (binding) {
-        Operand subject = compileMatchSubject(compiler, ast->match.subject);
-        storeMatchBinding(compiler, binding, subject);
+        Operand subject = compile_match_subject(compiler, ast->match.subject);
+        store_match_binding(compiler, binding, subject);
     }
 
-    compileConditionalBranch(compiler, branch, type, destination, reference);
+    compile_conditional_branch(compiler, branch, type, destination, reference);
 
     return true;
 }
 
-static void restoreMatchCompilerState(Compiler* compiler, DataType type, int previousLocalPositionOffset,
-    int previousRegisterCount)
+static void restore_match_compiler_state(Compiler* compiler, DataType type, int previous_local_position_offset,
+    int previous_register_count)
 {
-    compiler->localPositionOffset = previousLocalPositionOffset;
-    compiler->registerCount = previousRegisterCount;
+    compiler->local_position_offset = previous_local_position_offset;
+    compiler->register_count = previous_register_count;
 
-    if (type != TYPE_VOID) {
-        compiler->registerCount += getTypeSlotCount(type);
+    if (type != TypeVoid) {
+        compiler->register_count += get_type_slot_count(type);
     }
 }
 
-static Operand compileMatch(Compiler* compiler, ASTNode* ast, bool reference)
+static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference)
 {
-    int previousLocalPositionOffset = compiler->localPositionOffset;
-    int previousRegisterCount = compiler->registerCount;
-    DataType type = getNodeDataType(ast);
-    Operand result = allocateBranchResult(compiler, type);
+    int previous_local_position_offset = compiler->local_position_offset;
+    int previous_register_count = compiler->register_count;
+    DataType type = get_node_data_type(ast);
+    Operand result = allocate_branch_result(compiler, type);
     int destination = result.reg;
 
-    if (compileLiteralMatch(compiler, ast, type, destination, reference)) {
-        restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);
+    if (compile_literal_match(compiler, ast, type, destination, reference)) {
+        restore_match_compiler_state(compiler, type, previous_local_position_offset, previous_register_count);
 
-        return matchResultOperand(type, destination);
+        return match_result_operand(type, destination);
     }
 
-    Operand subject = noOperand();
+    Operand subject = no_operand();
 
     if (ast->match.subject) {
-        subject = compileMatchSubject(compiler, ast->match.subject);
+        subject = compile_match_subject(compiler, ast->match.subject);
     }
 
-    int branchRegisterCount = compiler->registerCount;
+    int branch_register_count = compiler->register_count;
 
-    Vector endJumps;
-    initVector(&endJumps);
+    Vector end_jumps;
+    init_vector(&end_jumps);
 
-    bool unconditionalArm = compileMatchArms(compiler, ast, subject, destination, &endJumps, reference);
+    bool unconditional_arm = compile_match_arms(compiler, ast, subject, destination, &end_jumps, reference);
 
-    if (!unconditionalArm) {
-        compileMatchDefault(compiler, ast, destination, branchRegisterCount, reference);
+    if (!unconditional_arm) {
+        compile_match_default(compiler, ast, destination, branch_register_count, reference);
     }
 
-    markMatchJoin(compiler, &endJumps);
-    freeVector(&endJumps);
+    mark_match_join(compiler, &end_jumps);
+    free_vector(&end_jumps);
 
-    restoreMatchCompilerState(compiler, type, previousLocalPositionOffset, previousRegisterCount);
+    restore_match_compiler_state(compiler, type, previous_local_position_offset, previous_register_count);
 
-    return matchResultOperand(type, destination);
+    return match_result_operand(type, destination);
 }
 
-static bool compileDiscardedPrefix(Compiler* compiler, ASTNode* ast)
+static bool compile_discarded_prefix(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->prefix.operator.type == TOKEN_CONST) {
+    if (ast->prefix.operator.type == TokenKeywordConst) {
         return false;
     }
 
-    compileExpression(compiler, ast->prefix.expr, true);
+    compile_expression(compiler, ast->prefix.expr, true);
 
     return true;
 }
 
-static bool compileDiscardedExpression(Compiler* compiler, ASTNode* ast)
+static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
-        case AST_BOOLEAN:
-        case AST_CHARACTER:
-        case AST_FLOAT:
-        case AST_INTEGER:
-        case AST_STRING:
-        case AST_VARIABLE:
+        case ASTBoolean:
+        case ASTCharacter:
+        case ASTFloat:
+        case ASTInteger:
+        case ASTString:
+        case ASTVariable:
             return true;
-        case AST_PREFIX:
-            return compileDiscardedPrefix(compiler, ast);
+        case ASTPrefix:
+            return compile_discarded_prefix(compiler, ast);
         default:
             return false;
     }
 }
 
-static Operand compileExpression(Compiler* compiler, ASTNode* ast, bool discard)
+static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard)
 {
-    if (discard && compileDiscardedExpression(compiler, ast)) {
-        return noOperand();
+    if (discard && compile_discarded_expression(compiler, ast)) {
+        return no_operand();
     }
 
     Operand result;
 
     switch (ast->type) {
-        case AST_BINARY:
-            result = compileBinary(compiler, ast);
+        case ASTBinary:
+            result = compile_binary(compiler, ast);
             break;
-        case AST_STRING:
-            result = compileString(compiler, ast);
+        case ASTString:
+            result = compile_string(compiler, ast);
             break;
-        case AST_CHARACTER:
-            result = compileCharacter(compiler, ast);
+        case ASTCharacter:
+            result = compile_character(compiler, ast);
             break;
-        case AST_BOOLEAN:
-            result = compileBoolean(compiler, ast);
+        case ASTBoolean:
+            result = compile_boolean(compiler, ast);
             break;
-        case AST_BUILTIN_CALL:
-            return compileBuiltinCall(compiler, ast, discard);
-        case AST_CONDITIONAL:
-            result = compileConditional(compiler, ast, false);
+        case ASTBuiltinCall:
+            return compile_builtin_call(compiler, ast, discard);
+        case ASTConditional:
+            result = compile_conditional(compiler, ast, false);
             break;
-        case AST_MATCH:
-            result = compileMatch(compiler, ast, false);
+        case ASTMatch:
+            result = compile_match(compiler, ast, false);
             break;
-        case AST_CONVERSION:
-            result = compileExplicitConversion(compiler, ast);
+        case ASTConversion:
+            result = compile_explicit_conversion(compiler, ast);
             break;
-        case AST_FUNCTION_CALL:
-            return compileFunctionCall(compiler, ast, discard);
-        case AST_FLOAT:
-            result = compileFloat(compiler, ast);
+        case ASTFunctionCall:
+            return compile_function_call(compiler, ast, discard);
+        case ASTFloat:
+            result = compile_float(compiler, ast);
             break;
-        case AST_INTEGER:
-            result = compileNumber(compiler, ast);
+        case ASTInteger:
+            result = compile_number(compiler, ast);
             break;
-        case AST_PREFIX:
-            result = compilePrefix(compiler, ast);
+        case ASTPrefix:
+            result = compile_prefix(compiler, ast);
             break;
-        case AST_VARIABLE:
-            result = compileVariable(compiler, ast);
+        case ASTVariable:
+            result = compile_variable(compiler, ast);
             break;
         default:
-            return noOperand();
+            return no_operand();
     }
 
     if (discard) {
-        releaseOperand(compiler, result);
+        release_operand(compiler, result);
 
-        return noOperand();
+        return no_operand();
     }
 
     return result;
 }
 
-static Operand compileStatement(Compiler* compiler, ASTNode* ast, bool discard)
+static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
 {
     switch (ast->type) {
-        case AST_ASSIGNMENT:
-            compileAssignment(compiler, ast);
-            return noOperand();
-        case AST_BUILTIN_CALL:
-            return compileBuiltinCall(compiler, ast, discard);
-        case AST_FUNCTION_CALL:
-            return compileFunctionCall(compiler, ast, discard);
-        case AST_FUNCTION_DEFINITION:
-            compileFunctionDefinition(compiler, ast);
-            return noOperand();
-        case AST_WHILE:
-            compileWhile(compiler, ast);
+        case ASTAssignment:
+            compile_assignment(compiler, ast);
+            return no_operand();
+        case ASTBuiltinCall:
+            return compile_builtin_call(compiler, ast, discard);
+        case ASTFunctionCall:
+            return compile_function_call(compiler, ast, discard);
+        case ASTFunctionDefinition:
+            compile_function_definition(compiler, ast);
+            return no_operand();
+        case ASTWhile:
+            compile_while(compiler, ast);
 
-            return noOperand();
-        case AST_RETURN:
-            compileReturnStatement(compiler, ast);
-            return noOperand();
-        case AST_VARIABLE_DEFINITION:
-            compileVariableDefinition(compiler, ast);
-            return noOperand();
+            return no_operand();
+        case ASTReturn:
+            compile_return_statement(compiler, ast);
+            return no_operand();
+        case ASTVariableDefinition:
+            compile_variable_definition(compiler, ast);
+            return no_operand();
         default:
-            return compileExpression(compiler, ast, discard);
+            return compile_expression(compiler, ast, discard);
     }
 }
 
-static void compileBlocklevelStatements(Compiler* compiler, Vector* nodes)
+static void compile_blocklevel_statements(Compiler* compiler, Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        compileStatement(compiler, nodes->data[i], true);
+        compile_statement(compiler, nodes->data[i], true);
     }
 }
 
-static void finishTopLevelStatement(Compiler* compiler, ASTNode* ast)
+static void finish_top_level_statement(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->type != AST_VARIABLE_DEFINITION) {
+    if (ast->type != ASTVariableDefinition) {
         return;
     }
 
-    size_t slots = getNodeSlotCount(ast);
-    size_t position = ast->variableDefinition.position;
+    size_t slots = get_node_slot_count(ast);
+    size_t position = ast->variable_definition.position;
     size_t count = position + slots;
 
     if (count > (size_t)UINT16_MAX + 1) {
-        globalIndexOverflowError();
+        global_index_overflow_error();
     }
 
-    compiler->module->globalCount = count;
-    compiler->localPositionOffset = -(int)count;
+    compiler->module->global_count = count;
+    compiler->local_position_offset = -(int)count;
 }
 
-static void compileTopLevelStatements(Compiler* compiler, Vector* nodes)
+static void compile_top_level_statements(Compiler* compiler, Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
-    while (compiler->statementIndex < count) {
-        ASTNode* ast = nodes->data[compiler->statementIndex++];
+    while (compiler->statement_index < count) {
+        ASTNode* ast = nodes->data[compiler->statement_index++];
 
-        compileStatement(compiler, ast, true);
-        finishTopLevelStatement(compiler, ast);
+        compile_statement(compiler, ast, true);
+        finish_top_level_statement(compiler, ast);
     }
 }
 
-static void compileReplStatement(Compiler* compiler, ASTNode* ast, bool isLast)
+static void compile_repl_statement(Compiler* compiler, ASTNode* ast, bool is_last)
 {
-    bool display = isLast && isExpressionStatement(ast) && getNodeDataType(ast) != TYPE_VOID;
+    bool display = is_last && is_expression_statement(ast) && get_node_data_type(ast) != TypeVoid;
 
-    if (display && getNodeDataType(ast) == TYPE_UNKNOWN) {
-        unresolvedReplExpressionTypeError();
+    if (display && get_node_data_type(ast) == TypeUnknown) {
+        unresolved_repl_expression_type_error();
     }
 
-    Operand value = compileStatement(compiler, ast, !display);
+    Operand value = compile_statement(compiler, ast, !display);
 
     if (!display) {
         return;
     }
 
-    DataType argumentType = getNodeDataType(ast);
+    DataType argument_type = get_node_data_type(ast);
     void* items[] = {ast};
     Vector args = {.data = items, .capacity = 1, .count = 1};
-    const Builtin* builtin = resolveBuiltin("print", &argumentType, 1);
-    uint16_t position = getBuiltinCallPosition(compiler, builtin, &args);
-    FunctionObject* function = getVectorAt(&compiler->module->functions, position);
+    const Builtin* builtin = resolve_builtin("print", &argument_type, 1);
+    uint16_t position = get_builtin_call_position(compiler, builtin, &args);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
-    compileCallWithArgument(compiler, function, position, value, true);
+    compile_call_with_argument(compiler, function, position, value, true);
 }
 
-static void compileReplStatements(Compiler* compiler, Vector* nodes)
+static void compile_repl_statements(Compiler* compiler, Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
-    while (compiler->statementIndex < count) {
-        ASTNode* ast = nodes->data[compiler->statementIndex++];
-        bool isLast = compiler->statementIndex == count;
+    while (compiler->statement_index < count) {
+        ASTNode* ast = nodes->data[compiler->statement_index++];
+        bool is_last = compiler->statement_index == count;
 
-        compileReplStatement(compiler, ast, isLast);
-        finishTopLevelStatement(compiler, ast);
+        compile_repl_statement(compiler, ast, is_last);
+        finish_top_level_statement(compiler, ast);
     }
 }
 
-void initCompiler(Compiler* compiler, ModuleObject* module)
+void init_compiler(Compiler* compiler, ModuleObject* module)
 {
-    initVector(&compiler->functionReferences);
+    init_vector(&compiler->function_references);
 
-    for (size_t i = 0; i < countVector(&module->functions); i++) {
-        pushVectorItem(&compiler->functionReferences, NULL);
+    for (size_t i = 0; i < count_vector(&module->functions); i++) {
+        push_vector_item(&compiler->function_references, NULL);
     }
 
-    Scope* scope = createScope(NULL);
-    ASTNode* ast = createCompoundNode(scope);
+    Scope* scope = create_scope(NULL);
+    ASTNode* ast = create_compound_node(scope);
 
-    initParser(&compiler->parser, ast);
-    initAnalyzer(&compiler->analyzer, ast);
+    init_parser(&compiler->parser, ast);
+    init_analyzer(&compiler->analyzer, ast);
 
     compiler->module = module;
-    compiler->function = getVectorAt(&module->functions, 0);
+    compiler->function = get_vector_at(&module->functions, 0);
     compiler->ast = ast;
-    compiler->statementIndex = 0;
-    compiler->peepholeBarrier = 0;
-    compiler->registerCount = 0;
-    compiler->frameBaseCount = 0;
-    compiler->localPositionOffset = 0;
+    compiler->statement_index = 0;
+    compiler->peephole_barrier = 0;
+    compiler->register_count = 0;
+    compiler->frame_base_count = 0;
+    compiler->local_position_offset = 0;
     compiler->repl = false;
 }
 
-void freeCompiler(Compiler* compiler)
+void free_compiler(Compiler* compiler)
 {
-    freeVector(&compiler->functionReferences);
-    freeASTNode(compiler->ast);
+    free_vector(&compiler->function_references);
+    free_ast_node(compiler->ast);
 }
 
-static void compileStatementBytecode(Compiler* compiler, CompileStatements compileStatements)
+static void compile_statement_bytecode(Compiler* compiler, CompileStatements compile_statements)
 {
-    CodeObject* code = currentCodeObject(compiler);
-    clearCodeObject(code);
+    CodeObject* code = current_code_object(compiler);
+    clear_code_object(code);
 
-    compiler->peepholeBarrier = 0;
-    compileStatements(compiler, &compiler->ast->compound.statements);
-    emitHlt(compiler);
-    optimizeBytecode(compiler->module, code, compiler->registerCount);
+    compiler->peephole_barrier = 0;
+    compile_statements(compiler, &compiler->ast->compound.statements);
+    emit_hlt(compiler);
+    optimize_bytecode(compiler->module, code, compiler->register_count);
 }
 
-static bool hasUnusedCompiledFunctions(Compiler* compiler)
+static bool has_unused_compiled_functions(Compiler* compiler)
 {
     bool unused = false;
 
-    for (size_t i = 1; i < compiler->functionReferences.count; i++) {
-        ASTNode* ast = compiler->functionReferences.data[i];
-        unused = unused || (ast && !ast->functionDefinition.callCount);
+    for (size_t i = 1; i < compiler->function_references.count; i++) {
+        ASTNode* ast = compiler->function_references.data[i];
+        unused = unused || (ast && !ast->function_definition.call_count);
     }
 
     return unused;
 }
 
-static void discardCompiledFunctions(Compiler* compiler)
+static void discard_compiled_functions(Compiler* compiler)
 {
     while (compiler->module->functions.count > 1) {
-        FunctionObject* function = popVectorItem(&compiler->module->functions);
+        FunctionObject* function = pop_vector_item(&compiler->module->functions);
 
-        freeFunctionObject(function);
+        free_function_object(function);
     }
 
-    compiler->functionReferences.count = 1;
-    compiler->module->globalCount = 0;
-    compiler->function->maxStackCount = 0;
-    compiler->statementIndex = 0;
-    compiler->registerCount = 0;
-    compiler->frameBaseCount = 0;
-    compiler->localPositionOffset = 0;
+    compiler->function_references.count = 1;
+    compiler->module->global_count = 0;
+    compiler->function->max_stack_count = 0;
+    compiler->statement_index = 0;
+    compiler->register_count = 0;
+    compiler->frame_base_count = 0;
+    compiler->local_position_offset = 0;
 }
 
-static void eliminateCompileTimeFunctions(Compiler* compiler)
+static void eliminate_compile_time_functions(Compiler* compiler)
 {
     if (compiler->repl) {
         return;
     }
 
-    markReachableFunctions(&compiler->ast->compound.statements);
+    mark_reachable_functions(&compiler->ast->compound.statements);
 
-    if (!hasUnusedCompiledFunctions(compiler)) {
+    if (!has_unused_compiled_functions(compiler)) {
         return;
     }
 
-    discardCompiledFunctions(compiler);
-    compileStatementBytecode(compiler, compileTopLevelStatements);
+    discard_compiled_functions(compiler);
+    compile_statement_bytecode(compiler, compile_top_level_statements);
 }
 
-static bool compileSource(Compiler* compiler, const char* source, CompileStatements compileStatements)
+static bool compile_source(Compiler* compiler, const char* source, CompileStatements compile_statements)
 {
     if (!compiler->module) {
         return false;
     }
 
-    compiler->repl = compileStatements == compileReplStatements;
-    size_t start = countVector(&compiler->ast->compound.statements);
+    compiler->repl = compile_statements == compile_repl_statements;
+    size_t start = count_vector(&compiler->ast->compound.statements);
 
     if (!parse(&compiler->parser, source)) {
         return false;
     }
 
     analyze(&compiler->analyzer, start);
-    optimizeAST(compiler->ast, start);
+    optimize_ast(compiler->ast, start);
 
-    if (compileStatements == compileTopLevelStatements) {
-        removeDiscardedReads(&compiler->ast->compound.statements, start);
-        markReachableFunctions(&compiler->ast->compound.statements);
+    if (compile_statements == compile_top_level_statements) {
+        remove_discarded_reads(&compiler->ast->compound.statements, start);
+        mark_reachable_functions(&compiler->ast->compound.statements);
     }
 
-    compileStatementBytecode(compiler, compileStatements);
-    eliminateCompileTimeFunctions(compiler);
+    compile_statement_bytecode(compiler, compile_statements);
+    eliminate_compile_time_functions(compiler);
 
     return true;
 }
 
 bool compile(Compiler* compiler, const char* source)
 {
-    return compileSource(compiler, source, compileTopLevelStatements);
+    return compile_source(compiler, source, compile_top_level_statements);
 }
 
-CompileResult compileRepl(Compiler* compiler, const char* source)
+CompileResult compile_repl(Compiler* compiler, const char* source)
 {
     ErrorContext context;
     size_t start = compiler->ast->compound.statements.count;
 
-    beginErrorContext(&context, NULL);
+    begin_error_context(&context, NULL);
 
     if (setjmp(context.jump) != 0) {
-        endErrorContext(&context);
-        discardReplStatements(compiler, start);
-        recoverCompiler(compiler);
+        end_error_context(&context);
+        discard_repl_statements(compiler, start);
+        recover_compiler(compiler);
 
-        return COMPILE_ERROR;
+        return CompileError;
     }
 
-    bool complete = compileSource(compiler, source, compileReplStatements);
+    bool complete = compile_source(compiler, source, compile_repl_statements);
 
-    endErrorContext(&context);
+    end_error_context(&context);
 
     if (!complete) {
-        discardReplStatements(compiler, start);
+        discard_repl_statements(compiler, start);
 
-        return COMPILE_INCOMPLETE;
+        return CompileIncomplete;
     }
 
-    return COMPILE_SUCCESS;
+    return CompileSuccess;
 }

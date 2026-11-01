@@ -1,17 +1,17 @@
 #include "common/string_view.h"
 #include <string.h>
 
-StringView createStringView(const char* chars, size_t length)
+StringView create_string_view(const char* chars, size_t length)
 {
     StringView view;
     view.chars = chars;
     view.length = length;
-    view.hash = hashStringView(chars, length);
+    view.hash = hash_string_view(chars, length);
 
     return view;
 }
 
-bool compareStringView(StringView a, StringView b)
+bool compare_string_view(StringView a, StringView b)
 {
     if (a.length != b.length) {
         return false;
@@ -24,7 +24,7 @@ bool compareStringView(StringView a, StringView b)
     return memcmp(a.chars, b.chars, a.length) == 0;
 }
 
-size_t hashStringView(const char* chars, size_t length)
+size_t hash_string_view(const char* chars, size_t length)
 {
     size_t hash = 0;
 

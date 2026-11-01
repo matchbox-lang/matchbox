@@ -1,0 +1,36 @@
+func read(value: &i32) {
+    print(value)
+}
+
+func read_exclusive(value: ^i32) {
+    print(value)
+}
+
+func return_shared(value: &i32) -> &i32 {
+    return value
+}
+
+func shared_access() {
+    var value = 10
+    let first = &value
+    let second = &value
+
+    read(first)
+    read(second)
+    value = 11
+    print(value)
+}
+
+func exclusive_access() {
+    let value = 20
+
+    read_exclusive(^value)
+    print(value)
+}
+
+var value = 30
+let returned = return_shared(&value)
+
+shared_access()
+exclusive_access()
+print(returned)

@@ -1,0 +1,8 @@
+const base = 10
+
+func read_value() {
+    let reference = &base
+    return reference + 1
+}
+
+const result = read_value()

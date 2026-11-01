@@ -9,23 +9,23 @@ typedef struct Scope Scope;
 typedef struct Scope
 {
     Scope* parent;
-    Scope* frameScope;
-    size_t localOffset;
-    size_t localCount;
-    size_t maxLocalCount;
+    Scope* frame_scope;
+    size_t local_offset;
+    size_t local_count;
+    size_t max_local_count;
     size_t level;
     Table symbols;
 } Scope;
 
-Scope* createScope(Scope* parent);
-void freeScope(Scope* scope);
-size_t getMaxLocalCount(const Scope* scope);
-size_t getNextLocalPosition(const Scope* scope);
-size_t getScopeLevel(const Scope* scope);
-bool isTopLevelScope(const Scope* scope);
-ASTNode* setLocalSymbol(Scope* scope, StringView id, ASTNode* symbol);
-ASTNode* setLocalVariableSymbol(Scope* scope, StringView id, ASTNode* symbol);
-ASTNode* getLocalSymbol(const Scope* scope, StringView id);
-ASTNode* getSymbol(const Scope* scope, StringView id);
+Scope* create_scope(Scope* parent);
+void free_scope(Scope* scope);
+size_t get_max_local_count(const Scope* scope);
+size_t get_next_local_position(const Scope* scope);
+size_t get_scope_level(const Scope* scope);
+bool is_top_level_scope(const Scope* scope);
+ASTNode* set_local_symbol(Scope* scope, StringView id, ASTNode* symbol);
+ASTNode* set_local_variable_symbol(Scope* scope, StringView id, ASTNode* symbol);
+ASTNode* get_local_symbol(const Scope* scope, StringView id);
+ASTNode* get_symbol(const Scope* scope, StringView id);
 
 #endif

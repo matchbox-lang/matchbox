@@ -1,0 +1,7 @@
+func take_exclusive(n: ^i32) {
+    print(n)
+}
+
+let value = 10
+
+take_exclusive(^value)

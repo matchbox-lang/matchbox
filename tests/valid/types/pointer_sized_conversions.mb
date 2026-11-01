@@ -1,0 +1,67 @@
+func convert(signed: isize, unsigned: usize, wide: i64, huge: u64, floating: f64, flag: bool) {
+    let signed_wide: i64 = signed
+    let unsigned_wide: u64 = unsigned
+    let from_wide = isize(wide)
+    let from_huge = usize(huge)
+    let signed_float = f64(signed)
+    let unsigned_float = f32(unsigned)
+    let from_float = isize(floating)
+    let unsigned_from_float = usize(floating)
+    let from_bool = usize(flag)
+    let narrow = i8(signed)
+    let unsigned_bits = usize(signed)
+    let restored = isize(unsigned_bits)
+
+    if signed_wide != -123 or unsigned_wide != 200 or from_wide != -123 or from_huge != 200 {
+        exit(1)
+    }
+
+    if signed_float != -123.0 or unsigned_float != 200.0 or from_float != 12 or unsigned_from_float != 12 {
+        exit(1)
+    }
+
+    if from_bool != 1 or narrow != -123 or restored != signed {
+        exit(1)
+    }
+}
+
+convert(-123, 200, -123, 200, 12.75, true)
+
+let signed = isize(-123)
+let unsigned = usize(200)
+let floating = isize(12.75)
+let boolean = usize(true)
+let character = usize('A')
+
+if signed != -123 or unsigned != 200 or floating != 12 or boolean != 1 or character != 65 {
+    exit(1)
+}
+
+func truncate(wide: u64, signed_wide: i64) {
+    let pointer = usize(wide)
+    let restored = u64(pointer)
+    let maximum = usize(-1)
+    let mask = u64(maximum)
+    let expected = wide & mask
+    let signed_pointer = isize(signed_wide)
+    let signed_restored = i64(signed_pointer)
+
+    if restored != expected or signed_restored != -1 {
+        exit(1)
+    }
+}
+
+truncate(4294967297, -1)
+truncate(18446744073709551615, -1)
+
+func widen(value: u32) {
+    let computed = value + 0
+    let pointer = usize(computed)
+    let wide = u64(pointer)
+
+    if wide != 4294967295 {
+        exit(1)
+    }
+}
+
+widen(4294967295)

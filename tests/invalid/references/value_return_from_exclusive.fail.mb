@@ -1,0 +1,5 @@
+var value = 10
+
+func return_value() -> i32 {
+    return ^value
+}

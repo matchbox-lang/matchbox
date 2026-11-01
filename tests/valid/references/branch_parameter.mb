@@ -1,0 +1,12 @@
+func read_reference(choose: bool, value: &i32) {
+    if choose {
+        print(value)
+    }
+
+    print(value)
+}
+
+var referenced = 90
+
+read_reference(true, &referenced)
+print(referenced)

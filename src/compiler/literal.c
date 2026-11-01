@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-static bool decodeHexDigit(char c, uint32_t* value)
+static bool decode_hex_digit(char c, uint32_t* value)
 {
     if (c >= '0' && c <= '9') {
         *value = c - '0';
@@ -28,7 +28,7 @@ static bool decodeHexDigit(char c, uint32_t* value)
     return false;
 }
 
-static bool decodeUnicodeEscape(const char* chars, size_t length, DecodedScalar* scalar)
+static bool decode_unicode_escape(const char* chars, size_t length, DecodedScalar* scalar)
 {
     if (length < 5 || chars[2] != '{') {
         return false;
@@ -39,9 +39,9 @@ static bool decodeUnicodeEscape(const char* chars, size_t length, DecodedScalar*
 
     while (position < length && chars[position] != '}') {
         uint32_t digit = 0;
-        bool validDigit = decodeHexDigit(chars[position], &digit);
+        bool valid_digit = decode_hex_digit(chars[position], &digit);
 
-        if (position - 3 == 6 || !validDigit) {
+        if (position - 3 == 6 || !valid_digit) {
             return false;
         }
 
@@ -53,7 +53,7 @@ static bool decodeUnicodeEscape(const char* chars, size_t length, DecodedScalar*
         return false;
     }
 
-    if (!isUnicodeScalar(value)) {
+    if (!is_unicode_scalar(value)) {
         return false;
     }
 
@@ -63,7 +63,7 @@ static bool decodeUnicodeEscape(const char* chars, size_t length, DecodedScalar*
     return true;
 }
 
-static bool decodeEscape(const char* chars, size_t length, DecodedScalar* scalar)
+static bool decode_escape(const char* chars, size_t length, DecodedScalar* scalar)
 {
     if (length < 2) {
         return false;
@@ -90,7 +90,7 @@ static bool decodeEscape(const char* chars, size_t length, DecodedScalar* scalar
             value = (unsigned char)chars[1];
             break;
         case 'u':
-            return decodeUnicodeEscape(chars, length, scalar);
+            return decode_unicode_escape(chars, length, scalar);
         default:
             return false;
     }
@@ -101,33 +101,33 @@ static bool decodeEscape(const char* chars, size_t length, DecodedScalar* scalar
     return true;
 }
 
-bool decodeLiteralScalar(const char* chars, size_t length, DecodedScalar* scalar)
+bool decode_literal_scalar(const char* chars, size_t length, DecodedScalar* scalar)
 {
     if (length == 0) {
         return false;
     }
 
     if (chars[0] == '\\') {
-        return decodeEscape(chars, length, scalar);
+        return decode_escape(chars, length, scalar);
     }
 
-    return decodeUtf8(chars, length, scalar);
+    return decode_utf8(chars, length, scalar);
 }
 
-bool decodeStringContents(const char* chars, size_t length, char* bytes, size_t* count)
+bool decode_string_contents(const char* chars, size_t length, char* bytes, size_t* count)
 {
     *count = 0;
 
     while (length > 0) {
         DecodedScalar scalar;
-        bool valid = decodeLiteralScalar(chars, length, &scalar);
+        bool valid = decode_literal_scalar(chars, length, &scalar);
 
         if (!valid) {
             return false;
         }
 
-        size_t encodedLength = encodeUtf8(scalar.value, bytes + *count);
-        *count += encodedLength;
+        size_t encoded_length = encode_utf8(scalar.value, bytes + *count);
+        *count += encoded_length;
         chars += scalar.length;
         length -= scalar.length;
     }
@@ -135,17 +135,17 @@ bool decodeStringContents(const char* chars, size_t length, char* bytes, size_t*
     return true;
 }
 
-static _Noreturn void floatOutsideSupportedRangeError(Token token)
+static _Noreturn void float_outside_supported_range_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Float is outside the supported range");
+    fatal_source_error(token.line, token.column, "Float is outside the supported range");
 }
 
-static _Noreturn void integerExceedsMaximumSizeError(Token token)
+static _Noreturn void integer_exceeds_maximum_size_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Integer exceeds the maximum supported size");
+    fatal_source_error(token.line, token.column, "Integer exceeds the maximum supported size");
 }
 
-static void copyLiteralDigit(char c, char** destination, size_t* length)
+static void copy_literal_digit(char c, char** destination, size_t* length)
 {
     if (c == '_') {
         --(*length);
@@ -157,13 +157,13 @@ static void copyLiteralDigit(char c, char** destination, size_t* length)
     (*destination)++;
 }
 
-static void stripUnderscores(char* str, size_t* length)
+static void strip_underscores(char* str, size_t* length)
 {
     char* source = str;
     char* destination = str;
 
     while (*source != '\0') {
-        copyLiteralDigit(*source, &destination, length);
+        copy_literal_digit(*source, &destination, length);
 
         source++;
     }
@@ -171,60 +171,60 @@ static void stripUnderscores(char* str, size_t* length)
     *destination = '\0';
 }
 
-static uint64_t parseIntegerLiteralInBase(Token token, size_t offset, int base)
+static uint64_t parse_integer_literal_in_base(Token token, size_t offset, int base)
 {
     size_t length = token.length - offset;
     char* tmp = strndup(token.chars + offset, length);
 
-    stripUnderscores(tmp, &length);
+    strip_underscores(tmp, &length);
 
     errno = 0;
     uint64_t value = strtoull(tmp, NULL, base);
 
     if (errno == ERANGE) {
-        integerExceedsMaximumSizeError(token);
+        integer_exceeds_maximum_size_error(token);
     }
 
-    freeMemory(tmp);
+    free_memory(tmp);
 
     return value;
 }
 
-uint64_t parseDecimalLiteral(Token token)
+uint64_t parse_decimal_literal(Token token)
 {
-    return parseIntegerLiteralInBase(token, 0, 10);
+    return parse_integer_literal_in_base(token, 0, 10);
 }
 
-uint64_t parseBinaryLiteral(Token token)
+uint64_t parse_binary_literal(Token token)
 {
-    return parseIntegerLiteralInBase(token, 2, 2);
+    return parse_integer_literal_in_base(token, 2, 2);
 }
 
-uint64_t parseHexadecimalLiteral(Token token)
+uint64_t parse_hexadecimal_literal(Token token)
 {
-    return parseIntegerLiteralInBase(token, 2, 16);
+    return parse_integer_literal_in_base(token, 2, 16);
 }
 
-uint64_t parseOctalLiteral(Token token)
+uint64_t parse_octal_literal(Token token)
 {
-    return parseIntegerLiteralInBase(token, 2, 8);
+    return parse_integer_literal_in_base(token, 2, 8);
 }
 
-double parseFloatLiteral(Token token)
+double parse_float_literal(Token token)
 {
     size_t length = token.length;
     char* tmp = strndup(token.chars, length);
 
-    stripUnderscores(tmp, &length);
+    strip_underscores(tmp, &length);
 
     errno = 0;
     double value = strtod(tmp, NULL);
 
     if (errno == ERANGE) {
-        floatOutsideSupportedRangeError(token);
+        float_outside_supported_range_error(token);
     }
 
-    freeMemory(tmp);
+    free_memory(tmp);
 
     return value;
 }

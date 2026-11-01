@@ -8,148 +8,148 @@
 
 static const Builtin builtins[BUILTINS_MAX] = {
     // I/O
-    {"print",       builtinPrint,              -1,  {TYPE_UNKNOWN},                         TYPE_VOID},
+    {"print",       builtin_print,         -1,  {TypeUnknown},                          TypeVoid},
 
-    // Math
-    {"abs",         builtinAbsI32,              1,  {TYPE_I32},                             TYPE_I32},
-    {"abs",         builtinAbsI64,              1,  {TYPE_I64},                             TYPE_I64},
-    {"abs",         builtinAbsF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"abs",         builtinAbsF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"acos",        builtinAcosF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"acos",        builtinAcosF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"acosh",       builtinAcoshF32,            1,  {TYPE_F32},                             TYPE_F32},
-    {"acosh",       builtinAcoshF64,            1,  {TYPE_F64},                             TYPE_F64},
-    {"asin",        builtinAsinF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"asin",        builtinAsinF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"asinh",       builtinAsinhF32,            1,  {TYPE_F32},                             TYPE_F32},
-    {"asinh",       builtinAsinhF64,            1,  {TYPE_F64},                             TYPE_F64},
-    {"atan",        builtinAtanF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"atan",        builtinAtanF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"atan2",       builtinAtan2F32,            2,  {TYPE_F32, TYPE_F32},                   TYPE_F32},
-    {"atan2",       builtinAtan2F64,            2,  {TYPE_F64, TYPE_F64},                   TYPE_F64},
-    {"atanh",       builtinAtanhF32,            1,  {TYPE_F32},                             TYPE_F32},
-    {"atanh",       builtinAtanhF64,            1,  {TYPE_F64},                             TYPE_F64},
-    {"avg",         builtinAvgF32,             -2,  {TYPE_F32},                             TYPE_F32},
-    {"avg",         builtinAvgF64,             -2,  {TYPE_F64},                             TYPE_F64},
-    {"cbrt",        builtinCbrtF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"cbrt",        builtinCbrtF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"ceil",        builtinCeilF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"ceil",        builtinCeilF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"clamp",       builtinClampI32,            3,  {TYPE_I32, TYPE_I32, TYPE_I32},         TYPE_I32},
-    {"clamp",       builtinClampI64,            3,  {TYPE_I64, TYPE_I64, TYPE_I64},         TYPE_I64},
-    {"clamp",       builtinClampF32,            3,  {TYPE_F32, TYPE_F32, TYPE_F32},         TYPE_F32},
-    {"clamp",       builtinClampF64,            3,  {TYPE_F64, TYPE_F64, TYPE_F64},         TYPE_F64},
-    {"cos",         builtinCosF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"cos",         builtinCosF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"cosh",        builtinCoshF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"cosh",        builtinCoshF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"deg",         builtinDegF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"deg",         builtinDegF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"exp",         builtinExpF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"exp",         builtinExpF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"floor",       builtinFloorF32,            1,  {TYPE_F32},                             TYPE_F32},
-    {"floor",       builtinFloorF64,            1,  {TYPE_F64},                             TYPE_F64},
-    {"hypot",       builtinHypotF32,            2,  {TYPE_F32, TYPE_F32},                   TYPE_F32},
-    {"hypot",       builtinHypotF64,            2,  {TYPE_F64, TYPE_F64},                   TYPE_F64},
-    {"ldexp",       builtinLdexpF32,            2,  {TYPE_F32, TYPE_I32},                   TYPE_F32},
-    {"ldexp",       builtinLdexpF64,            2,  {TYPE_F64, TYPE_I32},                   TYPE_F64},
-    {"log",         builtinLogF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"log",         builtinLogF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"log10",       builtinLog10F32,            1,  {TYPE_F32},                             TYPE_F32},
-    {"log10",       builtinLog10F64,            1,  {TYPE_F64},                             TYPE_F64},
-    {"log2",        builtinLog2F32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"log2",        builtinLog2F64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"max",         builtinMaxI32,             -2,  {TYPE_I32},                             TYPE_I32},
-    {"max",         builtinMaxI64,             -2,  {TYPE_I64},                             TYPE_I64},
-    {"max",         builtinMaxU32,             -2,  {TYPE_U32},                             TYPE_U32},
-    {"max",         builtinMaxU64,             -2,  {TYPE_U64},                             TYPE_U64},
-    {"max",         builtinMaxF32,             -2,  {TYPE_F32},                             TYPE_F32},
-    {"max",         builtinMaxF64,             -2,  {TYPE_F64},                             TYPE_F64},
-    {"min",         builtinMinI32,             -2,  {TYPE_I32},                             TYPE_I32},
-    {"min",         builtinMinI64,             -2,  {TYPE_I64},                             TYPE_I64},
-    {"min",         builtinMinU32,             -2,  {TYPE_U32},                             TYPE_U32},
-    {"min",         builtinMinU64,             -2,  {TYPE_U64},                             TYPE_U64},
-    {"min",         builtinMinF32,             -2,  {TYPE_F32},                             TYPE_F32},
-    {"min",         builtinMinF64,             -2,  {TYPE_F64},                             TYPE_F64},
-    {"pow",         builtinPowI32,              2,  {TYPE_I32, TYPE_I32},                   TYPE_I32},
-    {"pow",         builtinPowI64,              2,  {TYPE_I64, TYPE_I64},                   TYPE_I64},
-    {"pow",         builtinPowF32,              2,  {TYPE_F32, TYPE_F32},                   TYPE_F32},
-    {"pow",         builtinPowF64,              2,  {TYPE_F64, TYPE_F64},                   TYPE_F64},
-    {"rad",         builtinRadF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"rad",         builtinRadF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"sin",         builtinSinF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"sin",         builtinSinF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"sinh",        builtinSinhF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"sinh",        builtinSinhF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"sqrt",        builtinSqrtF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"sqrt",        builtinSqrtF64,             1,  {TYPE_F64},                             TYPE_F64},
-    {"sum",         builtinSumI32,             -2,  {TYPE_I32},                             TYPE_I32},
-    {"sum",         builtinSumI64,             -2,  {TYPE_I64},                             TYPE_I64},
-    {"sum",         builtinSumU32,             -2,  {TYPE_U32},                             TYPE_U32},
-    {"sum",         builtinSumU64,             -2,  {TYPE_U64},                             TYPE_U64},
-    {"sum",         builtinSumF32,             -2,  {TYPE_F32},                             TYPE_F32},
-    {"sum",         builtinSumF64,             -2,  {TYPE_F64},                             TYPE_F64},
-    {"tan",         builtinTanF32,              1,  {TYPE_F32},                             TYPE_F32},
-    {"tan",         builtinTanF64,              1,  {TYPE_F64},                             TYPE_F64},
-    {"tanh",        builtinTanhF32,             1,  {TYPE_F32},                             TYPE_F32},
-    {"tanh",        builtinTanhF64,             1,  {TYPE_F64},                             TYPE_F64},
+    // Math                                                                             
+    {"abs",         builtin_abs_i32,        1,  {TypeI32},                              TypeI32},
+    {"abs",         builtin_abs_i64,        1,  {TypeI64},                              TypeI64},
+    {"abs",         builtin_abs_f32,        1,  {TypeF32},                              TypeF32},
+    {"abs",         builtin_abs_f64,        1,  {TypeF64},                              TypeF64},
+    {"acos",        builtin_acos_f32,       1,  {TypeF32},                              TypeF32},
+    {"acos",        builtin_acos_f64,       1,  {TypeF64},                              TypeF64},
+    {"acosh",       builtin_acosh_f32,      1,  {TypeF32},                              TypeF32},
+    {"acosh",       builtin_acosh_f64,      1,  {TypeF64},                              TypeF64},
+    {"asin",        builtin_asin_f32,       1,  {TypeF32},                              TypeF32},
+    {"asin",        builtin_asin_f64,       1,  {TypeF64},                              TypeF64},
+    {"asinh",       builtin_asinh_f32,      1,  {TypeF32},                              TypeF32},
+    {"asinh",       builtin_asinh_f64,      1,  {TypeF64},                              TypeF64},
+    {"atan",        builtin_atan_f32,       1,  {TypeF32},                              TypeF32},
+    {"atan",        builtin_atan_f64,       1,  {TypeF64},                              TypeF64},
+    {"atan2",       builtin_atan2_f32,      2,  {TypeF32, TypeF32},                     TypeF32},
+    {"atan2",       builtin_atan2_f64,      2,  {TypeF64, TypeF64},                     TypeF64},
+    {"atanh",       builtin_atanh_f32,      1,  {TypeF32},                              TypeF32},
+    {"atanh",       builtin_atanh_f64,      1,  {TypeF64},                              TypeF64},
+    {"avg",         builtin_avg_f32,       -2,  {TypeF32},                              TypeF32},
+    {"avg",         builtin_avg_f64,       -2,  {TypeF64},                              TypeF64},
+    {"cbrt",        builtin_cbrt_f32,       1,  {TypeF32},                              TypeF32},
+    {"cbrt",        builtin_cbrt_f64,       1,  {TypeF64},                              TypeF64},
+    {"ceil",        builtin_ceil_f32,       1,  {TypeF32},                              TypeF32},
+    {"ceil",        builtin_ceil_f64,       1,  {TypeF64},                              TypeF64},
+    {"clamp",       builtin_clamp_i32,      3,  {TypeI32, TypeI32, TypeI32},            TypeI32},
+    {"clamp",       builtin_clamp_i64,      3,  {TypeI64, TypeI64, TypeI64},            TypeI64},
+    {"clamp",       builtin_clamp_f32,      3,  {TypeF32, TypeF32, TypeF32},            TypeF32},
+    {"clamp",       builtin_clamp_f64,      3,  {TypeF64, TypeF64, TypeF64},            TypeF64},
+    {"cos",         builtin_cos_f32,        1,  {TypeF32},                              TypeF32},
+    {"cos",         builtin_cos_f64,        1,  {TypeF64},                              TypeF64},
+    {"cosh",        builtin_cosh_f32,       1,  {TypeF32},                              TypeF32},
+    {"cosh",        builtin_cosh_f64,       1,  {TypeF64},                              TypeF64},
+    {"deg",         builtin_deg_f32,        1,  {TypeF32},                              TypeF32},
+    {"deg",         builtin_deg_f64,        1,  {TypeF64},                              TypeF64},
+    {"exp",         builtin_exp_f32,        1,  {TypeF32},                              TypeF32},
+    {"exp",         builtin_exp_f64,        1,  {TypeF64},                              TypeF64},
+    {"floor",       builtin_floor_f32,      1,  {TypeF32},                              TypeF32},
+    {"floor",       builtin_floor_f64,      1,  {TypeF64},                              TypeF64},
+    {"hypot",       builtin_hypot_f32,      2,  {TypeF32, TypeF32},                     TypeF32},
+    {"hypot",       builtin_hypot_f64,      2,  {TypeF64, TypeF64},                     TypeF64},
+    {"ldexp",       builtin_ldexp_f32,      2,  {TypeF32, TypeI32},                     TypeF32},
+    {"ldexp",       builtin_ldexp_f64,      2,  {TypeF64, TypeI32},                     TypeF64},
+    {"log",         builtin_log_f32,        1,  {TypeF32},                              TypeF32},
+    {"log",         builtin_log_f64,        1,  {TypeF64},                              TypeF64},
+    {"log10",       builtin_log10_f32,      1,  {TypeF32},                              TypeF32},
+    {"log10",       builtin_log10_f64,      1,  {TypeF64},                              TypeF64},
+    {"log2",        builtin_log2_f32,       1,  {TypeF32},                              TypeF32},
+    {"log2",        builtin_log2_f64,       1,  {TypeF64},                              TypeF64},
+    {"max",         builtin_max_i32,       -2,  {TypeI32},                              TypeI32},
+    {"max",         builtin_max_i64,       -2,  {TypeI64},                              TypeI64},
+    {"max",         builtin_max_u32,       -2,  {TypeU32},                              TypeU32},
+    {"max",         builtin_max_u64,       -2,  {TypeU64},                              TypeU64},
+    {"max",         builtin_max_f32,       -2,  {TypeF32},                              TypeF32},
+    {"max",         builtin_max_f64,       -2,  {TypeF64},                              TypeF64},
+    {"min",         builtin_min_i32,       -2,  {TypeI32},                              TypeI32},
+    {"min",         builtin_min_i64,       -2,  {TypeI64},                              TypeI64},
+    {"min",         builtin_min_u32,       -2,  {TypeU32},                              TypeU32},
+    {"min",         builtin_min_u64,       -2,  {TypeU64},                              TypeU64},
+    {"min",         builtin_min_f32,       -2,  {TypeF32},                              TypeF32},
+    {"min",         builtin_min_f64,       -2,  {TypeF64},                              TypeF64},
+    {"pow",         builtin_pow_i32,        2,  {TypeI32, TypeI32},                     TypeI32},
+    {"pow",         builtin_pow_i64,        2,  {TypeI64, TypeI64},                     TypeI64},
+    {"pow",         builtin_pow_f32,        2,  {TypeF32, TypeF32},                     TypeF32},
+    {"pow",         builtin_pow_f64,        2,  {TypeF64, TypeF64},                     TypeF64},
+    {"rad",         builtin_rad_f32,        1,  {TypeF32},                              TypeF32},
+    {"rad",         builtin_rad_f64,        1,  {TypeF64},                              TypeF64},
+    {"sin",         builtin_sin_f32,        1,  {TypeF32},                              TypeF32},
+    {"sin",         builtin_sin_f64,        1,  {TypeF64},                              TypeF64},
+    {"sinh",        builtin_sinh_f32,       1,  {TypeF32},                              TypeF32},
+    {"sinh",        builtin_sinh_f64,       1,  {TypeF64},                              TypeF64},
+    {"sqrt",        builtin_sqrt_f32,       1,  {TypeF32},                              TypeF32},
+    {"sqrt",        builtin_sqrt_f64,       1,  {TypeF64},                              TypeF64},
+    {"sum",         builtin_sum_i32,       -2,  {TypeI32},                              TypeI32},
+    {"sum",         builtin_sum_i64,       -2,  {TypeI64},                              TypeI64},
+    {"sum",         builtin_sum_u32,       -2,  {TypeU32},                              TypeU32},
+    {"sum",         builtin_sum_u64,       -2,  {TypeU64},                              TypeU64},
+    {"sum",         builtin_sum_f32,       -2,  {TypeF32},                              TypeF32},
+    {"sum",         builtin_sum_f64,       -2,  {TypeF64},                              TypeF64},
+    {"tan",         builtin_tan_f32,        1,  {TypeF32},                              TypeF32},
+    {"tan",         builtin_tan_f64,        1,  {TypeF64},                              TypeF64},
+    {"tanh",        builtin_tanh_f32,       1,  {TypeF32},                              TypeF32},
+    {"tanh",        builtin_tanh_f64,       1,  {TypeF64},                              TypeF64},
 
     // String
-    {"string",      builtinString,             -1,  {TYPE_UNKNOWN},                         TYPE_STRING},
+    {"string",      builtin_string,        -1,  {TypeUnknown},                          TypeString},
 
     // System
-    {"assert",      builtinAssert,              1,  {TYPE_BOOL},                            TYPE_VOID},
-    {"assert",      builtinAssertMessage,       2,  {TYPE_BOOL, TYPE_STRING},               TYPE_VOID},
-    {"byteorder",   builtinByteorder,           0,  {},                                     TYPE_I32},
-    {"exit",        builtinExit,                0,  {},                                     TYPE_VOID},
-    {"exit",        builtinExitStatus,          1,  {TYPE_I32},                             TYPE_VOID},
-    {"panic",       builtinPanic,               1,  {TYPE_STRING},                          TYPE_VOID}
+    {"assert",      builtin_assert,         1,  {TypeBool},                             TypeVoid},
+    {"assert",      builtin_assert_message, 2,  {TypeBool, TypeString},                 TypeVoid},
+    {"byteorder",   builtin_byteorder,      0,  {},                                     TypeI32},
+    {"exit",        builtin_exit,           0,  {},                                     TypeVoid},
+    {"exit",        builtin_exit_status,    1,  {TypeI32},                              TypeVoid},
+    {"panic",       builtin_panic,          1,  {TypeString},                           TypeVoid}
 };
 
-static bool builtinArgumentMatches(const Builtin* builtin, const DataType* argumentTypes, size_t position)
+static bool builtin_argument_matches(const Builtin* builtin, const DataType* argument_types, size_t position)
 {
-    DataType argumentType = argumentTypes[position];
-    DataType parameterType = builtin->params[position];
+    DataType argument_type = argument_types[position];
+    DataType parameter_type = builtin->params[position];
 
-    return argumentType == TYPE_UNKNOWN
-        || argumentType == parameterType
-        || canImplicitlyWidenType(argumentType, parameterType);
+    return argument_type == TypeUnknown
+        || argument_type == parameter_type
+        || can_implicitly_widen_type(argument_type, parameter_type);
 }
 
-static bool typedVariadicMatches(
-    const Builtin* builtin, const DataType* argumentTypes, size_t argumentCount, bool exact)
+static bool typed_variadic_matches(
+    const Builtin* builtin, const DataType* argument_types, size_t argument_count, bool exact)
 {
-    if (!argumentCount || !argumentTypes) {
+    if (!argument_count || !argument_types) {
         return false;
     }
 
     bool matches = true;
 
-    for (size_t i = 0; i < argumentCount && matches; i++) {
-        DataType argumentType = argumentTypes[i];
-        DataType parameterType = builtin->params[0];
-        matches = argumentType == parameterType || (!exact && canImplicitlyWidenType(argumentType, parameterType));
+    for (size_t i = 0; i < argument_count && matches; i++) {
+        DataType argument_type = argument_types[i];
+        DataType parameter_type = builtin->params[0];
+        matches = argument_type == parameter_type || (!exact && can_implicitly_widen_type(argument_type, parameter_type));
     }
 
     return matches;
 }
 
-static bool builtinMatches(const Builtin* builtin, const DataType* argumentTypes, size_t argumentCount)
+static bool builtin_matches(const Builtin* builtin, const DataType* argument_types, size_t argument_count)
 {
-    if (builtin->paramCount == BUILTIN_VARIADIC) {
+    if (builtin->param_count == BUILTIN_VARIADIC) {
         return true;
     }
 
-    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
-        return typedVariadicMatches(builtin, argumentTypes, argumentCount, false);
+    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
+        return typed_variadic_matches(builtin, argument_types, argument_count, false);
     }
 
-    if ((size_t)builtin->paramCount != argumentCount) {
+    if ((size_t)builtin->param_count != argument_count) {
         return false;
     }
 
-    for (size_t i = 0; i < argumentCount; i++) {
-        if (!builtinArgumentMatches(builtin, argumentTypes, i)) {
+    for (size_t i = 0; i < argument_count; i++) {
+        if (!builtin_argument_matches(builtin, argument_types, i)) {
             return false;
         }
     }
@@ -157,17 +157,17 @@ static bool builtinMatches(const Builtin* builtin, const DataType* argumentTypes
     return true;
 }
 
-static bool builtinCallMatches(
-    const Builtin* builtin, const char* name, const DataType* argumentTypes, size_t argumentCount)
+static bool builtin_call_matches(
+    const Builtin* builtin, const char* name, const DataType* argument_types, size_t argument_count)
 {
     return strcmp(name, builtin->name) == 0
-        && builtinMatches(builtin, argumentTypes, argumentCount);
+        && builtin_matches(builtin, argument_types, argument_count);
 }
 
-static const Builtin* matchExactTypedVariadicBuiltin(
-    const Builtin* builtin, const DataType* argumentTypes, size_t argumentCount)
+static const Builtin* match_exact_typed_variadic_builtin(
+    const Builtin* builtin, const DataType* argument_types, size_t argument_count)
 {
-    bool matches = typedVariadicMatches(builtin, argumentTypes, argumentCount, true);
+    bool matches = typed_variadic_matches(builtin, argument_types, argument_count, true);
 
     if (!matches) {
         return NULL;
@@ -176,25 +176,25 @@ static const Builtin* matchExactTypedVariadicBuiltin(
     return builtin;
 }
 
-static const Builtin* matchExactBuiltin(
-    const Builtin* builtin, const char* name, const DataType* argumentTypes, size_t argumentCount)
+static const Builtin* match_exact_builtin(
+    const Builtin* builtin, const char* name, const DataType* argument_types, size_t argument_count)
 {
     if (strcmp(name, builtin->name) != 0) {
         return NULL;
     }
 
-    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
-        return matchExactTypedVariadicBuiltin(builtin, argumentTypes, argumentCount);
+    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
+        return match_exact_typed_variadic_builtin(builtin, argument_types, argument_count);
     }
 
-    if ((size_t)builtin->paramCount != argumentCount) {
+    if ((size_t)builtin->param_count != argument_count) {
         return NULL;
     }
 
     bool matches = true;
 
-    for (size_t i = 0; i < argumentCount && matches; i++) {
-        matches = argumentTypes[i] == builtin->params[i];
+    for (size_t i = 0; i < argument_count && matches; i++) {
+        matches = argument_types[i] == builtin->params[i];
     }
 
     if (!matches) {
@@ -204,20 +204,20 @@ static const Builtin* matchExactBuiltin(
     return builtin;
 }
 
-static const Builtin* resolveExactBuiltin(const char* name, const DataType* argumentTypes, size_t argumentCount)
+static const Builtin* resolve_exact_builtin(const char* name, const DataType* argument_types, size_t argument_count)
 {
     const Builtin* exact = NULL;
 
     for (int i = 0; i < BUILTINS_MAX && !exact; i++) {
-        exact = matchExactBuiltin(&builtins[i], name, argumentTypes, argumentCount);
+        exact = match_exact_builtin(&builtins[i], name, argument_types, argument_count);
     }
 
     return exact;
 }
 
-const Builtin* resolveBuiltin(const char* name, const DataType* argumentTypes, size_t argumentCount)
+const Builtin* resolve_builtin(const char* name, const DataType* argument_types, size_t argument_count)
 {
-    const Builtin* exact = resolveExactBuiltin(name, argumentTypes, argumentCount);
+    const Builtin* exact = resolve_exact_builtin(name, argument_types, argument_count);
 
     if (exact) {
         return exact;
@@ -228,11 +228,11 @@ const Builtin* resolveBuiltin(const char* name, const DataType* argumentTypes, s
     for (int i = 0; i < BUILTINS_MAX; i++) {
         const Builtin* builtin = &builtins[i];
 
-        if (!builtinCallMatches(builtin, name, argumentTypes, argumentCount)) {
+        if (!builtin_call_matches(builtin, name, argument_types, argument_count)) {
             continue;
         }
 
-        if (builtin->paramCount == BUILTIN_VARIADIC) {
+        if (builtin->param_count == BUILTIN_VARIADIC) {
             variadic = builtin;
 
             continue;
@@ -244,7 +244,7 @@ const Builtin* resolveBuiltin(const char* name, const DataType* argumentTypes, s
     return variadic;
 }
 
-bool isBuiltinName(const char* name)
+bool is_builtin_name(const char* name)
 {
     for (int i = 0; i < BUILTINS_MAX; i++) {
         if (strcmp(name, builtins[i].name) == 0) {

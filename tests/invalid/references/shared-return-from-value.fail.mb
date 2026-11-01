@@ -1,3 +1,0 @@
-func returnShared() -> &i32 {
-    return 10
-}

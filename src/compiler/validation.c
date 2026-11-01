@@ -2,176 +2,176 @@
 #include "compiler/constant.h"
 #include "compiler/diagnostics.h"
 
-static void validateNode(const ASTNode* ast, bool checkZero);
+static void validate_node(const ASTNode* ast, bool check_zero);
 
-static void validateNodes(const Vector* nodes, size_t start, bool checkZero)
+static void validate_nodes(const Vector* nodes, size_t start, bool check_zero)
 {
     for (size_t i = start; i < nodes->count; i++) {
         const ASTNode* node = nodes->data[i];
 
-        validateNode(node, checkZero);
+        validate_node(node, check_zero);
     }
 }
 
-static void validateZeroDivisor(const ASTNode* divisor, Token operator, DataType type, bool checkZero)
+static void validate_zero_divisor(const ASTNode* divisor, Token operator, DataType type, bool check_zero)
 {
-    bool division = operator.type == TOKEN_SLASH || operator.type == TOKEN_SLASH_EQUAL;
-    bool remainder = operator.type == TOKEN_PERCENT || operator.type == TOKEN_PERCENT_EQUAL;
+    bool division = operator.type == TokenSlash || operator.type == TokenSlashEqual;
+    bool remainder = operator.type == TokenPercent || operator.type == TokenPercentEqual;
 
-    if (!checkZero || !isIntegerType(type) || (!division && !remainder)) {
+    if (!check_zero || !is_integer_type(type) || (!division && !remainder)) {
         return;
     }
 
     ConstantValue value = {0};
-    bool constant = evaluateConstant(divisor, &value);
+    bool constant = evaluate_constant(divisor, &value);
 
     if (!constant || value.integer != 0) {
         return;
     }
 
-    fatalSourceError(operator.line, operator.column, "Division by zero");
+    fatal_source_error(operator.line, operator.column, "Division by zero");
 }
 
-static bool shouldCheckRightDivisor(const ASTNode* ast, bool checkZero)
+static bool should_check_right_divisor(const ASTNode* ast, bool check_zero)
 {
-    if (!checkZero) {
+    if (!check_zero) {
         return false;
     }
 
-    if (!isLogicalToken(ast->binary.operator.type)) {
+    if (!is_logical_token(ast->binary.operator.type)) {
         return true;
     }
 
     ConstantValue left = {0};
-    bool constant = evaluateConstant(ast->binary.leftExpr, &left);
+    bool constant = evaluate_constant(ast->binary.left_expr, &left);
 
     if (!constant) {
         return false;
     }
 
-    return (left.integer != 0) == (ast->binary.operator.type == TOKEN_AND);
+    return (left.integer != 0) == (ast->binary.operator.type == TokenKeywordAnd);
 }
 
-static void validateBinary(const ASTNode* ast, bool checkZero)
+static void validate_binary(const ASTNode* ast, bool check_zero)
 {
-    validateNode(ast->binary.leftExpr, checkZero);
+    validate_node(ast->binary.left_expr, check_zero);
 
-    bool checkRight = shouldCheckRightDivisor(ast, checkZero);
+    bool check_right = should_check_right_divisor(ast, check_zero);
 
-    validateNode(ast->binary.rightExpr, checkRight);
-    validateZeroDivisor(ast->binary.rightExpr, ast->binary.operator, ast->binary.operandType, checkZero);
+    validate_node(ast->binary.right_expr, check_right);
+    validate_zero_divisor(ast->binary.right_expr, ast->binary.operator, ast->binary.operand_type, check_zero);
 }
 
-static void validateConversion(const ASTNode* ast, bool checkZero)
+static void validate_conversion(const ASTNode* ast, bool check_zero)
 {
-    validateNode(ast->conversion.expr, checkZero);
+    validate_node(ast->conversion.expr, check_zero);
 
     ConstantValue value = {0};
-    bool constant = evaluateConstant(ast, &value);
-    DataType source = getNodeDataType(ast->conversion.expr);
+    bool constant = evaluate_constant(ast, &value);
+    DataType source = get_node_data_type(ast->conversion.expr);
 
-    if (constant || ast->conversion.typeId != TYPE_CHAR || source == TYPE_U8 || source == TYPE_CHAR) {
+    if (constant || ast->conversion.type_id != TypeChar || source == TypeU8 || source == TypeChar) {
         return;
     }
 
     Token token = ast->conversion.token;
 
-    fatalSourceError(token.line, token.column, "Integer-to-char conversion requires a constant or u8 source");
+    fatal_source_error(token.line, token.column, "Integer-to-char conversion requires a constant or u8 source");
 }
 
-static void validateAssignment(const ASTNode* ast, bool checkZero)
+static void validate_assignment(const ASTNode* ast, bool check_zero)
 {
-    validateNode(ast->assignment.expr, checkZero);
+    validate_node(ast->assignment.expr, check_zero);
 
-    DataType type = getNodeDataType(ast->assignment.symbol);
+    DataType type = get_node_data_type(ast->assignment.symbol);
 
-    validateZeroDivisor(ast->assignment.expr, ast->assignment.operator, type, checkZero);
+    validate_zero_divisor(ast->assignment.expr, ast->assignment.operator, type, check_zero);
 }
 
-static void validateConditional(const ASTNode* ast, bool checkZero)
+static void validate_conditional(const ASTNode* ast, bool check_zero)
 {
-    validateNode(ast->conditional.condition, checkZero);
-    validateNode(ast->conditional.thenBranch, checkZero);
-    validateNode(ast->conditional.elseBranch, checkZero);
+    validate_node(ast->conditional.condition, check_zero);
+    validate_node(ast->conditional.then_branch, check_zero);
+    validate_node(ast->conditional.else_branch, check_zero);
 }
 
-static void validateMatchArm(const MatchArm* arm, bool checkZero)
+static void validate_match_arm(const MatchArm* arm, bool check_zero)
 {
-    validateNode(arm->pattern, checkZero);
-    validateNode(arm->guard, checkZero);
-    validateNode(arm->branch, checkZero);
+    validate_node(arm->pattern, check_zero);
+    validate_node(arm->guard, check_zero);
+    validate_node(arm->branch, check_zero);
 }
 
-static void validateMatch(const ASTNode* ast, bool checkZero)
+static void validate_match(const ASTNode* ast, bool check_zero)
 {
-    validateNode(ast->match.subject, checkZero);
+    validate_node(ast->match.subject, check_zero);
 
     for (size_t i = 0; i < ast->match.arms.count; i++) {
         const MatchArm* arm = ast->match.arms.data[i];
 
-        validateMatchArm(arm, checkZero);
+        validate_match_arm(arm, check_zero);
     }
 
-    validateNode(ast->match.defaultBranch, checkZero);
+    validate_node(ast->match.default_branch, check_zero);
 }
 
-static void validateNode(const ASTNode* ast, bool checkZero)
+static void validate_node(const ASTNode* ast, bool check_zero)
 {
     if (!ast) {
         return;
     }
 
     switch (ast->type) {
-        case AST_ASSIGNMENT:
-            validateAssignment(ast, checkZero);
+        case ASTAssignment:
+            validate_assignment(ast, check_zero);
             break;
-        case AST_BINARY:
-            validateBinary(ast, checkZero);
+        case ASTBinary:
+            validate_binary(ast, check_zero);
             break;
-        case AST_BUILTIN_CALL:
-            validateNodes(&ast->builtinCall.args, 0, checkZero);
+        case ASTBuiltinCall:
+            validate_nodes(&ast->builtin_call.args, 0, check_zero);
             break;
-        case AST_COMPOUND:
-            validateNodes(&ast->compound.statements, 0, checkZero);
+        case ASTCompound:
+            validate_nodes(&ast->compound.statements, 0, check_zero);
             break;
-        case AST_CONDITIONAL:
-            validateConditional(ast, checkZero);
+        case ASTConditional:
+            validate_conditional(ast, check_zero);
             break;
-        case AST_CONVERSION:
-            validateConversion(ast, checkZero);
+        case ASTConversion:
+            validate_conversion(ast, check_zero);
             break;
-        case AST_FUNCTION_CALL:
-            validateNodes(&ast->functionCall.args, 0, checkZero);
+        case ASTFunctionCall:
+            validate_nodes(&ast->function_call.args, 0, check_zero);
             break;
-        case AST_FUNCTION_DEFINITION:
-            validateNodes(&ast->functionDefinition.params, 0, checkZero);
-            validateNode(ast->functionDefinition.body, checkZero);
+        case ASTFunctionDefinition:
+            validate_nodes(&ast->function_definition.params, 0, check_zero);
+            validate_node(ast->function_definition.body, check_zero);
             break;
-        case AST_MATCH:
-            validateMatch(ast, checkZero);
+        case ASTMatch:
+            validate_match(ast, check_zero);
             break;
-        case AST_PARAMETER:
-            validateNode(ast->parameter.defaultValue, checkZero);
+        case ASTParameter:
+            validate_node(ast->parameter.default_value, check_zero);
             break;
-        case AST_PREFIX:
-            validateNode(ast->prefix.expr, checkZero);
+        case ASTPrefix:
+            validate_node(ast->prefix.expr, check_zero);
             break;
-        case AST_RETURN:
-            validateNode(ast->returnStatement.expr, checkZero);
+        case ASTReturn:
+            validate_node(ast->return_statement.expr, check_zero);
             break;
-        case AST_VARIABLE_DEFINITION:
-            validateNode(ast->variableDefinition.expr, checkZero);
+        case ASTVariableDefinition:
+            validate_node(ast->variable_definition.expr, check_zero);
             break;
-        case AST_WHILE:
-            validateNode(ast->whileStatement.condition, checkZero);
-            validateNode(ast->whileStatement.body, checkZero);
+        case ASTWhile:
+            validate_node(ast->while_statement.condition, check_zero);
+            validate_node(ast->while_statement.body, check_zero);
             break;
         default:
             break;
     }
 }
 
-void validateConstantExpressions(const ASTNode* ast, size_t start)
+void validate_constant_expressions(const ASTNode* ast, size_t start)
 {
-    validateNodes(&ast->compound.statements, start, true);
+    validate_nodes(&ast->compound.statements, start, true);
 }

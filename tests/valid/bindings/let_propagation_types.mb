@@ -1,0 +1,37 @@
+let small: i8 = 100
+let small_copy: i8 = small
+let wider: i64 = small_copy
+
+print(small_copy)
+print(wider)
+
+let unsigned: u32 = 4294967295
+let unsigned_copy = unsigned
+
+print(unsigned_copy)
+
+let wide: i64 = 4294967296
+let wide_copy = wide
+
+print(wide_copy)
+
+let floating: f32 = 10
+let floating_copy = floating
+
+print(floating_copy)
+
+let wrapped = 2147483647 + 1
+let wrapped_copy = wrapped
+
+print(wrapped_copy)
+
+let negative = 0 - 10
+
+print(negative / 2)
+
+let name = "Alice"
+let name_copy = name
+let punctuation = '!'
+
+print(name)
+print(name_copy + punctuation)

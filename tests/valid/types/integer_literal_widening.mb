@@ -1,0 +1,29 @@
+let negative: i32 = -25
+let folded = 1 - 26
+let positive: u32 = 4294967295
+let widened_negative: i64 = negative
+let widened_folded: i64 = folded
+let widened_positive: u64 = positive
+
+print(widened_negative == -25)
+print(widened_folded == -25)
+print(widened_positive == 4294967295)
+
+func widen(value: i64) -> i64 {
+    return value
+}
+
+print(widen(negative) == -25)
+
+let minimum = -2147483648
+let minimum32: i32 = minimum
+let minimum64: i64 = -2147483648
+let minimum_builtin: i32 = min(-2147483648, 0)
+let below_minimum = -2147483649
+let positive_boundary = 2147483648
+
+print(minimum32)
+print(minimum64)
+print(minimum_builtin)
+print(below_minimum)
+print(positive_boundary)

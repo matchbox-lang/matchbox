@@ -1,0 +1,17 @@
+const base = 10
+
+func read_shared(value: &i32) {
+    return value + 1
+}
+
+let runtime = read_shared(base)
+
+assert(runtime == 11)
+
+func local(value) {
+    return read_shared(value)
+}
+
+const result = local(10)
+
+assert(result == 11)

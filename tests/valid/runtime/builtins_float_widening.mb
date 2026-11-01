@@ -1,0 +1,40 @@
+let narrow: f32 = 1.5
+let wide: f64 = 2.25
+let low: f64 = 1.0000000000000002
+
+let clamped: f64 = clamp(narrow, low, wide)
+let minimum: f64 = min(wide, narrow, low, 1.0, 5.0)
+let maximum: f64 = max(narrow, wide, 1.0, 4.5, 3.0)
+let power: f64 = pow(wide, narrow)
+let upper: f64 = clamp(wide, low, narrow)
+
+print(clamped)
+print(minimum)
+print(maximum)
+print(power)
+print(upper)
+
+let absolute: f64 = abs(-narrow)
+let angle: f64 = atan2(narrow, wide)
+let hypotenuse: f64 = hypot(wide, narrow)
+let exponent: i8 = -2
+let scaled: f64 = ldexp(wide, exponent)
+
+print(absolute)
+print(angle)
+print(hypotenuse)
+print(scaled)
+
+let total: f32 = sum(narrow, 1, 2, 3, 4)
+let mean: f64 = avg(wide, 1, 2, 3, 4)
+let single: f32 = min(narrow)
+
+print(total)
+print(mean)
+print(single)
+
+let mixed_total: f64 = sum(narrow, wide, narrow, wide, 1.0)
+let mixed_mean: f64 = avg(narrow, wide)
+
+print(mixed_total)
+print(mixed_mean)

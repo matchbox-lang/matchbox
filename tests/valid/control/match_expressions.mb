@@ -1,0 +1,39 @@
+let value = 2
+
+let default_result = match value {
+    case 0: 10
+    default: 20
+}
+
+let wildcard_result = match value {
+    case 0: 30
+    case _: 40
+}
+
+let capture_result = match value {
+    case 0: 50
+    case captured: 60 + captured
+}
+
+let explicit_boolean_result = match true {
+    case true: 70
+    case false: 80
+}
+
+let implicit_boolean_result = match {
+    case true: 90
+    case false: 100
+}
+
+let fixed_result = match 2 {
+    case 1: 110
+    case 2: 120
+    default: 130
+}
+
+print(default_result)
+print(wildcard_result)
+print(capture_result)
+print(explicit_boolean_result)
+print(implicit_boolean_result)
+print(fixed_result)

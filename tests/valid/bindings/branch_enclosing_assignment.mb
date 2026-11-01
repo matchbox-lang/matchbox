@@ -1,0 +1,17 @@
+func update(choose: bool, value: i32) -> i32 {
+    var result = value
+
+    if choose {
+        result += 2
+    } else {
+        result -= 3
+    }
+
+    return result
+}
+
+let updated_then = update(true, 30)
+let updated_else = update(false, 40)
+
+print(updated_then)
+print(updated_else)

@@ -1,6 +1,6 @@
 var value = 10
 
-func testShadowing() {
+func test_shadowing() {
     print(value)
 
     var value = 400
@@ -18,5 +18,5 @@ func testShadowing() {
     print(value)
 }
 
-testShadowing()
+test_shadowing()
 print(value)

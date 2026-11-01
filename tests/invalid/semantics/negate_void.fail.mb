@@ -1,0 +1,3 @@
+func no_value() {}
+
+let result = -no_value()

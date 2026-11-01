@@ -3,11 +3,11 @@
 
 #include <stdbool.h>
 
-char* joinPath(const char* directory, const char* name);
-void freePath(char* path);
-bool pathExists(const char* path);
-bool pathHasExtension(const char* path, const char* extension);
-bool pathIsCurrentOrParentDirectory(const char* path);
-bool pathIsDirectory(const char* path);
+char* join_path(const char* directory, const char* name);
+void free_path(char* path);
+bool path_exists(const char* path);
+bool path_has_extension(const char* path, const char* extension);
+bool path_is_current_or_parent_directory(const char* path);
+bool path_is_directory(const char* path);
 
 #endif

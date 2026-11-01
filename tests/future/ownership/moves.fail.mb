@@ -2,33 +2,33 @@ func consume(values: List<i32>) {
     print(values.count())
 }
 
-func moveIntoCall() {
+func move_into_call() {
     let values = List(1, 2, 3)
     
     consume(values)
 }
 
-func moveIntoTask() {
+func move_into_task() {
     let values = List(1, 2, 3)
     let task = spawn consume(values)
 
     await task
 }
 
-func appendAndReturn(values: List<i32>) -> List<i32> {
+func append_and_return(values: List<i32>) -> List<i32> {
     values.add(4)
 
     return values
 }
 
-func returnOwnership() {
+func return_ownership() {
     let values = List(1, 2, 3)
-    let task = spawn appendAndReturn(values)
+    let task = spawn append_and_return(values)
     let updated = await task
 
     print(updated.count())
 }
 
-moveIntoCall()
-moveIntoTask()
-returnOwnership()
+move_into_call()
+move_into_task()
+return_ownership()

@@ -1,0 +1,4 @@
+func select_reference(first: &i32, second: &i32) -> &i32 {
+    return first
+    return second
+}

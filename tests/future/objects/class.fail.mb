@@ -1,12 +1,12 @@
 class Foo {
     id: i32
 
-    func getId() {
+    func get_id() {
         return id
     }
 }
 
 let x = Foo(5)
-let id = x.getId()
+let id = x.get_id()
 
 print(id)

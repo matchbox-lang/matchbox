@@ -1,0 +1,34 @@
+var first = 10
+var second = 20
+
+print(second + first)
+
+func update() {
+    first = second + 3
+}
+
+update()
+print(first)
+
+var wide: i64 = 4294967296
+
+func update_wide() {
+    wide += first
+}
+
+update_wide()
+print(wide)
+
+first += 1
+print(first)
+
+if first != 24 {
+    exit(1)
+}
+
+wide += 1
+print(wide)
+
+if wide != 4294967320 {
+    exit(1)
+}

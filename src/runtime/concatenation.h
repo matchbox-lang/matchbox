@@ -6,6 +6,6 @@
 
 typedef void (*StringPartsWriter)(Writer* writer, const void* context);
 
-StringObject* concatenateStringParts(size_t capacity, StringPartsWriter writeParts, const void* context);
+StringObject* concatenate_string_parts(size_t capacity, StringPartsWriter write_parts, const void* context);
 
 #endif

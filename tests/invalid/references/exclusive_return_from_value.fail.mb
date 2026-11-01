@@ -1,0 +1,3 @@
+func return_exclusive() -> ^i32 {
+    return 10
+}

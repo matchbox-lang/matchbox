@@ -6,37 +6,37 @@
 
 typedef enum DataType
 {
-    TYPE_UNKNOWN,
-    TYPE_I8,
-    TYPE_I16,
-    TYPE_I32,
-    TYPE_I64,
-    TYPE_U8,
-    TYPE_U16,
-    TYPE_U32,
-    TYPE_U64,
-    TYPE_ISIZE,
-    TYPE_USIZE,
-    TYPE_F32,
-    TYPE_F64,
-    TYPE_CHAR,
-    TYPE_STRING,
-    TYPE_BOOL,
-    TYPE_VOID
+    TypeUnknown,
+    TypeI8,
+    TypeI16,
+    TypeI32,
+    TypeI64,
+    TypeU8,
+    TypeU16,
+    TypeU32,
+    TypeU64,
+    TypeIsize,
+    TypeUsize,
+    TypeF32,
+    TypeF64,
+    TypeChar,
+    TypeString,
+    TypeBool,
+    TypeVoid
 } DataType;
 
-const char* getDataTypeName(DataType type);
-bool isIntegerType(DataType type);
-bool isFloatType(DataType type);
-bool isSignedIntegerType(DataType type);
-size_t getIntegerTypeSize(DataType type);
-size_t getTypeSlotCount(DataType type);
-bool isPrintableType(DataType type);
-bool canImplicitlyWidenInteger(DataType source, DataType destination);
-bool canImplicitlyConvertIntegerToFloat(DataType source, DataType destination);
-bool canImplicitlyWidenFloat(DataType source, DataType destination);
-bool canImplicitlyWidenType(DataType source, DataType destination);
-bool canExplicitlyConvertType(DataType source, DataType destination);
-DataType getCommonNumericType(DataType left, DataType right);
+const char* get_data_type_name(DataType type);
+bool is_integer_type(DataType type);
+bool is_float_type(DataType type);
+bool is_signed_integer_type(DataType type);
+size_t get_integer_type_size(DataType type);
+size_t get_type_slot_count(DataType type);
+bool is_printable_type(DataType type);
+bool can_implicitly_widen_integer(DataType source, DataType destination);
+bool can_implicitly_convert_integer_to_float(DataType source, DataType destination);
+bool can_implicitly_widen_float(DataType source, DataType destination);
+bool can_implicitly_widen_type(DataType source, DataType destination);
+bool can_explicitly_convert_type(DataType source, DataType destination);
+DataType get_common_numeric_type(DataType left, DataType right);
 
 #endif

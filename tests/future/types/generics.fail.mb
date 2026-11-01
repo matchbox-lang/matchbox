@@ -1,7 +1,7 @@
 class Entity[T] {
     id: T
 
-    func getId() -> T {
+    func get_id() -> T {
         return id
     }
 }

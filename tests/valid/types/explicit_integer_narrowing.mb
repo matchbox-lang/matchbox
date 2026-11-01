@@ -1,0 +1,29 @@
+func narrow(value: i64) {
+    let signed_byte = i8(value)
+    let unsigned_byte = u8(value)
+    let word = i16(value)
+    let unsigned_word = u16(value)
+    let signed = i32(value)
+    let unsigned = u32(value)
+    let wide_unsigned = u64(value)
+
+    print(signed_byte)
+    print(unsigned_byte)
+    print(word)
+    print(unsigned_word)
+    print(signed)
+    print(unsigned)
+    print(wide_unsigned)
+}
+
+narrow(511)
+narrow(-129)
+narrow(32768)
+narrow(65535)
+narrow(-32769)
+
+let constant = i8(511)
+let unsigned_constant = u64(-1)
+
+print(constant)
+print(unsigned_constant)

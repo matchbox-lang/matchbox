@@ -1,8 +1,0 @@
-const BASE = 10
-
-func readValue() {
-    let reference = &BASE
-    return reference + 1
-}
-
-const RESULT = readValue()

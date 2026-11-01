@@ -1,0 +1,5 @@
+func take_exclusive(n: ^i32) {
+    print(n)
+}
+
+take_exclusive(10)

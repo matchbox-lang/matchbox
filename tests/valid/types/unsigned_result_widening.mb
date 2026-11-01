@@ -1,0 +1,23 @@
+func widen(small: u8, medium: u16) {
+    let byte: u8 = small + small
+    let word: u16 = medium + medium
+    let signed_byte: i16 = byte
+    let signed_word: i32 = word
+    let wide_byte: u64 = byte
+    let wide_word: i64 = word
+    let float_byte: f32 = byte
+    let float_word: f64 = word
+
+    print(byte)
+    print(word)
+    print(signed_byte)
+    print(signed_word)
+    print(wide_byte)
+    print(wide_word)
+    print(float_byte)
+    print(float_word)
+    print(byte + signed_word)
+    print(signed_word + byte)
+}
+
+widen(100, 20000)

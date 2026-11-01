@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-TableItem* createTableItem(StringView key, void* value, TableItem* next)
+TableItem* create_table_item(StringView key, void* value, TableItem* next)
 {
-    TableItem* item = allocateMemory(sizeof(TableItem));
+    TableItem* item = allocate_memory(sizeof(TableItem));
     item->key = key;
     item->value = value;
     item->next = next;
@@ -15,45 +15,45 @@ TableItem* createTableItem(StringView key, void* value, TableItem* next)
     return item;
 }
 
-void freeTableItem(TableItem* item)
+void free_table_item(TableItem* item)
 {
     if (item->next) {
-        freeTableItem(item->next);
+        free_table_item(item->next);
     }
 
-    freeMemory(item);
+    free_memory(item);
 }
 
-void initTable(Table* table, size_t capacity)
+void init_table(Table* table, size_t capacity)
 {
     if (capacity == 0) {
         capacity = DEFAULT_TABLE_CAPACITY;
     }
 
     table->capacity = capacity;
-    table->data = allocateZeroedMemory(table->capacity, sizeof(TableItem*));
+    table->data = allocate_zeroed_memory(table->capacity, sizeof(TableItem*));
     table->count = 0;
 }
 
-void freeTable(Table* table)
+void free_table(Table* table)
 {
     for (size_t i = 0; i < table->capacity; i++) {
         TableItem* item = table->data[i];
 
         if (item) {
-            freeTableItem(item);
+            free_table_item(item);
         }
     }
 
-    freeMemory(table->data);
+    free_memory(table->data);
 }
 
-size_t countTable(const Table* table)
+size_t count_table(const Table* table)
 {
     return table->count;
 }
 
-void* getTableAt(const Table* table, StringView key)
+void* get_table_at(const Table* table, StringView key)
 {
     if (table->count == 0) {
         return NULL;
@@ -62,7 +62,7 @@ void* getTableAt(const Table* table, StringView key)
     size_t index = key.hash % table->capacity;
     const TableItem* current = table->data[index];
 
-    while (current && !compareStringView(current->key, key)) {
+    while (current && !compare_string_view(current->key, key)) {
         current = current->next;
     }
 
@@ -73,13 +73,13 @@ void* getTableAt(const Table* table, StringView key)
     return NULL;
 }
 
-bool setTableAt(Table* table, StringView key, void* value)
+bool set_table_at(Table* table, StringView key, void* value)
 {
     size_t index = key.hash % table->capacity;
     TableItem* current = table->data[index];
 
     while (current) {
-        if (compareStringView(current->key, key)) {
+        if (compare_string_view(current->key, key)) {
             return false;
         }
 
@@ -87,19 +87,19 @@ bool setTableAt(Table* table, StringView key, void* value)
     }
 
     TableItem* next = table->data[index];
-    table->data[index] = createTableItem(key, value, next);
+    table->data[index] = create_table_item(key, value, next);
     table->count++;
 
     return true;
 }
 
-bool deleteTableAt(Table* table, StringView key)
+bool delete_table_at(Table* table, StringView key)
 {
     size_t index = key.hash % table->capacity;
     TableItem* prev = NULL;
     TableItem* current = table->data[index];
 
-    while (current && !compareStringView(current->key, key)) {
+    while (current && !compare_string_view(current->key, key)) {
         prev = current;
         current = current->next;
     }
@@ -114,7 +114,7 @@ bool deleteTableAt(Table* table, StringView key)
         prev->next = current->next;
     }
 
-    freeMemory(current);
+    free_memory(current);
     table->count--;
 
     return true;

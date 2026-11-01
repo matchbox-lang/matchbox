@@ -1,0 +1,9 @@
+func work() {
+    print("working")
+}
+
+func start_work() {
+    let task = spawn work()
+}
+
+start_work()

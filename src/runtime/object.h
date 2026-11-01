@@ -4,18 +4,18 @@
 #include "runtime/value.h"
 #include <stdlib.h>
 
-#define ALLOCATE_OBJECT(type, objectType) (type*)allocateObject(sizeof(type), objectType)
+#define ALLOCATE_OBJECT(type, object_type) (type*)allocate_object(sizeof(type), object_type)
 #define AS_OBJECT(value) ((Object*)AS_POINTER(value))
 
 typedef enum ObjectType
 {
-    OBJ_BOOL,
-    OBJ_CODE,
-    OBJ_FLOAT,
-    OBJ_INT,
-    OBJ_FUNCTION,
-    OBJ_MODULE,
-    OBJ_STRING
+    ObjBool,
+    ObjCode,
+    ObjFloat,
+    ObjInt,
+    ObjFunction,
+    ObjModule,
+    ObjString
 } ObjectType;
 
 typedef struct Object
@@ -23,6 +23,6 @@ typedef struct Object
     ObjectType type;
 } Object;
 
-Object* allocateObject(size_t size, ObjectType type);
+Object* allocate_object(size_t size, ObjectType type);
 
 #endif

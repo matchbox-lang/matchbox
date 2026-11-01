@@ -1,0 +1,14 @@
+var value = 10
+
+func read_value() {
+    print(value)
+}
+
+func call_read_value() {
+    read_value()
+}
+
+let exclusive = ^value
+
+call_read_value()
+print(exclusive)

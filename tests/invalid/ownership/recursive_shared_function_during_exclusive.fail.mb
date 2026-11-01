@@ -1,0 +1,14 @@
+var value = 10
+
+func read_value(n) {
+    if (n > 0) {
+        read_value(n - 1)
+    }
+
+    print(value)
+}
+
+let exclusive = ^value
+
+read_value(2)
+print(exclusive)

@@ -1,5 +1,0 @@
-func takeExclusive(n: ^i32) {
-    print(n)
-}
-
-takeExclusive(10)

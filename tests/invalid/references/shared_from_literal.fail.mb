@@ -1,0 +1,5 @@
+func take_shared(n: &i32) {
+    print(n)
+}
+
+take_shared(&10)

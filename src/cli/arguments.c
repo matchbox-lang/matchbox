@@ -7,40 +7,40 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void disassembleDoesNotSupportTestError()
+static void disassemble_does_not_support_test_error()
 {
-    reportError("Cannot disassemble tests");
+    report_error("Cannot disassemble tests");
 }
 
-static void disassembleRequiresFileError()
+static void disassemble_requires_file_error()
 {
-    reportError("Cannot disassemble without a file");
+    report_error("Cannot disassemble without a file");
 }
 
-static void disassembleDoesNotSupportCheckError()
+static void disassemble_does_not_support_check_error()
 {
-    reportError("Cannot disassemble checks");
+    report_error("Cannot disassemble checks");
 }
 
-static void unexpectedArgumentError(const char* arg)
+static void unexpected_argument_error(const char* arg)
 {
-    reportError("Unexpected argument: %s", arg);
+    report_error("Unexpected argument: %s", arg);
 }
 
-static void unknownOptionError(const char* arg)
+static void unknown_option_error(const char* arg)
 {
-    reportError("Unknown option: %s", arg);
+    report_error("Unknown option: %s", arg);
 }
 
-static bool parseOption(Options* options, const char* arg)
+static bool parse_option(Options* options, const char* arg)
 {
     if (strcmp(arg, "--version") == 0) {
-        printVersion();
+        print_version();
         exit(EXIT_SUCCESS);
     }
 
     if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
-        printUsage(stdout);
+        print_usage(stdout);
         exit(EXIT_SUCCESS);
     }
 
@@ -50,40 +50,40 @@ static bool parseOption(Options* options, const char* arg)
         return true;
     }
 
-    if (options->mode == PROGRAM_TEST && strcmp(arg, "-a") == 0) {
-        options->testOutput = TEST_OUTPUT_ALL;
+    if (options->mode == ProgramTest && strcmp(arg, "-a") == 0) {
+        options->test_output = TestOutputAll;
 
         return true;
     }
 
-    if (options->mode == PROGRAM_TEST && strcmp(arg, "-p") == 0) {
-        options->testOutput = TEST_OUTPUT_PASSED;
+    if (options->mode == ProgramTest && strcmp(arg, "-p") == 0) {
+        options->test_output = TestOutputPassed;
 
         return true;
     }
 
-    unknownOptionError(arg);
+    unknown_option_error(arg);
 
     return false;
 }
 
-static bool isOption(const char* arg)
+static bool is_option(const char* arg)
 {
     return arg[0] == '-';
 }
 
-static bool isOptionDelimiter(const char* arg)
+static bool is_option_delimiter(const char* arg)
 {
     return strcmp(arg, "--") == 0;
 }
 
-static bool isCommand(const Options* options, const char* arg, bool parsingOptions, const char* command)
+static bool is_command(const Options* options, const char* arg, bool parsing_options, const char* command)
 {
-    if (!parsingOptions) {
+    if (!parsing_options) {
         return false;
     }
 
-    if (options->mode != PROGRAM_RUN) {
+    if (options->mode != ProgramRun) {
         return false;
     }
 
@@ -94,23 +94,23 @@ static bool isCommand(const Options* options, const char* arg, bool parsingOptio
     return strcmp(arg, command) == 0;
 }
 
-static bool parseTestArgument(Options* options, const char* arg)
+static bool parse_test_argument(Options* options, const char* arg)
 {
-    if (options->testPath) {
-        unexpectedArgumentError(arg);
+    if (options->test_path) {
+        unexpected_argument_error(arg);
 
         return false;
     }
 
-    options->testPath = arg;
+    options->test_path = arg;
 
     return true;
 }
 
-static bool parseRunArgument(Options* options, const char* arg)
+static bool parse_run_argument(Options* options, const char* arg)
 {
     if (options->filename) {
-        unexpectedArgumentError(arg);
+        unexpected_argument_error(arg);
 
         return false;
     }
@@ -120,71 +120,71 @@ static bool parseRunArgument(Options* options, const char* arg)
     return true;
 }
 
-static bool parseArgument(Options* options, const char* arg, bool* parsingOptions)
+static bool parse_argument(Options* options, const char* arg, bool* parsing_options)
 {
-    if (*parsingOptions && isOptionDelimiter(arg)) {
-        *parsingOptions = false;
+    if (*parsing_options && is_option_delimiter(arg)) {
+        *parsing_options = false;
 
         return true;
     }
 
-    if (*parsingOptions && isOption(arg)) {
-        return parseOption(options, arg);
+    if (*parsing_options && is_option(arg)) {
+        return parse_option(options, arg);
     }
 
-    if (isCommand(options, arg, *parsingOptions, "check")) {
-        options->mode = PROGRAM_CHECK;
+    if (is_command(options, arg, *parsing_options, "check")) {
+        options->mode = ProgramCheck;
 
         return true;
     }
 
-    if (isCommand(options, arg, *parsingOptions, "test")) {
-        options->mode = PROGRAM_TEST;
+    if (is_command(options, arg, *parsing_options, "test")) {
+        options->mode = ProgramTest;
 
         return true;
     }
 
-    if (options->mode == PROGRAM_TEST) {
-        return parseTestArgument(options, arg);
+    if (options->mode == ProgramTest) {
+        return parse_test_argument(options, arg);
     }
 
-    return parseRunArgument(options, arg);
+    return parse_run_argument(options, arg);
 }
 
-static bool parseArguments(Options* options, int argc, char* const argv[])
+static bool parse_arguments(Options* options, int argc, char* const argv[])
 {
-    bool parsingOptions = true;
+    bool parsing_options = true;
     bool parsed = true;
 
-    options->executablePath = argv[0];
+    options->executable_path = argv[0];
 
     for (int i = 1; i < argc && parsed; i++) {
-        parsed = parseArgument(options, argv[i], &parsingOptions);
+        parsed = parse_argument(options, argv[i], &parsing_options);
     }
 
     return parsed;
 }
 
-bool parseCommandLine(Options* options, int argc, char* const argv[])
+bool parse_command_line(Options* options, int argc, char* const argv[])
 {
-    if (!parseArguments(options, argc, argv)) {
+    if (!parse_arguments(options, argc, argv)) {
         return false;
     }
 
-    if (options->disassemble && options->mode == PROGRAM_CHECK) {
-        disassembleDoesNotSupportCheckError();
+    if (options->disassemble && options->mode == ProgramCheck) {
+        disassemble_does_not_support_check_error();
 
         return false;
     }
 
-    if (options->disassemble && options->mode == PROGRAM_TEST) {
-        disassembleDoesNotSupportTestError();
+    if (options->disassemble && options->mode == ProgramTest) {
+        disassemble_does_not_support_test_error();
 
         return false;
     }
 
     if (options->disassemble && !options->filename) {
-        disassembleRequiresFileError();
+        disassemble_requires_file_error();
 
         return false;
     }

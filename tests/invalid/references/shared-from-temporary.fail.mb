@@ -1,7 +1,0 @@
-func takeShared(n: &i32) {
-    print(n)
-}
-
-var value = 10
-
-takeShared(&(value + 1))

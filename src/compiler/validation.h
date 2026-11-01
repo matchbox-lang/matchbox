@@ -4,6 +4,6 @@
 #include "compiler/ast.h"
 #include <stddef.h>
 
-void validateConstantExpressions(const ASTNode* ast, size_t start);
+void validate_constant_expressions(const ASTNode* ast, size_t start);
 
 #endif

@@ -4,11 +4,11 @@
 #include "runtime/function_object.h"
 #include "runtime/value.h"
 
-void builtinAssert(VM* vm, const FunctionObject* function, Value* frame);
-void builtinAssertMessage(VM* vm, const FunctionObject* function, Value* frame);
-void builtinByteorder(VM* vm, const FunctionObject* function, Value* frame);
-void builtinExit(VM* vm, const FunctionObject* function, Value* frame);
-void builtinExitStatus(VM* vm, const FunctionObject* function, Value* frame);
-void builtinPanic(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_assert(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_assert_message(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_byteorder(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_exit(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_exit_status(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_panic(VM* vm, const FunctionObject* function, Value* frame);
 
 #endif

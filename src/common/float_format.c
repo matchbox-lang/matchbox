@@ -5,45 +5,45 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void appendFloatFraction(char* buffer, size_t size)
+static void append_float_fraction(char* buffer, size_t size)
 {
     if (size == 0) {
         return;
     }
 
     size_t length = strlen(buffer);
-    size_t integerLength = strspn(buffer, "-0123456789");
+    size_t integer_length = strspn(buffer, "-0123456789");
 
-    if (length == 0 || integerLength != length) {
+    if (length == 0 || integer_length != length) {
         return;
     }
 
     snprintf(buffer + length, size - length, ".0");
 }
 
-static bool sameF32Bits(float left, float right)
+static bool same_f32_bits(float left, float right)
 {
-    uint32_t leftBits;
-    uint32_t rightBits;
+    uint32_t left_bits;
+    uint32_t right_bits;
 
-    memcpy(&leftBits, &left, sizeof(leftBits));
-    memcpy(&rightBits, &right, sizeof(rightBits));
+    memcpy(&left_bits, &left, sizeof(left_bits));
+    memcpy(&right_bits, &right, sizeof(right_bits));
 
-    return leftBits == rightBits;
+    return left_bits == right_bits;
 }
 
-static bool sameF64Bits(double left, double right)
+static bool same_f64_bits(double left, double right)
 {
-    uint64_t leftBits;
-    uint64_t rightBits;
+    uint64_t left_bits;
+    uint64_t right_bits;
     
-    memcpy(&leftBits, &left, sizeof(leftBits));
-    memcpy(&rightBits, &right, sizeof(rightBits));
+    memcpy(&left_bits, &left, sizeof(left_bits));
+    memcpy(&right_bits, &right, sizeof(right_bits));
 
-    return leftBits == rightBits;
+    return left_bits == right_bits;
 }
 
-void formatShortestF32(char* buffer, size_t size, float value)
+void format_shortest_f32(char* buffer, size_t size, float value)
 {
     char candidate[32];
     size_t shortest = SIZE_MAX;
@@ -53,7 +53,7 @@ void formatShortestF32(char* buffer, size_t size, float value)
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
         float parsed = strtof(candidate, NULL);
 
-        if (!sameF32Bits(value, parsed)) {
+        if (!same_f32_bits(value, parsed)) {
             continue;
         }
 
@@ -66,10 +66,10 @@ void formatShortestF32(char* buffer, size_t size, float value)
         snprintf(buffer, size, "%s", candidate);
     }
 
-    appendFloatFraction(buffer, size);
+    append_float_fraction(buffer, size);
 }
 
-void formatShortestF64(char* buffer, size_t size, double value)
+void format_shortest_f64(char* buffer, size_t size, double value)
 {
     char candidate[32];
     size_t shortest = SIZE_MAX;
@@ -79,7 +79,7 @@ void formatShortestF64(char* buffer, size_t size, double value)
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
         double parsed = strtod(candidate, NULL);
 
-        if (!sameF64Bits(value, parsed)) {
+        if (!same_f64_bits(value, parsed)) {
             continue;
         }
 
@@ -92,5 +92,5 @@ void formatShortestF64(char* buffer, size_t size, double value)
         snprintf(buffer, size, "%s", candidate);
     }
 
-    appendFloatFraction(buffer, size);
+    append_float_fraction(buffer, size);
 }

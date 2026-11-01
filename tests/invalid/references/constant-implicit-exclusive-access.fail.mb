@@ -1,7 +1,0 @@
-const VALUE = 10
-
-func change(value: ^i32) {
-    value += 1
-}
-
-change(VALUE)

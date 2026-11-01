@@ -15,17 +15,17 @@ typedef struct Writer
     FILE* stream;
 } Writer;
 
-void initBufferWriter(Writer* writer, char* bytes, size_t capacity);
-void initOutputWriter(Writer* writer, FILE* stream);
-void writeBytes(Writer* writer, const char* bytes, size_t length);
-void formatI32(Writer* writer, int32_t value);
-void formatI64(Writer* writer, int64_t value);
-void formatU32(Writer* writer, uint32_t value);
-void formatU64(Writer* writer, uint64_t value);
-void formatF32(Writer* writer, float value);
-void formatF64(Writer* writer, double value);
-void formatBool(Writer* writer, bool value);
-void formatChar(Writer* writer, uint32_t value);
-void formatString(Writer* writer, const StringObject* value);
+void init_buffer_writer(Writer* writer, char* bytes, size_t capacity);
+void init_output_writer(Writer* writer, FILE* stream);
+void write_bytes(Writer* writer, const char* bytes, size_t length);
+void format_i32(Writer* writer, int32_t value);
+void format_i64(Writer* writer, int64_t value);
+void format_u32(Writer* writer, uint32_t value);
+void format_u64(Writer* writer, uint64_t value);
+void format_f32(Writer* writer, float value);
+void format_f64(Writer* writer, double value);
+void format_bool(Writer* writer, bool value);
+void format_char(Writer* writer, uint32_t value);
+void format_string(Writer* writer, const StringObject* value);
 
 #endif

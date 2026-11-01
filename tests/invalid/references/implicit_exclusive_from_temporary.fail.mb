@@ -1,0 +1,13 @@
+func take_exclusive(n: ^i32) {
+    print(n)
+}
+
+func take_exclusive_pair(a: ^i32, b: ^i32) {
+    print(a)
+    print(b)
+}
+
+var value = 10
+
+take_exclusive(value + 1)
+take_exclusive_pair(value + 2, value + 3)

@@ -1,217 +1,217 @@
-case OP_MOV_64:
+case OpMov64:
     vm->fp[a] = vm->fp[b];
     break;
-case OP_LDC_64:
+case OpLdc64:
     vm->fp[a] = vm->module->constants.data[OPERAND_BC(inst)];
     break;
-case OP_LDG_64:
+case OpLdg64:
     vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
     break;
-case OP_LDC_64_CALL: {
+case OpLdc64Call: {
     uint16_t operands = OPERAND_BC(inst);
     uint16_t position = LOAD_CALL_OPERAND(operands);
 
     vm->fp[a] = vm->module->constants.data[position];
 
-    functionPosition = LOAD_CALL_FUNCTION(operands);
+    function_position = LOAD_CALL_FUNCTION(operands);
     goto call;
 }
-case OP_LDG_64_CALL: {
+case OpLdg64Call: {
     uint16_t operands = OPERAND_BC(inst);
     uint16_t position = LOAD_CALL_OPERAND(operands);
 
     vm->fp[a] = vm->globals.data[position];
 
-    functionPosition = LOAD_CALL_FUNCTION(operands);
+    function_position = LOAD_CALL_FUNCTION(operands);
     goto call;
 }
-case OP_STG_64:
+case OpStg64:
     vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
     break;
-case OP_LDR_64:
+case OpLdr64:
     vm->fp[a] = *(Value*)AS_POINTER(vm->fp[b]);
     break;
-case OP_STR_64:
+case OpStr64:
     *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
     break;
-case OP_F32_TO_F64:
+case OpF32ToF64:
     vm->fp[a] = F64_VALUE(AS_F32(vm->fp[b]));
     break;
-case OP_F64_TO_F32:
+case OpF64ToF32:
     vm->fp[a] = F32_VALUE((float)AS_F64(vm->fp[b]));
     break;
-case OP_F32_TO_I64:
+case OpF32ToI64:
     vm->fp[a] = SIGNED_VALUE((int64_t)AS_F32(vm->fp[b]));
     break;
-case OP_F32_TO_U64:
+case OpF32ToU64:
     vm->fp[a] = UNSIGNED_VALUE((uint64_t)AS_F32(vm->fp[b]));
     break;
-case OP_F64_TO_I32:
+case OpF64ToI32:
     vm->fp[a] = I32_VALUE((int32_t)AS_F64(vm->fp[b]));
     break;
-case OP_F64_TO_U32:
+case OpF64ToU32:
     vm->fp[a] = U32_VALUE((uint32_t)AS_F64(vm->fp[b]));
     break;
-case OP_F64_TO_I64:
+case OpF64ToI64:
     vm->fp[a] = SIGNED_VALUE((int64_t)AS_F64(vm->fp[b]));
     break;
-case OP_F64_TO_U64:
+case OpF64ToU64:
     vm->fp[a] = UNSIGNED_VALUE((uint64_t)AS_F64(vm->fp[b]));
     break;
-case OP_I64_TO_F32:
+case OpI64ToF32:
     vm->fp[a] = F32_VALUE((float)AS_SIGNED(vm->fp[b]));
     break;
-case OP_I64_TO_F64:
+case OpI64ToF64:
     vm->fp[a] = F64_VALUE((double)AS_SIGNED(vm->fp[b]));
     break;
-case OP_U64_TO_F32:
+case OpU64ToF32:
     vm->fp[a] = F32_VALUE((float)AS_UNSIGNED(vm->fp[b]));
     break;
-case OP_U64_TO_F64:
+case OpU64ToF64:
     vm->fp[a] = F64_VALUE((double)AS_UNSIGNED(vm->fp[b]));
     break;
-case OP_I32_TO_F64:
+case OpI32ToF64:
     vm->fp[a] = F64_VALUE((double)AS_SIGNED(vm->fp[b]));
     break;
-case OP_U32_TO_F64:
+case OpU32ToF64:
     vm->fp[a] = F64_VALUE((double)AS_UNSIGNED(vm->fp[b]));
     break;
-case OP_ADD_F64:
+case OpAddF64:
     vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) + AS_F64(vm->fp[c]));
     break;
-case OP_SUB_F64:
+case OpSubF64:
     vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) - AS_F64(vm->fp[c]));
     break;
-case OP_MUL_F64:
+case OpMulF64:
     vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) * AS_F64(vm->fp[c]));
     break;
-case OP_DIV_F64:
+case OpDivF64:
     vm->fp[a] = F64_VALUE(AS_F64(vm->fp[b]) / AS_F64(vm->fp[c]));
     break;
-case OP_REM_F64: {
+case OpRemF64: {
     double left = AS_F64(vm->fp[b]);
     double right = AS_F64(vm->fp[c]);
     double result = fmod(left, right);
     vm->fp[a] = F64_VALUE(result);
     break;
 }
-case OP_NEG_F64:
+case OpNegF64:
     vm->fp[a] = F64_VALUE(-AS_F64(vm->fp[b]));
     break;
-case OP_ADD_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue + vm->fp[c].unsignedValue);
+case OpAddI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value + vm->fp[c].unsigned_value);
     break;
-case OP_ADDI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue + (int8_t)c);
+case OpAddiI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value + (int8_t)c);
     break;
-case OP_SUB_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue - vm->fp[c].unsignedValue);
+case OpSubI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value - vm->fp[c].unsigned_value);
     break;
-case OP_SUBI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue - (int8_t)c);
+case OpSubiI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value - (int8_t)c);
     break;
-case OP_MUL_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue * vm->fp[c].unsignedValue);
+case OpMulI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value * vm->fp[c].unsigned_value);
     break;
-case OP_MULI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue * (int8_t)c);
+case OpMuliI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value * (int8_t)c);
     break;
-case OP_IDIV_I64: {
-    if (!vm->fp[c].signedValue) {
-        divisionByZeroError();
+case OpIdivI64: {
+    if (!vm->fp[c].signed_value) {
+        division_by_zero_error();
     }
 
-    if (vm->fp[b].signedValue == INT64_MIN && vm->fp[c].signedValue == -1) {
+    if (vm->fp[b].signed_value == INT64_MIN && vm->fp[c].signed_value == -1) {
         vm->fp[a] = SIGNED_VALUE(INT64_MIN);
         break;
     }
 
-    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signedValue / vm->fp[c].signedValue);
+    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signed_value / vm->fp[c].signed_value);
     break;
 }
-case OP_IDIV_U64: {
-    if (!vm->fp[c].unsignedValue) {
-        divisionByZeroError();
+case OpIdivU64: {
+    if (!vm->fp[c].unsigned_value) {
+        division_by_zero_error();
     }
 
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue / vm->fp[c].unsignedValue);
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value / vm->fp[c].unsigned_value);
     break;
 }
-case OP_REM_I64: {
-    if (!vm->fp[c].signedValue) {
-        divisionByZeroError();
+case OpRemI64: {
+    if (!vm->fp[c].signed_value) {
+        division_by_zero_error();
     }
 
-    if (vm->fp[b].signedValue == INT64_MIN && vm->fp[c].signedValue == -1) {
+    if (vm->fp[b].signed_value == INT64_MIN && vm->fp[c].signed_value == -1) {
         vm->fp[a] = SIGNED_VALUE(0);
         break;
     }
 
-    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signedValue % vm->fp[c].signedValue);
+    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signed_value % vm->fp[c].signed_value);
     break;
 }
-case OP_REM_U64: {
-    if (!vm->fp[c].unsignedValue) {
-        divisionByZeroError();
+case OpRemU64: {
+    if (!vm->fp[c].unsigned_value) {
+        division_by_zero_error();
     }
 
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue % vm->fp[c].unsignedValue);
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value % vm->fp[c].unsigned_value);
     break;
 }
-case OP_BAND_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue & vm->fp[c].unsignedValue);
+case OpBandI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value & vm->fp[c].unsigned_value);
     break;
-case OP_BANDI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue & c);
+case OpBandiI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value & c);
     break;
-case OP_BOR_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue | vm->fp[c].unsignedValue);
+case OpBorI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value | vm->fp[c].unsigned_value);
     break;
-case OP_BORI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue | c);
+case OpBoriI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value | c);
     break;
-case OP_BXOR_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue ^ vm->fp[c].unsignedValue);
+case OpBxorI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value ^ vm->fp[c].unsigned_value);
     break;
-case OP_BXORI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue ^ c);
+case OpBxoriI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value ^ c);
     break;
-case OP_BNOT_I64:
-    vm->fp[a] = UNSIGNED_VALUE(~vm->fp[b].unsignedValue);
+case OpBnotI64:
+    vm->fp[a] = UNSIGNED_VALUE(~vm->fp[b].unsigned_value);
     break;
-case OP_LSL_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue << vm->fp[c].unsignedValue);
+case OpLslI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value << vm->fp[c].unsigned_value);
     break;
-case OP_LSLI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue << c);
+case OpLsliI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value << c);
     break;
-case OP_LSR_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue >> vm->fp[c].unsignedValue);
+case OpLsrI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value >> vm->fp[c].unsigned_value);
     break;
-case OP_LSRI_I64:
-    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsignedValue >> c);
+case OpLsriI64:
+    vm->fp[a] = UNSIGNED_VALUE(vm->fp[b].unsigned_value >> c);
     break;
-case OP_ASR_I64:
-    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signedValue >> vm->fp[c].signedValue);
+case OpAsrI64:
+    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signed_value >> vm->fp[c].signed_value);
     break;
-case OP_ASRI_I64:
-    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signedValue >> c);
+case OpAsriI64:
+    vm->fp[a] = SIGNED_VALUE(vm->fp[b].signed_value >> c);
     break;
-case OP_NEG_I64:
-    vm->fp[a] = SIGNED_VALUE(-vm->fp[b].signedValue);
+case OpNegI64:
+    vm->fp[a] = SIGNED_VALUE(-vm->fp[b].signed_value);
     break;
-case OP_RET_64: {
+case OpRet64: {
     Value* frame = vm->fp;
-    Instruction* returnIp = AS_POINTER(frame[-2]);
-    Value* returnFp = AS_POINTER(frame[-1]);
+    Instruction* return_ip = AS_POINTER(frame[-2]);
+    Value* return_fp = AS_POINTER(frame[-1]);
 
     frame[-2] = frame[a];
-    vm->ip = returnIp;
-    vm->fp = returnFp;
+    vm->ip = return_ip;
+    vm->fp = return_fp;
     break;
 }
 
-case OP_CMP_I64: {
+case OpCmpI64: {
     int64_t left = AS_SIGNED(vm->fp[b]);
     int64_t right = AS_SIGNED(vm->fp[c]);
     int32_t result = (left > right) - (left < right);
@@ -219,7 +219,7 @@ case OP_CMP_I64: {
     vm->fp[a] = I32_VALUE(result);
     break;
 }
-case OP_CMP_U64: {
+case OpCmpU64: {
     uint64_t left = AS_UNSIGNED(vm->fp[b]);
     uint64_t right = AS_UNSIGNED(vm->fp[c]);
     int32_t result = (left > right) - (left < right);
@@ -227,14 +227,14 @@ case OP_CMP_U64: {
     vm->fp[a] = I32_VALUE(result);
     break;
 }
-case OP_CMPL_F64:
-case OP_CMPG_F64: {
+case OpCmplF64:
+case OpCmpgF64: {
     double left = AS_F64(vm->fp[b]);
     double right = AS_F64(vm->fp[c]);
     int32_t result = (left > right) - (left < right);
 
     if (isnan(left) || isnan(right)) {
-        result = opcode == OP_CMPL_F64 ? -1 : 1;
+        result = opcode == OpCmplF64 ? -1 : 1;
     }
 
     vm->fp[a] = I32_VALUE(result);

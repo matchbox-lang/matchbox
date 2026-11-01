@@ -28,217 +28,217 @@ typedef struct StringReader
     bool interpolated;
 } StringReader;
 
-static ASTNode* parseExpression(Parser* parser);
-static ASTNode* parseIdentifier(Parser* parser);
-static ASTNode* parseFunctionCall(Parser* parser);
-static ASTNode* parsePrefix(Parser* parser);
-static bool parseBlocklevelStatements(Parser* parser, Vector* nodes);
-static ASTNode* parseConditional(Parser* parser, bool allowSingleLineBody);
-static ASTNode* parseMatch(Parser* parser);
-static ASTNode* parseStatement(Parser* parser);
+static ASTNode* parse_expression(Parser* parser);
+static ASTNode* parse_identifier(Parser* parser);
+static ASTNode* parse_function_call(Parser* parser);
+static ASTNode* parse_prefix(Parser* parser);
+static bool parse_blocklevel_statements(Parser* parser, Vector* nodes);
+static ASTNode* parse_conditional(Parser* parser, bool allow_single_line_body);
+static ASTNode* parse_match(Parser* parser);
+static ASTNode* parse_statement(Parser* parser);
 
-static _Noreturn void expectedExpressionError(Token token)
+static _Noreturn void expected_expression_error(Token token)
 {
-    fatalTokenError(token, "", "Expected expression but found ");
+    fatal_token_error(token, "", "Expected expression but found ");
 }
 
-static _Noreturn void expectedOperandError(Token token)
+static _Noreturn void expected_operand_error(Token token)
 {
-    fatalTokenError(token, "", "Expected operand but found ");
+    fatal_token_error(token, "", "Expected operand but found ");
 }
 
-static _Noreturn void expectedTokenError(TokenType type, Token token)
+static _Noreturn void expected_token_error(TokenType type, Token token)
 {
-    const char* typeName = getTokenTypeName(type);
+    const char* type_name = get_token_type_name(type);
 
-    fatalTokenError(token, "", "Expected %s but found ", typeName);
+    fatal_token_error(token, "", "Expected %s but found ", type_name);
 }
 
-static _Noreturn void expectedTypeError(Token token)
+static _Noreturn void expected_type_error(Token token)
 {
-    fatalTokenError(token, "", "Expected type but found ");
+    fatal_token_error(token, "", "Expected type but found ");
 }
 
-static _Noreturn void invalidStringError(Token token)
+static _Noreturn void invalid_string_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Invalid UTF-8 or escape in string literal");
+    fatal_source_error(token.line, token.column, "Invalid UTF-8 or escape in string literal");
 }
 
 static void advance(Parser* parser)
 {
-    parser->previousToken = parser->currentToken;
-    parser->currentToken = scanToken(&parser->lexer);
+    parser->previous_token = parser->current_token;
+    parser->current_token = scan_token(&parser->lexer);
 }
 
 static void consume(Parser* parser, TokenType type)
 {
-    if (parser->currentToken.type != type) {
-        expectedTokenError(type, parser->currentToken);
+    if (parser->current_token.type != type) {
+        expected_token_error(type, parser->current_token);
     }
 
     advance(parser);
 }
 
-static void consumeType(Parser* parser)
+static void consume_type(Parser* parser)
 {
-    if (!isTypeToken(parser->currentToken.type)) {
-        expectedTypeError(parser->currentToken);
+    if (!is_type_token(parser->current_token.type)) {
+        expected_type_error(parser->current_token);
     }
 
-    consume(parser, parser->currentToken.type);
+    consume(parser, parser->current_token.type);
 }
 
-static ReferenceType parseReferenceType(Parser* parser)
+static ReferenceType parse_reference_type(Parser* parser)
 {
-    if (parser->currentToken.type == TOKEN_AMPERSAND) {
-        consume(parser, TOKEN_AMPERSAND);
+    if (parser->current_token.type == TokenAmpersand) {
+        consume(parser, TokenAmpersand);
 
-        return REFERENCE_SHARED;
+        return RefShared;
     }
 
-    if (parser->currentToken.type == TOKEN_CIRCUMFLEX) {
-        consume(parser, TOKEN_CIRCUMFLEX);
+    if (parser->current_token.type == TokenCircumflex) {
+        consume(parser, TokenCircumflex);
 
-        return REFERENCE_EXCLUSIVE;
+        return RefExclusive;
     }
 
-    return REFERENCE_NONE;
+    return RefNone;
 }
 
-static bool isEndOfFile(Parser* parser)
+static bool is_end_of_file(Parser* parser)
 {
-    return parser->currentToken.type == TOKEN_INCOMPLETE_INPUT || parser->currentToken.type == TOKEN_EOF;
+    return parser->current_token.type == TokenIncompleteInput || parser->current_token.type == TokenEof;
 }
 
-static DataType inferIntegerLiteralType(uint64_t value, bool negative)
+static DataType infer_integer_literal_type(uint64_t value, bool negative)
 {
     uint64_t limit32 = (uint64_t)INT32_MAX + negative;
     uint64_t limit64 = (uint64_t)INT64_MAX + negative;
 
     if (value <= limit32) {
-        return TYPE_I32;
+        return TypeI32;
     }
 
     if (value <= limit64) {
-        return TYPE_I64;
+        return TypeI64;
     }
 
-    return TYPE_UNKNOWN;
+    return TypeUnknown;
 }
 
-static DataType inferFloatLiteralType(double value)
+static DataType infer_float_literal_type(double value)
 {
     if (value > FLT_MAX) {
-        return TYPE_F64;
+        return TypeF64;
     }
 
     float narrowed = (float)value;
 
     if ((double)narrowed == value) {
-        return TYPE_F32;
+        return TypeF32;
     }
 
-    return TYPE_F64;
+    return TypeF64;
 }
 
-static ASTNode* parseBooleanLiteralNode(Parser* parser, Token token)
+static ASTNode* parse_boolean_literal_node(Parser* parser, Token token)
 {
-    bool value = token.type == TOKEN_TRUE;
-    ASTNode* ast = createBooleanNode(token, value);
+    bool value = token.type == TokenKeywordTrue;
+    ASTNode* ast = create_boolean_node(token, value);
 
     consume(parser, token.type);
 
     return ast;
 }
 
-static ASTNode* finishIntegerLiteralNode(Parser* parser, Token token, uint64_t value)
+static ASTNode* finish_integer_literal_node(Parser* parser, Token token, uint64_t value)
 {
-    DataType typeId = inferIntegerLiteralType(value, false);
-    ASTNode* ast = createIntegerNode(token, value, typeId);
+    DataType type_id = infer_integer_literal_type(value, false);
+    ASTNode* ast = create_integer_node(token, value, type_id);
 
     consume(parser, token.type);
 
     return ast;
 }
 
-static ASTNode* parseIntegerLiteralNode(Parser* parser, Token token)
+static ASTNode* parse_integer_literal_node(Parser* parser, Token token)
 {
-    uint64_t value = parseDecimalLiteral(token);
+    uint64_t value = parse_decimal_literal(token);
 
-    return finishIntegerLiteralNode(parser, token, value);
+    return finish_integer_literal_node(parser, token, value);
 }
 
-static ASTNode* parseFloatLiteralNode(Parser* parser, Token token)
+static ASTNode* parse_float_literal_node(Parser* parser, Token token)
 {
-    double value = parseFloatLiteral(token);
-    DataType typeId = inferFloatLiteralType(value);
-    ASTNode* ast = createFloatNode(token, value, typeId);
+    double value = parse_float_literal(token);
+    DataType type_id = infer_float_literal_type(value);
+    ASTNode* ast = create_float_node(token, value, type_id);
 
     consume(parser, token.type);
 
     return ast;
 }
 
-static ASTNode* parseBinaryLiteralNode(Parser* parser, Token token)
+static ASTNode* parse_binary_literal_node(Parser* parser, Token token)
 {
-    uint64_t value = parseBinaryLiteral(token);
+    uint64_t value = parse_binary_literal(token);
 
-    return finishIntegerLiteralNode(parser, token, value);
+    return finish_integer_literal_node(parser, token, value);
 }
 
-static ASTNode* parseHexadecimalLiteralNode(Parser* parser, Token token)
+static ASTNode* parse_hexadecimal_literal_node(Parser* parser, Token token)
 {
-    uint64_t value = parseHexadecimalLiteral(token);
+    uint64_t value = parse_hexadecimal_literal(token);
 
-    return finishIntegerLiteralNode(parser, token, value);
+    return finish_integer_literal_node(parser, token, value);
 }
 
-static ASTNode* parseOctalLiteralNode(Parser* parser, Token token)
+static ASTNode* parse_octal_literal_node(Parser* parser, Token token)
 {
-    uint64_t value = parseOctalLiteral(token);
+    uint64_t value = parse_octal_literal(token);
 
-    return finishIntegerLiteralNode(parser, token, value);
+    return finish_integer_literal_node(parser, token, value);
 }
 
-static ASTNode* parseGroupExpression(Parser* parser)
+static ASTNode* parse_group_expression(Parser* parser)
 {
-    consume(parser, TOKEN_LPAREN);
+    consume(parser, TokenLparen);
 
-    ASTNode* ast = parseExpression(parser);
+    ASTNode* ast = parse_expression(parser);
 
-    if (!ast && parser->currentToken.type == TOKEN_RPAREN) {
-        expectedExpressionError(parser->currentToken);
+    if (!ast && parser->current_token.type == TokenRparen) {
+        expected_expression_error(parser->current_token);
     }
 
-    if (!ast || isEndOfFile(parser)) {
-        freeASTNode(ast);
+    if (!ast || is_end_of_file(parser)) {
+        free_ast_node(ast);
 
         return NULL;
     }
 
-    consume(parser, TOKEN_RPAREN);
+    consume(parser, TokenRparen);
 
     return ast;
 }
 
-static ASTNode* parseCharacterLiteral(Parser* parser)
+static ASTNode* parse_character_literal(Parser* parser)
 {
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
     DecodedScalar scalar;
-    bool valid = decodeLiteralScalar(token.chars + 1, token.length - 2, &scalar);
+    bool valid = decode_literal_scalar(token.chars + 1, token.length - 2, &scalar);
 
     if (!valid) {
-        expectedExpressionError(token);
+        expected_expression_error(token);
     }
 
-    ASTNode* ast = createCharacterNode(token, scalar.value);
+    ASTNode* ast = create_character_node(token, scalar.value);
 
-    consume(parser, TOKEN_CHARACTER_LITERAL);
+    consume(parser, TokenCharacterLiteral);
 
     return ast;
 }
 
-static void advanceStringReader(StringReader* reader, size_t length)
+static void advance_string_reader(StringReader* reader, size_t length)
 {
     for (size_t i = 0; i < length; i++) {
         char c = *reader->current.chars++;
@@ -251,13 +251,13 @@ static void advanceStringReader(StringReader* reader, size_t length)
     }
 }
 
-static StringReader createStringReader(Token token)
+static StringReader create_string_reader(Token token)
 {
     StringReader reader = {.token = token, .current = {token.chars, token.line, token.column}, .width = 1};
     reader.interpolated = token.chars[0] == '$';
 
     if (reader.interpolated) {
-        advanceStringReader(&reader, 1);
+        advance_string_reader(&reader, 1);
     }
 
     char delimiter = *reader.current.chars;
@@ -272,33 +272,33 @@ static StringReader createStringReader(Token token)
         reader.width = run;
     }
 
-    advanceStringReader(&reader, reader.width);
+    advance_string_reader(&reader, reader.width);
 
     reader.end = token.chars + token.length - reader.width;
 
     return reader;
 }
 
-static ASTNode* parseStringSegment(StringReader* reader)
+static ASTNode* parse_string_segment(StringReader* reader)
 {
     size_t capacity = reader->end - reader->current.chars;
-    char* bytes = allocateMemory(capacity + 1);
+    char* bytes = allocate_memory(capacity + 1);
     size_t count = 0;
 
     while (reader->current.chars < reader->end) {
         const char* chars = reader->current.chars;
         size_t length = reader->end - chars;
         char c = *chars;
-        bool bracePair = reader->interpolated && length >= 2 && chars[1] == c && (c == '{' || c == '}');
+        bool brace_pair = reader->interpolated && length >= 2 && chars[1] == c && (c == '{' || c == '}');
 
-        if (reader->interpolated && c == '{' && !bracePair) {
+        if (reader->interpolated && c == '{' && !brace_pair) {
             break;
         }
 
-        if (bracePair) {
+        if (brace_pair) {
             bytes[count++] = c;
 
-            advanceStringReader(reader, 2);
+            advance_string_reader(reader, 2);
             continue;
         }
 
@@ -306,46 +306,46 @@ static ASTNode* parseStringSegment(StringReader* reader)
         bool valid;
 
         if (reader->raw) {
-            valid = decodeUtf8(chars, length, &scalar);
+            valid = decode_utf8(chars, length, &scalar);
         } else {
-            valid = decodeLiteralScalar(chars, length, &scalar);
+            valid = decode_literal_scalar(chars, length, &scalar);
         }
 
         if (!valid) {
-            freeMemory(bytes);
-            invalidStringError(reader->token);
+            free_memory(bytes);
+            invalid_string_error(reader->token);
         }
 
-        size_t encodedLength = encodeUtf8(scalar.value, bytes + count);
-        count += encodedLength;
+        size_t encoded_length = encode_utf8(scalar.value, bytes + count);
+        count += encoded_length;
 
-        advanceStringReader(reader, scalar.length);
+        advance_string_reader(reader, scalar.length);
     }
 
-    StringObject* value = copyStringObject(bytes, count);
-    ASTNode* ast = createStringNode(reader->token, value);
+    StringObject* value = copy_string_object(bytes, count);
+    ASTNode* ast = create_string_node(reader->token, value);
 
-    freeMemory(bytes);
+    free_memory(bytes);
 
     return ast;
 }
 
-static ASTNode* parseStringInterpolation(Parser* parser, StringReader* reader)
+static ASTNode* parse_string_interpolation(Parser* parser, StringReader* reader)
 {
-    advanceStringReader(reader, 1);
+    advance_string_reader(reader, 1);
 
     parser->lexer.current = reader->current;
 
     advance(parser);
 
-    ASTNode* expression = parseExpression(parser);
+    ASTNode* expression = parse_expression(parser);
 
     if (!expression) {
-        expectedExpressionError(parser->currentToken);
+        expected_expression_error(parser->current_token);
     }
 
-    if (parser->currentToken.type != TOKEN_RBRACE) {
-        expectedTokenError(TOKEN_RBRACE, parser->currentToken);
+    if (parser->current_token.type != TokenRbrace) {
+        expected_token_error(TokenRbrace, parser->current_token);
     }
 
     reader->current = parser->lexer.current;
@@ -353,340 +353,340 @@ static ASTNode* parseStringInterpolation(Parser* parser, StringReader* reader)
     return expression;
 }
 
-static void appendStringPart(ASTNode* call, ASTNode* part)
+static void append_string_part(ASTNode* call, ASTNode* part)
 {
-    if (part->type == AST_STRING && part->stringLiteral.value->length == 0) {
-        freeASTNode(part);
+    if (part->type == ASTString && part->string_literal.value->length == 0) {
+        free_ast_node(part);
 
         return;
     }
 
-    if (part->type == AST_BUILTIN_CALL && part->builtinCall.builtin->entry == builtinString) {
-        Vector* args = &part->builtinCall.args;
+    if (part->type == ASTBuiltinCall && part->builtin_call.builtin->entry == builtin_string) {
+        Vector* args = &part->builtin_call.args;
 
         for (size_t i = 0; i < args->count; i++) {
-            pushVectorItem(&call->builtinCall.args, args->data[i]);
+            push_vector_item(&call->builtin_call.args, args->data[i]);
         }
 
         args->count = 0;
 
-        freeASTNode(part);
+        free_ast_node(part);
 
         return;
     }
 
-    pushVectorItem(&call->builtinCall.args, part);
+    push_vector_item(&call->builtin_call.args, part);
 }
 
-static ASTNode* parseStringLiteral(Parser* parser)
+static ASTNode* parse_string_literal(Parser* parser)
 {
-    Token token = parser->currentToken;
-    Token previous = parser->previousToken;
+    Token token = parser->current_token;
+    Token previous = parser->previous_token;
     Lexer lexer = parser->lexer;
-    StringReader reader = createStringReader(token);
-    ASTNode* ast = parseStringSegment(&reader);
+    StringReader reader = create_string_reader(token);
+    ASTNode* ast = parse_string_segment(&reader);
 
     if (reader.current.chars < reader.end) {
-        const Builtin* builtin = resolveBuiltin("string", NULL, 0);
-        ASTNode* call = createBuiltinCallNode(token, builtin);
+        const Builtin* builtin = resolve_builtin("string", NULL, 0);
+        ASTNode* call = create_builtin_call_node(token, builtin);
 
-        appendStringPart(call, ast);
+        append_string_part(call, ast);
 
         ast = call;
     }
 
     while (reader.current.chars < reader.end) {
-        ASTNode* expression = parseStringInterpolation(parser, &reader);
+        ASTNode* expression = parse_string_interpolation(parser, &reader);
 
-        appendStringPart(ast, expression);
+        append_string_part(ast, expression);
 
-        ASTNode* segment = parseStringSegment(&reader);
+        ASTNode* segment = parse_string_segment(&reader);
 
-        appendStringPart(ast, segment);
+        append_string_part(ast, segment);
     }
 
     parser->lexer = lexer;
-    parser->currentToken = token;
-    parser->previousToken = previous;
+    parser->current_token = token;
+    parser->previous_token = previous;
 
-    consume(parser, TOKEN_STRING_LITERAL);
+    consume(parser, TokenStringLiteral);
 
     return ast;
 }
 
-static ASTNode* parsePrimary(Parser* parser)
+static ASTNode* parse_primary(Parser* parser)
 {
-    switch (parser->currentToken.type) {
-        case TOKEN_TRUE:
-        case TOKEN_FALSE:
-            return parseBooleanLiteralNode(parser, parser->currentToken);
-        case TOKEN_IF:
-            return parseConditional(parser, false);
-        case TOKEN_MATCH:
-            return parseMatch(parser);
-        case TOKEN_I8:
-        case TOKEN_I16:
-        case TOKEN_I32:
-        case TOKEN_I64:
-        case TOKEN_U8:
-        case TOKEN_U16:
-        case TOKEN_U32:
-        case TOKEN_U64:
-        case TOKEN_ISIZE:
-        case TOKEN_USIZE:
-        case TOKEN_F32:
-        case TOKEN_F64:
-        case TOKEN_CHAR:
-        case TOKEN_STRING:
-            consume(parser, parser->currentToken.type);
-            return parseFunctionCall(parser);
-        case TOKEN_STRING_LITERAL:
-            return parseStringLiteral(parser);
-        case TOKEN_CHARACTER_LITERAL:
-            return parseCharacterLiteral(parser);
-        case TOKEN_INTEGER_LITERAL:
-            return parseIntegerLiteralNode(parser, parser->currentToken);
-        case TOKEN_FLOAT_LITERAL:
-            return parseFloatLiteralNode(parser, parser->currentToken);
-        case TOKEN_BINARY_LITERAL:
-            return parseBinaryLiteralNode(parser, parser->currentToken);
-        case TOKEN_HEXADECIMAL_LITERAL:
-            return parseHexadecimalLiteralNode(parser, parser->currentToken);
-        case TOKEN_OCTAL_LITERAL:
-            return parseOctalLiteralNode(parser, parser->currentToken);
-        case TOKEN_LPAREN:
-            return parseGroupExpression(parser);
-        case TOKEN_IDENTIFIER:
-            return parseIdentifier(parser);
-        case TOKEN_INCOMPLETE_INPUT:
-        case TOKEN_EOF:
+    switch (parser->current_token.type) {
+        case TokenKeywordTrue:
+        case TokenKeywordFalse:
+            return parse_boolean_literal_node(parser, parser->current_token);
+        case TokenKeywordIf:
+            return parse_conditional(parser, false);
+        case TokenKeywordMatch:
+            return parse_match(parser);
+        case TokenKeywordI8:
+        case TokenKeywordI16:
+        case TokenKeywordI32:
+        case TokenKeywordI64:
+        case TokenKeywordU8:
+        case TokenKeywordU16:
+        case TokenKeywordU32:
+        case TokenKeywordU64:
+        case TokenKeywordIsize:
+        case TokenKeywordUsize:
+        case TokenKeywordF32:
+        case TokenKeywordF64:
+        case TokenKeywordChar:
+        case TokenKeywordString:
+            consume(parser, parser->current_token.type);
+            return parse_function_call(parser);
+        case TokenStringLiteral:
+            return parse_string_literal(parser);
+        case TokenCharacterLiteral:
+            return parse_character_literal(parser);
+        case TokenIntegerLiteral:
+            return parse_integer_literal_node(parser, parser->current_token);
+        case TokenFloatLiteral:
+            return parse_float_literal_node(parser, parser->current_token);
+        case TokenBinaryLiteral:
+            return parse_binary_literal_node(parser, parser->current_token);
+        case TokenHexadecimalLiteral:
+            return parse_hexadecimal_literal_node(parser, parser->current_token);
+        case TokenOctalLiteral:
+            return parse_octal_literal_node(parser, parser->current_token);
+        case TokenLparen:
+            return parse_group_expression(parser);
+        case TokenIdentifier:
+            return parse_identifier(parser);
+        case TokenIncompleteInput:
+        case TokenEof:
             return NULL;
         default:
-            expectedExpressionError(parser->currentToken);
+            expected_expression_error(parser->current_token);
             return NULL;
     }
 }
 
-static ASTNode* parseConditionalBranch(Parser* parser)
+static ASTNode* parse_conditional_branch(Parser* parser)
 {
-    consume(parser, TOKEN_LBRACE);
+    consume(parser, TokenLbrace);
 
-    ASTNode* branch = createCompoundNode(NULL);
+    ASTNode* branch = create_compound_node(NULL);
 
-    if (!parseBlocklevelStatements(parser, &branch->compound.statements)) {
-        freeASTNode(branch);
+    if (!parse_blocklevel_statements(parser, &branch->compound.statements)) {
+        free_ast_node(branch);
 
         return NULL;
     }
 
-    consume(parser, TOKEN_RBRACE);
+    consume(parser, TokenRbrace);
 
     return branch;
 }
 
-static ASTNode* parseConditionalElse(Parser* parser, bool allowSingleLineBody)
+static ASTNode* parse_conditional_else(Parser* parser, bool allow_single_line_body)
 {
-    if (parser->currentToken.type != TOKEN_ELSE) {
+    if (parser->current_token.type != TokenKeywordElse) {
         return NULL;
     }
 
-    consume(parser, TOKEN_ELSE);
-    if (parser->currentToken.type == TOKEN_IF) {
-        return parseConditional(parser, allowSingleLineBody);
+    consume(parser, TokenKeywordElse);
+    if (parser->current_token.type == TokenKeywordIf) {
+        return parse_conditional(parser, allow_single_line_body);
     }
 
-    return parseConditionalBranch(parser);
+    return parse_conditional_branch(parser);
 }
 
-static bool isParenthesizedCondition(Parser start, Token end)
+static bool is_parenthesized_condition(Parser start, Token end)
 {
-    if (start.currentToken.type != TOKEN_LPAREN) {
+    if (start.current_token.type != TokenLparen) {
         return false;
     }
 
-    Token token = start.currentToken;
+    Token token = start.current_token;
     int depth = 1;
 
-    while (depth > 0 && token.type != TOKEN_EOF && token.type != TOKEN_INCOMPLETE_INPUT) {
-        token = scanToken(&start.lexer);
-        depth += token.type == TOKEN_LPAREN;
-        depth -= token.type == TOKEN_RPAREN;
+    while (depth > 0 && token.type != TokenEof && token.type != TokenIncompleteInput) {
+        token = scan_token(&start.lexer);
+        depth += token.type == TokenLparen;
+        depth -= token.type == TokenRparen;
     }
 
     return depth == 0 && token.chars == end.chars;
 }
 
-static void validateSingleLineIfBranchEnd(Parser* parser, Token token)
+static void validate_single_line_if_branch_end(Parser* parser, Token token)
 {
-    Token end = parser->previousToken;
+    Token end = parser->previous_token;
     bool multiline = end.line != token.line || memchr(end.chars, '\n', end.length)
         || memchr(end.chars, '\r', end.length);
 
     if (multiline) {
-        fatalSourceError(token.line, token.column, "Expected statement to end on the same physical line as if");
+        fatal_source_error(token.line, token.column, "Expected statement to end on the same physical line as if");
     }
 
-    if (parser->currentToken.type == TOKEN_SEMICOLON) {
+    if (parser->current_token.type == TokenSemicolon) {
         return;
     }
 
-    if (parser->currentToken.type == TOKEN_ELSE) {
-        fatalTokenError(parser->currentToken, "", "Unexpected ");
+    if (parser->current_token.type == TokenKeywordElse) {
+        fatal_token_error(parser->current_token, "", "Unexpected ");
     }
 
-    bool sameLineStatement = !isEndOfFile(parser) && parser->currentToken.line == token.line
-        && parser->currentToken.type != TOKEN_RBRACE;
+    bool same_line_statement = !is_end_of_file(parser) && parser->current_token.line == token.line
+        && parser->current_token.type != TokenRbrace;
 
-    if (sameLineStatement) {
-        fatalTokenError(parser->currentToken, "", "Expected end of line but found ");
+    if (same_line_statement) {
+        fatal_token_error(parser->current_token, "", "Expected end of line but found ");
     }
 }
 
-static ASTNode* parseSingleLineIfBranch(Parser* parser, Token token)
+static ASTNode* parse_single_line_if_branch(Parser* parser, Token token)
 {
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return NULL;
     }
 
-    if (parser->currentToken.line != token.line) {
-        fatalSourceError(token.line, token.column, "Expected statement on the same physical line as if");
+    if (parser->current_token.line != token.line) {
+        fatal_source_error(token.line, token.column, "Expected statement on the same physical line as if");
     }
 
-    if (parser->currentToken.type == TOKEN_IF) {
-        expectedTokenError(TOKEN_LBRACE, parser->currentToken);
+    if (parser->current_token.type == TokenKeywordIf) {
+        expected_token_error(TokenLbrace, parser->current_token);
     }
 
-    ASTNode* statement = parseStatement(parser);
+    ASTNode* statement = parse_statement(parser);
 
     if (!statement) {
         return NULL;
     }
 
-    validateSingleLineIfBranchEnd(parser, token);
+    validate_single_line_if_branch_end(parser, token);
 
-    ASTNode* branch = createCompoundNode(NULL);
+    ASTNode* branch = create_compound_node(NULL);
 
-    pushVectorItem(&branch->compound.statements, statement);
+    push_vector_item(&branch->compound.statements, statement);
 
     return branch;
 }
 
-static ASTNode* parseIfBranch(Parser* parser, Parser start, Token token, bool allowSingleLineBody)
+static ASTNode* parse_if_branch(Parser* parser, Parser start, Token token, bool allow_single_line_body)
 {
-    if (parser->currentToken.type == TOKEN_LBRACE) {
-        return parseConditionalBranch(parser);
+    if (parser->current_token.type == TokenLbrace) {
+        return parse_conditional_branch(parser);
     }
 
-    if (!allowSingleLineBody) {
-        expectedTokenError(TOKEN_LBRACE, parser->currentToken);
+    if (!allow_single_line_body) {
+        expected_token_error(TokenLbrace, parser->current_token);
     }
 
-    bool parenthesized = isParenthesizedCondition(start, parser->previousToken);
+    bool parenthesized = is_parenthesized_condition(start, parser->previous_token);
 
     if (!parenthesized) {
-        expectedTokenError(TOKEN_LBRACE, parser->currentToken);
+        expected_token_error(TokenLbrace, parser->current_token);
     }
 
-    return parseSingleLineIfBranch(parser, token);
+    return parse_single_line_if_branch(parser, token);
 }
 
-static ASTNode* parseConditional(Parser* parser, bool allowSingleLineBody)
+static ASTNode* parse_conditional(Parser* parser, bool allow_single_line_body)
 {
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
 
-    consume(parser, TOKEN_IF);
+    consume(parser, TokenKeywordIf);
 
-    Parser conditionStart = *parser;
-    ASTNode* condition = parseExpression(parser);
+    Parser condition_start = *parser;
+    ASTNode* condition = parse_expression(parser);
     if (!condition) {
         return NULL;
     }
 
-    bool singleLineBody = parser->currentToken.type != TOKEN_LBRACE;
-    ASTNode* thenBranch = parseIfBranch(parser, conditionStart, token, allowSingleLineBody);
+    bool single_line_body = parser->current_token.type != TokenLbrace;
+    ASTNode* then_branch = parse_if_branch(parser, condition_start, token, allow_single_line_body);
 
-    if (!thenBranch) {
-        freeASTNode(condition);
-
-        return NULL;
-    }
-
-    if (singleLineBody) {
-        return createConditionalNode(token, condition, thenBranch, NULL);
-    }
-
-    bool hasElse = parser->currentToken.type == TOKEN_ELSE;
-    ASTNode* elseBranch = parseConditionalElse(parser, allowSingleLineBody);
-
-    if (hasElse && !elseBranch) {
-        freeASTNode(condition);
-        freeASTNode(thenBranch);
+    if (!then_branch) {
+        free_ast_node(condition);
 
         return NULL;
     }
 
-    return createConditionalNode(token, condition, thenBranch, elseBranch);
+    if (single_line_body) {
+        return create_conditional_node(token, condition, then_branch, NULL);
+    }
+
+    bool has_else = parser->current_token.type == TokenKeywordElse;
+    ASTNode* else_branch = parse_conditional_else(parser, allow_single_line_body);
+
+    if (has_else && !else_branch) {
+        free_ast_node(condition);
+        free_ast_node(then_branch);
+
+        return NULL;
+    }
+
+    return create_conditional_node(token, condition, then_branch, else_branch);
 }
 
-static void markConditionalStatement(ASTNode* ast)
+static void mark_conditional_statement(ASTNode* ast)
 {
     ast->conditional.expression = false;
 
-    ASTNode* elseBranch = ast->conditional.elseBranch;
-    if (elseBranch && elseBranch->type == AST_CONDITIONAL) {
-        markConditionalStatement(elseBranch);
+    ASTNode* else_branch = ast->conditional.else_branch;
+    if (else_branch && else_branch->type == ASTConditional) {
+        mark_conditional_statement(else_branch);
     }
 }
 
-static bool isMatchBranchEnd(Parser* parser)
+static bool is_match_branch_end(Parser* parser)
 {
-    return isMatchArmEndToken(parser->currentToken.type) || isEndOfFile(parser);
+    return is_match_arm_end_token(parser->current_token.type) || is_end_of_file(parser);
 }
 
-static void consumeMatchStatementSeparator(Parser* parser, Token token)
+static void consume_match_statement_separator(Parser* parser, Token token)
 {
-    bool sameLineStatement = parser->currentToken.line == token.line
-        && !isMatchArmEndToken(parser->currentToken.type)
-        && parser->previousToken.type != TOKEN_RBRACE;
+    bool same_line_statement = parser->current_token.line == token.line
+        && !is_match_arm_end_token(parser->current_token.type)
+        && parser->previous_token.type != TokenRbrace;
 
-    if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
-        consume(parser, TOKEN_SEMICOLON);
+    if (same_line_statement || parser->current_token.type == TokenSemicolon) {
+        consume(parser, TokenSemicolon);
     }
 }
 
-static bool parseMatchBranchStatement(Parser* parser, ASTNode* branch)
+static bool parse_match_branch_statement(Parser* parser, ASTNode* branch)
 {
-    Token token = parser->currentToken;
-    ASTNode* statement = parseStatement(parser);
+    Token token = parser->current_token;
+    ASTNode* statement = parse_statement(parser);
 
     if (!statement) {
         return false;
     }
 
-    consumeMatchStatementSeparator(parser, token);
-    pushVectorItem(&branch->compound.statements, statement);
+    consume_match_statement_separator(parser, token);
+    push_vector_item(&branch->compound.statements, statement);
 
     return true;
 }
 
-static ASTNode* parseMatchBranch(Parser* parser)
+static ASTNode* parse_match_branch(Parser* parser)
 {
-    ASTNode* branch = createCompoundNode(NULL);
+    ASTNode* branch = create_compound_node(NULL);
 
-    if (isEndOfFile(parser)) {
-        freeASTNode(branch);
+    if (is_end_of_file(parser)) {
+        free_ast_node(branch);
 
         return NULL;
     }
 
-    if (isMatchArmEndToken(parser->currentToken.type)) {
-        freeASTNode(branch);
-        expectedExpressionError(parser->currentToken);
+    if (is_match_arm_end_token(parser->current_token.type)) {
+        free_ast_node(branch);
+        expected_expression_error(parser->current_token);
     }
 
-    while (!isMatchBranchEnd(parser)) {
-        if (!parseMatchBranchStatement(parser, branch)) {
-            freeASTNode(branch);
+    while (!is_match_branch_end(parser)) {
+        if (!parse_match_branch_statement(parser, branch)) {
+            free_ast_node(branch);
 
             return NULL;
         }
@@ -695,479 +695,479 @@ static ASTNode* parseMatchBranch(Parser* parser)
     return branch;
 }
 
-static ASTNode* parseMatchBinding(Parser* parser)
+static ASTNode* parse_match_binding(Parser* parser)
 {
-    Token token = parser->currentToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
-    ASTNode* binding = createVariableDefinitionNode(token, id, true);
-    binding->variableDefinition.initialized = true;
+    Token token = parser->current_token;
+    StringObject* id = copy_string_object(token.chars, token.length);
+    ASTNode* binding = create_variable_definition_node(token, id, true);
+    binding->variable_definition.initialized = true;
 
-    consume(parser, TOKEN_IDENTIFIER);
+    consume(parser, TokenIdentifier);
 
     return binding;
 }
 
-static bool parseMatchGuard(Parser* parser, MatchArm* arm)
+static bool parse_match_guard(Parser* parser, MatchArm* arm)
 {
-    if (parser->currentToken.type != TOKEN_IF) {
+    if (parser->current_token.type != TokenKeywordIf) {
         return true;
     }
 
-    arm->guardToken = parser->currentToken;
+    arm->guard_token = parser->current_token;
 
-    consume(parser, TOKEN_IF);
+    consume(parser, TokenKeywordIf);
 
-    arm->guard = parseExpression(parser);
+    arm->guard = parse_expression(parser);
 
     return arm->guard != NULL;
 }
 
-static bool parseMatchArm(Parser* parser, ASTNode* ast)
+static bool parse_match_arm(Parser* parser, ASTNode* ast)
 {
-    consume(parser, TOKEN_CASE);
+    consume(parser, TokenKeywordCase);
 
-    MatchArm* arm = allocateZeroedMemory(1, sizeof(MatchArm));
+    MatchArm* arm = allocate_zeroed_memory(1, sizeof(MatchArm));
 
-    pushVectorItem(&ast->match.arms, arm);
+    push_vector_item(&ast->match.arms, arm);
 
-    if (isWildcardToken(parser->currentToken)) {
-        consume(parser, TOKEN_IDENTIFIER);
-    } else if (ast->match.subject && parser->currentToken.type == TOKEN_IDENTIFIER) {
-        arm->binding = parseMatchBinding(parser);
+    if (is_wildcard_token(parser->current_token)) {
+        consume(parser, TokenIdentifier);
+    } else if (ast->match.subject && parser->current_token.type == TokenIdentifier) {
+        arm->binding = parse_match_binding(parser);
     } else {
-        arm->pattern = parseExpression(parser);
+        arm->pattern = parse_expression(parser);
     }
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return false;
     }
 
-    if (!parseMatchGuard(parser, arm)) {
+    if (!parse_match_guard(parser, arm)) {
         return false;
     }
 
-    consume(parser, TOKEN_COLON);
-    arm->branch = parseMatchBranch(parser);
+    consume(parser, TokenColon);
+    arm->branch = parse_match_branch(parser);
 
     return arm->branch != NULL;
 }
 
-static bool parseMatchDefault(Parser* parser, ASTNode* ast)
+static bool parse_match_default(Parser* parser, ASTNode* ast)
 {
-    if (parser->currentToken.type != TOKEN_DEFAULT) {
+    if (parser->current_token.type != TokenKeywordDefault) {
         return true;
     }
 
-    consume(parser, TOKEN_DEFAULT);
+    consume(parser, TokenKeywordDefault);
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return false;
     }
 
-    consume(parser, TOKEN_COLON);
-    ast->match.defaultBranch = parseMatchBranch(parser);
+    consume(parser, TokenColon);
+    ast->match.default_branch = parse_match_branch(parser);
 
-    return ast->match.defaultBranch != NULL;
+    return ast->match.default_branch != NULL;
 }
 
-static ASTNode* parseMatch(Parser* parser)
+static ASTNode* parse_match(Parser* parser)
 {
-    Token token = parser->currentToken;
-    consume(parser, TOKEN_MATCH);
+    Token token = parser->current_token;
+    consume(parser, TokenKeywordMatch);
 
-    ASTNode* ast = createMatchNode(token);
+    ASTNode* ast = create_match_node(token);
 
-    if (parser->currentToken.type != TOKEN_LBRACE) {
-        ast->match.subject = parseExpression(parser);
+    if (parser->current_token.type != TokenLbrace) {
+        ast->match.subject = parse_expression(parser);
     }
 
-    if (isEndOfFile(parser)) {
-        freeASTNode(ast);
+    if (is_end_of_file(parser)) {
+        free_ast_node(ast);
 
         return NULL;
     }
 
-    consume(parser, TOKEN_LBRACE);
-    while (parser->currentToken.type == TOKEN_CASE) {
-        if (!parseMatchArm(parser, ast)) {
-            freeASTNode(ast);
+    consume(parser, TokenLbrace);
+    while (parser->current_token.type == TokenKeywordCase) {
+        if (!parse_match_arm(parser, ast)) {
+            free_ast_node(ast);
 
             return NULL;
         }
     }
 
-    if (!parseMatchDefault(parser, ast)) {
-        freeASTNode(ast);
+    if (!parse_match_default(parser, ast)) {
+        free_ast_node(ast);
 
         return NULL;
     }
 
-    if (isEndOfFile(parser)) {
-        freeASTNode(ast);
+    if (is_end_of_file(parser)) {
+        free_ast_node(ast);
 
         return NULL;
     }
 
-    consume(parser, TOKEN_RBRACE);
+    consume(parser, TokenRbrace);
 
     return ast;
 }
 
-static ASTNode* parsePrefixOperand(Parser* parser)
+static ASTNode* parse_prefix_operand(Parser* parser)
 {
-    if (isPrefixToken(parser->currentToken.type)) {
-        return parsePrefix(parser);
+    if (is_prefix_token(parser->current_token.type)) {
+        return parse_prefix(parser);
     }
 
-    Token token = parser->currentToken;
-    ASTNode* expr = parsePrimary(parser);
+    Token token = parser->current_token;
+    ASTNode* expr = parse_primary(parser);
 
     if (!expr) {
         return NULL;
     }
 
-    if (!isPrefix(expr) && !isPrefixOperand(expr)) {
-        expectedOperandError(token);
+    if (!is_prefix(expr) && !is_prefix_operand(expr)) {
+        expected_operand_error(token);
     }
 
     return expr;
 }
 
-static ASTNode* parsePrefix(Parser* parser)
+static ASTNode* parse_prefix(Parser* parser)
 {
-    if (!isPrefixToken(parser->currentToken.type)) {
-        return parsePrimary(parser);
+    if (!is_prefix_token(parser->current_token.type)) {
+        return parse_primary(parser);
     }
 
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
     consume(parser, token.type);
-    ASTNode* expr = parsePrefixOperand(parser);
+    ASTNode* expr = parse_prefix_operand(parser);
 
     if (!expr) {
         return NULL;
     }
 
-    if (token.type == TOKEN_MINUS && expr->type == AST_INTEGER) {
-        expr->integerLiteral.typeId = inferIntegerLiteralType(expr->integerLiteral.value, true);
+    if (token.type == TokenMinus && expr->type == ASTInteger) {
+        expr->integer_literal.type_id = infer_integer_literal_type(expr->integer_literal.value, true);
     }
 
-    return createPrefixNode(token, expr);
+    return create_prefix_node(token, expr);
 }
 
-static ASTNode* parseExponent(Parser* parser)
+static ASTNode* parse_exponent(Parser* parser)
 {
-    ASTNode* expr = parsePrefix(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_prefix(parser);
+    Token token = parser->current_token;
 
-    if (token.type == TOKEN_POWER) {
+    if (token.type == TokenPower) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseExponent(parser), token);
+        expr = create_binary_node(expr, parse_exponent(parser), token);
     }
 
     return expr;
 }
 
-static ASTNode* parseFactor(Parser* parser)
+static ASTNode* parse_factor(Parser* parser)
 {
-    ASTNode* expr = parseExponent(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_exponent(parser);
+    Token token = parser->current_token;
 
-    while (isFactorToken(token.type)) {
+    while (is_factor_token(token.type)) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseExponent(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_exponent(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseTerm(Parser* parser)
+static ASTNode* parse_term(Parser* parser)
 {
-    ASTNode* expr = parseFactor(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_factor(parser);
+    Token token = parser->current_token;
 
-    while (isTermToken(token.type)) {
+    while (is_term_token(token.type)) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseFactor(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_factor(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseShift(Parser* parser)
+static ASTNode* parse_shift(Parser* parser)
 {
-    ASTNode* expr = parseTerm(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_term(parser);
+    Token token = parser->current_token;
 
-    while (isShiftToken(token.type)) {
+    while (is_shift_token(token.type)) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseTerm(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_term(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseComparison(Parser* parser)
+static ASTNode* parse_comparison(Parser* parser)
 {
-    ASTNode* expr = parseShift(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_shift(parser);
+    Token token = parser->current_token;
 
-    while (isComparisonToken(token.type)) {
+    while (is_comparison_token(token.type)) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseShift(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_shift(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseEquality(Parser* parser)
+static ASTNode* parse_equality(Parser* parser)
 {
-    ASTNode* expr = parseComparison(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_comparison(parser);
+    Token token = parser->current_token;
 
-    while (isEqualityToken(token.type)) {
+    while (is_equality_token(token.type)) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseComparison(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_comparison(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseBitwiseAND(Parser* parser)
+static ASTNode* parse_bitwise_and(Parser* parser)
 {
-    ASTNode* expr = parseEquality(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_equality(parser);
+    Token token = parser->current_token;
 
-    while (token.type == TOKEN_AMPERSAND) {
+    while (token.type == TokenAmpersand) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseEquality(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_equality(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseBitwiseXOR(Parser* parser)
+static ASTNode* parse_bitwise_xor(Parser* parser)
 {
-    ASTNode* expr = parseBitwiseAND(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_bitwise_and(parser);
+    Token token = parser->current_token;
 
-    while (token.type == TOKEN_CIRCUMFLEX) {
+    while (token.type == TokenCircumflex) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseBitwiseAND(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_bitwise_and(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseBitwiseOR(Parser* parser)
+static ASTNode* parse_bitwise_or(Parser* parser)
 {
-    ASTNode* expr = parseBitwiseXOR(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_bitwise_xor(parser);
+    Token token = parser->current_token;
 
-    while (token.type == TOKEN_PIPE) {
+    while (token.type == TokenPipe) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseBitwiseXOR(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_bitwise_xor(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseBooleanAND(Parser* parser)
+static ASTNode* parse_boolean_and(Parser* parser)
 {
-    ASTNode* expr = parseBitwiseOR(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_bitwise_or(parser);
+    Token token = parser->current_token;
 
-    while (token.type == TOKEN_AND) {
+    while (token.type == TokenKeywordAnd) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseBitwiseOR(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_bitwise_or(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseBooleanOR(Parser* parser)
+static ASTNode* parse_boolean_or(Parser* parser)
 {
-    ASTNode* expr = parseBooleanAND(parser);
-    Token token = parser->currentToken;
+    ASTNode* expr = parse_boolean_and(parser);
+    Token token = parser->current_token;
 
-    while (token.type == TOKEN_OR) {
+    while (token.type == TokenKeywordOr) {
         consume(parser, token.type);
-        expr = createBinaryNode(expr, parseBooleanAND(parser), token);
-        token = parser->currentToken;
+        expr = create_binary_node(expr, parse_boolean_and(parser), token);
+        token = parser->current_token;
     }
 
     return expr;
 }
 
-static ASTNode* parseTernaryBranch(Parser* parser)
+static ASTNode* parse_ternary_branch(Parser* parser)
 {
-    ASTNode* expression = parseExpression(parser);
+    ASTNode* expression = parse_expression(parser);
 
     if (!expression) {
         return NULL;
     }
 
-    ASTNode* branch = createCompoundNode(NULL);
+    ASTNode* branch = create_compound_node(NULL);
 
-    pushVectorItem(&branch->compound.statements, expression);
+    push_vector_item(&branch->compound.statements, expression);
 
     return branch;
 }
 
-static ASTNode* parseTernary(Parser* parser, ASTNode* condition)
+static ASTNode* parse_ternary(Parser* parser, ASTNode* condition)
 {
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
 
-    consume(parser, TOKEN_QUESTION);
+    consume(parser, TokenQuestion);
 
-    ASTNode* thenBranch = parseTernaryBranch(parser);
+    ASTNode* then_branch = parse_ternary_branch(parser);
 
-    if (!thenBranch || isEndOfFile(parser)) {
-        freeASTNode(condition);
-        freeASTNode(thenBranch);
-
-        return NULL;
-    }
-
-    consume(parser, TOKEN_COLON);
-
-    ASTNode* elseBranch = parseTernaryBranch(parser);
-
-    if (!elseBranch) {
-        freeASTNode(condition);
-        freeASTNode(thenBranch);
+    if (!then_branch || is_end_of_file(parser)) {
+        free_ast_node(condition);
+        free_ast_node(then_branch);
 
         return NULL;
     }
 
-    return createConditionalNode(token, condition, thenBranch, elseBranch);
+    consume(parser, TokenColon);
+
+    ASTNode* else_branch = parse_ternary_branch(parser);
+
+    if (!else_branch) {
+        free_ast_node(condition);
+        free_ast_node(then_branch);
+
+        return NULL;
+    }
+
+    return create_conditional_node(token, condition, then_branch, else_branch);
 }
 
-static ASTNode* parseExpression(Parser* parser)
+static ASTNode* parse_expression(Parser* parser)
 {
-    ASTNode* condition = parseBooleanOR(parser);
+    ASTNode* condition = parse_boolean_or(parser);
 
-    if (!condition || parser->currentToken.type != TOKEN_QUESTION) {
+    if (!condition || parser->current_token.type != TokenQuestion) {
         return condition;
     }
 
-    return parseTernary(parser, condition);
+    return parse_ternary(parser, condition);
 }
 
-static ASTNode* parseReturnStatement(Parser* parser)
+static ASTNode* parse_return_statement(Parser* parser)
 {
-    Token token = parser->currentToken;
-    consume(parser, TOKEN_RETURN);
+    Token token = parser->current_token;
+    consume(parser, TokenKeywordReturn);
 
-    ASTNode* expr = parseExpression(parser);
+    ASTNode* expr = parse_expression(parser);
     if (!expr) {
         return NULL;
     }
 
-    return createReturnNode(token, expr);
+    return create_return_node(token, expr);
 }
 
-static ASTNode* parseArgument(Parser* parser)
+static ASTNode* parse_argument(Parser* parser)
 {
-    return parseExpression(parser);
+    return parse_expression(parser);
 }
 
-static bool parseArgumentListItem(Parser* parser, Vector* args)
+static bool parse_argument_list_item(Parser* parser, Vector* args)
 {
-    ASTNode* expr = parseArgument(parser);
+    ASTNode* expr = parse_argument(parser);
 
-    if (!expr && (parser->currentToken.type == TOKEN_COMMA || parser->currentToken.type == TOKEN_RPAREN)) {
-        expectedExpressionError(parser->currentToken);
+    if (!expr && (parser->current_token.type == TokenComma || parser->current_token.type == TokenRparen)) {
+        expected_expression_error(parser->current_token);
     }
 
     if (!expr) {
         return false;
     }
 
-    pushVectorItem(args, expr);
+    push_vector_item(args, expr);
 
-    if (parser->currentToken.type == TOKEN_COMMA) {
-        consume(parser, TOKEN_COMMA);
+    if (parser->current_token.type == TokenComma) {
+        consume(parser, TokenComma);
     }
 
     return true;
 }
 
-static bool parseArgumentList(Parser* parser, Vector* args)
+static bool parse_argument_list(Parser* parser, Vector* args)
 {
-    consume(parser, TOKEN_LPAREN);
+    consume(parser, TokenLparen);
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return false;
     }
 
-    while (parser->currentToken.type != TOKEN_RPAREN) {
-        if (!parseArgumentListItem(parser, args)) {
+    while (parser->current_token.type != TokenRparen) {
+        if (!parse_argument_list_item(parser, args)) {
             return false;
         }
     }
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return false;
     }
 
-    consume(parser, TOKEN_RPAREN);
+    consume(parser, TokenRparen);
 
     return true;
 }
 
-static bool parseParameterDefault(Parser* parser, ASTNode* ast)
+static bool parse_parameter_default(Parser* parser, ASTNode* ast)
 {
-    if (parser->currentToken.type != TOKEN_EQUAL) {
+    if (parser->current_token.type != TokenEqual) {
         return true;
     }
 
-    Token token = parser->currentToken;
-    token.type = TOKEN_CONST;
-    consume(parser, TOKEN_EQUAL);
+    Token token = parser->current_token;
+    token.type = TokenKeywordConst;
+    consume(parser, TokenEqual);
 
-    ASTNode* expression = parseExpression(parser);
+    ASTNode* expression = parse_expression(parser);
     if (!expression) {
         return false;
     }
 
-    ast->parameter.defaultValue = createPrefixNode(token, expression);
+    ast->parameter.default_value = create_prefix_node(token, expression);
 
     return true;
 }
 
-static ASTNode* parseParameter(Parser* parser)
+static ASTNode* parse_parameter(Parser* parser)
 {
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return NULL;
     }
 
-    Token token = parser->currentToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
+    Token token = parser->current_token;
+    StringObject* id = copy_string_object(token.chars, token.length);
 
-    consume(parser, TOKEN_IDENTIFIER);
+    consume(parser, TokenIdentifier);
 
-    ASTNode* ast = createParameterNode(token, id);
+    ASTNode* ast = create_parameter_node(token, id);
 
-    if (parser->currentToken.type == TOKEN_COLON) {
-        consume(parser, TOKEN_COLON);
+    if (parser->current_token.type == TokenColon) {
+        consume(parser, TokenColon);
 
-        ast->parameter.referenceType = parseReferenceType(parser);
-        ast->parameter.typeId = getTokenDataType(parser->currentToken.type);
+        ast->parameter.reference_type = parse_reference_type(parser);
+        ast->parameter.type_id = get_token_data_type(parser->current_token.type);
 
-        consumeType(parser);
+        consume_type(parser);
     }
 
-    if (!parseParameterDefault(parser, ast)) {
-        freeASTNode(ast);
+    if (!parse_parameter_default(parser, ast)) {
+        free_ast_node(ast);
 
         return NULL;
     }
@@ -1175,59 +1175,59 @@ static ASTNode* parseParameter(Parser* parser)
     return ast;
 }
 
-static bool parseParameterListItem(Parser* parser, Vector* params)
+static bool parse_parameter_list_item(Parser* parser, Vector* params)
 {
-    ASTNode* param = parseParameter(parser);
+    ASTNode* param = parse_parameter(parser);
 
     if (!param) {
         return false;
     }
 
-    pushVectorItem(params, param);
+    push_vector_item(params, param);
 
-    if (parser->currentToken.type == TOKEN_COMMA) {
-        consume(parser, TOKEN_COMMA);
+    if (parser->current_token.type == TokenComma) {
+        consume(parser, TokenComma);
     }
 
     return true;
 }
 
-static bool parseParameterList(Parser* parser, Vector* params)
+static bool parse_parameter_list(Parser* parser, Vector* params)
 {
-    consume(parser, TOKEN_LPAREN);
+    consume(parser, TokenLparen);
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return false;
     }
 
-    while (parser->currentToken.type != TOKEN_RPAREN) {
-        if (!parseParameterListItem(parser, params)) {
+    while (parser->current_token.type != TokenRparen) {
+        if (!parse_parameter_list_item(parser, params)) {
             return false;
         }
     }
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return false;
     }
 
-    consume(parser, TOKEN_RPAREN);
+    consume(parser, TokenRparen);
 
-    size_t count = countVector(params);
+    size_t count = count_vector(params);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* param = getVectorAt(params, i);
+        ASTNode* param = get_vector_at(params, i);
         param->parameter.position = count - i - 1;
     }
 
     return true;
 }
 
-static ASTNode* parseFunctionCall(Parser* parser)
+static ASTNode* parse_function_call(Parser* parser)
 {
-    ASTNode* ast = createFunctionCallNode(parser->previousToken);
+    ASTNode* ast = create_function_call_node(parser->previous_token);
 
-    if (!parseArgumentList(parser, &ast->functionCall.args)) {
-        freeASTNode(ast);
+    if (!parse_argument_list(parser, &ast->function_call.args)) {
+        free_ast_node(ast);
 
         return NULL;
     }
@@ -1235,100 +1235,100 @@ static ASTNode* parseFunctionCall(Parser* parser)
     return ast;
 }
 
-static void parseFunctionReturnType(Parser* parser, ASTNode* ast)
+static void parse_function_return_type(Parser* parser, ASTNode* ast)
 {
-    if (parser->currentToken.type != TOKEN_ARROW) {
+    if (parser->current_token.type != TokenArrow) {
         return;
     }
 
-    consume(parser, TOKEN_ARROW);
+    consume(parser, TokenArrow);
 
-    ast->functionDefinition.returnReferenceType = parseReferenceType(parser);
-    ast->functionDefinition.returnTypeId = getTokenDataType(parser->currentToken.type);
+    ast->function_definition.return_reference_type = parse_reference_type(parser);
+    ast->function_definition.return_type_id = get_token_data_type(parser->current_token.type);
 
-    consumeType(parser);
+    consume_type(parser);
 
-    ast->functionDefinition.hasExplicitReturnType = true;
+    ast->function_definition.has_explicit_return_type = true;
 }
 
-static bool parseFunctionExpressionBody(Parser* parser, ASTNode* ast)
+static bool parse_function_expression_body(Parser* parser, ASTNode* ast)
 {
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
 
-    consume(parser, TOKEN_EQUAL);
+    consume(parser, TokenEqual);
 
-    ASTNode* expression = parseExpression(parser);
+    ASTNode* expression = parse_expression(parser);
 
     if (!expression) {
         return false;
     }
 
-    ASTNode* body = createCompoundNode(NULL);
-    ASTNode* statement = createReturnNode(token, expression);
-    ast->functionDefinition.body = body;
+    ASTNode* body = create_compound_node(NULL);
+    ASTNode* statement = create_return_node(token, expression);
+    ast->function_definition.body = body;
 
-    pushVectorItem(&body->compound.statements, statement);
-
-    return true;
-}
-
-static bool parseFunctionBody(Parser* parser, ASTNode* ast)
-{
-    if (isEndOfFile(parser)) {
-        return false;
-    }
-
-    if (parser->currentToken.type == TOKEN_EQUAL) {
-        return parseFunctionExpressionBody(parser, ast);
-    }
-
-    consume(parser, TOKEN_LBRACE);
-
-    ASTNode* body = createCompoundNode(NULL);
-    ast->functionDefinition.body = body;
-
-    if (!parseBlocklevelStatements(parser, &body->compound.statements)) {
-        return false;
-    }
-
-    consume(parser, TOKEN_RBRACE);
+    push_vector_item(&body->compound.statements, statement);
 
     return true;
 }
 
-static ASTNode* parseFunctionDefinition(Parser* parser)
+static bool parse_function_body(Parser* parser, ASTNode* ast)
 {
-    consume(parser, TOKEN_FUNC);
+    if (is_end_of_file(parser)) {
+        return false;
+    }
 
-    if (isEndOfFile(parser)) {
+    if (parser->current_token.type == TokenEqual) {
+        return parse_function_expression_body(parser, ast);
+    }
+
+    consume(parser, TokenLbrace);
+
+    ASTNode* body = create_compound_node(NULL);
+    ast->function_definition.body = body;
+
+    if (!parse_blocklevel_statements(parser, &body->compound.statements)) {
+        return false;
+    }
+
+    consume(parser, TokenRbrace);
+
+    return true;
+}
+
+static ASTNode* parse_function_definition(Parser* parser)
+{
+    consume(parser, TokenKeywordFunc);
+
+    if (is_end_of_file(parser)) {
         return NULL;
     }
 
-    Token token = parser->currentToken;
-    StringObject* id = copyStringObject(token.chars, token.length);
+    Token token = parser->current_token;
+    StringObject* id = copy_string_object(token.chars, token.length);
 
-    if (parser->currentToken.type != TOKEN_IDENTIFIER) {
-        expectedTokenError(TOKEN_IDENTIFIER, parser->currentToken);
+    if (parser->current_token.type != TokenIdentifier) {
+        expected_token_error(TokenIdentifier, parser->current_token);
     }
 
-    consume(parser, TOKEN_IDENTIFIER);
+    consume(parser, TokenIdentifier);
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return NULL;
     }
 
-    ASTNode* ast = createFunctionDefinitionNode(token, id);
+    ASTNode* ast = create_function_definition_node(token, id);
 
-    if (!parseParameterList(parser, &ast->functionDefinition.params)) {
-        freeASTNode(ast);
+    if (!parse_parameter_list(parser, &ast->function_definition.params)) {
+        free_ast_node(ast);
 
         return NULL;
     }
 
-    parseFunctionReturnType(parser, ast);
+    parse_function_return_type(parser, ast);
 
-    if (!parseFunctionBody(parser, ast)) {
-        freeASTNode(ast);
+    if (!parse_function_body(parser, ast)) {
+        free_ast_node(ast);
 
         return NULL;
     }
@@ -1336,167 +1336,167 @@ static ASTNode* parseFunctionDefinition(Parser* parser)
     return ast;
 }
 
-static ASTNode* parseAssignment(Parser* parser)
+static ASTNode* parse_assignment(Parser* parser)
 {
-    Token operator = parser->currentToken;
-    Token token = parser->previousToken;
+    Token operator = parser->current_token;
+    Token token = parser->previous_token;
     consume(parser, operator.type);
 
-    ASTNode* expr = parseExpression(parser);
+    ASTNode* expr = parse_expression(parser);
     if (!expr) {
         return NULL;
     }
 
-    ASTNode* ast = createAssignmentNode(operator, token, expr);
+    ASTNode* ast = create_assignment_node(operator, token, expr);
 
     return ast;
 }
 
-static void parseVariableType(Parser* parser, ASTNode* ast)
+static void parse_variable_type(Parser* parser, ASTNode* ast)
 {
-    if (parser->currentToken.type == TOKEN_COLON) {
-        consume(parser, TOKEN_COLON);
+    if (parser->current_token.type == TokenColon) {
+        consume(parser, TokenColon);
 
-        ast->variableDefinition.referenceType = parseReferenceType(parser);
-        ast->variableDefinition.typeId = getTokenDataType(parser->currentToken.type);
+        ast->variable_definition.reference_type = parse_reference_type(parser);
+        ast->variable_definition.type_id = get_token_data_type(parser->current_token.type);
 
-        consumeType(parser);
+        consume_type(parser);
 
         return;
     }
 
-    if (parser->currentToken.type != TOKEN_EQUAL) {
-        expectedTokenError(TOKEN_EQUAL, parser->currentToken);
+    if (parser->current_token.type != TokenEqual) {
+        expected_token_error(TokenEqual, parser->current_token);
     }
 }
 
-static bool parseVariableInitializer(Parser* parser, ASTNode* ast)
+static bool parse_variable_initializer(Parser* parser, ASTNode* ast)
 {
-    if (parser->currentToken.type == TOKEN_EQUAL) {
-        consume(parser, TOKEN_EQUAL);
-        ast->variableDefinition.expr = parseExpression(parser);
+    if (parser->current_token.type == TokenEqual) {
+        consume(parser, TokenEqual);
+        ast->variable_definition.expr = parse_expression(parser);
 
-        return ast->variableDefinition.expr != NULL;
+        return ast->variable_definition.expr != NULL;
     }
 
-    ast->variableDefinition.expr = createASTNode(AST_NONE);
+    ast->variable_definition.expr = create_ast_node(ASTNone);
 
-    if (ast->variableDefinition.typeId == TYPE_UNKNOWN) {
-        ast->variableDefinition.typeId = TYPE_I32;
+    if (ast->variable_definition.type_id == TypeUnknown) {
+        ast->variable_definition.type_id = TypeI32;
     }
 
     return true;
 }
 
-static ASTNode* parseVariableBinding(Parser* parser, Token keyword)
+static ASTNode* parse_variable_binding(Parser* parser, Token keyword)
 {
-    bool constant = keyword.type == TOKEN_CONST;
-    bool fixed = constant || keyword.type == TOKEN_LET;
+    bool constant = keyword.type == TokenKeywordConst;
+    bool fixed = constant || keyword.type == TokenKeywordLet;
 
-    consume(parser, parser->currentToken.type);
+    consume(parser, parser->current_token.type);
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return NULL;
     }
 
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
 
-    consume(parser, TOKEN_IDENTIFIER);
+    consume(parser, TokenIdentifier);
 
-    if (isEndOfFile(parser)) {
+    if (is_end_of_file(parser)) {
         return NULL;
     }
 
-    StringObject* id = copyStringObject(token.chars, token.length);
-    ASTNode* ast = createVariableDefinitionNode(token, id, fixed);
-    ast->variableDefinition.constant = constant;
+    StringObject* id = copy_string_object(token.chars, token.length);
+    ASTNode* ast = create_variable_definition_node(token, id, fixed);
+    ast->variable_definition.constant = constant;
 
     return ast;
 }
 
-static ASTNode* parseVariableValue(Parser* parser, ASTNode* ast, Token keyword)
+static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword)
 {
-    parseVariableType(parser, ast);
+    parse_variable_type(parser, ast);
 
-    if (ast->variableDefinition.fixed && parser->currentToken.type != TOKEN_EQUAL) {
-        expectedTokenError(TOKEN_EQUAL, parser->currentToken);
+    if (ast->variable_definition.fixed && parser->current_token.type != TokenEqual) {
+        expected_token_error(TokenEqual, parser->current_token);
     }
 
-    if (!parseVariableInitializer(parser, ast)) {
-        freeASTNode(ast);
+    if (!parse_variable_initializer(parser, ast)) {
+        free_ast_node(ast);
         return NULL;
     }
 
-    if (ast->variableDefinition.constant) {
-        ast->variableDefinition.expr = createPrefixNode(keyword, ast->variableDefinition.expr);
+    if (ast->variable_definition.constant) {
+        ast->variable_definition.expr = create_prefix_node(keyword, ast->variable_definition.expr);
     }
 
     return ast;
 }
 
-static ASTNode* parseVariableDefinition(Parser* parser)
+static ASTNode* parse_variable_definition(Parser* parser)
 {
-    Token keyword = parser->currentToken;
-    ASTNode* ast = parseVariableBinding(parser, keyword);
+    Token keyword = parser->current_token;
+    ASTNode* ast = parse_variable_binding(parser, keyword);
 
     if (!ast) {
         return NULL;
     }
 
-    return parseVariableValue(parser, ast, keyword);
+    return parse_variable_value(parser, ast, keyword);
 }
 
-static ASTNode* parseIdentifier(Parser* parser)
+static ASTNode* parse_identifier(Parser* parser)
 {
-    consume(parser, TOKEN_IDENTIFIER);
+    consume(parser, TokenIdentifier);
 
-    if (isAssignmentToken(parser->currentToken.type)) {
-        return parseAssignment(parser);
+    if (is_assignment_token(parser->current_token.type)) {
+        return parse_assignment(parser);
     }
 
-    if (parser->currentToken.type == TOKEN_LPAREN) {
-        return parseFunctionCall(parser);
+    if (parser->current_token.type == TokenLparen) {
+        return parse_function_call(parser);
     }
 
-    return createVariableNode(parser->previousToken);
+    return create_variable_node(parser->previous_token);
 }
 
-static ASTNode* parseWhileStatement(Parser* parser)
+static ASTNode* parse_while_statement(Parser* parser)
 {
-    Token token = parser->currentToken;
-    consume(parser, TOKEN_WHILE);
-    ASTNode* condition = parseExpression(parser);
+    Token token = parser->current_token;
+    consume(parser, TokenKeywordWhile);
+    ASTNode* condition = parse_expression(parser);
 
     if (!condition) {
         return NULL;
     }
 
-    ASTNode* body = parseConditionalBranch(parser);
+    ASTNode* body = parse_conditional_branch(parser);
 
     if (!body) {
-        freeASTNode(condition);
+        free_ast_node(condition);
 
         return NULL;
     }
 
-    return createWhileNode(token, condition, body);
+    return create_while_node(token, condition, body);
 }
 
-static ASTNode* parseIfStatement(Parser* parser)
+static ASTNode* parse_if_statement(Parser* parser)
 {
-    ASTNode* ast = parseConditional(parser, true);
+    ASTNode* ast = parse_conditional(parser, true);
     if (!ast) {
         return NULL;
     }
 
-    markConditionalStatement(ast);
+    mark_conditional_statement(ast);
 
     return ast;
 }
 
-static ASTNode* parseMatchStatement(Parser* parser)
+static ASTNode* parse_match_statement(Parser* parser)
 {
-    ASTNode* ast = parseMatch(parser);
+    ASTNode* ast = parse_match(parser);
     if (!ast) {
         return NULL;
     }
@@ -1506,92 +1506,92 @@ static ASTNode* parseMatchStatement(Parser* parser)
     return ast;
 }
 
-static ASTNode* parseConstantStatement(Parser* parser)
+static ASTNode* parse_constant_statement(Parser* parser)
 {
     Lexer lexer = parser->lexer;
-    Token name = scanToken(&lexer);
+    Token name = scan_token(&lexer);
 
-    if (name.type != TOKEN_IDENTIFIER) {
-        return parseExpression(parser);
+    if (name.type != TokenIdentifier) {
+        return parse_expression(parser);
     }
 
-    Token next = scanToken(&lexer);
+    Token next = scan_token(&lexer);
 
-    if (next.type == TOKEN_EQUAL || next.type == TOKEN_COLON) {
-        return parseVariableDefinition(parser);
+    if (next.type == TokenEqual || next.type == TokenColon) {
+        return parse_variable_definition(parser);
     }
 
-    return parseExpression(parser);
+    return parse_expression(parser);
 }
 
-static ASTNode* parseStatement(Parser* parser)
+static ASTNode* parse_statement(Parser* parser)
 {
-    switch (parser->currentToken.type) {
-        case TOKEN_FUNC:
-            return parseFunctionDefinition(parser);
-        case TOKEN_CONST:
-            return parseConstantStatement(parser);
-        case TOKEN_LET:
-        case TOKEN_VAR:
-            return parseVariableDefinition(parser);
-        case TOKEN_RETURN:
-            return parseReturnStatement(parser);
-        case TOKEN_WHILE:
-            return parseWhileStatement(parser);
-        case TOKEN_IF:
-            return parseIfStatement(parser);
-        case TOKEN_MATCH:
-            return parseMatchStatement(parser);
+    switch (parser->current_token.type) {
+        case TokenKeywordFunc:
+            return parse_function_definition(parser);
+        case TokenKeywordConst:
+            return parse_constant_statement(parser);
+        case TokenKeywordLet:
+        case TokenKeywordVar:
+            return parse_variable_definition(parser);
+        case TokenKeywordReturn:
+            return parse_return_statement(parser);
+        case TokenKeywordWhile:
+            return parse_while_statement(parser);
+        case TokenKeywordIf:
+            return parse_if_statement(parser);
+        case TokenKeywordMatch:
+            return parse_match_statement(parser);
         default:
-            return parseExpression(parser);
+            return parse_expression(parser);
     }
 }
 
-static bool parseStatements(Parser* parser, Vector* nodes, TokenType type)
+static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
 {
-    Token token = parser->currentToken;
+    Token token = parser->current_token;
 
-    while (token.type != type && token.type != TOKEN_INCOMPLETE_INPUT) {
-        ASTNode* stmt = parseStatement(parser);
+    while (token.type != type && token.type != TokenIncompleteInput) {
+        ASTNode* stmt = parse_statement(parser);
         if (!stmt) {
             return false;
         }
 
-        bool sameLineStatement = !isEndOfFile(parser) &&
-            parser->currentToken.line == token.line &&
-            parser->currentToken.type != type &&
-            parser->previousToken.type != TOKEN_RBRACE;
+        bool same_line_statement = !is_end_of_file(parser) &&
+            parser->current_token.line == token.line &&
+            parser->current_token.type != type &&
+            parser->previous_token.type != TokenRbrace;
 
-        if (sameLineStatement || parser->currentToken.type == TOKEN_SEMICOLON) {
-            consume(parser, TOKEN_SEMICOLON);
+        if (same_line_statement || parser->current_token.type == TokenSemicolon) {
+            consume(parser, TokenSemicolon);
         }
 
-        pushVectorItem(nodes, stmt);
-        token = parser->currentToken;
+        push_vector_item(nodes, stmt);
+        token = parser->current_token;
     }
 
     return true;
 }
 
-static bool parseBlocklevelStatements(Parser* parser, Vector* nodes)
+static bool parse_blocklevel_statements(Parser* parser, Vector* nodes)
 {
-    return parseStatements(parser, nodes, TOKEN_RBRACE);
+    return parse_statements(parser, nodes, TokenRbrace);
 }
 
-static bool parseTopLevelStatements(Parser* parser)
+static bool parse_top_level_statements(Parser* parser)
 {
-    return parseStatements(parser, &parser->topLevel->compound.statements, TOKEN_EOF);
+    return parse_statements(parser, &parser->top_level->compound.statements, TokenEof);
 }
 
-void initParser(Parser* parser, ASTNode* ast)
+void init_parser(Parser* parser, ASTNode* ast)
 {
-    parser->topLevel = ast;
+    parser->top_level = ast;
 }
 
 bool parse(Parser* parser, const char* source)
 {
-    initLexer(&parser->lexer, source);
+    init_lexer(&parser->lexer, source);
     advance(parser);
 
-    return parseTopLevelStatements(parser) && parser->currentToken.type != TOKEN_INCOMPLETE_INPUT;
+    return parse_top_level_statements(parser) && parser->current_token.type != TokenIncompleteInput;
 }

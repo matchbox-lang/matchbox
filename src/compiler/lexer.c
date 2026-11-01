@@ -14,113 +14,113 @@ typedef struct Keyword
     TokenType type;
 } Keyword;
 
-static bool skipWhitespace(Lexer* lexer);
+static bool skip_whitespace(Lexer* lexer);
 
 static const Keyword keywords[] = {
-    {"alignof",     7, TOKEN_ALIGNOF},
-    {"and",         3, TOKEN_AND},
-    {"as",          2, TOKEN_AS},
-    {"await",       5, TOKEN_AWAIT},
-    {"bool",        4, TOKEN_BOOL},
-    {"break",       5, TOKEN_BREAK},
-    {"catch",       5, TOKEN_CATCH},
-    {"case",        4, TOKEN_CASE},
-    {"char",        4, TOKEN_CHAR},
-    {"class",       5, TOKEN_CLASS},
-    {"const",       5, TOKEN_CONST},
-    {"continue",    8, TOKEN_CONTINUE},
-    {"defer",       5, TOKEN_DEFER},
-    {"default",     7, TOKEN_DEFAULT},
-    {"else",        4, TOKEN_ELSE},
-    {"end",         3, TOKEN_END},
-    {"enum",        4, TOKEN_ENUM},
-    {"external",    8, TOKEN_EXTERNAL},
-    {"false",       5, TOKEN_FALSE},
-    {"finally",     7, TOKEN_FINALLY},
-    {"f32",         3, TOKEN_F32},
-    {"f64",         3, TOKEN_F64},
-    {"for",         3, TOKEN_FOR},
-    {"func",        4, TOKEN_FUNC},
-    {"get",         3, TOKEN_GET},
-    {"if",          2, TOKEN_IF},
-    {"in",          2, TOKEN_IN},
-    {"i8",          2, TOKEN_I8},
-    {"i16",         3, TOKEN_I16},
-    {"i32",         3, TOKEN_I32},
-    {"i64",         3, TOKEN_I64},
-    {"internal",    8, TOKEN_INTERNAL},
-    {"is",          2, TOKEN_IS},
-    {"isize",       5, TOKEN_ISIZE},
-    {"let",         3, TOKEN_LET},
-    {"match",       5, TOKEN_MATCH},
-    {"not",         3, TOKEN_NOT},
-    {"or",          2, TOKEN_OR},
-    {"private",     7, TOKEN_PRIVATE},
-    {"protocol",    8, TOKEN_PROTOCOL},
-    {"public",      6, TOKEN_PUBLIC},
-    {"return",      6, TOKEN_RETURN},
-    {"self",        4, TOKEN_SELF},
-    {"set",         3, TOKEN_SET},
-    {"sizeof",      6, TOKEN_SIZEOF},
-    {"spawn",       5, TOKEN_SPAWN},
-    {"static",      6, TOKEN_STATIC},
-    {"string",      6, TOKEN_STRING},
-    {"struct",      6, TOKEN_STRUCT},
-    {"throw",       5, TOKEN_THROW},
-    {"true",        4, TOKEN_TRUE},
-    {"try",         3, TOKEN_TRY},
-    {"type",        4, TOKEN_TYPE},
-    {"typeof",      6, TOKEN_TYPEOF},
-    {"u8",          2, TOKEN_U8},
-    {"u16",         3, TOKEN_U16},
-    {"u32",         3, TOKEN_U32},
-    {"u64",         3, TOKEN_U64},
-    {"use",         3, TOKEN_USE},
-    {"usize",       5, TOKEN_USIZE},
-    {"var",         3, TOKEN_VAR},
-    {"void",        4, TOKEN_VOID},
-    {"while",       5, TOKEN_WHILE},
-    {"yield",       5, TOKEN_YIELD}
+    {"alignof",     7, TokenKeywordAlignof},
+    {"and",         3, TokenKeywordAnd},
+    {"as",          2, TokenKeywordAs},
+    {"await",       5, TokenKeywordAwait},
+    {"bool",        4, TokenKeywordBool},
+    {"break",       5, TokenKeywordBreak},
+    {"catch",       5, TokenKeywordCatch},
+    {"case",        4, TokenKeywordCase},
+    {"char",        4, TokenKeywordChar},
+    {"class",       5, TokenKeywordClass},
+    {"const",       5, TokenKeywordConst},
+    {"continue",    8, TokenKeywordContinue},
+    {"defer",       5, TokenKeywordDefer},
+    {"default",     7, TokenKeywordDefault},
+    {"else",        4, TokenKeywordElse},
+    {"end",         3, TokenKeywordEnd},
+    {"enum",        4, TokenKeywordEnum},
+    {"external",    8, TokenKeywordExternal},
+    {"false",       5, TokenKeywordFalse},
+    {"finally",     7, TokenKeywordFinally},
+    {"f32",         3, TokenKeywordF32},
+    {"f64",         3, TokenKeywordF64},
+    {"for",         3, TokenKeywordFor},
+    {"func",        4, TokenKeywordFunc},
+    {"get",         3, TokenKeywordGet},
+    {"if",          2, TokenKeywordIf},
+    {"in",          2, TokenKeywordIn},
+    {"i8",          2, TokenKeywordI8},
+    {"i16",         3, TokenKeywordI16},
+    {"i32",         3, TokenKeywordI32},
+    {"i64",         3, TokenKeywordI64},
+    {"internal",    8, TokenKeywordInternal},
+    {"is",          2, TokenKeywordIs},
+    {"isize",       5, TokenKeywordIsize},
+    {"let",         3, TokenKeywordLet},
+    {"match",       5, TokenKeywordMatch},
+    {"not",         3, TokenKeywordNot},
+    {"or",          2, TokenKeywordOr},
+    {"private",     7, TokenKeywordPrivate},
+    {"protocol",    8, TokenKeywordProtocol},
+    {"public",      6, TokenKeywordPublic},
+    {"return",      6, TokenKeywordReturn},
+    {"self",        4, TokenKeywordSelf},
+    {"set",         3, TokenKeywordSet},
+    {"sizeof",      6, TokenKeywordSizeof},
+    {"spawn",       5, TokenKeywordSpawn},
+    {"static",      6, TokenKeywordStatic},
+    {"string",      6, TokenKeywordString},
+    {"struct",      6, TokenKeywordStruct},
+    {"throw",       5, TokenKeywordThrow},
+    {"true",        4, TokenKeywordTrue},
+    {"try",         3, TokenKeywordTry},
+    {"type",        4, TokenKeywordType},
+    {"typeof",      6, TokenKeywordTypeof},
+    {"u8",          2, TokenKeywordU8},
+    {"u16",         3, TokenKeywordU16},
+    {"u32",         3, TokenKeywordU32},
+    {"u64",         3, TokenKeywordU64},
+    {"use",         3, TokenKeywordUse},
+    {"usize",       5, TokenKeywordUsize},
+    {"var",         3, TokenKeywordVar},
+    {"void",        4, TokenKeywordVoid},
+    {"while",       5, TokenKeywordWhile},
+    {"yield",       5, TokenKeywordYield}
 };
 
-static _Noreturn void emptyCharacterError(SourcePosition start)
+static _Noreturn void empty_character_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Empty character literal");
+    fatal_source_error(start.line, start.column, "Empty character literal");
 }
 
-static _Noreturn void invalidCharacterEscapeError(SourcePosition start)
+static _Noreturn void invalid_character_escape_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Invalid character escape");
+    fatal_source_error(start.line, start.column, "Invalid character escape");
 }
 
-static _Noreturn void invalidNumberError(SourcePosition start)
+static _Noreturn void invalid_number_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Invalid number literal");
+    fatal_source_error(start.line, start.column, "Invalid number literal");
 }
 
-static _Noreturn void invalidUtf8CharacterError(SourcePosition start)
+static _Noreturn void invalid_utf8_character_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Invalid UTF-8 character literal");
+    fatal_source_error(start.line, start.column, "Invalid UTF-8 character literal");
 }
 
-static _Noreturn void multipleCharacterError(SourcePosition start)
+static _Noreturn void multiple_character_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Character literal contains multiple characters");
+    fatal_source_error(start.line, start.column, "Character literal contains multiple characters");
 }
 
-static _Noreturn void newlineCharacterError(SourcePosition start)
+static _Noreturn void newline_character_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Newline in character literal");
+    fatal_source_error(start.line, start.column, "Newline in character literal");
 }
 
-static _Noreturn void unescapedInterpolationBraceError(SourcePosition start)
+static _Noreturn void unescaped_interpolation_brace_error(SourcePosition start)
 {
-    fatalSourceError(start.line, start.column, "Unescaped } in interpolated string");
+    fatal_source_error(start.line, start.column, "Unescaped } in interpolated string");
 }
 
-static _Noreturn void unterminatedLiteralError(SourcePosition start, char c)
+static _Noreturn void unterminated_literal_error(SourcePosition start, char c)
 {
-    fatalSourceError(start.line, start.column, "Missing terminating %c character", c);
+    fatal_source_error(start.line, start.column, "Missing terminating %c character", c);
 }
 
 static char peek(const Lexer* lexer)
@@ -140,7 +140,7 @@ static char next(const Lexer* lexer)
 static char advance(Lexer* lexer)
 {
     lexer->current.column++;
-    
+
     if (*lexer->current.chars == '\n') {
         lexer->current.line++;
         lexer->current.column = 1;
@@ -150,7 +150,7 @@ static char advance(Lexer* lexer)
     return lexer->current.chars[-1];
 }
 
-static bool isEndOfFile(const Lexer* lexer)
+static bool is_end_of_file(const Lexer* lexer)
 {
     return *lexer->current.chars == '\0';
 }
@@ -162,11 +162,11 @@ static bool match(Lexer* lexer, char c)
     }
 
     advance(lexer);
-    
+
     return true;
 }
 
-static Token makeToken(const Lexer* lexer, TokenType type)
+static Token make_token(const Lexer* lexer, TokenType type)
 {
     Token token;
     token.type = type;
@@ -178,45 +178,45 @@ static Token makeToken(const Lexer* lexer, TokenType type)
     return token;
 }
 
-static bool isKeyword(const Lexer* lexer, const Keyword* keyword, size_t length)
+static bool is_keyword(const Lexer* lexer, const Keyword* keyword, size_t length)
 {
     return length == keyword->length && memcmp(lexer->start.chars, keyword->chars, length) == 0;
 }
 
-static bool isAlpha(char c)
+static bool is_alpha(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-static bool isDigit(char c)
+static bool is_digit(char c)
 {
     return c >= '0' && c <= '9';
 }
 
-static bool isNewline(char c)
+static bool is_newline(char c)
 {
     return c == '\r' || c == '\n';
 }
 
-static bool isXDigit(char c)
+static bool is_x_digit(char c)
 {
     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
-static bool isODigit(char c)
+static bool is_o_digit(char c)
 {
     return c >= '0' && c <= '7';
 }
 
-static bool isBDigit(char c)
+static bool is_b_digit(char c)
 {
     return c == '0' || c == '1';
 }
 
-static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
+static void scan_digits(Lexer* lexer, bool (*is_valid_digit)(char))
 {
     while (true) {
-        if (isValidDigit(peek(lexer))) {
+        if (is_valid_digit(peek(lexer))) {
             advance(lexer);
             continue;
         }
@@ -227,84 +227,84 @@ static void scanDigits(Lexer* lexer, bool (*isValidDigit)(char))
 
         advance(lexer);
 
-        if (!isValidDigit(peek(lexer))) {
-            invalidNumberError(lexer->start);
+        if (!is_valid_digit(peek(lexer))) {
+            invalid_number_error(lexer->start);
         }
     }
 }
 
-static void validateNumberEnd(Lexer* lexer)
+static void validate_number_end(Lexer* lexer)
 {
-    bool adjacentDecimal = peek(lexer) == '.' && isDigit(next(lexer));
+    bool adjacent_decimal = peek(lexer) == '.' && is_digit(next(lexer));
 
-    if (isAlpha(peek(lexer)) || isDigit(peek(lexer)) || peek(lexer) == '_'
-        || adjacentDecimal) {
-        invalidNumberError(lexer->start);
+    if (is_alpha(peek(lexer)) || is_digit(peek(lexer)) || peek(lexer) == '_'
+        || adjacent_decimal) {
+        invalid_number_error(lexer->start);
     }
 }
 
-static void skipCommentSingle(Lexer* lexer)
+static void skip_comment_single(Lexer* lexer)
 {
     advance(lexer);
     advance(lexer);
-    
-    while (!isEndOfFile(lexer) && peek(lexer) != '\n') {
+
+    while (!is_end_of_file(lexer) && peek(lexer) != '\n') {
         advance(lexer);
     }
 }
 
-static bool skipCommentMulti(Lexer* lexer)
+static bool skip_comment_multi(Lexer* lexer)
 {
     advance(lexer);
     advance(lexer);
 
-    while (!isEndOfFile(lexer)) {
+    while (!is_end_of_file(lexer)) {
         if (peek(lexer) == '*' && next(lexer) == '/') {
             advance(lexer);
             advance(lexer);
             return true;
         }
-        
+
         advance(lexer);
     }
 
     return false;
 }
 
-static bool skipComment(Lexer* lexer)
+static bool skip_comment(Lexer* lexer)
 {
     lexer->start.chars = lexer->current.chars;
     lexer->start.line = lexer->current.line;
     lexer->start.column = lexer->current.column;
-    
+
     if (next(lexer) == '*') {
-        return skipCommentMulti(lexer);
+        return skip_comment_multi(lexer);
     }
 
-    skipCommentSingle(lexer);
+    skip_comment_single(lexer);
 
     return true;
 }
 
-static bool skipWhitespaceComment(Lexer* lexer)
+static bool skip_whitespace_comment(Lexer* lexer)
 {
     if (next(lexer) != '/' && next(lexer) != '*') {
         return true;
     }
 
-    if (!skipComment(lexer)) {
+    if (!skip_comment(lexer)) {
         return false;
     }
 
-    return skipWhitespace(lexer);
+    return skip_whitespace(lexer);
 }
 
-static bool skipWhitespace(Lexer* lexer)
+static bool skip_whitespace(Lexer* lexer)
 {
     while (1) {
         switch (peek(lexer)) {
             case '/':
-                return skipWhitespaceComment(lexer);
+                return skip_whitespace_comment(lexer);
             case ' ':
             case '\t':
             case '\r':
@@ -319,23 +319,23 @@ static bool skipWhitespace(Lexer* lexer)
     }
 }
 
-static TokenType getIdentifierType(const Lexer* lexer)
+static TokenType get_identifier_type(const Lexer* lexer)
 {
     size_t length = (size_t)(lexer->current.chars - lexer->start.chars);
-    size_t keywordCount = sizeof(keywords) / sizeof(keywords[0]);
+    size_t keyword_count = sizeof(keywords) / sizeof(keywords[0]);
 
-    for (size_t i = 0; i < keywordCount; i++) {
-        if (!isKeyword(lexer, &keywords[i], length)) {
+    for (size_t i = 0; i < keyword_count; i++) {
+        if (!is_keyword(lexer, &keywords[i], length)) {
             continue;
         }
 
         return keywords[i].type;
     }
 
-    return TOKEN_IDENTIFIER;
+    return TokenIdentifier;
 }
 
-static void scanExponent(Lexer* lexer)
+static void scan_exponent(Lexer* lexer)
 {
     advance(lexer);
 
@@ -343,107 +343,107 @@ static void scanExponent(Lexer* lexer)
         advance(lexer);
     }
 
-    if (!isDigit(peek(lexer))) {
-        invalidNumberError(lexer->start);
+    if (!is_digit(peek(lexer))) {
+        invalid_number_error(lexer->start);
     }
 
-    scanDigits(lexer, isDigit);
+    scan_digits(lexer, is_digit);
 }
 
-static Token finishFloatLiteral(Lexer* lexer)
+static Token finish_float_literal(Lexer* lexer)
 {
     if (peek(lexer) == 'e' || peek(lexer) == 'E') {
-        scanExponent(lexer);
+        scan_exponent(lexer);
     }
 
-    validateNumberEnd(lexer);
+    validate_number_end(lexer);
 
-    return makeToken(lexer, TOKEN_FLOAT_LITERAL);
+    return make_token(lexer, TokenFloatLiteral);
 }
 
-static Token scanFloatLiteral(Lexer* lexer)
+static Token scan_float_literal(Lexer* lexer)
 {
     if (peek(lexer) == '.' && next(lexer) != '.') {
         advance(lexer);
-        scanDigits(lexer, isDigit);
+        scan_digits(lexer, is_digit);
     }
 
-    return finishFloatLiteral(lexer);
+    return finish_float_literal(lexer);
 }
 
-static Token scanIntegerLiteral(Lexer* lexer)
+static Token scan_integer_literal(Lexer* lexer)
 {
-    scanDigits(lexer, isDigit);
+    scan_digits(lexer, is_digit);
 
     if (peek(lexer) == '.' && next(lexer) != '.') {
-        return scanFloatLiteral(lexer);
+        return scan_float_literal(lexer);
     }
 
     if (peek(lexer) == 'e' || peek(lexer) == 'E') {
-        return scanFloatLiteral(lexer);
+        return scan_float_literal(lexer);
     }
 
-    validateNumberEnd(lexer);
+    validate_number_end(lexer);
 
-    return makeToken(lexer, TOKEN_INTEGER_LITERAL);
+    return make_token(lexer, TokenIntegerLiteral);
 }
 
-static Token scanPrefixedIntegerLiteral(Lexer* lexer, bool (*isValidDigit)(char), TokenType type)
+static Token scan_prefixed_integer_literal(Lexer* lexer, bool (*is_valid_digit)(char), TokenType type)
 {
-    if (!isValidDigit(peek(lexer))) {
-        invalidNumberError(lexer->start);
+    if (!is_valid_digit(peek(lexer))) {
+        invalid_number_error(lexer->start);
     }
 
-    scanDigits(lexer, isValidDigit);
-    validateNumberEnd(lexer);
+    scan_digits(lexer, is_valid_digit);
+    validate_number_end(lexer);
 
-    return makeToken(lexer, type);
+    return make_token(lexer, type);
 }
 
-static Token scanZeroLiteral(Lexer* lexer)
+static Token scan_zero_literal(Lexer* lexer)
 {
     if (match(lexer, 'x') || match(lexer, 'X')) {
-        return scanPrefixedIntegerLiteral(lexer, isXDigit, TOKEN_HEXADECIMAL_LITERAL);
+        return scan_prefixed_integer_literal(lexer, is_x_digit, TokenHexadecimalLiteral);
     }
 
     if (match(lexer, 'o') || match(lexer, 'O')) {
-        return scanPrefixedIntegerLiteral(lexer, isODigit, TOKEN_OCTAL_LITERAL);
+        return scan_prefixed_integer_literal(lexer, is_o_digit, TokenOctalLiteral);
     }
 
     if (match(lexer, 'b') || match(lexer, 'B')) {
-        return scanPrefixedIntegerLiteral(lexer, isBDigit, TOKEN_BINARY_LITERAL);
+        return scan_prefixed_integer_literal(lexer, is_b_digit, TokenBinaryLiteral);
     }
 
-    return scanIntegerLiteral(lexer);
+    return scan_integer_literal(lexer);
 }
 
-static void advanceCharacters(Lexer* lexer, size_t count)
+static void advance_characters(Lexer* lexer, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
         advance(lexer);
     }
 }
 
-static Token endCharacterLiteral(Lexer* lexer)
+static Token end_character_literal(Lexer* lexer)
 {
     if (match(lexer, '\'')) {
-        return makeToken(lexer, TOKEN_CHARACTER_LITERAL);
+        return make_token(lexer, TokenCharacterLiteral);
     }
 
-    if (isNewline(peek(lexer))) {
-        newlineCharacterError(lexer->start);
+    if (is_newline(peek(lexer))) {
+        newline_character_error(lexer->start);
     }
 
-    if (isEndOfFile(lexer)) {
-        unterminatedLiteralError(lexer->start, '\'');
+    if (is_end_of_file(lexer)) {
+        unterminated_literal_error(lexer->start, '\'');
     }
 
-    multipleCharacterError(lexer->start);
+    multiple_character_error(lexer->start);
 
-    return makeToken(lexer, TOKEN_UNKNOWN);
+    return make_token(lexer, TokenUnknown);
 }
 
-static size_t characterSourceLength(const char* chars)
+static size_t character_source_length(const char* chars)
 {
     size_t length = 0;
 
@@ -454,65 +454,65 @@ static size_t characterSourceLength(const char* chars)
     return length;
 }
 
-static Token escapedCharacterLiteral(Lexer* lexer)
+static Token escaped_character_literal(Lexer* lexer)
 {
     advance(lexer);
 
-    if (isEndOfFile(lexer)) {
-        unterminatedLiteralError(lexer->start, '\'');
+    if (is_end_of_file(lexer)) {
+        unterminated_literal_error(lexer->start, '\'');
     }
 
-    if (isNewline(*lexer->current.chars)) {
-        newlineCharacterError(lexer->start);
+    if (is_newline(*lexer->current.chars)) {
+        newline_character_error(lexer->start);
     }
 
     const char* chars = lexer->current.chars - 1;
-    size_t length = characterSourceLength(chars);
+    size_t length = character_source_length(chars);
     DecodedScalar scalar;
-    bool valid = decodeLiteralScalar(chars, length, &scalar);
+    bool valid = decode_literal_scalar(chars, length, &scalar);
 
     if (!valid) {
-        invalidCharacterEscapeError(lexer->start);
+        invalid_character_escape_error(lexer->start);
     }
 
-    advanceCharacters(lexer, scalar.length - 1);
+    advance_characters(lexer, scalar.length - 1);
 
-    return endCharacterLiteral(lexer);
+    return end_character_literal(lexer);
 }
 
-static Token scanCharacterLiteral(Lexer* lexer)
+static Token scan_character_literal(Lexer* lexer)
 {
-    if (isEndOfFile(lexer)) {
-        unterminatedLiteralError(lexer->start, '\'');
+    if (is_end_of_file(lexer)) {
+        unterminated_literal_error(lexer->start, '\'');
     }
 
-    if (isNewline(peek(lexer))) {
-        newlineCharacterError(lexer->start);
+    if (is_newline(peek(lexer))) {
+        newline_character_error(lexer->start);
     }
 
     if (peek(lexer) == '\'') {
-        emptyCharacterError(lexer->start);
+        empty_character_error(lexer->start);
     }
 
     if (peek(lexer) == '\\') {
-        return escapedCharacterLiteral(lexer);
+        return escaped_character_literal(lexer);
     }
 
     const char* chars = lexer->current.chars;
-    size_t length = characterSourceLength(chars);
+    size_t length = character_source_length(chars);
     DecodedScalar scalar;
-    bool valid = decodeLiteralScalar(chars, length, &scalar);
+    bool valid = decode_literal_scalar(chars, length, &scalar);
 
     if (!valid) {
-        invalidUtf8CharacterError(lexer->start);
+        invalid_utf8_character_error(lexer->start);
     }
 
-    advanceCharacters(lexer, scalar.length);
+    advance_characters(lexer, scalar.length);
 
-    return endCharacterLiteral(lexer);
+    return end_character_literal(lexer);
 }
 
-static size_t delimiterLength(const char* chars, char delimiter)
+static size_t delimiter_length(const char* chars, char delimiter)
 {
     size_t count = 0;
 
@@ -523,22 +523,22 @@ static size_t delimiterLength(const char* chars, char delimiter)
     return count;
 }
 
-static bool scanInterpolationExpression(Lexer* lexer)
+static bool scan_interpolation_expression(Lexer* lexer)
 {
     size_t depth = 1;
 
     while (depth > 0) {
-        Token token = scanToken(lexer);
+        Token token = scan_token(lexer);
 
-        if (token.type == TOKEN_EOF || token.type == TOKEN_INCOMPLETE_INPUT) {
+        if (token.type == TokenEof || token.type == TokenIncompleteInput) {
             return false;
         }
 
-        if (token.type == TOKEN_LBRACE) {
+        if (token.type == TokenLbrace) {
             depth++;
         }
 
-        if (token.type == TOKEN_RBRACE) {
+        if (token.type == TokenRbrace) {
             depth--;
         }
     }
@@ -546,12 +546,12 @@ static bool scanInterpolationExpression(Lexer* lexer)
     return true;
 }
 
-static void scanStringEscape(Lexer* lexer)
+static void scan_string_escape(Lexer* lexer)
 {
     const char* chars = lexer->current.chars - 1;
-    size_t length = characterSourceLength(chars);
+    size_t length = character_source_length(chars);
     DecodedScalar scalar;
-    bool valid = decodeLiteralScalar(chars, length, &scalar);
+    bool valid = decode_literal_scalar(chars, length, &scalar);
 
     if (!valid) {
         advance(lexer);
@@ -559,23 +559,23 @@ static void scanStringEscape(Lexer* lexer)
         return;
     }
 
-    advanceCharacters(lexer, scalar.length - 1);
+    advance_characters(lexer, scalar.length - 1);
 }
 
-static size_t scanStringDelimiter(Lexer* lexer, char delimiter)
+static size_t scan_string_delimiter(Lexer* lexer, char delimiter)
 {
-    size_t run = delimiterLength(lexer->current.chars, delimiter) + 1;
+    size_t run = delimiter_length(lexer->current.chars, delimiter) + 1;
 
     if (run < 3) {
         return 1;
     }
 
-    advanceCharacters(lexer, run - 1);
+    advance_characters(lexer, run - 1);
 
     return run;
 }
 
-static bool scanStringInterpolation(Lexer* lexer, char c, SourcePosition start)
+static bool scan_string_interpolation(Lexer* lexer, char c, SourcePosition start)
 {
     if (peek(lexer) == c) {
         advance(lexer);
@@ -584,46 +584,46 @@ static bool scanStringInterpolation(Lexer* lexer, char c, SourcePosition start)
     }
 
     if (c == '}') {
-        unescapedInterpolationBraceError(start);
+        unescaped_interpolation_brace_error(start);
     }
 
-    return scanInterpolationExpression(lexer);
+    return scan_interpolation_expression(lexer);
 }
 
-static bool scanStringEnd(Lexer* lexer, char delimiter, size_t width)
+static bool scan_string_end(Lexer* lexer, char delimiter, size_t width)
 {
-    size_t closing = delimiterLength(lexer->current.chars, delimiter);
+    size_t closing = delimiter_length(lexer->current.chars, delimiter);
 
     if (closing < width) {
         return false;
     }
 
-    advanceCharacters(lexer, width);
+    advance_characters(lexer, width);
 
     return true;
 }
 
-static void validateStringNewline(Lexer* lexer, char delimiter, size_t width, SourcePosition start)
+static void validate_string_newline(Lexer* lexer, char delimiter, size_t width, SourcePosition start)
 {
     char c = peek(lexer);
 
-    if (delimiter != '"' || width != 1 || !isNewline(c)) {
+    if (delimiter != '"' || width != 1 || !is_newline(c)) {
         return;
     }
 
     lexer->start = start;
 
-    unterminatedLiteralError(lexer->start, delimiter);
+    unterminated_literal_error(lexer->start, delimiter);
 }
 
-static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool interpolated, SourcePosition start)
+static bool scan_string_character(Lexer* lexer, char delimiter, size_t width, bool interpolated, SourcePosition start)
 {
-    validateStringNewline(lexer, delimiter, width, start);
+    validate_string_newline(lexer, delimiter, width, start);
 
     char c = advance(lexer);
 
-    if (delimiter == '"' && c == '\\' && !isEndOfFile(lexer)) {
-        scanStringEscape(lexer);
+    if (delimiter == '"' && c == '\\' && !is_end_of_file(lexer)) {
+        scan_string_escape(lexer);
 
         return true;
     }
@@ -632,19 +632,19 @@ static bool scanStringCharacter(Lexer* lexer, char delimiter, size_t width, bool
         return true;
     }
 
-    return scanStringInterpolation(lexer, c, start);
+    return scan_string_interpolation(lexer, c, start);
 }
 
-static bool scanStringContents(Lexer* lexer, char delimiter, size_t width, bool interpolated)
+static bool scan_string_contents(Lexer* lexer, char delimiter, size_t width, bool interpolated)
 {
     SourcePosition start = lexer->start;
 
-    while (!isEndOfFile(lexer)) {
-        if (scanStringEnd(lexer, delimiter, width)) {
+    while (!is_end_of_file(lexer)) {
+        if (scan_string_end(lexer, delimiter, width)) {
             return true;
         }
 
-        if (!scanStringCharacter(lexer, delimiter, width, interpolated, start)) {
+        if (!scan_string_character(lexer, delimiter, width, interpolated, start)) {
             return false;
         }
     }
@@ -652,186 +652,186 @@ static bool scanStringContents(Lexer* lexer, char delimiter, size_t width, bool 
     return false;
 }
 
-static Token incompleteStringLiteral(Lexer* lexer, char delimiter, size_t width, bool interpolated)
+static Token incomplete_string_literal(Lexer* lexer, char delimiter, size_t width, bool interpolated)
 {
     if (width >= 3 || delimiter == '`' || interpolated) {
-        return makeToken(lexer, TOKEN_INCOMPLETE_INPUT);
+        return make_token(lexer, TokenIncompleteInput);
     }
 
-    unterminatedLiteralError(lexer->start, delimiter);
+    unterminated_literal_error(lexer->start, delimiter);
 
-    return makeToken(lexer, TOKEN_UNKNOWN);
+    return make_token(lexer, TokenUnknown);
 }
 
-static Token scanStringLiteral(Lexer* lexer, char delimiter, bool interpolated)
+static Token scan_string_literal(Lexer* lexer, char delimiter, bool interpolated)
 {
     SourcePosition start = lexer->start;
-    size_t width = scanStringDelimiter(lexer, delimiter);
-    bool complete = scanStringContents(lexer, delimiter, width, interpolated);
+    size_t width = scan_string_delimiter(lexer, delimiter);
+    bool complete = scan_string_contents(lexer, delimiter, width, interpolated);
 
     lexer->start = start;
 
     if (complete) {
-        return makeToken(lexer, TOKEN_STRING_LITERAL);
+        return make_token(lexer, TokenStringLiteral);
     }
 
-    return incompleteStringLiteral(lexer, delimiter, width, interpolated);
+    return incomplete_string_literal(lexer, delimiter, width, interpolated);
 }
 
-static Token scanInterpolatedString(Lexer* lexer)
+static Token scan_interpolated_string(Lexer* lexer)
 {
     char delimiter = peek(lexer);
 
     if (delimiter != '"' && delimiter != '`') {
-        return makeToken(lexer, TOKEN_DOLLAR);
+        return make_token(lexer, TokenDollar);
     }
 
     advance(lexer);
 
-    return scanStringLiteral(lexer, delimiter, true);
+    return scan_string_literal(lexer, delimiter, true);
 }
 
-static Token scanIdentifier(Lexer* lexer)
+static Token scan_identifier(Lexer* lexer)
 {
-    while (isAlpha(peek(lexer)) || isDigit(peek(lexer))) {
+    while (is_alpha(peek(lexer)) || is_digit(peek(lexer))) {
         advance(lexer);
     }
 
-    return makeToken(lexer, getIdentifierType(lexer));
+    return make_token(lexer, get_identifier_type(lexer));
 }
 
-void initLexer(Lexer* lexer, const char* source)
+void init_lexer(Lexer* lexer, const char* source)
 {
     lexer->current.chars = source;
     lexer->current.line = 1;
     lexer->current.column = 1;
 }
 
-Token scanToken(Lexer* lexer)
+Token scan_token(Lexer* lexer)
 {
-    if (!skipWhitespace(lexer)) {
-        return makeToken(lexer, TOKEN_INCOMPLETE_INPUT);
+    if (!skip_whitespace(lexer)) {
+        return make_token(lexer, TokenIncompleteInput);
     }
 
     lexer->start.chars = lexer->current.chars;
     lexer->start.line = lexer->current.line;
     lexer->start.column = lexer->current.column;
 
-    if (isEndOfFile(lexer)) {
-        return makeToken(lexer, TOKEN_EOF);
+    if (is_end_of_file(lexer)) {
+        return make_token(lexer, TokenEof);
     }
 
     char c = advance(lexer);
 
     if (c == '0') {
-        return scanZeroLiteral(lexer);
+        return scan_zero_literal(lexer);
     }
 
-    if (isDigit(c)) {
-        return scanIntegerLiteral(lexer);
+    if (is_digit(c)) {
+        return scan_integer_literal(lexer);
     }
 
-    if (isAlpha(c)) {
-        return scanIdentifier(lexer);
+    if (is_alpha(c)) {
+        return scan_identifier(lexer);
     }
 
     switch (c) {
         case '"':
         case '`':
-            return scanStringLiteral(lexer, c, false);
+            return scan_string_literal(lexer, c, false);
         case '\'':
-            return scanCharacterLiteral(lexer);
+            return scan_character_literal(lexer);
         case '(':
-            return makeToken(lexer, TOKEN_LPAREN);
+            return make_token(lexer, TokenLparen);
         case ')':
-            return makeToken(lexer, TOKEN_RPAREN);
+            return make_token(lexer, TokenRparen);
         case '[':
-            return makeToken(lexer, TOKEN_LSQUARE);
+            return make_token(lexer, TokenLsquare);
         case ']':
-            return makeToken(lexer, TOKEN_RSQUARE);
+            return make_token(lexer, TokenRsquare);
         case '{':
-            return makeToken(lexer, TOKEN_LBRACE);
+            return make_token(lexer, TokenLbrace);
         case '}':
-            return makeToken(lexer, TOKEN_RBRACE);
+            return make_token(lexer, TokenRbrace);
         case ':':
-            return makeToken(lexer, TOKEN_COLON);
+            return make_token(lexer, TokenColon);
         case ';':
-            return makeToken(lexer, TOKEN_SEMICOLON);
+            return make_token(lexer, TokenSemicolon);
         case ',':
-            return makeToken(lexer, TOKEN_COMMA);
+            return make_token(lexer, TokenComma);
         case '$':
-            return scanInterpolatedString(lexer);
+            return scan_interpolated_string(lexer);
         case '~':
-            return makeToken(lexer, TOKEN_TILDE);
+            return make_token(lexer, TokenTilde);
         case '%':
-            return makeToken(lexer, 
-                match(lexer, '=') ? TOKEN_PERCENT_EQUAL : TOKEN_PERCENT);
+            return make_token(lexer,
+                match(lexer, '=') ? TokenPercentEqual : TokenPercent);
         case '=':
-            return makeToken(lexer, 
-                match(lexer, '~') ? TOKEN_EQUAL_TILDE :
+            return make_token(lexer,
+                match(lexer, '~') ? TokenEqualTilde :
                 match(lexer, '=') ?
-                match(lexer, '=') ? TOKEN_EQUAL_EQUAL_EQUAL : TOKEN_EQUAL_EQUAL : TOKEN_EQUAL);
+                match(lexer, '=') ? TokenEqualEqualEqual : TokenEqualEqual : TokenEqual);
         case '!':
-            return makeToken(lexer, 
-                match(lexer, '~') ? TOKEN_NOT_TILDE :
+            return make_token(lexer,
+                match(lexer, '~') ? TokenNotTilde :
                 match(lexer, '=') ?
-                match(lexer, '=') ? TOKEN_NOT_EQUAL_EQUAL : TOKEN_NOT_EQUAL : TOKEN_UNKNOWN);
+                match(lexer, '=') ? TokenNotEqualEqual : TokenNotEqual : TokenUnknown);
         case '&':
-            return makeToken(lexer, 
-                match(lexer, '&') ? TOKEN_UNKNOWN :
-                match(lexer, '=') ? TOKEN_AND_EQUAL : TOKEN_AMPERSAND);
+            return make_token(lexer,
+                match(lexer, '&') ? TokenUnknown :
+                match(lexer, '=') ? TokenAndEqual : TokenAmpersand);
         case '|':
-            return makeToken(lexer, 
-                match(lexer, '|') ? TOKEN_UNKNOWN :
-                match(lexer, '>') ? TOKEN_PIPE_FORWARD :
-                match(lexer, '=') ? TOKEN_OR_EQUAL : TOKEN_PIPE);
+            return make_token(lexer,
+                match(lexer, '|') ? TokenUnknown :
+                match(lexer, '>') ? TokenPipeForward :
+                match(lexer, '=') ? TokenOrEqual : TokenPipe);
         case '^':
-            return makeToken(lexer, 
-                match(lexer, '=') ? TOKEN_CIRCUMFLEX_EQUAL : TOKEN_CIRCUMFLEX);
+            return make_token(lexer,
+                match(lexer, '=') ? TokenCircumflexEqual : TokenCircumflex);
         case '+':
-            return makeToken(lexer, 
-                match(lexer, '=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
+            return make_token(lexer,
+                match(lexer, '=') ? TokenPlusEqual : TokenPlus);
         case '-':
-            return makeToken(lexer, 
-                match(lexer, '>') ? TOKEN_ARROW :
-                match(lexer, '=') ? TOKEN_MINUS_EQUAL : TOKEN_MINUS);
+            return make_token(lexer,
+                match(lexer, '>') ? TokenArrow :
+                match(lexer, '=') ? TokenMinusEqual : TokenMinus);
         case '*':
-            return makeToken(lexer, 
+            return make_token(lexer,
                 match(lexer, '*') ?
-                match(lexer, '=') ? TOKEN_POWER_EQUAL : TOKEN_POWER :
-                match(lexer, '=') ? TOKEN_STAR_EQUAL : TOKEN_STAR);
+                match(lexer, '=') ? TokenPowerEqual : TokenPower :
+                match(lexer, '=') ? TokenStarEqual : TokenStar);
         case '/':
-            return makeToken(lexer, match(lexer, '=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
+            return make_token(lexer, match(lexer, '=') ? TokenSlashEqual : TokenSlash);
         case '<':
-            return makeToken(lexer, 
+            return make_token(lexer,
                 match(lexer, '<') ?
-                match(lexer, '=') ? TOKEN_LSHIFT_EQUAL : TOKEN_LSHIFT :
-                match(lexer, '|') ? TOKEN_PIPE_BACKWARD :
+                match(lexer, '=') ? TokenLshiftEqual : TokenLshift :
+                match(lexer, '|') ? TokenPipeBackward :
                 match(lexer, '=') ?
-                match(lexer, '>') ? TOKEN_SPACESHIP : TOKEN_LESS_EQUAL : TOKEN_LESS);
+                match(lexer, '>') ? TokenSpaceship : TokenLessEqual : TokenLess);
         case '>':
-            return makeToken(lexer, 
+            return make_token(lexer,
                 match(lexer, '>') ?
-                match(lexer, '=') ? TOKEN_RSHIFT_EQUAL : TOKEN_RSHIFT :
-                match(lexer, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+                match(lexer, '=') ? TokenRshiftEqual : TokenRshift :
+                match(lexer, '=') ? TokenGreaterEqual : TokenGreater);
         case '?':
-            return makeToken(lexer, 
+            return make_token(lexer,
                 match(lexer, '?') ?
-                match(lexer, '=') ? TOKEN_COALESCE_EQUAL : TOKEN_COALESCE :
-                match(lexer, '.') ? TOKEN_SAFE_ACCESS : TOKEN_QUESTION);
+                match(lexer, '=') ? TokenCoalesceEqual : TokenCoalesce :
+                match(lexer, '.') ? TokenSafeAccess : TokenQuestion);
         case '.':
-            if (isDigit(peek(lexer))) {
-                scanDigits(lexer, isDigit);
+            if (is_digit(peek(lexer))) {
+                scan_digits(lexer, is_digit);
 
-                return finishFloatLiteral(lexer);
+                return finish_float_literal(lexer);
             }
-            return makeToken(lexer, 
+            return make_token(lexer,
                 match(lexer, '.') ?
-                match(lexer, '.') ? TOKEN_SPREAD :
-                match(lexer, '^') ? TOKEN_RANGE_FROM_END : TOKEN_RANGE : TOKEN_DOT);
+                match(lexer, '.') ? TokenSpread :
+                match(lexer, '^') ? TokenRangeFromEnd : TokenRange : TokenDot);
         case '@':
-            return makeToken(lexer, TOKEN_AT);
+            return make_token(lexer, TokenAt);
         default:
-            return makeToken(lexer, TOKEN_UNKNOWN);      
+            return make_token(lexer, TokenUnknown);
     }
 }

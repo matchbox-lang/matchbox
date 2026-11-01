@@ -1,0 +1,10 @@
+var left_char: char = '🌍'
+var right_char: char = '🌎'
+var left_string: string = "🌍"
+var right_string: string = "🌎"
+
+print(left_char + right_char)
+print(left_string + right_char)
+print(left_char + right_string)
+print(left_string + right_string)
+print(left_char + right_string + '!' + "!")

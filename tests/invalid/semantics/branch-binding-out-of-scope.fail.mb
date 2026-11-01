@@ -1,5 +1,0 @@
-if true {
-    let branchOnly = 10
-}
-
-print(branchOnly)

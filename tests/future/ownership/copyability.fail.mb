@@ -7,23 +7,23 @@ struct Batch {
     values: List<i32>
 }
 
-func consumePoint(point: Point) {
+func consume_point(point: Point) {
     print(point.x, point.y)
 }
 
-func consumeBatch(batch: Batch) {
+func consume_batch(batch: Batch) {
     print(batch.values.count())
 }
 
-func readBatch(batch: &Batch) {
+func read_batch(batch: &Batch) {
     print(batch.values.count())
 }
 
 let point = Point(1, 2)
 
-consumePoint(point)
+consume_point(point)
 print(point.x)
 
 let batch = Batch(List(1, 2, 3))
 
-consumeBatch(batch)
+consume_batch(batch)

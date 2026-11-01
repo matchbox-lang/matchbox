@@ -3,13 +3,13 @@
 #include "runtime/writer.h"
 #include <stdio.h>
 
-void builtinPrint(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_print(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
 
     Writer writer;
 
-    initOutputWriter(&writer, stdout);
-    formatArguments(&writer, frame, function->argumentFormats, function->argumentCount);
-    writeBytes(&writer, "\n", 1);
+    init_output_writer(&writer, stdout);
+    format_arguments(&writer, frame, function->argument_formats, function->argument_count);
+    write_bytes(&writer, "\n", 1);
 }

@@ -3,6 +3,6 @@
 
 typedef struct Options Options;
 
-int runChecks(const Options* options);
+int run_checks(const Options* options);
 
 #endif

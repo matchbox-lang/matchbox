@@ -12,44 +12,43 @@ struct Matchbox
     MemoryGroup memory;
     ModuleObject* module;
     Compiler compiler;
-    int exitStatus;
+    int exit_status;
 };
 
-static void resetMatchbox(Matchbox* mb)
+static void reset_matchbox(Matchbox* mb)
 {
-    freeMemoryGroup(&mb->memory);
+    free_memory_group(&mb->memory);
 
     mb->module = NULL;
 }
 
-static int runModule(ModuleObject* module)
+static int run_module(ModuleObject* module)
 {
     VM vm;
-
-    initVM(&vm, module);
+    init_vm(&vm, module);
 
     int status = interpret(&vm);
 
-    freeVM(&vm);
+    free_vm(&vm);
 
     return status;
 }
 
-static bool runSource(Matchbox* mb, const char* source)
+static bool run_source(Matchbox* mb, const char* source)
 {
     size_t size = strlen(source) + 1;
-    char* copy = allocateMemory(size);
+    char* copy = allocate_memory(size);
 
     memcpy(copy, source, size);
-    mb->module = createModuleObject();
-    initCompiler(&mb->compiler, mb->module);
+    mb->module = create_module_object();
+    init_compiler(&mb->compiler, mb->module);
 
     bool compiled = compile(&mb->compiler, copy);
     if (!compiled) {
         return false;
     }
 
-    mb->exitStatus = runModule(mb->module);
+    mb->exit_status = run_module(mb->module);
 
     return true;
 }
@@ -60,7 +59,7 @@ int matchbox_exit_status(const Matchbox* mb)
         return EXIT_SUCCESS;
     }
 
-    return mb->exitStatus;
+    return mb->exit_status;
 }
 
 Matchbox* matchbox_create(void)
@@ -76,7 +75,7 @@ void matchbox_destroy(Matchbox* mb)
         return;
     }
 
-    resetMatchbox(mb);
+    reset_matchbox(mb);
     free(mb);
 }
 
@@ -88,24 +87,24 @@ bool matchbox_run(Matchbox* mb, const char* source)
 
     ErrorContext context;
 
-    mb->exitStatus = EXIT_SUCCESS;
+    mb->exit_status = EXIT_SUCCESS;
 
-    resetMatchbox(mb);
-    beginErrorContext(&context, &mb->memory);
+    reset_matchbox(mb);
+    begin_error_context(&context, &mb->memory);
 
     if (setjmp(context.jump) != 0) {
-        endErrorContext(&context);
-        resetMatchbox(mb);
+        end_error_context(&context);
+        reset_matchbox(mb);
 
         return false;
     }
 
-    bool success = runSource(mb, source);
+    bool success = run_source(mb, source);
 
-    endErrorContext(&context);
+    end_error_context(&context);
 
     if (!success) {
-        resetMatchbox(mb);
+        reset_matchbox(mb);
     }
 
     return success;

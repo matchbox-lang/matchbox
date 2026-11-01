@@ -1,6 +1,0 @@
-func stop() {
-    exit(0)
-    return 1
-}
-
-const RESULT = stop()

@@ -1,0 +1,14 @@
+var count = 0
+
+func read_count() {
+    print(count)
+}
+
+func write_count() {
+    count += 1
+}
+
+let task = spawn read_count()
+
+write_count()
+await task

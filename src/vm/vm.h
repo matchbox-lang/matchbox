@@ -14,14 +14,14 @@ typedef struct VM
     Value* fp;
     ValueArray globals;
     ModuleObject* module;
-    bool exitRequested;
-    int exitStatus;
-    jmp_buf exitJump;
+    bool exit_requested;
+    int exit_status;
+    jmp_buf exit_jump;
 } VM;
 
-void initVM(VM* vm, ModuleObject* module);
-void freeVM(VM* vm);
+void init_vm(VM* vm, ModuleObject* module);
+void free_vm(VM* vm);
 int interpret(VM* vm);
-_Noreturn void exitVM(VM* vm, int status);
+_Noreturn void exit_vm(VM* vm, int status);
 
 #endif

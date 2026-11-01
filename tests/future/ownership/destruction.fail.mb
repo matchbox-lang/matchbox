@@ -6,10 +6,10 @@ class Resource {
     }
 }
 
-func consumeResource(resource: Resource) {
+func consume_resource(resource: Resource) {
 }
 
-func destructionOnReturn(condition: bool) {
+func destruction_on_return(condition: bool) {
     let resource = Resource("return")
 
     if condition {
@@ -17,7 +17,7 @@ func destructionOnReturn(condition: bool) {
     }
 }
 
-func destructionOnThrow() {
+func destruction_on_throw() {
     try {
         let resource = Resource("throw")
         throw "Failure"
@@ -26,12 +26,12 @@ func destructionOnThrow() {
     }
 }
 
-func destructionAfterMove() {
+func destruction_after_move() {
     let resource = Resource("move")
     
-    consumeResource(resource)
+    consume_resource(resource)
 }
 
-destructionOnReturn(false)
-destructionOnThrow()
-destructionAfterMove()
+destruction_on_return(false)
+destruction_on_throw()
+destruction_after_move()

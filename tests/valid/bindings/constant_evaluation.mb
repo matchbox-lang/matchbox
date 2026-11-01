@@ -1,0 +1,24 @@
+const base = 10
+
+func square(x) {
+    return x * x
+}
+
+const constant_result = square(base)
+let result = const square(10)
+
+assert(constant_result == 100)
+assert(result == 100)
+
+func local(x) {
+    const offset = square(2)
+    return x + offset
+}
+
+let first = local(3)
+let second = local(5)
+
+assert(first == 7)
+assert(second == 9)
+
+const square(3)

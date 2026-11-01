@@ -2,9 +2,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-void printTokenValue(Token token)
+void print_token_value(Token token)
 {
-    if (token.type == TOKEN_INCOMPLETE_INPUT || token.type == TOKEN_EOF || token.length == 0) {
+    if (token.type == TokenIncompleteInput || token.type == TokenEof || token.length == 0) {
         fprintf(stderr, "end of input");
         
         return;
@@ -13,327 +13,327 @@ void printTokenValue(Token token)
     fprintf(stderr, "%.*s", token.length, token.chars);
 }
 
-const char* getTokenTypeName(TokenType type)
+const char* get_token_type_name(TokenType type)
 {
     switch (type) {
-        case TOKEN_IF:                  return "if";
-        case TOKEN_ELSE:                return "else";
-        case TOKEN_IN:                  return "in";
-        case TOKEN_IS:                  return "is";
-        case TOKEN_SIZEOF:              return "sizeof";
-        case TOKEN_ALIGNOF:             return "alignof";
-        case TOKEN_TYPEOF:              return "typeof";
-        case TOKEN_FOR:                 return "for";
-        case TOKEN_WHILE:               return "while";
-        case TOKEN_MATCH:               return "match";
-        case TOKEN_CASE:                return "case";
-        case TOKEN_DEFAULT:             return "default";
-        case TOKEN_BREAK:               return "break";
-        case TOKEN_CONTINUE:            return "continue";
-        case TOKEN_RETURN:              return "return";
-        case TOKEN_YIELD:               return "yield";
-        case TOKEN_AS:                  return "as";
-        case TOKEN_VAR:                 return "var";
-        case TOKEN_LET:                 return "let";
-        case TOKEN_STATIC:              return "static";
-        case TOKEN_CONST:               return "const";
-        case TOKEN_USE:                 return "use";
-        case TOKEN_END:                 return "end";
-        case TOKEN_CLASS:               return "class";
-        case TOKEN_STRUCT:              return "struct";
-        case TOKEN_PROTOCOL:            return "protocol";
-        case TOKEN_ENUM:                return "enum";
-        case TOKEN_GET:                 return "get";
-        case TOKEN_SET:                 return "set";
-        case TOKEN_FUNC:                return "func";
-        case TOKEN_TYPE:                return "type";
-        case TOKEN_INTERNAL:            return "internal";
-        case TOKEN_EXTERNAL:            return "external";
-        case TOKEN_PUBLIC:              return "public";
-        case TOKEN_PRIVATE:             return "private";
-        case TOKEN_SELF:                return "self";
-        case TOKEN_SPAWN:               return "spawn";
-        case TOKEN_AWAIT:               return "await";
-        case TOKEN_DEFER:               return "defer";
-        case TOKEN_TRY:                 return "try";
-        case TOKEN_CATCH:               return "catch";
-        case TOKEN_FINALLY:             return "finally";
-        case TOKEN_THROW:               return "throw";
-        case TOKEN_VOID:                return "void";
-        case TOKEN_I8:                  return "i8";
-        case TOKEN_I16:                 return "i16";
-        case TOKEN_I32:                 return "i32";
-        case TOKEN_I64:                 return "i64";
-        case TOKEN_U8:                  return "u8";
-        case TOKEN_U16:                 return "u16";
-        case TOKEN_U32:                 return "u32";
-        case TOKEN_U64:                 return "u64";
-        case TOKEN_ISIZE:               return "isize";
-        case TOKEN_USIZE:               return "usize";
-        case TOKEN_F32:                 return "f32";
-        case TOKEN_F64:                 return "f64";
-        case TOKEN_CHAR:                return "char";
-        case TOKEN_STRING:              return "string";
-        case TOKEN_BOOL:                return "bool";
-        case TOKEN_TRUE:                return "true";
-        case TOKEN_FALSE:               return "false";
-        case TOKEN_PLUS:                return "+";
-        case TOKEN_MINUS:               return "-";
-        case TOKEN_STAR:                return "*";
-        case TOKEN_SLASH:               return "/";
-        case TOKEN_PERCENT:             return "%";
-        case TOKEN_POWER:               return "**";
-        case TOKEN_COALESCE:            return "??";
-        case TOKEN_EQUAL:               return "=";
-        case TOKEN_PLUS_EQUAL:          return "+=";
-        case TOKEN_MINUS_EQUAL:         return "-=";
-        case TOKEN_STAR_EQUAL:          return "*=";
-        case TOKEN_SLASH_EQUAL:         return "/=";
-        case TOKEN_PERCENT_EQUAL:       return "%=";
-        case TOKEN_POWER_EQUAL:         return "**=";
-        case TOKEN_COALESCE_EQUAL:      return "??" "=";
-        case TOKEN_EQUAL_EQUAL:         return "==";
-        case TOKEN_NOT_EQUAL:           return "!=";
-        case TOKEN_EQUAL_EQUAL_EQUAL:   return "===";
-        case TOKEN_NOT_EQUAL_EQUAL:     return "!==";
-        case TOKEN_EQUAL_TILDE:         return "=~";
-        case TOKEN_NOT_TILDE:           return "!~";
-        case TOKEN_GREATER:             return ">";
-        case TOKEN_GREATER_EQUAL:       return ">=";
-        case TOKEN_LESS:                return "<";
-        case TOKEN_LESS_EQUAL:          return "<=";
-        case TOKEN_SPACESHIP:           return "<=>";
-        case TOKEN_AND:                 return "and";
-        case TOKEN_OR:                  return "or";
-        case TOKEN_NOT:                 return "not";
-        case TOKEN_AMPERSAND:           return "&";
-        case TOKEN_PIPE:                return "|";
-        case TOKEN_CIRCUMFLEX:          return "^";
-        case TOKEN_LSHIFT:              return "<<";
-        case TOKEN_RSHIFT:              return ">>";
-        case TOKEN_TILDE:               return "~";
-        case TOKEN_QUESTION:            return "?";
-        case TOKEN_COLON:               return ":";
-        case TOKEN_AND_EQUAL:           return "&=";
-        case TOKEN_OR_EQUAL:            return "|=";
-        case TOKEN_CIRCUMFLEX_EQUAL:    return "^=";
-        case TOKEN_LSHIFT_EQUAL:        return "<<=";
-        case TOKEN_RSHIFT_EQUAL:        return ">>=";
-        case TOKEN_ARROW:               return "->";
-        case TOKEN_SAFE_ACCESS:         return "?.";
-        case TOKEN_PIPE_FORWARD:        return "|>";
-        case TOKEN_PIPE_BACKWARD:       return "<|";
-        case TOKEN_DOLLAR:              return "$";
-        case TOKEN_RANGE:               return "..";
-        case TOKEN_RANGE_FROM_END:      return "..^";
-        case TOKEN_SPREAD:              return "...";
-        case TOKEN_AT:                  return "@";
-        case TOKEN_DOT:                 return ".";
-        case TOKEN_LPAREN:              return "(";
-        case TOKEN_RPAREN:              return ")";
-        case TOKEN_LSQUARE:             return "[";
-        case TOKEN_RSQUARE:             return "]";
-        case TOKEN_LBRACE:              return "{";
-        case TOKEN_RBRACE:              return "}";
-        case TOKEN_SEMICOLON:           return ";";
-        case TOKEN_COMMA:               return ",";
-        case TOKEN_INTEGER_LITERAL:     return "integer literal";
-        case TOKEN_FLOAT_LITERAL:       return "float literal";
-        case TOKEN_OCTAL_LITERAL:       return "octal literal";
-        case TOKEN_HEXADECIMAL_LITERAL: return "hexadecimal literal";
-        case TOKEN_BINARY_LITERAL:      return "binary literal";
-        case TOKEN_CHARACTER_LITERAL:   return "character literal";
-        case TOKEN_STRING_LITERAL:      return "string literal";
-        case TOKEN_IDENTIFIER:          return "identifier";
-        case TOKEN_INCOMPLETE_INPUT:    return "incomplete input";
-        case TOKEN_EOF:                 return "end of input";
-        case TOKEN_UNKNOWN:             return "unknown token";
+        case TokenKeywordIf:                  return "if";
+        case TokenKeywordElse:                return "else";
+        case TokenKeywordIn:                  return "in";
+        case TokenKeywordIs:                  return "is";
+        case TokenKeywordSizeof:              return "sizeof";
+        case TokenKeywordAlignof:             return "alignof";
+        case TokenKeywordTypeof:              return "typeof";
+        case TokenKeywordFor:                 return "for";
+        case TokenKeywordWhile:               return "while";
+        case TokenKeywordMatch:               return "match";
+        case TokenKeywordCase:                return "case";
+        case TokenKeywordDefault:             return "default";
+        case TokenKeywordBreak:               return "break";
+        case TokenKeywordContinue:            return "continue";
+        case TokenKeywordReturn:              return "return";
+        case TokenKeywordYield:               return "yield";
+        case TokenKeywordAs:                  return "as";
+        case TokenKeywordVar:                 return "var";
+        case TokenKeywordLet:                 return "let";
+        case TokenKeywordStatic:              return "static";
+        case TokenKeywordConst:               return "const";
+        case TokenKeywordUse:                 return "use";
+        case TokenKeywordEnd:                 return "end";
+        case TokenKeywordClass:               return "class";
+        case TokenKeywordStruct:              return "struct";
+        case TokenKeywordProtocol:            return "protocol";
+        case TokenKeywordEnum:                return "enum";
+        case TokenKeywordGet:                 return "get";
+        case TokenKeywordSet:                 return "set";
+        case TokenKeywordFunc:                return "func";
+        case TokenKeywordType:                return "type";
+        case TokenKeywordInternal:            return "internal";
+        case TokenKeywordExternal:            return "external";
+        case TokenKeywordPublic:              return "public";
+        case TokenKeywordPrivate:             return "private";
+        case TokenKeywordSelf:                return "self";
+        case TokenKeywordSpawn:               return "spawn";
+        case TokenKeywordAwait:               return "await";
+        case TokenKeywordDefer:               return "defer";
+        case TokenKeywordTry:                 return "try";
+        case TokenKeywordCatch:               return "catch";
+        case TokenKeywordFinally:             return "finally";
+        case TokenKeywordThrow:               return "throw";
+        case TokenKeywordVoid:                return "void";
+        case TokenKeywordI8:                  return "i8";
+        case TokenKeywordI16:                 return "i16";
+        case TokenKeywordI32:                 return "i32";
+        case TokenKeywordI64:                 return "i64";
+        case TokenKeywordU8:                  return "u8";
+        case TokenKeywordU16:                 return "u16";
+        case TokenKeywordU32:                 return "u32";
+        case TokenKeywordU64:                 return "u64";
+        case TokenKeywordIsize:               return "isize";
+        case TokenKeywordUsize:               return "usize";
+        case TokenKeywordF32:                 return "f32";
+        case TokenKeywordF64:                 return "f64";
+        case TokenKeywordChar:                return "char";
+        case TokenKeywordString:              return "string";
+        case TokenKeywordBool:                return "bool";
+        case TokenKeywordTrue:                return "true";
+        case TokenKeywordFalse:               return "false";
+        case TokenPlus:                return "+";
+        case TokenMinus:               return "-";
+        case TokenStar:                return "*";
+        case TokenSlash:               return "/";
+        case TokenPercent:             return "%";
+        case TokenPower:               return "**";
+        case TokenCoalesce:            return "??";
+        case TokenEqual:               return "=";
+        case TokenPlusEqual:          return "+=";
+        case TokenMinusEqual:         return "-=";
+        case TokenStarEqual:          return "*=";
+        case TokenSlashEqual:         return "/=";
+        case TokenPercentEqual:       return "%=";
+        case TokenPowerEqual:         return "**=";
+        case TokenCoalesceEqual:      return "??" "=";
+        case TokenEqualEqual:         return "==";
+        case TokenNotEqual:           return "!=";
+        case TokenEqualEqualEqual:   return "===";
+        case TokenNotEqualEqual:     return "!==";
+        case TokenEqualTilde:         return "=~";
+        case TokenNotTilde:           return "!~";
+        case TokenGreater:             return ">";
+        case TokenGreaterEqual:       return ">=";
+        case TokenLess:                return "<";
+        case TokenLessEqual:          return "<=";
+        case TokenSpaceship:           return "<=>";
+        case TokenKeywordAnd:                 return "and";
+        case TokenKeywordOr:                  return "or";
+        case TokenKeywordNot:                 return "not";
+        case TokenAmpersand:           return "&";
+        case TokenPipe:                return "|";
+        case TokenCircumflex:          return "^";
+        case TokenLshift:              return "<<";
+        case TokenRshift:              return ">>";
+        case TokenTilde:               return "~";
+        case TokenQuestion:            return "?";
+        case TokenColon:               return ":";
+        case TokenAndEqual:           return "&=";
+        case TokenOrEqual:            return "|=";
+        case TokenCircumflexEqual:    return "^=";
+        case TokenLshiftEqual:        return "<<=";
+        case TokenRshiftEqual:        return ">>=";
+        case TokenArrow:               return "->";
+        case TokenSafeAccess:         return "?.";
+        case TokenPipeForward:        return "|>";
+        case TokenPipeBackward:       return "<|";
+        case TokenDollar:              return "$";
+        case TokenRange:               return "..";
+        case TokenRangeFromEnd:      return "..^";
+        case TokenSpread:              return "...";
+        case TokenAt:                  return "@";
+        case TokenDot:                 return ".";
+        case TokenLparen:              return "(";
+        case TokenRparen:              return ")";
+        case TokenLsquare:             return "[";
+        case TokenRsquare:             return "]";
+        case TokenLbrace:              return "{";
+        case TokenRbrace:              return "}";
+        case TokenSemicolon:           return ";";
+        case TokenComma:               return ",";
+        case TokenIntegerLiteral:     return "integer literal";
+        case TokenFloatLiteral:       return "float literal";
+        case TokenOctalLiteral:       return "octal literal";
+        case TokenHexadecimalLiteral: return "hexadecimal literal";
+        case TokenBinaryLiteral:      return "binary literal";
+        case TokenCharacterLiteral:   return "character literal";
+        case TokenStringLiteral:      return "string literal";
+        case TokenIdentifier:          return "identifier";
+        case TokenIncompleteInput:    return "incomplete input";
+        case TokenEof:                 return "end of input";
+        case TokenUnknown:             return "unknown token";
     }
 
     return "unknown token";
 }
 
-bool isFloatAssignmentToken(TokenType type)
+bool is_float_assignment_token(TokenType type)
 {
-    return type == TOKEN_EQUAL || type == TOKEN_PLUS_EQUAL || type == TOKEN_MINUS_EQUAL
-        || type == TOKEN_STAR_EQUAL || type == TOKEN_SLASH_EQUAL || type == TOKEN_PERCENT_EQUAL;
+    return type == TokenEqual || type == TokenPlusEqual || type == TokenMinusEqual
+        || type == TokenStarEqual || type == TokenSlashEqual || type == TokenPercentEqual;
 }
 
-bool isAssignmentToken(TokenType type)
+bool is_assignment_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_EQUAL:
-        case TOKEN_PLUS_EQUAL:
-        case TOKEN_MINUS_EQUAL:
-        case TOKEN_STAR_EQUAL:
-        case TOKEN_SLASH_EQUAL:
-        case TOKEN_PERCENT_EQUAL:
-        case TOKEN_POWER_EQUAL:
-        case TOKEN_AND_EQUAL:
-        case TOKEN_OR_EQUAL:
-        case TOKEN_CIRCUMFLEX_EQUAL:
-        case TOKEN_LSHIFT_EQUAL:
-        case TOKEN_RSHIFT_EQUAL:
+        case TokenEqual:
+        case TokenPlusEqual:
+        case TokenMinusEqual:
+        case TokenStarEqual:
+        case TokenSlashEqual:
+        case TokenPercentEqual:
+        case TokenPowerEqual:
+        case TokenAndEqual:
+        case TokenOrEqual:
+        case TokenCircumflexEqual:
+        case TokenLshiftEqual:
+        case TokenRshiftEqual:
             return true;
         default:
             return false;
     }
 }
 
-DataType getTokenDataType(TokenType type)
+DataType get_token_data_type(TokenType type)
 {
     switch (type) {
-        case TOKEN_I8:
-            return TYPE_I8;
-        case TOKEN_I16:
-            return TYPE_I16;
-        case TOKEN_I32:
-            return TYPE_I32;
-        case TOKEN_I64:
-            return TYPE_I64;
-        case TOKEN_U8:
-            return TYPE_U8;
-        case TOKEN_U16:
-            return TYPE_U16;
-        case TOKEN_U32:
-            return TYPE_U32;
-        case TOKEN_U64:
-            return TYPE_U64;
-        case TOKEN_ISIZE:
-            return TYPE_ISIZE;
-        case TOKEN_USIZE:
-            return TYPE_USIZE;
-        case TOKEN_F32:
-            return TYPE_F32;
-        case TOKEN_F64:
-            return TYPE_F64;
-        case TOKEN_CHAR:
-            return TYPE_CHAR;
-        case TOKEN_STRING:
-            return TYPE_STRING;
-        case TOKEN_BOOL:
-            return TYPE_BOOL;
-        case TOKEN_VOID:
-            return TYPE_VOID;
+        case TokenKeywordI8:
+            return TypeI8;
+        case TokenKeywordI16:
+            return TypeI16;
+        case TokenKeywordI32:
+            return TypeI32;
+        case TokenKeywordI64:
+            return TypeI64;
+        case TokenKeywordU8:
+            return TypeU8;
+        case TokenKeywordU16:
+            return TypeU16;
+        case TokenKeywordU32:
+            return TypeU32;
+        case TokenKeywordU64:
+            return TypeU64;
+        case TokenKeywordIsize:
+            return TypeIsize;
+        case TokenKeywordUsize:
+            return TypeUsize;
+        case TokenKeywordF32:
+            return TypeF32;
+        case TokenKeywordF64:
+            return TypeF64;
+        case TokenKeywordChar:
+            return TypeChar;
+        case TokenKeywordString:
+            return TypeString;
+        case TokenKeywordBool:
+            return TypeBool;
+        case TokenKeywordVoid:
+            return TypeVoid;
         default:
-            return TYPE_UNKNOWN;
+            return TypeUnknown;
     }
 }
 
-bool isTypeToken(TokenType type)
+bool is_type_token(TokenType type)
 {
-    DataType dataType = getTokenDataType(type);
+    DataType data_type = get_token_data_type(type);
 
-    return dataType != TYPE_UNKNOWN;
+    return data_type != TypeUnknown;
 }
 
-bool isCharacterComparisonToken(TokenType type)
+bool is_character_comparison_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_EQUAL_EQUAL:
-        case TOKEN_NOT_EQUAL:
-        case TOKEN_LESS:
-        case TOKEN_LESS_EQUAL:
-        case TOKEN_GREATER:
-        case TOKEN_GREATER_EQUAL:
+        case TokenEqualEqual:
+        case TokenNotEqual:
+        case TokenLess:
+        case TokenLessEqual:
+        case TokenGreater:
+        case TokenGreaterEqual:
             return true;
         default:
             return false;
     }
 }
 
-bool isComparisonToken(TokenType type)
+bool is_comparison_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_GREATER:
-        case TOKEN_GREATER_EQUAL:
-        case TOKEN_LESS:
-        case TOKEN_LESS_EQUAL:
-        case TOKEN_SPACESHIP:
+        case TokenGreater:
+        case TokenGreaterEqual:
+        case TokenLess:
+        case TokenLessEqual:
+        case TokenSpaceship:
             return true;
         default:
             return false;
     }
 }
 
-bool isEqualityToken(TokenType type)
+bool is_equality_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_EQUAL_EQUAL:
-        case TOKEN_EQUAL_EQUAL_EQUAL:
-        case TOKEN_NOT_EQUAL:
-        case TOKEN_NOT_EQUAL_EQUAL:
+        case TokenEqualEqual:
+        case TokenEqualEqualEqual:
+        case TokenNotEqual:
+        case TokenNotEqualEqual:
             return true;
         default:
             return false;
     }
 }
 
-bool isLogicalToken(TokenType type)
+bool is_logical_token(TokenType type)
 {
-    return type == TOKEN_AND || type == TOKEN_OR;
+    return type == TokenKeywordAnd || type == TokenKeywordOr;
 }
 
-bool isBoolOperatorToken(TokenType type)
+bool is_bool_operator_token(TokenType type)
 {
-    return (isComparisonToken(type) && type != TOKEN_SPACESHIP) || isEqualityToken(type) || isLogicalToken(type);
+    return (is_comparison_token(type) && type != TokenSpaceship) || is_equality_token(type) || is_logical_token(type);
 }
 
-bool isShiftToken(TokenType type)
+bool is_shift_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_LSHIFT:
-        case TOKEN_RSHIFT:
+        case TokenLshift:
+        case TokenRshift:
             return true;
         default:
             return false;
     }
 }
 
-bool isTermToken(TokenType type)
+bool is_term_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_PLUS:
-        case TOKEN_MINUS:
+        case TokenPlus:
+        case TokenMinus:
             return true;
         default:
             return false;
     }
 }
 
-bool isFactorToken(TokenType type)
+bool is_factor_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_STAR:
-        case TOKEN_SLASH:
-        case TOKEN_PERCENT:
+        case TokenStar:
+        case TokenSlash:
+        case TokenPercent:
             return true;
         default:
             return false;
     }
 }
 
-bool isPrefixToken(TokenType type)
+bool is_prefix_token(TokenType type)
 {
     switch (type) {
-        case TOKEN_CONST:
-        case TOKEN_AMPERSAND:
-        case TOKEN_CIRCUMFLEX:
-        case TOKEN_NOT:
-        case TOKEN_MINUS:
-        case TOKEN_TILDE:
+        case TokenKeywordConst:
+        case TokenAmpersand:
+        case TokenCircumflex:
+        case TokenKeywordNot:
+        case TokenMinus:
+        case TokenTilde:
             return true;
         default:
             return false;
     }
 }
 
-bool isMatchArmEndToken(TokenType type)
+bool is_match_arm_end_token(TokenType type)
 {
-    return type == TOKEN_CASE || type == TOKEN_DEFAULT || type == TOKEN_RBRACE;
+    return type == TokenKeywordCase || type == TokenKeywordDefault || type == TokenRbrace;
 }
 
-bool isWildcardToken(Token token)
+bool is_wildcard_token(Token token)
 {
-    return token.type == TOKEN_IDENTIFIER && token.length == 1 && token.chars[0] == '_';
+    return token.type == TokenIdentifier && token.length == 1 && token.chars[0] == '_';
 }

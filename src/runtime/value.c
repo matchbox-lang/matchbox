@@ -5,45 +5,45 @@
 #include <stdlib.h>
 #include <string.h>
 
-void initValueArray(ValueArray* array)
+void init_value_array(ValueArray* array)
 {
     array->data = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void freeValueArray(ValueArray* array)
+void free_value_array(ValueArray* array)
 {
-    freeMemory(array->data);
+    free_memory(array->data);
 }
 
-int32_t readSignedValue(Value value, DataType type)
+int32_t read_signed_value(Value value, DataType type)
 {
-    if (type == TYPE_I8) {
+    if (type == TypeI8) {
         return AS_I8(value);
     }
 
-    if (type == TYPE_I16) {
+    if (type == TypeI16) {
         return AS_I16(value);
     }
 
     return AS_I32(value);
 }
 
-uint32_t readUnsignedValue(Value value, DataType type)
+uint32_t read_unsigned_value(Value value, DataType type)
 {
-    if (type == TYPE_U8) {
+    if (type == TypeU8) {
         return AS_U8(value);
     }
 
-    if (type == TYPE_U16) {
+    if (type == TypeU16) {
         return AS_U16(value);
     }
 
     return AS_U32(value);
 }
 
-int64_t readI64(const Value* frame, size_t position)
+int64_t read_i64(const Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
@@ -54,7 +54,7 @@ int64_t readI64(const Value* frame, size_t position)
 #endif
 }
 
-uint64_t readU64(const Value* frame, size_t position)
+uint64_t read_u64(const Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX
     return AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
@@ -63,7 +63,7 @@ uint64_t readU64(const Value* frame, size_t position)
 #endif
 }
 
-double readF64(const Value* frame, size_t position)
+double read_f64(const Value* frame, size_t position)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits = AS_U32(frame[position]) | ((uint64_t)AS_U32(frame[position + 1]) << 32);
@@ -76,7 +76,7 @@ double readF64(const Value* frame, size_t position)
 #endif
 }
 
-void writeI64(Value* frame, int64_t value)
+void write_i64(Value* frame, int64_t value)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits = (uint64_t)value;
@@ -88,7 +88,7 @@ void writeI64(Value* frame, int64_t value)
 #endif
 }
 
-void writeF64(Value* frame, double value)
+void write_f64(Value* frame, double value)
 {
 #if UINTPTR_MAX == UINT32_MAX
     uint64_t bits;
@@ -102,32 +102,32 @@ void writeF64(Value* frame, double value)
 #endif
 }
 
-size_t countValueArray(const ValueArray* array)
+size_t count_value_array(const ValueArray* array)
 {
     return array->count;
 }
 
-void reserveValueArray(ValueArray* array, size_t capacity)
+void reserve_value_array(ValueArray* array, size_t capacity)
 {
     if (capacity <= array->capacity) {
         return;
     }
 
     if (capacity > SIZE_MAX / sizeof(Value)) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
-    Value* data = reallocateMemory(array->data, sizeof(Value) * capacity);
+    Value* data = reallocate_memory(array->data, sizeof(Value) * capacity);
     array->data = data;
     array->capacity = capacity;
 }
 
-void resizeValueArray(ValueArray* array, size_t size)
+void resize_value_array(ValueArray* array, size_t size)
 {
     if (array->capacity < size) {
         size_t capacity = MAX(array->capacity * 2, size);
 
-        reserveValueArray(array, capacity);
+        reserve_value_array(array, capacity);
     }
 
     for (size_t i = array->count; i < size; i++) {
@@ -137,12 +137,12 @@ void resizeValueArray(ValueArray* array, size_t size)
     array->count = size;
 }
 
-size_t pushValue(ValueArray* array, Value value)
+size_t push_value(ValueArray* array, Value value)
 {
     if (array->count == array->capacity) {
         size_t capacity = MAX(array->capacity * 2, 4);
 
-        reserveValueArray(array, capacity);
+        reserve_value_array(array, capacity);
     }
 
     array->data[array->count++] = value;
@@ -150,7 +150,7 @@ size_t pushValue(ValueArray* array, Value value)
     return array->count;
 }
 
-void* getValueAsPointer(const ValueArray* array, size_t index)
+void* get_value_as_pointer(const ValueArray* array, size_t index)
 {
     if (index >= array->count) {
         return NULL;
@@ -159,7 +159,7 @@ void* getValueAsPointer(const ValueArray* array, size_t index)
     return AS_POINTER(array->data[index]);
 }
 
-void setValueAt(ValueArray* array, size_t index, Value item)
+void set_value_at(ValueArray* array, size_t index, Value item)
 {
     if (index < array->count) {
         array->data[index] = item;

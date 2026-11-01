@@ -2,10 +2,10 @@
 #include "runtime/argument_format.h"
 #include "vm/vm.h"
 
-void builtinString(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_string(VM* vm, const FunctionObject* function, Value* frame)
 {
-    StringObject* string = concatenateArguments(frame, function->argumentFormats, function->argumentCount);
+    StringObject* string = concatenate_arguments(frame, function->argument_formats, function->argument_count);
 
-    pushVectorItem(&vm->module->objects, string);
+    push_vector_item(&vm->module->objects, string);
     frame[-2] = POINTER_VALUE(string);
 }

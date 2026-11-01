@@ -5,44 +5,44 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-void initVector(Vector* vector)
+void init_vector(Vector* vector)
 {
     vector->data = NULL;
     vector->capacity = 0;
     vector->count = 0;
 }
 
-void freeVector(Vector* vector)
+void free_vector(Vector* vector)
 {
-    freeMemory(vector->data);
+    free_memory(vector->data);
 }
 
-size_t countVector(const Vector* vector)
+size_t count_vector(const Vector* vector)
 {
     return vector->count;
 }
 
-void reserveVector(Vector* vector, size_t capacity)
+void reserve_vector(Vector* vector, size_t capacity)
 {
     if (capacity <= vector->capacity) {
         return;
     }
 
     if (capacity > SIZE_MAX / sizeof(void*)) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
-    void** data = reallocateMemory(vector->data, sizeof(void*) * capacity);
+    void** data = reallocate_memory(vector->data, sizeof(void*) * capacity);
     vector->data = data;
     vector->capacity = capacity;
 }
 
-void resizeVector(Vector* vector, size_t size)
+void resize_vector(Vector* vector, size_t size)
 {
     if (vector->capacity < size) {
         size_t capacity = MAX(vector->capacity * 2, size);
 
-        reserveVector(vector, capacity);
+        reserve_vector(vector, capacity);
     }
 
     for (size_t i = vector->count; i < size; i++) {
@@ -52,12 +52,12 @@ void resizeVector(Vector* vector, size_t size)
     vector->count = size;
 }
 
-size_t pushVectorItem(Vector* vector, void* item)
+size_t push_vector_item(Vector* vector, void* item)
 {
     if (vector->capacity == vector->count) {
         size_t capacity = MAX(vector->capacity * 2, 4);
 
-        reserveVector(vector, capacity);
+        reserve_vector(vector, capacity);
     }
     
     vector->data[vector->count++] = item;
@@ -65,7 +65,7 @@ size_t pushVectorItem(Vector* vector, void* item)
     return vector->count;
 }
 
-void* popVectorItem(Vector* vector)
+void* pop_vector_item(Vector* vector)
 {
     if (vector->count > 0) {
         return vector->data[--vector->count];
@@ -74,7 +74,7 @@ void* popVectorItem(Vector* vector)
     return NULL;
 }
 
-void* getVectorAt(const Vector* vector, size_t index)
+void* get_vector_at(const Vector* vector, size_t index)
 {
     if (index >= vector->count) {
         return NULL;
@@ -83,19 +83,19 @@ void* getVectorAt(const Vector* vector, size_t index)
     return vector->data[index];
 }
 
-void setVectorAt(Vector* vector, size_t index, void* item)
+void set_vector_at(Vector* vector, size_t index, void* item)
 {
     if (index < vector->count) {
         vector->data[index] = item;
     }
 }
 
-void* vectorBegin(const Vector* vector)
+void* vector_begin(const Vector* vector)
 {
     return vector->data;
 }
 
-void* vectorEnd(const Vector* vector)
+void* vector_end(const Vector* vector)
 {
     if (!vector->data) {
         return NULL;

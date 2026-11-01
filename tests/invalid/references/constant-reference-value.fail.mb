@@ -1,2 +1,0 @@
-var value = 10
-const REFERENCE = &value

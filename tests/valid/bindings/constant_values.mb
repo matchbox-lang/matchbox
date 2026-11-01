@@ -1,0 +1,24 @@
+const wide: u64 = 18446744073709551615
+const negative: i64 = -9223372036854775808
+const floating: f32 = 1.25
+const text = string(123)
+const character = 'a'
+const truth = true
+const copy = wide
+const widened: i64 = 10
+
+assert(wide == copy)
+assert(negative < 0)
+assert(floating == 1.25)
+
+print(text)
+
+assert(character == 'a')
+assert(truth)
+assert(widened == 10)
+
+const small_negative = -10
+const large_integer = 65535
+
+assert(small_negative == -10)
+assert(large_integer == 65535)

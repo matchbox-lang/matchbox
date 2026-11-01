@@ -1,11 +1,11 @@
 #define READ_U64(values, index) \
-    ((values)[(index)].unsignedValue \
-        | ((uint64_t)(values)[(index) + 1].unsignedValue << 32))
+    ((values)[(index)].unsigned_value \
+        | ((uint64_t)(values)[(index) + 1].unsigned_value << 32))
 
 #define WRITE_U64(values, index, value) { \
-    uint64_t wideValue = (value); \
-    (values)[(index)].unsignedValue = wideValue; \
-    (values)[(index) + 1].unsignedValue = wideValue >> 32; \
+    uint64_t wide_value = (value); \
+    (values)[(index)].unsigned_value = wide_value; \
+    (values)[(index) + 1].unsigned_value = wide_value >> 32; \
 }
 
 #define READ_F64(values, index, result) { \
@@ -14,60 +14,60 @@
 }
 
 #define WRITE_F64(values, index, value) { \
-    double doubleValue = (value); \
+    double double_value = (value); \
     uint64_t bits; \
-    memcpy(&bits, &doubleValue, sizeof(bits)); \
+    memcpy(&bits, &double_value, sizeof(bits)); \
     WRITE_U64(values, index, bits); \
 }
 
-case OP_MOV_64:
+case OpMov64:
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b));
     break;
-case OP_LDC_64:
+case OpLdc64:
     WRITE_U64(vm->fp, a, READ_U64(vm->module->constants.data, OPERAND_BC(inst)));
     break;
-case OP_LDG_64:
+case OpLdg64:
     WRITE_U64(vm->fp, a, READ_U64(vm->globals.data, OPERAND_BC(inst)));
     break;
-case OP_LDC_64_CALL: {
+case OpLdc64Call: {
     uint16_t operands = OPERAND_BC(inst);
     uint16_t position = LOAD_CALL_OPERAND(operands);
 
     vm->fp[a] = vm->module->constants.data[position];
     vm->fp[a + 1] = vm->module->constants.data[position + 1];
 
-    functionPosition = LOAD_CALL_FUNCTION(operands);
+    function_position = LOAD_CALL_FUNCTION(operands);
     goto call;
 }
-case OP_LDG_64_CALL: {
+case OpLdg64Call: {
     uint16_t operands = OPERAND_BC(inst);
     uint16_t position = LOAD_CALL_OPERAND(operands);
 
     vm->fp[a] = vm->globals.data[position];
     vm->fp[a + 1] = vm->globals.data[position + 1];
 
-    functionPosition = LOAD_CALL_FUNCTION(operands);
+    function_position = LOAD_CALL_FUNCTION(operands);
     goto call;
 }
-case OP_STG_64:
+case OpStg64:
     WRITE_U64(vm->globals.data, OPERAND_BC(inst), READ_U64(vm->fp, a));
     break;
-case OP_LDR_64: {
+case OpLdr64: {
     Value* reference = AS_POINTER(vm->fp[b]);
     vm->fp[a] = reference[0];
     vm->fp[a + 1] = reference[1];
     break;
 }
-case OP_STR_64: {
+case OpStr64: {
     Value* reference = AS_POINTER(vm->fp[b]);
     reference[0] = vm->fp[a];
     reference[1] = vm->fp[a + 1];
     break;
 }
-case OP_F32_TO_F64:
+case OpF32ToF64:
     WRITE_F64(vm->fp, a, AS_F32(vm->fp[b]));
     break;
-case OP_F64_TO_F32: {
+case OpF64ToF32: {
     double value;
 
     READ_F64(vm->fp, b, value);
@@ -75,13 +75,13 @@ case OP_F64_TO_F32: {
     vm->fp[a] = F32_VALUE((float)value);
     break;
 }
-case OP_F32_TO_I64:
+case OpF32ToI64:
     WRITE_U64(vm->fp, a, (uint64_t)(int64_t)AS_F32(vm->fp[b]));
     break;
-case OP_F32_TO_U64:
+case OpF32ToU64:
     WRITE_U64(vm->fp, a, (uint64_t)AS_F32(vm->fp[b]));
     break;
-case OP_F64_TO_I32: {
+case OpF64ToI32: {
     double value;
 
     READ_F64(vm->fp, b, value);
@@ -89,7 +89,7 @@ case OP_F64_TO_I32: {
     vm->fp[a] = I32_VALUE((int32_t)value);
     break;
 }
-case OP_F64_TO_U32: {
+case OpF64ToU32: {
     double value;
 
     READ_F64(vm->fp, b, value);
@@ -97,51 +97,51 @@ case OP_F64_TO_U32: {
     vm->fp[a] = U32_VALUE((uint32_t)value);
     break;
 }
-case OP_F64_TO_I64: {
+case OpF64ToI64: {
     double value;
 
     READ_F64(vm->fp, b, value);
     WRITE_U64(vm->fp, a, (uint64_t)(int64_t)value);
     break;
 }
-case OP_F64_TO_U64: {
+case OpF64ToU64: {
     double value;
 
     READ_F64(vm->fp, b, value);
     WRITE_U64(vm->fp, a, (uint64_t)value);
     break;
 }
-case OP_I64_TO_F32: {
+case OpI64ToF32: {
     int64_t value = (int64_t)READ_U64(vm->fp, b);
 
     vm->fp[a] = F32_VALUE((float)value);
     break;
 }
-case OP_I64_TO_F64: {
+case OpI64ToF64: {
     int64_t value = (int64_t)READ_U64(vm->fp, b);
 
     WRITE_F64(vm->fp, a, (double)value);
     break;
 }
-case OP_U64_TO_F32: {
+case OpU64ToF32: {
     uint64_t value = READ_U64(vm->fp, b);
 
     vm->fp[a] = F32_VALUE((float)value);
     break;
 }
-case OP_U64_TO_F64: {
+case OpU64ToF64: {
     uint64_t value = READ_U64(vm->fp, b);
 
     WRITE_F64(vm->fp, a, (double)value);
     break;
 }
-case OP_I32_TO_F64:
+case OpI32ToF64:
     WRITE_F64(vm->fp, a, AS_SIGNED(vm->fp[b]));
     break;
-case OP_U32_TO_F64:
+case OpU32ToF64:
     WRITE_F64(vm->fp, a, AS_UNSIGNED(vm->fp[b]));
     break;
-case OP_ADD_F64: {
+case OpAddF64: {
     double left;
     double right;
     READ_F64(vm->fp, b, left);
@@ -149,7 +149,7 @@ case OP_ADD_F64: {
     WRITE_F64(vm->fp, a, left + right);
     break;
 }
-case OP_SUB_F64: {
+case OpSubF64: {
     double left;
     double right;
     READ_F64(vm->fp, b, left);
@@ -157,7 +157,7 @@ case OP_SUB_F64: {
     WRITE_F64(vm->fp, a, left - right);
     break;
 }
-case OP_MUL_F64: {
+case OpMulF64: {
     double left;
     double right;
     READ_F64(vm->fp, b, left);
@@ -165,7 +165,7 @@ case OP_MUL_F64: {
     WRITE_F64(vm->fp, a, left * right);
     break;
 }
-case OP_DIV_F64: {
+case OpDivF64: {
     double left;
     double right;
     READ_F64(vm->fp, b, left);
@@ -173,7 +173,7 @@ case OP_DIV_F64: {
     WRITE_F64(vm->fp, a, left / right);
     break;
 }
-case OP_REM_F64: {
+case OpRemF64: {
     double left;
     double right;
     READ_F64(vm->fp, b, left);
@@ -182,39 +182,39 @@ case OP_REM_F64: {
     WRITE_F64(vm->fp, a, result);
     break;
 }
-case OP_NEG_F64: {
+case OpNegF64: {
     double value;
     READ_F64(vm->fp, b, value);
     WRITE_F64(vm->fp, a, -value);
     break;
 }
-case OP_ADD_I64: {
+case OpAddI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) + READ_U64(vm->fp, c));
     break;
 }
-case OP_ADDI_I64: {
+case OpAddiI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) + (int8_t)c);
     break;
 }
-case OP_SUB_I64: {
+case OpSubI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) - READ_U64(vm->fp, c));
     break;
 }
-case OP_SUBI_I64: {
+case OpSubiI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) - (int8_t)c);
     break;
 }
-case OP_MUL_I64: {
+case OpMulI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) * READ_U64(vm->fp, c));
     break;
 }
-case OP_MULI_I64: {
+case OpMuliI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) * (int8_t)c);
     break;
 }
-case OP_IDIV_I64: {
+case OpIdivI64: {
     if (!READ_U64(vm->fp, c)) {
-        divisionByZeroError();
+        division_by_zero_error();
     }
 
     if (READ_U64(vm->fp, b) == (UINT64_C(1) << 63) && READ_U64(vm->fp, c) == UINT64_MAX) {
@@ -225,17 +225,17 @@ case OP_IDIV_I64: {
     WRITE_U64(vm->fp, a, (int64_t)READ_U64(vm->fp, b) / (int64_t)READ_U64(vm->fp, c));
     break;
 }
-case OP_IDIV_U64: {
+case OpIdivU64: {
     if (!READ_U64(vm->fp, c)) {
-        divisionByZeroError();
+        division_by_zero_error();
     }
 
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) / READ_U64(vm->fp, c));
     break;
 }
-case OP_REM_I64: {
+case OpRemI64: {
     if (!READ_U64(vm->fp, c)) {
-        divisionByZeroError();
+        division_by_zero_error();
     }
 
     if (READ_U64(vm->fp, b) == (UINT64_C(1) << 63) && READ_U64(vm->fp, c) == UINT64_MAX) {
@@ -246,83 +246,83 @@ case OP_REM_I64: {
     WRITE_U64(vm->fp, a, (int64_t)READ_U64(vm->fp, b) % (int64_t)READ_U64(vm->fp, c));
     break;
 }
-case OP_REM_U64: {
+case OpRemU64: {
     if (!READ_U64(vm->fp, c)) {
-        divisionByZeroError();
+        division_by_zero_error();
     }
 
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) % READ_U64(vm->fp, c));
     break;
 }
-case OP_BAND_I64: {
+case OpBandI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) & READ_U64(vm->fp, c));
     break;
 }
-case OP_BANDI_I64: {
+case OpBandiI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) & c);
     break;
 }
-case OP_BOR_I64: {
+case OpBorI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) | READ_U64(vm->fp, c));
     break;
 }
-case OP_BORI_I64: {
+case OpBoriI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) | c);
     break;
 }
-case OP_BXOR_I64: {
+case OpBxorI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) ^ READ_U64(vm->fp, c));
     break;
 }
-case OP_BXORI_I64: {
+case OpBxoriI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) ^ c);
     break;
 }
-case OP_BNOT_I64: {
+case OpBnotI64: {
     WRITE_U64(vm->fp, a, ~READ_U64(vm->fp, b));
     break;
 }
-case OP_LSL_I64: {
+case OpLslI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) << READ_U64(vm->fp, c));
     break;
 }
-case OP_LSLI_I64: {
+case OpLsliI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) << c);
     break;
 }
-case OP_LSR_I64: {
+case OpLsrI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) >> READ_U64(vm->fp, c));
     break;
 }
-case OP_LSRI_I64: {
+case OpLsriI64: {
     WRITE_U64(vm->fp, a, READ_U64(vm->fp, b) >> c);
     break;
 }
-case OP_ASR_I64: {
+case OpAsrI64: {
     WRITE_U64(vm->fp, a, (int64_t)READ_U64(vm->fp, b) >> READ_U64(vm->fp, c));
     break;
 }
-case OP_ASRI_I64: {
+case OpAsriI64: {
     WRITE_U64(vm->fp, a, (int64_t)READ_U64(vm->fp, b) >> c);
     break;
 }
-case OP_NEG_I64: {
+case OpNegI64: {
     WRITE_U64(vm->fp, a, -READ_U64(vm->fp, b));
     break;
 }
-case OP_RET_64: {
+case OpRet64: {
     Value* frame = vm->fp;
-    Instruction* returnIp = AS_POINTER(frame[-2]);
-    Value* returnFp = AS_POINTER(frame[-1]);
+    Instruction* return_ip = AS_POINTER(frame[-2]);
+    Value* return_fp = AS_POINTER(frame[-1]);
 
     frame[-2] = frame[a];
     frame[-1] = frame[a + 1];
-    vm->ip = returnIp;
-    vm->fp = returnFp;
+    vm->ip = return_ip;
+    vm->fp = return_fp;
     break;
 }
 
-case OP_CMP_I64: {
+case OpCmpI64: {
     int64_t left = (int64_t)READ_U64(vm->fp, b);
     int64_t right = (int64_t)READ_U64(vm->fp, c);
     int32_t result = (left > right) - (left < right);
@@ -330,7 +330,7 @@ case OP_CMP_I64: {
     vm->fp[a] = I32_VALUE(result);
     break;
 }
-case OP_CMP_U64: {
+case OpCmpU64: {
     uint64_t left = (uint64_t)READ_U64(vm->fp, b);
     uint64_t right = (uint64_t)READ_U64(vm->fp, c);
     int32_t result = (left > right) - (left < right);
@@ -338,8 +338,8 @@ case OP_CMP_U64: {
     vm->fp[a] = I32_VALUE(result);
     break;
 }
-case OP_CMPL_F64:
-case OP_CMPG_F64: {
+case OpCmplF64:
+case OpCmpgF64: {
     double left;
     double right;
 
@@ -349,7 +349,7 @@ case OP_CMPG_F64: {
     int32_t result = (left > right) - (left < right);
 
     if (isnan(left) || isnan(right)) {
-        result = opcode == OP_CMPL_F64 ? -1 : 1;
+        result = opcode == OpCmplF64 ? -1 : 1;
     }
 
     vm->fp[a] = I32_VALUE(result);

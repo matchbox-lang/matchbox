@@ -6,12 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define BOOL_VALUE(value) ((Value){.boolValue = value})
-#define SIGNED_VALUE(value) ((Value){.signedValue = value})
-#define UNSIGNED_VALUE(value) ((Value){.unsignedValue = value})
-#define F32_VALUE(value) ((Value){.f32Value = value})
-#define F64_VALUE(value) ((Value){.f64Value = value})
-#define POINTER_VALUE(ptr) ((Value){.pointerValue = ptr})
+#define BOOL_VALUE(value) ((Value){.bool_value = value})
+#define SIGNED_VALUE(value) ((Value){.signed_value = value})
+#define UNSIGNED_VALUE(value) ((Value){.unsigned_value = value})
+#define F32_VALUE(value) ((Value){.f32_value = value})
+#define F64_VALUE(value) ((Value){.f64_value = value})
+#define POINTER_VALUE(ptr) ((Value){.pointer_value = ptr})
 
 #define I8_VALUE(value) SIGNED_VALUE((int8_t)(value))
 #define I16_VALUE(value) SIGNED_VALUE((int16_t)(value))
@@ -20,12 +20,12 @@
 #define U16_VALUE(value) UNSIGNED_VALUE((uint16_t)(value))
 #define U32_VALUE(value) UNSIGNED_VALUE((uint32_t)(value))
 
-#define AS_BOOL(value) ((value).boolValue)
-#define AS_SIGNED(value) ((value).signedValue)
-#define AS_UNSIGNED(value) ((value).unsignedValue)
-#define AS_F32(value) ((value).f32Value)
-#define AS_F64(value) ((value).f64Value)
-#define AS_POINTER(value) ((value).pointerValue)
+#define AS_BOOL(value) ((value).bool_value)
+#define AS_SIGNED(value) ((value).signed_value)
+#define AS_UNSIGNED(value) ((value).unsigned_value)
+#define AS_F32(value) ((value).f32_value)
+#define AS_F64(value) ((value).f64_value)
+#define AS_POINTER(value) ((value).pointer_value)
 
 #define AS_I8(value) ((int8_t)AS_SIGNED(value))
 #define AS_I16(value) ((int16_t)AS_SIGNED(value))
@@ -37,21 +37,21 @@
 #if UINTPTR_MAX == UINT32_MAX
 typedef union Value
 {
-    bool boolValue;
-    int32_t signedValue;
-    uint32_t unsignedValue;
-    float f32Value;
-    void* pointerValue;
+    bool bool_value;
+    int32_t signed_value;
+    uint32_t unsigned_value;
+    float f32_value;
+    void* pointer_value;
 } Value;
 #elif UINTPTR_MAX == UINT64_MAX
 typedef union Value
 {
-    bool boolValue;
-    int64_t signedValue;
-    uint64_t unsignedValue;
-    float f32Value;
-    double f64Value;
-    void* pointerValue;
+    bool bool_value;
+    int64_t signed_value;
+    uint64_t unsigned_value;
+    float f32_value;
+    double f64_value;
+    void* pointer_value;
 } Value;
 #else
 #error Unsupported pointer width
@@ -64,20 +64,20 @@ typedef struct ValueArray
     size_t count;
 } ValueArray;
 
-void initValueArray(ValueArray* array);
-void freeValueArray(ValueArray* array);
-int32_t readSignedValue(Value value, DataType type);
-uint32_t readUnsignedValue(Value value, DataType type);
-int64_t readI64(const Value* frame, size_t position);
-uint64_t readU64(const Value* frame, size_t position);
-double readF64(const Value* frame, size_t position);
-void writeI64(Value* frame, int64_t value);
-void writeF64(Value* frame, double value);
-size_t countValueArray(const ValueArray* array);
-void reserveValueArray(ValueArray* array, size_t capacity);
-void resizeValueArray(ValueArray* array, size_t size);
-size_t pushValue(ValueArray* array, Value value);
-void* getValueAsPointer(const ValueArray* array, size_t index);
-void setValueAt(ValueArray* array, size_t index, Value item);
+void init_value_array(ValueArray* array);
+void free_value_array(ValueArray* array);
+int32_t read_signed_value(Value value, DataType type);
+uint32_t read_unsigned_value(Value value, DataType type);
+int64_t read_i64(const Value* frame, size_t position);
+uint64_t read_u64(const Value* frame, size_t position);
+double read_f64(const Value* frame, size_t position);
+void write_i64(Value* frame, int64_t value);
+void write_f64(Value* frame, double value);
+size_t count_value_array(const ValueArray* array);
+void reserve_value_array(ValueArray* array, size_t capacity);
+void resize_value_array(ValueArray* array, size_t size);
+size_t push_value(ValueArray* array, Value value);
+void* get_value_as_pointer(const ValueArray* array, size_t index);
+void set_value_at(ValueArray* array, size_t index, Value item);
 
 #endif

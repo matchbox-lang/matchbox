@@ -7,8 +7,8 @@
 
 typedef enum FunctionType
 {
-    FUNCTION_BUILTIN,
-    FUNCTION_DEFINED
+    FuncBuiltin,
+    FuncDefined
 } FunctionType;
 
 typedef struct ArgumentFormat ArgumentFormat;
@@ -27,16 +27,16 @@ typedef struct FunctionObject
     FunctionType type;
     FunctionEntry entry;
     CodeObject code;
-    int localCount;
-    int maxStackCount;
-    int paramCount;
-    int returnCount;
-    ArgumentFormat* argumentFormats;
-    size_t argumentCount;
+    int local_count;
+    int max_stack_count;
+    int param_count;
+    int return_count;
+    ArgumentFormat* argument_formats;
+    size_t argument_count;
 } FunctionObject;
 
-FunctionObject* createFunctionObject();
-void freeFunctionObject(FunctionObject* function);
-void enterBytecodeFunction(VM* vm, const FunctionObject* function, Value* frame);
+FunctionObject* create_function_object();
+void free_function_object(FunctionObject* function);
+void enter_bytecode_function(VM* vm, const FunctionObject* function, Value* frame);
 
 #endif

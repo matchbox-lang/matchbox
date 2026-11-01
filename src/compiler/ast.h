@@ -17,40 +17,40 @@ typedef struct MatchArm
     ASTNode* pattern;
     ASTNode* binding;
     ASTNode* guard;
-    Token guardToken;
+    Token guard_token;
     ASTNode* branch;
 } MatchArm;
 
 typedef enum ReferenceType
 {
-    REFERENCE_SHARED,
-    REFERENCE_EXCLUSIVE,
-    REFERENCE_NONE
+    RefShared,
+    RefExclusive,
+    RefNone
 } ReferenceType;
 
 typedef enum ASTNodeType
 {
-    AST_ASSIGNMENT,
-    AST_BINARY,
-    AST_BUILTIN_CALL,
-    AST_BOOLEAN,
-    AST_CHARACTER,
-    AST_COMPOUND,
-    AST_CONDITIONAL,
-    AST_CONVERSION,
-    AST_FLOAT,
-    AST_FUNCTION_CALL,
-    AST_FUNCTION_DEFINITION,
-    AST_INTEGER,
-    AST_MATCH,
-    AST_PARAMETER,
-    AST_PREFIX,
-    AST_RETURN,
-    AST_STRING,
-    AST_VARIABLE,
-    AST_VARIABLE_DEFINITION,
-    AST_WHILE,
-    AST_NONE
+    ASTAssignment,
+    ASTBinary,
+    ASTBuiltinCall,
+    ASTBoolean,
+    ASTCharacter,
+    ASTCompound,
+    ASTConditional,
+    ASTConversion,
+    ASTFloat,
+    ASTFunctionCall,
+    ASTFunctionDefinition,
+    ASTInteger,
+    ASTMatch,
+    ASTParameter,
+    ASTPrefix,
+    ASTReturn,
+    ASTString,
+    ASTVariable,
+    ASTVariableDefinition,
+    ASTWhile,
+    ASTNone
 } ASTNodeType;
 
 typedef struct ASTNode
@@ -61,14 +61,14 @@ typedef struct ASTNode
         struct {
             ASTNode* expr;
             Token token;
-            DataType typeId;
+            DataType type_id;
         } conversion;
 
         struct {
             Token token;
             ASTNode* condition;
             ASTNode* body;
-        } whileStatement;
+        } while_statement;
 
         struct {
             Scope* scope;
@@ -76,32 +76,32 @@ typedef struct ASTNode
             Token token;
             ASTNode* expr;
             ASTNode* symbol;
-            bool initializesBinding;
+            bool initializes_binding;
         } assignment;
 
         struct {
             Token operator;
-            ASTNode* leftExpr;
-            ASTNode* rightExpr;
-            DataType typeId;
-            DataType operandType;
+            ASTNode* left_expr;
+            ASTNode* right_expr;
+            DataType type_id;
+            DataType operand_type;
         } binary;
 
         struct {
             bool value;
             Token token;
-        } booleanLiteral;
+        } boolean_literal;
 
         struct {
             Vector args;
             const Builtin* builtin;
             Token token;
-        } builtinCall;
+        } builtin_call;
 
         struct {
             uint32_t value;
             Token token;
-        } characterLiteral;
+        } character_literal;
 
         struct {
             Scope* scope;
@@ -111,19 +111,19 @@ typedef struct ASTNode
         struct {
             Token token;
             ASTNode* condition;
-            ASTNode* thenBranch;
-            ASTNode* elseBranch;
-            DataType typeId;
-            ReferenceType referenceType;
-            Vector referenceOrigins;
+            ASTNode* then_branch;
+            ASTNode* else_branch;
+            DataType type_id;
+            ReferenceType reference_type;
+            Vector reference_origins;
             bool expression;
         } conditional;
 
         struct {
             double value;
             Token token;
-            DataType typeId;
-        } floatLiteral;
+            DataType type_id;
+        } float_literal;
 
         struct {
             Scope* scope;
@@ -131,36 +131,36 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             ASTNode* symbol;
-            Vector referenceOrigins;
-        } functionCall;
+            Vector reference_origins;
+        } function_call;
 
         struct {
             Scope* scope;
             StringObject* id;
             Token token;
             Vector params;
-            bool hasExplicitReturnType;
-            DataType returnTypeId;
-            ReferenceType returnReferenceType;
-            ASTNode* returnReferenceOrigin;
+            bool has_explicit_return_type;
+            DataType return_type_id;
+            ReferenceType return_reference_type;
+            ASTNode* return_reference_origin;
             ASTNode* body;
-            size_t callCount;
-        } functionDefinition;
+            size_t call_count;
+        } function_definition;
 
         struct {
             uint64_t value;
             Token token;
-            DataType typeId;
-        } integerLiteral;
+            DataType type_id;
+        } integer_literal;
 
         struct {
             Token token;
             ASTNode* subject;
             Vector arms;
-            ASTNode* defaultBranch;
-            DataType typeId;
-            ReferenceType referenceType;
-            Vector referenceOrigins;
+            ASTNode* default_branch;
+            DataType type_id;
+            ReferenceType reference_type;
+            Vector reference_origins;
             bool expression;
         } match;
 
@@ -168,33 +168,33 @@ typedef struct ASTNode
             Scope* scope;
             StringObject* id;
             Token token;
-            DataType typeId;
-            ReferenceType referenceType;
-            Vector referenceOrigins;
-            size_t sharedAccessCount;
-            bool exclusiveAccessActive;
+            DataType type_id;
+            ReferenceType reference_type;
+            Vector reference_origins;
+            size_t shared_access_count;
+            bool exclusive_access_active;
             bool moved;
             int position;
-            ASTNode* defaultValue;
+            ASTNode* default_value;
         } parameter;
 
         struct {
             Token operator;
             ASTNode* expr;
-            Vector referenceOrigins;
-            size_t constantPosition;
+            Vector reference_origins;
+            size_t constant_position;
             bool evaluated;
         } prefix;
 
         struct {
             Token token;
             ASTNode* expr;
-        } returnStatement;
+        } return_statement;
 
         struct {
             StringObject* value;
             Token token;
-        } stringLiteral;
+        } string_literal;
 
         struct {
             Scope* scope;
@@ -210,63 +210,63 @@ typedef struct ASTNode
             bool fixed;
             bool constant;
             bool initialized;
-            DataType typeId;
-            ReferenceType referenceType;
-            Vector referenceOrigins;
-            size_t sharedAccessCount;
-            bool exclusiveAccessActive;
+            DataType type_id;
+            ReferenceType reference_type;
+            Vector reference_origins;
+            size_t shared_access_count;
+            bool exclusive_access_active;
             bool moved;
-            bool referenceAccessActive;
-            size_t readCount;
-            size_t discardedReadCount;
-            bool discardedReadsAnalyzed;
-            bool addressTaken;
-            int registerPosition;
+            bool reference_access_active;
+            size_t read_count;
+            size_t discarded_read_count;
+            bool discarded_reads_analyzed;
+            bool address_taken;
+            int register_position;
             int position;
             ASTNode* expr;
-        } variableDefinition;
+        } variable_definition;
     };
 } ASTNode;
 
-ASTNode* createASTNode(ASTNodeType type);
-ASTNode* createAssignmentNode(Token operator, Token token, ASTNode* expr);
-ASTNode* createBinaryNode(ASTNode* leftExpr, ASTNode* rightExpr, Token token);
-ASTNode* createBooleanNode(Token token, bool value);
-ASTNode* createBuiltinCallNode(Token token, const Builtin* builtin);
-ASTNode* createCharacterNode(Token token, uint32_t value);
-ASTNode* createCompoundNode(Scope* scope);
-ASTNode* createConditionalNode(Token token, ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
-ASTNode* createFloatNode(Token token, double value, DataType typeId);
-ASTNode* createFunctionCallNode(Token token);
-ASTNode* createFunctionDefinitionNode(Token token, StringObject* id);
-ASTNode* createIntegerNode(Token token, uint64_t value, DataType typeId);
-ASTNode* createMatchNode(Token token);
-ASTNode* createParameterNode(Token token, StringObject* id);
-ASTNode* createPrefixNode(Token token, ASTNode* expr);
-ASTNode* createReturnNode(Token token, ASTNode* expr);
-ASTNode* createStringNode(Token token, StringObject* value);
-ASTNode* createVariableDefinitionNode(Token token, StringObject* id, bool fixed);
-ASTNode* createVariableNode(Token token);
-ASTNode* createWhileNode(Token token, ASTNode* condition, ASTNode* body);
-void freeASTNode(ASTNode* ast);
-Scope* getScope(const ASTNode* ast);
-DataType getNodeDataType(const ASTNode* ast);
-ASTNode* getReferenceOrigin(const ASTNode* ast);
-Vector* getReferenceOrigins(ASTNode* ast);
-ReferenceType getReferenceType(const ASTNode* ast);
-bool isExpressionStatement(const ASTNode* ast);
-bool isLiteral(const ASTNode* ast);
-bool isTextLiteral(const ASTNode* ast);
-bool isFunctionCall(const ASTNode* ast);
-bool isFunctionDefinition(const ASTNode* ast);
-bool isParameter(const ASTNode* ast);
-bool isPrefix(const ASTNode* ast);
-bool isPrefixOperand(const ASTNode* ast);
-bool isVariable(const ASTNode* ast);
-bool isVariableDefinition(const ASTNode* ast);
-bool isVariableType(const ASTNode* ast);
-bool isNone(const ASTNode* ast);
-bool isInitialized(const ASTNode* ast);
-void initializeVariable(ASTNode* ast);
+ASTNode* create_ast_node(ASTNodeType type);
+ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
+ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token);
+ASTNode* create_boolean_node(Token token, bool value);
+ASTNode* create_builtin_call_node(Token token, const Builtin* builtin);
+ASTNode* create_character_node(Token token, uint32_t value);
+ASTNode* create_compound_node(Scope* scope);
+ASTNode* create_conditional_node(Token token, ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch);
+ASTNode* create_float_node(Token token, double value, DataType type_id);
+ASTNode* create_function_call_node(Token token);
+ASTNode* create_function_definition_node(Token token, StringObject* id);
+ASTNode* create_integer_node(Token token, uint64_t value, DataType type_id);
+ASTNode* create_match_node(Token token);
+ASTNode* create_parameter_node(Token token, StringObject* id);
+ASTNode* create_prefix_node(Token token, ASTNode* expr);
+ASTNode* create_return_node(Token token, ASTNode* expr);
+ASTNode* create_string_node(Token token, StringObject* value);
+ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed);
+ASTNode* create_variable_node(Token token);
+ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
+void free_ast_node(ASTNode* ast);
+Scope* get_scope(const ASTNode* ast);
+DataType get_node_data_type(const ASTNode* ast);
+ASTNode* get_reference_origin(const ASTNode* ast);
+Vector* get_reference_origins(ASTNode* ast);
+ReferenceType get_reference_type(const ASTNode* ast);
+bool is_expression_statement(const ASTNode* ast);
+bool is_literal(const ASTNode* ast);
+bool is_text_literal(const ASTNode* ast);
+bool is_function_call(const ASTNode* ast);
+bool is_function_definition(const ASTNode* ast);
+bool is_parameter(const ASTNode* ast);
+bool is_prefix(const ASTNode* ast);
+bool is_prefix_operand(const ASTNode* ast);
+bool is_variable(const ASTNode* ast);
+bool is_variable_definition(const ASTNode* ast);
+bool is_variable_type(const ASTNode* ast);
+bool is_none(const ASTNode* ast);
+bool is_initialized(const ASTNode* ast);
+void initialize_variable(ASTNode* ast);
 
 #endif

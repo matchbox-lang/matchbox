@@ -4,6 +4,6 @@
 #include "runtime/function_object.h"
 #include "runtime/value.h"
 
-void builtinPrint(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_print(VM* vm, const FunctionObject* function, Value* frame);
 
 #endif

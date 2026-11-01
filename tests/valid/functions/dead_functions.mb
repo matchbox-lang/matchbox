@@ -1,0 +1,26 @@
+func unused_leaf() -> i32 {
+    return 1
+}
+
+func unused_caller() -> i32 {
+    return unused_leaf()
+}
+
+func used() -> i32 {
+    return 2
+}
+
+func outer() -> i32 {
+    func unused_nested() -> i32 {
+        return 3
+    }
+
+    func used_nested() -> i32 {
+        return 4
+    }
+
+    return used_nested()
+}
+
+print(used())
+print(outer())

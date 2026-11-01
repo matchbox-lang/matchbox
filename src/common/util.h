@@ -9,7 +9,7 @@
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 
 char* strndup(const char* source, size_t length);
-bool isLargerThan8BitSigned(int n);
-bool isLargerThan16BitSigned(int n);
+bool is_larger_than8_bit_signed(int n);
+bool is_larger_than16_bit_signed(int n);
 
 #endif

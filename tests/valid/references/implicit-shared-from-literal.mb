@@ -1,5 +1,0 @@
-func takeShared(n: &i32) {
-    print(n)
-}
-
-takeShared(10)

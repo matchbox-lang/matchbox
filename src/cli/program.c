@@ -17,66 +17,66 @@
 #include <stdlib.h>
 #include <string.h>
 
-static _Noreturn void readFileError(const char* filename)
+static _Noreturn void read_file_error(const char* filename)
 {
     const char* detail = strerror(errno);
 
-    fatalError("Could not read file %s: %s", filename, detail);
+    fatal_error("Could not read file %s: %s", filename, detail);
 }
 
-static int runModule(ModuleObject* module, bool disassemble)
+static int run_module(ModuleObject* module, bool disassemble)
 {
     if (disassemble) {
-        disassembleModule(module);
+        disassemble_module(module);
 
         return EXIT_SUCCESS;
     }
 
     VM vm;
 
-    initVM(&vm, module);
+    init_vm(&vm, module);
 
     int status = interpret(&vm);
 
-    freeVM(&vm);
+    free_vm(&vm);
 
     return status;
 }
 
-static int runSource(const char* source, bool disassemble)
+static int run_source(const char* source, bool disassemble)
 {
-    ModuleObject* module = createModuleObject();
+    ModuleObject* module = create_module_object();
     Compiler compiler;
     
-    initCompiler(&compiler, module);
+    init_compiler(&compiler, module);
     if (!compile(&compiler, source)) {
-        unexpectedEndOfInputError(compiler.parser.currentToken);
+        unexpected_end_of_input_error(compiler.parser.current_token);
     }
 
-    int status = runModule(module, disassemble);
+    int status = run_module(module, disassemble);
 
-    freeCompiler(&compiler);
-    freeModuleObject(module);
+    free_compiler(&compiler);
+    free_module_object(module);
 
     return status;
 }
 
-static int runFile(const Options* options)
+static int run_file(const Options* options)
 {
-    char* source = getFileContents(options->filename);
+    char* source = get_file_contents(options->filename);
     
     if (!source) {
-        readFileError(options->filename);
+        read_file_error(options->filename);
     }
 
-    int status = runSource(source, options->disassemble);
+    int status = run_source(source, options->disassemble);
 
-    freeMemory(source);
+    free_memory(source);
 
     return status;
 }
 
-void printUsage(FILE* stream)
+void print_usage(FILE* stream)
 {
     fprintf(stream, "Usage: %s [options] [--] [file]\n", PROGRAM_COMMAND);
     fprintf(stream, "       %s check [path]\n", PROGRAM_COMMAND);
@@ -94,24 +94,24 @@ void printUsage(FILE* stream)
     fprintf(stream, "  -p                    Show passed test results\n");
 }
 
-void printVersion()
+void print_version()
 {
     printf("%s %s\n", PROGRAM_NAME, PROGRAM_VERSION);
 }
 
-int runProgram(const Options* options)
+int run_program(const Options* options)
 {
-    if (options->mode == PROGRAM_CHECK) {
-        return runChecks(options);
+    if (options->mode == ProgramCheck) {
+        return run_checks(options);
     }
 
-    if (options->mode == PROGRAM_TEST) {
-        return runTests(options);
+    if (options->mode == ProgramTest) {
+        return run_tests(options);
     }
 
     if (!options->filename) {
-        return runRepl();
+        return run_repl();
     }
 
-    return runFile(options);
+    return run_file(options);
 }

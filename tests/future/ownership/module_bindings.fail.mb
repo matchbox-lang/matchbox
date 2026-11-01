@@ -1,0 +1,35 @@
+let app_name = "Matchbox"
+let numbers = List(1, 2, 3)
+
+var users = List("Alice", "Bob")
+
+func read_app_name() {
+    print(app_name)
+}
+
+func read_numbers() {
+    print(numbers[0])
+}
+
+func write_numbers() {
+    numbers.add(4)
+}
+
+func read_users() {
+    print(users.count())
+}
+
+func write_users() {
+    users.add("Charlie")
+}
+
+func replace_users() {
+    users = List("Charlie")
+}
+
+read_app_name()
+read_numbers()
+write_numbers()
+read_users()
+write_users()
+replace_users()

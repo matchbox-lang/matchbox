@@ -23,94 +23,94 @@ typedef struct KnownConstant
     bool known;
     bool wide;
     int64_t value;
-    Opcode loadOpcode;
+    Opcode load_opcode;
     uint16_t operand;
 } KnownConstant;
 
-static bool usesRegisterPairs(Opcode opcode)
+static bool uses_register_pairs(Opcode opcode)
 {
     switch (opcode) {
-        case OP_CMP_I64:
-        case OP_CMP_U64:
-        case OP_CMPL_F64:
-        case OP_CMPG_F64:
-        case OP_MOV_64:
-        case OP_LDC_64:
-        case OP_LDG_64:
-        case OP_LDC_64_CALL:
-        case OP_LDG_64_CALL:
-        case OP_STG_64:
-        case OP_LDR_64:
-        case OP_STR_64:
-        case OP_F32_TO_F64:
-        case OP_F64_TO_F32:
-        case OP_F32_TO_I64:
-        case OP_F32_TO_U64:
-        case OP_F64_TO_I32:
-        case OP_F64_TO_U32:
-        case OP_F64_TO_I64:
-        case OP_F64_TO_U64:
-        case OP_I64_TO_F32:
-        case OP_I64_TO_F64:
-        case OP_U64_TO_F32:
-        case OP_U64_TO_F64:
-        case OP_I32_TO_F64:
-        case OP_U32_TO_F64:
-        case OP_ADD_F64:
-        case OP_SUB_F64:
-        case OP_MUL_F64:
-        case OP_DIV_F64:
-        case OP_REM_F64:
-        case OP_NEG_F64:
-        case OP_RET_64:
-        case OP_ADD_I64:
-        case OP_ADDI_I64:
-        case OP_SUB_I64:
-        case OP_SUBI_I64:
-        case OP_MUL_I64:
-        case OP_MULI_I64:
-        case OP_IDIV_I64:
-        case OP_IDIV_U64:
-        case OP_REM_I64:
-        case OP_REM_U64:
-        case OP_BAND_I64:
-        case OP_BANDI_I64:
-        case OP_BOR_I64:
-        case OP_BORI_I64:
-        case OP_BXOR_I64:
-        case OP_BXORI_I64:
-        case OP_BNOT_I64:
-        case OP_LSL_I64:
-        case OP_LSLI_I64:
-        case OP_LSR_I64:
-        case OP_LSRI_I64:
-        case OP_ASR_I64:
-        case OP_ASRI_I64:
-        case OP_NEG_I64:
+        case OpCmpI64:
+        case OpCmpU64:
+        case OpCmplF64:
+        case OpCmpgF64:
+        case OpMov64:
+        case OpLdc64:
+        case OpLdg64:
+        case OpLdc64Call:
+        case OpLdg64Call:
+        case OpStg64:
+        case OpLdr64:
+        case OpStr64:
+        case OpF32ToF64:
+        case OpF64ToF32:
+        case OpF32ToI64:
+        case OpF32ToU64:
+        case OpF64ToI32:
+        case OpF64ToU32:
+        case OpF64ToI64:
+        case OpF64ToU64:
+        case OpI64ToF32:
+        case OpI64ToF64:
+        case OpU64ToF32:
+        case OpU64ToF64:
+        case OpI32ToF64:
+        case OpU32ToF64:
+        case OpAddF64:
+        case OpSubF64:
+        case OpMulF64:
+        case OpDivF64:
+        case OpRemF64:
+        case OpNegF64:
+        case OpRet64:
+        case OpAddI64:
+        case OpAddiI64:
+        case OpSubI64:
+        case OpSubiI64:
+        case OpMulI64:
+        case OpMuliI64:
+        case OpIdivI64:
+        case OpIdivU64:
+        case OpRemI64:
+        case OpRemU64:
+        case OpBandI64:
+        case OpBandiI64:
+        case OpBorI64:
+        case OpBoriI64:
+        case OpBxorI64:
+        case OpBxoriI64:
+        case OpBnotI64:
+        case OpLslI64:
+        case OpLsliI64:
+        case OpLsrI64:
+        case OpLsriI64:
+        case OpAsrI64:
+        case OpAsriI64:
+        case OpNegI64:
             return true;
         default: return false;
     }
 }
 
-static bool isBranch(Opcode opcode)
+static bool is_branch(Opcode opcode)
 {
-    return opcode >= OP_BZ && opcode <= OP_JMP;
+    return opcode >= OpBz && opcode <= OpJmp;
 }
 
-static bool endsBlock(Opcode opcode)
+static bool ends_block(Opcode opcode)
 {
-    bool branch = isBranch(opcode);
+    bool branch = is_branch(opcode);
 
-    return branch || opcode == OP_HLT || opcode == OP_RET || opcode == OP_RETV || opcode == OP_RET_64;
+    return branch || opcode == OpHlt || opcode == OpRet || opcode == OpRetv || opcode == OpRet64;
 }
 
-static int branchOffset(const OptimizationWord* word)
+static int branch_offset(const OptimizationWord* word)
 {
-    if (word->opcode == OP_BZ || word->opcode == OP_BNZ) {
+    if (word->opcode == OpBz || word->opcode == OpBnz) {
         return (int16_t)(word->b << 8 | word->c);
     }
 
-    if (word->opcode != OP_JMP) {
+    if (word->opcode != OpJmp) {
         return (int8_t)word->c;
     }
 
@@ -119,7 +119,7 @@ static int branchOffset(const OptimizationWord* word)
     return (int32_t)(offset ^ 0x800000u) - 0x800000;
 }
 
-static void decodeWords(const CodeObject* code, OptimizationWord* words, size_t count)
+static void decode_words(const CodeObject* code, OptimizationWord* words, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
         const uint8_t* bytes = code->data + i * INSTRUCTION_SIZE;
@@ -129,19 +129,19 @@ static void decodeWords(const CodeObject* code, OptimizationWord* words, size_t 
         word->a = bytes[1];
         word->b = bytes[2];
         word->c = bytes[3];
-        word->wide = i > 0 && words[i - 1].opcode == OP_WIDE;
+        word->wide = i > 0 && words[i - 1].opcode == OpWide;
         word->destination = count;
     }
 
     for (size_t i = 0; i < count; i++) {
         OptimizationWord* word = &words[i];
-        bool branch = isBranch(word->opcode);
+        bool branch = is_branch(word->opcode);
 
         if (!branch) {
             continue;
         }
 
-        int offset = branchOffset(word);
+        int offset = branch_offset(word);
         size_t destination = i + 1 + offset;
 
         word->destination = destination;
@@ -149,68 +149,68 @@ static void decodeWords(const CodeObject* code, OptimizationWord* words, size_t 
     }
 }
 
-static Opcode immediateOpcode(Opcode opcode)
+static Opcode immediate_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OP_ADD_I64:    return OP_ADDI_I64;
-        case OP_ADD_I32:    return OP_ADDI_I32;
-        case OP_ADD_I16:    return OP_ADDI_I16;
-        case OP_ADD_I8:     return OP_ADDI_I8;
-        case OP_SUB_I64:    return OP_SUBI_I64;
-        case OP_SUB_I32:    return OP_SUBI_I32;
-        case OP_SUB_I16:    return OP_SUBI_I16;
-        case OP_SUB_I8:     return OP_SUBI_I8;
-        case OP_MUL_I64:    return OP_MULI_I64;
-        case OP_MUL_I32:    return OP_MULI_I32;
-        case OP_MUL_I16:    return OP_MULI_I16;
-        case OP_MUL_I8:     return OP_MULI_I8;
-        case OP_BAND_I64:   return OP_BANDI_I64;
-        case OP_BAND_I32:   return OP_BANDI_I32;
-        case OP_BAND_I16:   return OP_BANDI_I16;
-        case OP_BAND_I8:    return OP_BANDI_I8;
-        case OP_BOR_I64:    return OP_BORI_I64;
-        case OP_BOR_I32:    return OP_BORI_I32;
-        case OP_BOR_I16:    return OP_BORI_I16;
-        case OP_BOR_I8:     return OP_BORI_I8;
-        case OP_BXOR_I64:   return OP_BXORI_I64;
-        case OP_BXOR_I32:   return OP_BXORI_I32;
-        case OP_BXOR_I16:   return OP_BXORI_I16;
-        case OP_BXOR_I8:    return OP_BXORI_I8;
-        case OP_LSL_I64:    return OP_LSLI_I64;
-        case OP_LSL_I32:    return OP_LSLI_I32;
-        case OP_LSL_I16:    return OP_LSLI_I16;
-        case OP_LSL_I8:     return OP_LSLI_I8;
-        case OP_LSR_I64:    return OP_LSRI_I64;
-        case OP_LSR_I32:    return OP_LSRI_I32;
-        case OP_LSR_I16:    return OP_LSRI_I16;
-        case OP_LSR_I8:     return OP_LSRI_I8;
-        case OP_ASR_I64:    return OP_ASRI_I64;
-        case OP_ASR_I32:    return OP_ASRI_I32;
-        case OP_ASR_I16:    return OP_ASRI_I16;
-        case OP_ASR_I8:     return OP_ASRI_I8;
-        default:            return OP_HLT;
+        case OpAddI64:    return OpAddiI64;
+        case OpAddI32:    return OpAddiI32;
+        case OpAddI16:    return OpAddiI16;
+        case OpAddI8:     return OpAddiI8;
+        case OpSubI64:    return OpSubiI64;
+        case OpSubI32:    return OpSubiI32;
+        case OpSubI16:    return OpSubiI16;
+        case OpSubI8:     return OpSubiI8;
+        case OpMulI64:    return OpMuliI64;
+        case OpMulI32:    return OpMuliI32;
+        case OpMulI16:    return OpMuliI16;
+        case OpMulI8:     return OpMuliI8;
+        case OpBandI64:   return OpBandiI64;
+        case OpBandI32:   return OpBandiI32;
+        case OpBandI16:   return OpBandiI16;
+        case OpBandI8:    return OpBandiI8;
+        case OpBorI64:    return OpBoriI64;
+        case OpBorI32:    return OpBoriI32;
+        case OpBorI16:    return OpBoriI16;
+        case OpBorI8:     return OpBoriI8;
+        case OpBxorI64:   return OpBxoriI64;
+        case OpBxorI32:   return OpBxoriI32;
+        case OpBxorI16:   return OpBxoriI16;
+        case OpBxorI8:    return OpBxoriI8;
+        case OpLslI64:    return OpLsliI64;
+        case OpLslI32:    return OpLsliI32;
+        case OpLslI16:    return OpLsliI16;
+        case OpLslI8:     return OpLsliI8;
+        case OpLsrI64:    return OpLsriI64;
+        case OpLsrI32:    return OpLsriI32;
+        case OpLsrI16:    return OpLsriI16;
+        case OpLsrI8:     return OpLsriI8;
+        case OpAsrI64:    return OpAsriI64;
+        case OpAsrI32:    return OpAsriI32;
+        case OpAsrI16:    return OpAsriI16;
+        case OpAsrI8:     return OpAsriI8;
+        default:            return OpHlt;
     }
 }
 
-static bool invalidatesConstants(Opcode opcode)
+static bool invalidates_constants(Opcode opcode)
 {
-    bool end = endsBlock(opcode);
+    bool end = ends_block(opcode);
 
-    return end || opcode == OP_CALL || opcode == OP_STG_CALL || opcode == OP_STG || opcode == OP_STG_64
-        || opcode == OP_STR || opcode == OP_STR_64
-        || opcode == OP_REFL || opcode == OP_REFG || opcode == OP_WIDE;
+    return end || opcode == OpCall || opcode == OpStgCall || opcode == OpStg || opcode == OpStg64
+        || opcode == OpStr || opcode == OpStr64
+        || opcode == OpRefl || opcode == OpRefg || opcode == OpWide;
 }
 
-static void selectImmediateArithmetic(OptimizationWord* word, const KnownConstant* known)
+static void select_immediate_arithmetic(OptimizationWord* word, const KnownConstant* known)
 {
     KnownConstant right = known[word->c];
-    Opcode immediate = immediateOpcode(word->opcode);
-    bool signedOperand = word->opcode >= OP_ADD_I64 && word->opcode <= OP_MULI_I8;
-    int64_t minimum = signedOperand ? INT8_MIN : 0;
-    int64_t maximum = signedOperand ? INT8_MAX : UINT8_MAX;
-    bool pairs = usesRegisterPairs(word->opcode);
+    Opcode immediate = immediate_opcode(word->opcode);
+    bool signed_operand = word->opcode >= OpAddI64 && word->opcode <= OpMuliI8;
+    int64_t minimum = signed_operand ? INT8_MIN : 0;
+    int64_t maximum = signed_operand ? INT8_MAX : UINT8_MAX;
+    bool pairs = uses_register_pairs(word->opcode);
 
-    if (immediate == OP_HLT || !right.known || right.wide != pairs
+    if (immediate == OpHlt || !right.known || right.wide != pairs
         || right.value < minimum || right.value > maximum) {
         return;
     }
@@ -219,22 +219,22 @@ static void selectImmediateArithmetic(OptimizationWord* word, const KnownConstan
     word->c = right.value;
 }
 
-static void selectConstantMove(OptimizationWord* word, const KnownConstant* known)
+static void select_constant_move(OptimizationWord* word, const KnownConstant* known)
 {
     KnownConstant value = known[word->b];
-    bool move = word->opcode == OP_MOV || word->opcode == OP_MOV_64;
-    bool wide = word->opcode == OP_MOV_64;
+    bool move = word->opcode == OpMov || word->opcode == OpMov64;
+    bool wide = word->opcode == OpMov64;
 
     if (!move || !value.known || value.wide != wide) {
         return;
     }
 
-    word->opcode = value.loadOpcode;
+    word->opcode = value.load_opcode;
     word->b = value.operand >> 8;
     word->c = value.operand;
 }
 
-static void invalidateKnownRegister(KnownConstant* known, size_t reg)
+static void invalidate_known_register(KnownConstant* known, size_t reg)
 {
     if (reg >= 256) {
         return;
@@ -247,52 +247,52 @@ static void invalidateKnownRegister(KnownConstant* known, size_t reg)
     }
 }
 
-static int64_t readConstant(const ModuleObject* module, Opcode opcode, size_t position)
+static int64_t read_constant(const ModuleObject* module, Opcode opcode, size_t position)
 {
-    if (opcode == OP_LDC_64) {
-        return readI64(module->constants.data, position);
+    if (opcode == OpLdc64) {
+        return read_i64(module->constants.data, position);
     }
 
-    return module->constants.data[position].signedValue;
+    return module->constants.data[position].signed_value;
 }
 
-static void trackConstant(const ModuleObject* module, const OptimizationWord* word, KnownConstant* known)
+static void track_constant(const ModuleObject* module, const OptimizationWord* word, KnownConstant* known)
 {
     KnownConstant value = {0};
-    OpcodeFlag flags = getOpcodeFlags(word->opcode);
-    bool pairs = usesRegisterPairs(word->opcode);
+    OpcodeFlag flags = get_opcode_flags(word->opcode);
+    bool pairs = uses_register_pairs(word->opcode);
 
-    if (word->opcode == OP_LDI) {
+    if (word->opcode == OpLdi) {
         value.known = true;
         value.value = (int16_t)(word->b << 8 | word->c);
     }
 
-    if (word->opcode == OP_LDC || word->opcode == OP_LDC_64) {
+    if (word->opcode == OpLdc || word->opcode == OpLdc64) {
         size_t position = word->b << 8 | word->c;
 
         value.known = true;
         value.wide = pairs;
-        value.value = readConstant(module, word->opcode, position);
+        value.value = read_constant(module, word->opcode, position);
     }
 
     if (value.known) {
-        value.loadOpcode = word->opcode;
+        value.load_opcode = word->opcode;
         value.operand = word->b << 8 | word->c;
     }
 
-    if (word->opcode == OP_MOV || word->opcode == OP_MOV_64) {
+    if (word->opcode == OpMov || word->opcode == OpMov64) {
         value = known[word->b];
         value.known = value.known && value.wide == pairs;
     }
 
-    if (!(flags & OP_FLAG_WRITES_A)) {
+    if (!(flags & OpFlagWritesA)) {
         return;
     }
 
-    invalidateKnownRegister(known, word->a);
+    invalidate_known_register(known, word->a);
 
     if (pairs) {
-        invalidateKnownRegister(known, word->a + 1);
+        invalidate_known_register(known, word->a + 1);
     }
 
     if (pairs && word->a == UINT8_MAX) {
@@ -302,22 +302,22 @@ static void trackConstant(const ModuleObject* module, const OptimizationWord* wo
     known[word->a] = value;
 }
 
-static bool supportsWideConstants(Opcode opcode)
+static bool supports_wide_constants(Opcode opcode)
 {
-    if (opcode == OP_LDC_64 || opcode == OP_MOV_64) {
+    if (opcode == OpLdc64 || opcode == OpMov64) {
         return true;
     }
 
-    Opcode immediate = immediateOpcode(opcode);
+    Opcode immediate = immediate_opcode(opcode);
 
-    return immediate != OP_HLT;
+    return immediate != OpHlt;
 }
 
-static void optimizeConstantWord(const ModuleObject* module, OptimizationWord* word, KnownConstant* known)
+static void optimize_constant_word(const ModuleObject* module, OptimizationWord* word, KnownConstant* known)
 {
-    bool invalidate = invalidatesConstants(word->opcode);
-    bool pairs = usesRegisterPairs(word->opcode);
-    bool supported = supportsWideConstants(word->opcode);
+    bool invalidate = invalidates_constants(word->opcode);
+    bool pairs = uses_register_pairs(word->opcode);
+    bool supported = supports_wide_constants(word->opcode);
     bool barrier = word->wide || invalidate || (pairs && !supported);
 
     if (word->target || barrier) {
@@ -328,46 +328,46 @@ static void optimizeConstantWord(const ModuleObject* module, OptimizationWord* w
         return;
     }
 
-    selectConstantMove(word, known);
-    selectImmediateArithmetic(word, known);
-    trackConstant(module, word, known);
+    select_constant_move(word, known);
+    select_immediate_arithmetic(word, known);
+    track_constant(module, word, known);
 }
 
-static void optimizeConstants(const ModuleObject* module, OptimizationWord* words, size_t count)
+static void optimize_constants(const ModuleObject* module, OptimizationWord* words, size_t count)
 {
     KnownConstant known[256] = {0};
 
     for (size_t i = 0; i < count; i++) {
-        optimizeConstantWord(module, &words[i], known);
+        optimize_constant_word(module, &words[i], known);
     }
 }
 
-static bool isWideImmediateArithmetic(Opcode opcode)
+static bool is_wide_immediate_arithmetic(Opcode opcode)
 {
     switch (opcode) {
-        case OP_ADDI_I64:
-        case OP_SUBI_I64:
-        case OP_MULI_I64:
-        case OP_BANDI_I64:
-        case OP_BORI_I64:
-        case OP_BXORI_I64:
-        case OP_LSLI_I64:
-        case OP_LSRI_I64:
-        case OP_ASRI_I64:
+        case OpAddiI64:
+        case OpSubiI64:
+        case OpMuliI64:
+        case OpBandiI64:
+        case OpBoriI64:
+        case OpBxoriI64:
+        case OpLsliI64:
+        case OpLsriI64:
+        case OpAsriI64:
             return true;
         default: return false;
     }
 }
 
-static bool updateWideLiveness(OptimizationWord* word, bool* live)
+static bool update_wide_liveness(OptimizationWord* word, bool* live)
 {
-    bool immediate = isWideImmediateArithmetic(word->opcode);
-    bool pairs = usesRegisterPairs(word->opcode);
-    Opcode selected = immediateOpcode(word->opcode);
-    bool binary = pairs && selected != OP_HLT;
-    bool constant = word->opcode == OP_LDC_64;
-    bool load = constant || word->opcode == OP_LDG_64;
-    bool move = word->opcode == OP_MOV_64;
+    bool immediate = is_wide_immediate_arithmetic(word->opcode);
+    bool pairs = uses_register_pairs(word->opcode);
+    Opcode selected = immediate_opcode(word->opcode);
+    bool binary = pairs && selected != OpHlt;
+    bool constant = word->opcode == OpLdc64;
+    bool load = constant || word->opcode == OpLdg64;
+    bool move = word->opcode == OpMov64;
 
     if (word->wide || word->a == UINT8_MAX || (!immediate && !binary && !load && !move)) {
         return false;
@@ -394,40 +394,40 @@ static bool updateWideLiveness(OptimizationWord* word, bool* live)
     return true;
 }
 
-static bool updateBuiltinCallLiveness(const ModuleObject* module, const OptimizationWord* word, bool* live)
+static bool update_builtin_call_liveness(const ModuleObject* module, const OptimizationWord* word, bool* live)
 {
-    if (word->opcode != OP_CALL || word->wide) {
+    if (word->opcode != OpCall || word->wide) {
         return false;
     }
 
     size_t position = word->b << 8 | word->c;
     const FunctionObject* function = module->functions.data[position];
-    int argumentEnd = word->a + function->paramCount;
+    int argument_end = word->a + function->param_count;
 
-    if (function->type != FUNCTION_BUILTIN || argumentEnd > 256) {
+    if (function->type != FuncBuiltin || argument_end > 256) {
         return false;
     }
 
-    for (int i = 0; i < function->returnCount; i++) {
+    for (int i = 0; i < function->return_count; i++) {
         int result = (int)word->a - 2 + i;
 
         live[result] = false;
     }
 
-    for (int reg = word->a; reg < argumentEnd; reg++) {
+    for (int reg = word->a; reg < argument_end; reg++) {
         live[reg] = true;
     }
 
     return true;
 }
 
-static bool updateGlobalStoreLiveness(const OptimizationWord* word, bool* live)
+static bool update_global_store_liveness(const OptimizationWord* word, bool* live)
 {
-    if (word->wide || (word->opcode != OP_STG && word->opcode != OP_STG_64)) {
+    if (word->wide || (word->opcode != OpStg && word->opcode != OpStg64)) {
         return false;
     }
 
-    int slots = word->opcode == OP_STG_64 ? 2 : 1;
+    int slots = word->opcode == OpStg64 ? 2 : 1;
 
     if (word->a + slots > 256) {
         return false;
@@ -440,36 +440,36 @@ static bool updateGlobalStoreLiveness(const OptimizationWord* word, bool* live)
     return true;
 }
 
-static void updateLiveness(const ModuleObject* module, OptimizationWord* word, bool* live,
-    size_t persistentRegisters)
+static void update_liveness(const ModuleObject* module, OptimizationWord* word, bool* live,
+    size_t persistent_registers)
 {
-    bool wide = updateWideLiveness(word, live);
+    bool wide = update_wide_liveness(word, live);
 
     if (wide) {
         return;
     }
 
-    bool isBuiltinCall = updateBuiltinCallLiveness(module, word, live);
+    bool is_builtin_call = update_builtin_call_liveness(module, word, live);
 
-    if (isBuiltinCall) {
+    if (is_builtin_call) {
         return;
     }
 
-    bool store = updateGlobalStoreLiveness(word, live);
+    bool store = update_global_store_liveness(word, live);
 
     if (store) {
         return;
     }
 
-    OpcodeRegisterFlag registers = getOpcodeRegisterFlag(word->opcode);
-    OpcodeFlag flags = getOpcodeFlags(word->opcode);
-    bool pairs = usesRegisterPairs(word->opcode);
-    bool barrier = invalidatesConstants(word->opcode);
-    bool terminal = word->opcode == OP_HLT || word->opcode == OP_RET || word->opcode == OP_RETV;
+    OpcodeRegisterFlag registers = get_opcode_register_flag(word->opcode);
+    OpcodeFlag flags = get_opcode_flags(word->opcode);
+    bool pairs = uses_register_pairs(word->opcode);
+    bool barrier = invalidates_constants(word->opcode);
+    bool terminal = word->opcode == OpHlt || word->opcode == OpRet || word->opcode == OpRetv;
 
     if (terminal) {
         for (size_t reg = 0; reg < 256; reg++) {
-            live[reg] = reg < persistentRegisters;
+            live[reg] = reg < persistent_registers;
         }
     }
 
@@ -479,29 +479,29 @@ static void updateLiveness(const ModuleObject* module, OptimizationWord* word, b
         return;
     }
 
-    bool load = word->opcode == OP_LDI || word->opcode == OP_LDC;
+    bool load = word->opcode == OpLdi || word->opcode == OpLdc;
 
-    word->removed = word->opcode == OP_NOP || (load && !word->target && !live[word->a]);
+    word->removed = word->opcode == OpNop || (load && !word->target && !live[word->a]);
 
-    if (flags & OP_FLAG_WRITES_A) {
+    if (flags & OpFlagWritesA) {
         live[word->a] = false;
     }
 
-    if ((registers & OP_REGISTER_A) && !(flags & OP_FLAG_WRITES_A)) {
+    if ((registers & OpRegisterA) && !(flags & OpFlagWritesA)) {
         live[word->a] = true;
     }
 
-    if (registers & OP_REGISTER_B) {
+    if (registers & OpRegisterB) {
         live[word->b] = true;
     }
 
-    if (registers & OP_REGISTER_C) {
+    if (registers & OpRegisterC) {
         live[word->c] = true;
     }
 }
 
-static void removeDeadLoads(const ModuleObject* module, OptimizationWord* words, size_t count,
-    size_t persistentRegisters)
+static void remove_dead_loads(const ModuleObject* module, OptimizationWord* words, size_t count,
+    size_t persistent_registers)
 {
     bool live[256];
 
@@ -510,7 +510,7 @@ static void removeDeadLoads(const ModuleObject* module, OptimizationWord* words,
     for (size_t end = count; end > 0; end--) {
         OptimizationWord* word = &words[end - 1];
 
-        updateLiveness(module, word, live, persistentRegisters);
+        update_liveness(module, word, live, persistent_registers);
 
         if (word->target) {
             memset(live, 1, sizeof(live));
@@ -518,54 +518,54 @@ static void removeDeadLoads(const ModuleObject* module, OptimizationWord* words,
     }
 }
 
-static bool isImmediateArithmetic(Opcode opcode)
+static bool is_immediate_arithmetic(Opcode opcode)
 {
     switch (opcode) {
-        case OP_SEXT_I32:
-        case OP_ZEXT_I32:
-        case OP_ADDI_I32:
-        case OP_ADDI_I16:
-        case OP_ADDI_I8:
-        case OP_SUBI_I32:
-        case OP_SUBI_I16:
-        case OP_SUBI_I8:
-        case OP_MULI_I32:
-        case OP_MULI_I16:
-        case OP_MULI_I8:
-        case OP_BANDI_I32:
-        case OP_BANDI_I16:
-        case OP_BANDI_I8:
-        case OP_BORI_I32:
-        case OP_BORI_I16:
-        case OP_BORI_I8:
-        case OP_BXORI_I32:
-        case OP_BXORI_I16:
-        case OP_BXORI_I8:
-        case OP_LSLI_I32:
-        case OP_LSLI_I16:
-        case OP_LSLI_I8:
-        case OP_LSRI_I32:
-        case OP_LSRI_I16:
-        case OP_LSRI_I8:
-        case OP_ASRI_I32:
-        case OP_ASRI_I16:
-        case OP_ASRI_I8:
+        case OpSextI32:
+        case OpZextI32:
+        case OpAddiI32:
+        case OpAddiI16:
+        case OpAddiI8:
+        case OpSubiI32:
+        case OpSubiI16:
+        case OpSubiI8:
+        case OpMuliI32:
+        case OpMuliI16:
+        case OpMuliI8:
+        case OpBandiI32:
+        case OpBandiI16:
+        case OpBandiI8:
+        case OpBoriI32:
+        case OpBoriI16:
+        case OpBoriI8:
+        case OpBxoriI32:
+        case OpBxoriI16:
+        case OpBxoriI8:
+        case OpLsliI32:
+        case OpLsliI16:
+        case OpLsliI8:
+        case OpLsriI32:
+        case OpLsriI16:
+        case OpLsriI8:
+        case OpAsriI32:
+        case OpAsriI16:
+        case OpAsriI8:
             return true;
         default: return false;
     }
 }
 
-static void removeImmediateOperandMove(OptimizationWord* move, OptimizationWord* arithmetic)
+static void remove_immediate_operand_move(OptimizationWord* move, OptimizationWord* arithmetic)
 {
-    bool wide = isWideImmediateArithmetic(arithmetic->opcode);
-    bool immediate = isImmediateArithmetic(arithmetic->opcode) || wide;
-    Opcode moveOpcode = OP_MOV;
+    bool wide = is_wide_immediate_arithmetic(arithmetic->opcode);
+    bool immediate = is_immediate_arithmetic(arithmetic->opcode) || wide;
+    Opcode move_opcode = OpMov;
 
     if (wide) {
-        moveOpcode = OP_MOV_64;
+        move_opcode = OpMov64;
     }
 
-    if (!immediate || move->opcode != moveOpcode || move->target || move->wide
+    if (!immediate || move->opcode != move_opcode || move->target || move->wide
         || arithmetic->target || arithmetic->wide || move->a != arithmetic->a
         || move->a != arithmetic->b) {
         return;
@@ -575,7 +575,7 @@ static void removeImmediateOperandMove(OptimizationWord* move, OptimizationWord*
     move->removed = true;
 }
 
-static void removeImmediateOperandMoves(OptimizationWord* words, size_t count)
+static void remove_immediate_operand_moves(OptimizationWord* words, size_t count)
 {
     size_t previous = count;
 
@@ -587,22 +587,22 @@ static void removeImmediateOperandMoves(OptimizationWord* words, size_t count)
         }
 
         if (previous != count) {
-            removeImmediateOperandMove(&words[previous], word);
+            remove_immediate_operand_move(&words[previous], word);
         }
 
         previous = i;
     }
 }
 
-static bool smallLoad(const OptimizationWord* word)
+static bool small_load(const OptimizationWord* word)
 {
     int operand = word->b << 8 | word->c;
 
-    if (word->opcode == OP_LDG || word->opcode == OP_LDC) {
+    if (word->opcode == OpLdg || word->opcode == OpLdc) {
         return operand <= (int)UINT8_MAX;
     }
 
-    if (word->opcode != OP_LDI) {
+    if (word->opcode != OpLdi) {
         return false;
     }
 
@@ -611,38 +611,38 @@ static bool smallLoad(const OptimizationWord* word)
     return immediate >= INT8_MIN && immediate <= INT8_MAX;
 }
 
-static Opcode loadPairOpcode(Opcode first, Opcode second)
+static Opcode load_pair_opcode(Opcode first, Opcode second)
 {
-    if (first == OP_LDI && second == OP_LDI) {
-        return OP_LDI_LDI;
+    if (first == OpLdi && second == OpLdi) {
+        return OpLdiLdi;
     }
 
-    if (first == OP_LDC && second == OP_LDC) {
-        return OP_LDC_LDC;
+    if (first == OpLdc && second == OpLdc) {
+        return OpLdcLdc;
     }
 
-    if (first == OP_LDG && second == OP_LDG) {
-        return OP_LDG_LDG;
+    if (first == OpLdg && second == OpLdg) {
+        return OpLdgLdg;
     }
 
-    if (first == OP_LDI && second == OP_LDG) {
-        return OP_LDI_LDG;
+    if (first == OpLdi && second == OpLdg) {
+        return OpLdiLdg;
     }
 
-    if (first == OP_LDG && second == OP_LDI) {
-        return OP_LDG_LDI;
+    if (first == OpLdg && second == OpLdi) {
+        return OpLdgLdi;
     }
 
-    return OP_NOP;
+    return OpNop;
 }
 
-static bool fuseLoads(OptimizationWord* first, OptimizationWord* second)
+static bool fuse_loads(OptimizationWord* first, OptimizationWord* second)
 {
-    bool firstSmall = smallLoad(first);
-    bool secondSmall = smallLoad(second);
-    Opcode opcode = loadPairOpcode(first->opcode, second->opcode);
+    bool first_small = small_load(first);
+    bool second_small = small_load(second);
+    Opcode opcode = load_pair_opcode(first->opcode, second->opcode);
 
-    if (first->a + 1 != second->a || !firstSmall || !secondSmall || opcode == OP_NOP) {
+    if (first->a + 1 != second->a || !first_small || !second_small || opcode == OpNop) {
         return false;
     }
 
@@ -653,23 +653,23 @@ static bool fuseLoads(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
-static bool fuseMoveLoad(OptimizationWord* first, OptimizationWord* second)
+static bool fuse_move_load(OptimizationWord* first, OptimizationWord* second)
 {
-    bool small = smallLoad(second);
+    bool small = small_load(second);
 
-    if (first->opcode != OP_MOV || first->a + 1 != second->a || !small) {
+    if (first->opcode != OpMov || first->a + 1 != second->a || !small) {
         return false;
     }
 
     switch (second->opcode) {
-        case OP_LDI:
-            first->opcode = OP_MOV_LDI;
+        case OpLdi:
+            first->opcode = OpMovLdi;
             break;
-        case OP_LDC:
-            first->opcode = OP_MOV_LDC;
+        case OpLdc:
+            first->opcode = OpMovLdc;
             break;
-        case OP_LDG:
-            first->opcode = OP_MOV_LDG;
+        case OpLdg:
+            first->opcode = OpMovLdg;
             break;
         default:
             return false;
@@ -680,37 +680,37 @@ static bool fuseMoveLoad(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
-static Opcode loadCallOpcode(Opcode opcode)
+static Opcode load_call_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OP_LDI:    return OP_LDI_CALL;
-        case OP_LDC:    return OP_LDC_CALL;
-        case OP_LDG:    return OP_LDG_CALL;
-        case OP_LDC_64: return OP_LDC_64_CALL;
-        case OP_LDG_64: return OP_LDG_64_CALL;
-        case OP_LDR:    return OP_LDR_CALL;
-        default:        return OP_HLT;
+        case OpLdi:    return OpLdiCall;
+        case OpLdc:    return OpLdcCall;
+        case OpLdg:    return OpLdgCall;
+        case OpLdc64: return OpLdc64Call;
+        case OpLdg64: return OpLdg64Call;
+        case OpLdr:    return OpLdrCall;
+        default:        return OpHlt;
     }
 }
 
-static bool fuseLoadCall(OptimizationWord* first, OptimizationWord* second)
+static bool fuse_load_call(OptimizationWord* first, OptimizationWord* second)
 {
-    Opcode fused = loadCallOpcode(first->opcode);
+    Opcode fused = load_call_opcode(first->opcode);
     uint16_t function = second->b << 8 | second->c;
     int operand = first->b << 8 | first->c;
 
-    if (first->opcode == OP_LDR) {
+    if (first->opcode == OpLdr) {
         operand = first->b;
     }
 
-    if (first->opcode == OP_LDI) {
+    if (first->opcode == OpLdi) {
         operand = (int16_t)operand;
     }
 
-    int minimum = first->opcode == OP_LDI ? LOAD_CALL_SIGNED_OPERAND_MIN : 0;
-    int maximum = first->opcode == OP_LDI ? LOAD_CALL_SIGNED_OPERAND_MAX : LOAD_CALL_OPERAND_MASK;
+    int minimum = first->opcode == OpLdi ? LOAD_CALL_SIGNED_OPERAND_MIN : 0;
+    int maximum = first->opcode == OpLdi ? LOAD_CALL_SIGNED_OPERAND_MAX : LOAD_CALL_OPERAND_MASK;
 
-    if (second->opcode != OP_CALL || fused == OP_HLT || first->a != second->a
+    if (second->opcode != OpCall || fused == OpHlt || first->a != second->a
         || function > LOAD_CALL_FUNCTION_MASK || operand < minimum || operand > maximum) {
         return false;
     }
@@ -724,83 +724,83 @@ static bool fuseLoadCall(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
-static bool fuseStoreCall(OptimizationWord* first, OptimizationWord* second)
+static bool fuse_store_call(OptimizationWord* first, OptimizationWord* second)
 {
-    if (first->opcode != OP_STG || second->opcode != OP_CALL || first->a != second->a
+    if (first->opcode != OpStg || second->opcode != OpCall || first->a != second->a
         || first->b != 0 || second->b != 0) {
         return false;
     }
 
-    first->opcode = OP_STG_CALL;
+    first->opcode = OpStgCall;
     first->b = first->c;
     first->c = second->c;
 
     return true;
 }
 
-static bool fusePair(const ModuleObject* module, OptimizationWord* first, OptimizationWord* second)
+static bool fuse_pair(const ModuleObject* module, OptimizationWord* first, OptimizationWord* second)
 {
-    bool loads = fuseLoads(first, second);
+    bool loads = fuse_loads(first, second);
 
     if (loads) {
         return true;
     }
 
-    bool call = fuseLoadCall(first, second);
+    bool call = fuse_load_call(first, second);
 
     if (call) {
         return true;
     }
 
-    bool storeCall = fuseStoreCall(first, second);
+    bool store_call = fuse_store_call(first, second);
 
-    if (storeCall) {
+    if (store_call) {
         return true;
     }
 
-    bool moveLoad = fuseMoveLoad(first, second);
+    bool move_load = fuse_move_load(first, second);
 
-    if (moveLoad) {
+    if (move_load) {
         return true;
     }
 
-    if (first->opcode == OP_MOV && second->opcode == OP_MOV && first->a + 1 == second->a) {
-        first->opcode = OP_MOV_MOV;
+    if (first->opcode == OpMov && second->opcode == OpMov && first->a + 1 == second->a) {
+        first->opcode = OpMovMov;
         first->c = second->b;
 
         return true;
     }
 
-    bool small = smallLoad(first);
+    bool small = small_load(first);
 
-    if (first->opcode == OP_LDI && second->opcode == OP_STG && first->a == second->a
+    if (first->opcode == OpLdi && second->opcode == OpStg && first->a == second->a
         && second->b == 0 && small) {
-        first->opcode = OP_STGI;
+        first->opcode = OpStgi;
         first->b = first->c;
         first->c = second->c;
 
         return true;
     }
 
-    if (first->opcode != OP_CALL || second->opcode != OP_CALL || first->a + 1 != second->a
+    if (first->opcode != OpCall || second->opcode != OpCall || first->a + 1 != second->a
         || first->b != 0 || second->b != 0) {
         return false;
     }
 
     const FunctionObject* function = module->functions.data[first->c];
 
-    if (function->type != FUNCTION_BUILTIN) {
+    if (function->type != FuncBuiltin) {
         return false;
     }
 
-    first->opcode = OP_CALL_CALL;
+    first->opcode = OpCallCall;
     first->b = first->c;
     first->c = second->c;
 
     return true;
 }
 
-static void fuseInstructions(const ModuleObject* module, OptimizationWord* words, size_t count)
+static void fuse_instructions(const ModuleObject* module, OptimizationWord* words, size_t count)
 {
     size_t previous = count;
 
@@ -811,49 +811,49 @@ static void fuseInstructions(const ModuleObject* module, OptimizationWord* words
             continue;
         }
 
-        if (word->target || word->wide || word->opcode == OP_WIDE) {
+        if (word->target || word->wide || word->opcode == OpWide) {
             previous = count;
         }
 
         if (previous != count) {
-            word->removed = fusePair(module, &words[previous], word);
+            word->removed = fuse_pair(module, &words[previous], word);
         }
 
         previous = word->removed ? count : i;
 
-        if (word->wide || word->opcode == OP_WIDE) {
+        if (word->wide || word->opcode == OpWide) {
             previous = count;
         }
     }
 }
 
-static bool isDuplicateInstruction(const OptimizationWord* previous, const OptimizationWord* word)
+static bool is_duplicate_instruction(const OptimizationWord* previous, const OptimizationWord* word)
 {
-    OpcodeFlag flags = getOpcodeFlags(word->opcode);
-    OpcodeRegisterFlag registers = getOpcodeRegisterFlag(word->opcode);
-    bool independent = (flags & OP_FLAG_WRITES_A) && !(registers & (OP_REGISTER_B | OP_REGISTER_C));
+    OpcodeFlag flags = get_opcode_flags(word->opcode);
+    OpcodeRegisterFlag registers = get_opcode_register_flag(word->opcode);
+    bool independent = (flags & OpFlagWritesA) && !(registers & (OpRegisterB | OpRegisterC));
 
     return independent && previous && previous->opcode == word->opcode
         && previous->a == word->a && previous->b == word->b && previous->c == word->c
         && !previous->wide && !word->wide && !word->target;
 }
 
-static bool isRedundantGlobalLoad(const OptimizationWord* previous, const OptimizationWord* word)
+static bool is_redundant_global_load(const OptimizationWord* previous, const OptimizationWord* word)
 {
-    bool matchingOpcodes = previous && ((previous->opcode == OP_STG && word->opcode == OP_LDG)
-        || (previous->opcode == OP_STG_64 && word->opcode == OP_LDG_64));
+    bool matching_opcodes = previous && ((previous->opcode == OpStg && word->opcode == OpLdg)
+        || (previous->opcode == OpStg64 && word->opcode == OpLdg64));
 
-    return matchingOpcodes && previous->a == word->a && previous->b == word->b && previous->c == word->c
+    return matching_opcodes && previous->a == word->a && previous->b == word->b && previous->c == word->c
         && !previous->wide && !word->wide && !word->target;
 }
 
-static OptimizationWord* removeRedundantInstruction(OptimizationWord* previous, OptimizationWord* word)
+static OptimizationWord* remove_redundant_instruction(OptimizationWord* previous, OptimizationWord* word)
 {
     if (word->removed) {
         return previous;
     }
 
-    if (isDuplicateInstruction(previous, word) || isRedundantGlobalLoad(previous, word)) {
+    if (is_duplicate_instruction(previous, word) || is_redundant_global_load(previous, word)) {
         word->removed = true;
 
         return previous;
@@ -862,31 +862,31 @@ static OptimizationWord* removeRedundantInstruction(OptimizationWord* previous, 
     return word;
 }
 
-static void removeRedundantInstructions(OptimizationWord* words, size_t count)
+static void remove_redundant_instructions(OptimizationWord* words, size_t count)
 {
     OptimizationWord* previous = NULL;
 
     for (size_t i = 0; i < count; i++) {
-        previous = removeRedundantInstruction(previous, &words[i]);
+        previous = remove_redundant_instruction(previous, &words[i]);
     }
 }
 
-static void relocateBranch(OptimizationWord* word, size_t position, const size_t* positions)
+static void relocate_branch(OptimizationWord* word, size_t position, const size_t* positions)
 {
     int offset = (int)positions[word->destination] - (int)position - 1;
 
-    if (word->opcode == OP_JMP) {
+    if (word->opcode == OpJmp) {
         word->a = offset >> 16;
     }
 
-    if (word->opcode == OP_JMP || word->opcode == OP_BZ || word->opcode == OP_BNZ) {
+    if (word->opcode == OpJmp || word->opcode == OpBz || word->opcode == OpBnz) {
         word->b = offset >> 8;
     }
 
     word->c = offset;
 }
 
-static void writeWords(CodeObject* code, OptimizationWord* words, size_t count, size_t* positions)
+static void write_words(CodeObject* code, OptimizationWord* words, size_t count, size_t* positions)
 {
     size_t output = 0;
 
@@ -895,28 +895,28 @@ static void writeWords(CodeObject* code, OptimizationWord* words, size_t count, 
         output += i < count && !words[i].removed;
     }
 
-    clearCodeObject(code);
+    clear_code_object(code);
 
     for (size_t i = 0; i < count; i++) {
         OptimizationWord* word = &words[i];
-        bool branch = isBranch(word->opcode);
+        bool branch = is_branch(word->opcode);
 
         if (word->removed) {
             continue;
         }
 
         if (branch) {
-            relocateBranch(word, positions[i], positions);
+            relocate_branch(word, positions[i], positions);
         }
 
-        pushByte(code, word->opcode);
-        pushByte(code, word->a);
-        pushByte(code, word->b);
-        pushByte(code, word->c);
+        push_byte(code, word->opcode);
+        push_byte(code, word->a);
+        push_byte(code, word->b);
+        push_byte(code, word->c);
     }
 }
 
-void optimizeBytecode(const ModuleObject* module, CodeObject* code, size_t persistentRegisters)
+void optimize_bytecode(const ModuleObject* module, CodeObject* code, size_t persistent_registers)
 {
     size_t count = code->count / INSTRUCTION_SIZE;
 
@@ -924,16 +924,16 @@ void optimizeBytecode(const ModuleObject* module, CodeObject* code, size_t persi
         return;
     }
 
-    OptimizationWord* words = allocateZeroedMemory(count + 1, sizeof(OptimizationWord));
-    size_t* positions = allocateMemory((count + 1) * sizeof(size_t));
+    OptimizationWord* words = allocate_zeroed_memory(count + 1, sizeof(OptimizationWord));
+    size_t* positions = allocate_memory((count + 1) * sizeof(size_t));
 
-    decodeWords(code, words, count);
-    optimizeConstants(module, words, count);
-    removeDeadLoads(module, words, count, persistentRegisters);
-    removeImmediateOperandMoves(words, count);
-    fuseInstructions(module, words, count);
-    removeRedundantInstructions(words, count);
-    writeWords(code, words, count, positions);
-    freeMemory(words);
-    freeMemory(positions);
+    decode_words(code, words, count);
+    optimize_constants(module, words, count);
+    remove_dead_loads(module, words, count, persistent_registers);
+    remove_immediate_operand_moves(words, count);
+    fuse_instructions(module, words, count);
+    remove_redundant_instructions(words, count);
+    write_words(code, words, count, positions);
+    free_memory(words);
+    free_memory(positions);
 }

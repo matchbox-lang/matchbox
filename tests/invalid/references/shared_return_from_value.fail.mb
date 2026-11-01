@@ -1,0 +1,3 @@
+func return_shared() -> &i32 {
+    return 10
+}

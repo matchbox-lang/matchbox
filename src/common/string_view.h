@@ -11,8 +11,8 @@ typedef struct StringView
     size_t hash;
 } StringView;
 
-StringView createStringView(const char* chars, size_t length);
-bool compareStringView(StringView a, StringView b);
-size_t hashStringView(const char* chars, size_t length);
+StringView create_string_view(const char* chars, size_t length);
+bool compare_string_view(StringView a, StringView b);
+size_t hash_string_view(const char* chars, size_t length);
 
 #endif

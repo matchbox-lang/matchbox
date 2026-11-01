@@ -12,10 +12,10 @@ typedef struct ModuleObject
     ValueArray constants;
     Vector functions;
     Vector objects;
-    size_t globalCount;
+    size_t global_count;
 } ModuleObject;
 
-ModuleObject* createModuleObject();
-void freeModuleObject(ModuleObject* module);
+ModuleObject* create_module_object();
+void free_module_object(ModuleObject* module);
 
 #endif

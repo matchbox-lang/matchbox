@@ -14,11 +14,11 @@ typedef struct StringObject
     char chars[];
 } StringObject;
 
-StringObject* createStringObject(const char* chars, size_t length, size_t hash);
-StringObject* copyStringObject(const char* chars, size_t length);
-StringView getStringView(const StringObject* string);
-void freeStringObject(StringObject* string);
-bool compareStringObject(const StringObject* a, const StringObject* b);
-void printStringObject(const StringObject* string);
+StringObject* create_string_object(const char* chars, size_t length, size_t hash);
+StringObject* copy_string_object(const char* chars, size_t length);
+StringView get_string_view(const StringObject* string);
+void free_string_object(StringObject* string);
+bool compare_string_object(const StringObject* a, const StringObject* b);
+void print_string_object(const StringObject* string);
 
 #endif

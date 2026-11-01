@@ -1,0 +1,6 @@
+func local_reference() -> &i32 {
+    let value = 10
+    let reference = &value
+
+    return reference
+}

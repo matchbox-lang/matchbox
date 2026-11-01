@@ -1,0 +1,62 @@
+var count = 0
+var users = List("Alice", "Bob")
+
+func read_count() {
+    print(count)
+}
+
+func write_count() {
+    count += 1
+}
+
+func write_users() {
+    users.add("Charlie")
+}
+
+func update_count() {
+    write_count()
+}
+
+func shared_tasks() {
+    let first = spawn read_count()
+    let second = spawn read_count()
+
+    await first
+    await second
+}
+
+func shared_then_exclusive() {
+    let task = spawn read_count()
+
+    await task
+    write_count()
+}
+
+func sequential_exclusive_access() {
+    let first = spawn write_count()
+    await first
+
+    let second = spawn write_count()
+    await second
+}
+
+func independent_access() {
+    let first = spawn write_count()
+    let second = spawn write_users()
+
+    await first
+    await second
+}
+
+func propagated_access() {
+    let task = spawn update_count()
+
+    await task
+    read_count()
+}
+
+shared_tasks()
+shared_then_exclusive()
+sequential_exclusive_access()
+independent_access()
+propagated_access()

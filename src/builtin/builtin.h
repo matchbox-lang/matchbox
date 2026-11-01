@@ -14,12 +14,12 @@ typedef struct Builtin
 {
     const char* name;
     FunctionEntry entry;
-    int paramCount;
+    int param_count;
     DataType params[BUILTIN_PARAMS_MAX];
-    DataType returnTypeId;
+    DataType return_type_id;
 } Builtin;
 
-bool isBuiltinName(const char* name);
-const Builtin* resolveBuiltin(const char* name, const DataType* argumentTypes, size_t argumentCount);
+bool is_builtin_name(const char* name);
+const Builtin* resolve_builtin(const char* name, const DataType* argument_types, size_t argument_count);
 
 #endif

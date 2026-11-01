@@ -1,0 +1,62 @@
+var count = 0
+
+func read_count() {
+    print(count)
+}
+
+func write_count() {
+    count += 1
+}
+
+func write_then_fail() {
+    write_count()
+
+    throw "Task failed"
+}
+
+func await_once() {
+    let task = spawn write_count()
+    
+    await task
+}
+
+func failed_task() {
+    let task = spawn write_then_fail()
+
+    try {
+        await task
+    } catch {
+        write_count()
+    }
+}
+
+func cancel_task() {
+    let task = spawn write_count()
+
+    task.cancel()
+
+    try {
+        await task
+    } catch {
+        print("Caught cancellation")
+    }
+
+    read_count()
+}
+
+func conditional_await(condition: bool) {
+    let task = spawn write_count()
+
+    if condition {
+        await task
+    } else {
+        await task
+    }
+
+    read_count()
+}
+
+await_once()
+failed_task()
+cancel_task()
+conditional_await(true)

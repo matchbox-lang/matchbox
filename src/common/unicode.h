@@ -11,8 +11,8 @@ typedef struct DecodedScalar
     size_t length;
 } DecodedScalar;
 
-bool isUnicodeScalar(uint32_t value);
-bool decodeUtf8(const char* chars, size_t length, DecodedScalar* scalar);
-size_t encodeUtf8(uint32_t value, char bytes[4]);
+bool is_unicode_scalar(uint32_t value);
+bool decode_utf8(const char* chars, size_t length, DecodedScalar* scalar);
+size_t encode_utf8(uint32_t value, char bytes[4]);
 
 #endif

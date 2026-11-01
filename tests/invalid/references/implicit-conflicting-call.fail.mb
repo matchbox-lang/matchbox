@@ -1,8 +1,0 @@
-func takeReferences(a: &i32, b: ^i32) {
-    print(a)
-    print(b)
-}
-
-var value = 10
-
-takeReferences(value, value)

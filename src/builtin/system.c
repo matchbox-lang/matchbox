@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void builtinAssert(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_assert(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -14,10 +14,10 @@ void builtinAssert(VM* vm, const FunctionObject* function, Value* frame)
         return;
     }
 
-    fatalError("Assertion failed");
+    fatal_error("Assertion failed");
 }
 
-void builtinAssertMessage(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_assert_message(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -31,10 +31,10 @@ void builtinAssertMessage(VM* vm, const FunctionObject* function, Value* frame)
     fputs("Error: Assertion failed: ", stderr);
     fwrite(message->chars, 1, message->length, stderr);
     fputc('\n', stderr);
-    raiseError();
+    raise_error();
 }
 
-void builtinByteorder(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_byteorder(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -45,24 +45,24 @@ void builtinByteorder(VM* vm, const FunctionObject* function, Value* frame)
     frame[-2] = SIGNED_VALUE(*c == 0);
 }
 
-void builtinExit(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_exit(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)function;
     (void)frame;
 
-    exitVM(vm, EXIT_SUCCESS);
+    exit_vm(vm, EXIT_SUCCESS);
 }
 
-void builtinExitStatus(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_exit_status(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)function;
 
     int status = AS_I32(frame[0]);
 
-    exitVM(vm, status);
+    exit_vm(vm, status);
 }
 
-void builtinPanic(VM* vm, const FunctionObject* function, Value* frame)
+void builtin_panic(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
     (void)function;
@@ -72,5 +72,5 @@ void builtinPanic(VM* vm, const FunctionObject* function, Value* frame)
     fputs("Panic: ", stderr);
     fwrite(message->chars, 1, message->length, stderr);
     fputc('\n', stderr);
-    raiseError();
+    raise_error();
 }

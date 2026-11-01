@@ -11,763 +11,763 @@
 #include "runtime/string_object.h"
 #include <stdint.h>
 
-static void removeDiscardedExpressionReads(ASTNode* ast);
-static void removeDiscardedStatementReads(ASTNode* ast);
-static void markCalledFunctions(ASTNode* ast);
-static void resetFunctionCallCounts(ASTNode* ast);
-static void optimizeNode(ASTNode* ast);
-static void optimizeMatchPattern(ASTNode* pattern);
-static void optimizeConditional(ASTNode* ast, bool fold);
-static void replaceWithExpression(ASTNode* ast, ASTNode* expression);
+static void remove_discarded_expression_reads(ASTNode* ast);
+static void remove_discarded_statement_reads(ASTNode* ast);
+static void mark_called_functions(ASTNode* ast);
+static void reset_function_call_counts(ASTNode* ast);
+static void optimize_node(ASTNode* ast);
+static void optimize_match_pattern(ASTNode* pattern);
+static void optimize_conditional(ASTNode* ast, bool fold);
+static void replace_with_expression(ASTNode* ast, ASTNode* expression);
 
-static void writeTextLiteral(Writer* writer, ASTNode* ast)
+static void write_text_literal(Writer* writer, ASTNode* ast)
 {
-    if (ast->type == AST_STRING) {
-        formatString(writer, ast->stringLiteral.value);
+    if (ast->type == ASTString) {
+        format_string(writer, ast->string_literal.value);
 
         return;
     }
 
-    formatChar(writer, ast->characterLiteral.value);
+    format_char(writer, ast->character_literal.value);
 }
 
-static void writeConcatenationLiterals(Writer* writer, const void* context)
+static void write_concatenation_literals(Writer* writer, const void* context)
 {
     const ASTNode* ast = context;
 
-    writeTextLiteral(writer, ast->binary.leftExpr);
-    writeTextLiteral(writer, ast->binary.rightExpr);
+    write_text_literal(writer, ast->binary.left_expr);
+    write_text_literal(writer, ast->binary.right_expr);
 }
 
-static size_t textLiteralCapacity(const ASTNode* ast)
+static size_t text_literal_capacity(const ASTNode* ast)
 {
-    if (ast->type == AST_STRING) {
-        return ast->stringLiteral.value->length;
+    if (ast->type == ASTString) {
+        return ast->string_literal.value->length;
     }
 
     return 4;
 }
 
-static size_t concatenationLiteralCapacity(const ASTNode* ast)
+static size_t concatenation_literal_capacity(const ASTNode* ast)
 {
-    size_t left = textLiteralCapacity(ast->binary.leftExpr);
-    size_t right = textLiteralCapacity(ast->binary.rightExpr);
+    size_t left = text_literal_capacity(ast->binary.left_expr);
+    size_t right = text_literal_capacity(ast->binary.right_expr);
 
     if (right > SIZE_MAX - left) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     return left + right;
 }
 
-static bool foldConcatenation(ASTNode* ast)
+static bool fold_concatenation(ASTNode* ast)
 {
-    if (ast->binary.typeId != TYPE_STRING || ast->binary.operator.type != TOKEN_PLUS) {
+    if (ast->binary.type_id != TypeString || ast->binary.operator.type != TokenPlus) {
         return false;
     }
 
-    if (!isTextLiteral(ast->binary.leftExpr) || !isTextLiteral(ast->binary.rightExpr)) {
+    if (!is_text_literal(ast->binary.left_expr) || !is_text_literal(ast->binary.right_expr)) {
         return false;
     }
 
     Token token = ast->binary.operator;
-    size_t capacity = concatenationLiteralCapacity(ast);
-    StringObject* string = concatenateStringParts(capacity, writeConcatenationLiterals, ast);
+    size_t capacity = concatenation_literal_capacity(ast);
+    StringObject* string = concatenate_string_parts(capacity, write_concatenation_literals, ast);
 
-    freeASTNode(ast->binary.leftExpr);
-    freeASTNode(ast->binary.rightExpr);
+    free_ast_node(ast->binary.left_expr);
+    free_ast_node(ast->binary.right_expr);
 
-    ast->type = AST_STRING;
-    ast->stringLiteral.value = string;
-    ast->stringLiteral.token = token;
+    ast->type = ASTString;
+    ast->string_literal.value = string;
+    ast->string_literal.token = token;
 
     return true;
 }
 
-static void foldBinary(ASTNode* ast)
+static void fold_binary(ASTNode* ast)
 {
-    if (foldConcatenation(ast)) {
+    if (fold_concatenation(ast)) {
         return;
     }
 
     ConstantValue value = {0};
-    bool constant = evaluateConstant(ast, &value);
+    bool constant = evaluate_constant(ast, &value);
 
     if (!constant) {
         return;
     }
 
-    ASTNode* replacement = createConstantNode(value, ast->binary.typeId, ast->binary.operator);
+    ASTNode* replacement = create_constant_node(value, ast->binary.type_id, ast->binary.operator);
 
-    freeASTNode(ast->binary.leftExpr);
-    freeASTNode(ast->binary.rightExpr);
-    replaceWithExpression(ast, replacement);
+    free_ast_node(ast->binary.left_expr);
+    free_ast_node(ast->binary.right_expr);
+    replace_with_expression(ast, replacement);
 }
 
-static bool isLiteralOfType(ASTNode* ast, DataType type)
+static bool is_literal_of_type(ASTNode* ast, DataType type)
 {
-    if (!isLiteral(ast)) {
+    if (!is_literal(ast)) {
         return false;
     }
 
-    DataType literalType = getNodeDataType(ast);
+    DataType literal_type = get_node_data_type(ast);
 
-    return literalType == type;
+    return literal_type == type;
 }
 
-static void setLiteralToken(ASTNode* ast, Token token)
+static void set_literal_token(ASTNode* ast, Token token)
 {
     switch (ast->type) {
-        case AST_INTEGER:
-            ast->integerLiteral.token = token;
+        case ASTInteger:
+            ast->integer_literal.token = token;
             break;
-        case AST_BOOLEAN:
-            ast->booleanLiteral.token = token;
+        case ASTBoolean:
+            ast->boolean_literal.token = token;
             break;
-        case AST_FLOAT:
-            ast->floatLiteral.token = token;
+        case ASTFloat:
+            ast->float_literal.token = token;
             break;
-        case AST_STRING:
-            ast->stringLiteral.token = token;
+        case ASTString:
+            ast->string_literal.token = token;
             break;
-        case AST_CHARACTER:
-            ast->characterLiteral.token = token;
+        case ASTCharacter:
+            ast->character_literal.token = token;
             break;
         default:
             break;
     }
 }
 
-static ASTNode copyLiteralInitializer(ASTNode* initializer)
+static ASTNode copy_literal_initializer(ASTNode* initializer)
 {
     ASTNode replacement = *initializer;
 
-    if (initializer->type == AST_STRING) {
-        StringObject* string = initializer->stringLiteral.value;
-        replacement.stringLiteral.value = copyStringObject(string->chars, string->length);
+    if (initializer->type == ASTString) {
+        StringObject* string = initializer->string_literal.value;
+        replacement.string_literal.value = copy_string_object(string->chars, string->length);
     }
 
     return replacement;
 }
 
-static void propagateLiteralLet(ASTNode* ast)
+static void propagate_literal_let(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
 
-    if (!symbol || symbol->type != AST_VARIABLE_DEFINITION) {
+    if (!symbol || symbol->type != ASTVariableDefinition) {
         return;
     }
 
-    if (!symbol->variableDefinition.fixed || symbol->variableDefinition.addressTaken
-        || symbol->variableDefinition.referenceType != REFERENCE_NONE) {
+    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+        || symbol->variable_definition.reference_type != RefNone) {
         return;
     }
     
-    Scope* definitionScope = symbol->variableDefinition.scope;
-    if (definitionScope->frameScope != ast->variable.scope->frameScope) {
+    Scope* definition_scope = symbol->variable_definition.scope;
+    if (definition_scope->frame_scope != ast->variable.scope->frame_scope) {
         return;
     }
 
-    ASTNode* initializer = symbol->variableDefinition.expr;
-    DataType type = symbol->variableDefinition.typeId;
+    ASTNode* initializer = symbol->variable_definition.expr;
+    DataType type = symbol->variable_definition.type_id;
 
     if (!initializer) {
         return;
     }
 
-    bool literal = isLiteralOfType(initializer, type);
+    bool literal = is_literal_of_type(initializer, type);
 
     if (!literal) {
         return;
     }
 
-    ASTNode replacement = copyLiteralInitializer(initializer);
+    ASTNode replacement = copy_literal_initializer(initializer);
     Token token = ast->variable.token;
 
-    setLiteralToken(&replacement, token);
-    freeStringObject(ast->variable.id);
+    set_literal_token(&replacement, token);
+    free_string_object(ast->variable.id);
 
-    symbol->variableDefinition.readCount--;
+    symbol->variable_definition.read_count--;
     *ast = replacement;
 }
 
-static void foldPrefix(ASTNode* ast)
+static void fold_prefix(ASTNode* ast)
 {
     ConstantValue value = {0};
-    bool constant = evaluateConstant(ast, &value);
+    bool constant = evaluate_constant(ast, &value);
 
     if (!constant) {
         return;
     }
 
-    DataType type = getNodeDataType(ast);
-    ASTNode* replacement = createConstantNode(value, type, ast->prefix.operator);
+    DataType type = get_node_data_type(ast);
+    ASTNode* replacement = create_constant_node(value, type, ast->prefix.operator);
 
-    freeASTNode(ast->prefix.expr);
-    freeVector(&ast->prefix.referenceOrigins);
-    replaceWithExpression(ast, replacement);
+    free_ast_node(ast->prefix.expr);
+    free_vector(&ast->prefix.reference_origins);
+    replace_with_expression(ast, replacement);
 }
 
-static void optimizeNodes(Vector* nodes)
+static void optimize_nodes(Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
+        ASTNode* node = get_vector_at(nodes, i);
 
-        optimizeNode(node);
+        optimize_node(node);
     }
 }
 
-static void optimizeConditionalBranch(ASTNode* branch)
+static void optimize_conditional_branch(ASTNode* branch)
 {
     if (!branch) {
         return;
     }
 
-    if (branch->type == AST_CONDITIONAL) {
-        optimizeConditional(branch, false);
+    if (branch->type == ASTConditional) {
+        optimize_conditional(branch, false);
 
         return;
     }
 
-    optimizeNodes(&branch->compound.statements);
+    optimize_nodes(&branch->compound.statements);
 }
 
-static ASTNode* getLiteralBranchResult(ASTNode* branch)
+static ASTNode* get_literal_branch_result(ASTNode* branch)
 {
-    while (branch && branch->type == AST_CONDITIONAL) {
+    while (branch && branch->type == ASTConditional) {
         ASTNode* condition = branch->conditional.condition;
 
-        if (condition->type != AST_BOOLEAN) {
+        if (condition->type != ASTBoolean) {
             return NULL;
         }
 
-        branch = condition->booleanLiteral.value ? branch->conditional.thenBranch : branch->conditional.elseBranch;
+        branch = condition->boolean_literal.value ? branch->conditional.then_branch : branch->conditional.else_branch;
     }
 
-    if (!branch || branch->type != AST_COMPOUND) {
+    if (!branch || branch->type != ASTCompound) {
         return NULL;
     }
 
-    size_t count = countVector(&branch->compound.statements);
+    size_t count = count_vector(&branch->compound.statements);
 
     if (count != 1) {
         return NULL;
     }
 
-    ASTNode* result = getVectorAt(&branch->compound.statements, 0);
+    ASTNode* result = get_vector_at(&branch->compound.statements, 0);
 
-    if (result->type != AST_INTEGER && result->type != AST_FLOAT && result->type != AST_BOOLEAN) {
+    if (result->type != ASTInteger && result->type != ASTFloat && result->type != ASTBoolean) {
         return NULL;
     }
 
     return result;
 }
 
-static void foldConditional(ASTNode* ast)
+static void fold_conditional(ASTNode* ast)
 {
     ASTNode* condition = ast->conditional.condition;
 
-    if (!ast->conditional.expression || ast->conditional.referenceType != REFERENCE_NONE
-        || condition->type != AST_BOOLEAN) {
+    if (!ast->conditional.expression || ast->conditional.reference_type != RefNone
+        || condition->type != ASTBoolean) {
         return;
     }
 
-    ASTNode* selected = condition->booleanLiteral.value ? ast->conditional.thenBranch : ast->conditional.elseBranch;
-    ASTNode* result = getLiteralBranchResult(selected);
+    ASTNode* selected = condition->boolean_literal.value ? ast->conditional.then_branch : ast->conditional.else_branch;
+    ASTNode* result = get_literal_branch_result(selected);
 
     if (!result) {
         return;
     }
 
-    DataType type = getNodeDataType(result);
+    DataType type = get_node_data_type(result);
 
-    if (type != ast->conditional.typeId) {
+    if (type != ast->conditional.type_id) {
         return;
     }
 
     ASTNode replacement = *result;
 
-    freeASTNode(ast->conditional.condition);
-    freeASTNode(ast->conditional.thenBranch);
-    freeASTNode(ast->conditional.elseBranch);
-    freeVector(&ast->conditional.referenceOrigins);
+    free_ast_node(ast->conditional.condition);
+    free_ast_node(ast->conditional.then_branch);
+    free_ast_node(ast->conditional.else_branch);
+    free_vector(&ast->conditional.reference_origins);
 
     *ast = replacement;
 }
 
-static void optimizeConditional(ASTNode* ast, bool fold)
+static void optimize_conditional(ASTNode* ast, bool fold)
 {
-    optimizeNode(ast->conditional.condition);
-    optimizeConditionalBranch(ast->conditional.thenBranch);
-    optimizeConditionalBranch(ast->conditional.elseBranch);
+    optimize_node(ast->conditional.condition);
+    optimize_conditional_branch(ast->conditional.then_branch);
+    optimize_conditional_branch(ast->conditional.else_branch);
 
     if (!fold) {
         return;
     }
 
-    foldConditional(ast);
+    fold_conditional(ast);
 }
 
-static void optimizeMatchPattern(ASTNode* pattern)
+static void optimize_match_pattern(ASTNode* pattern)
 {
-    if (pattern->type != AST_BINARY || pattern->binary.operator.type != TOKEN_PIPE) {
-        optimizeNode(pattern);
+    if (pattern->type != ASTBinary || pattern->binary.operator.type != TokenPipe) {
+        optimize_node(pattern);
 
         return;
     }
 
-    optimizeMatchPattern(pattern->binary.leftExpr);
-    optimizeMatchPattern(pattern->binary.rightExpr);
+    optimize_match_pattern(pattern->binary.left_expr);
+    optimize_match_pattern(pattern->binary.right_expr);
 }
 
-static void optimizeMatchArm(MatchArm* arm)
+static void optimize_match_arm(MatchArm* arm)
 {
     if (arm->pattern) {
-        optimizeMatchPattern(arm->pattern);
+        optimize_match_pattern(arm->pattern);
     }
 
     if (arm->guard) {
-        optimizeNode(arm->guard);
+        optimize_node(arm->guard);
     }
 
-    optimizeConditionalBranch(arm->branch);
+    optimize_conditional_branch(arm->branch);
 }
 
-static void optimizeMatch(ASTNode* ast)
+static void optimize_match(ASTNode* ast)
 {
     if (ast->match.subject) {
-        optimizeNode(ast->match.subject);
+        optimize_node(ast->match.subject);
     }
 
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
 
-        optimizeMatchArm(arm);
+        optimize_match_arm(arm);
     }
 
-    optimizeConditionalBranch(ast->match.defaultBranch);
+    optimize_conditional_branch(ast->match.default_branch);
 }
 
-static void replaceWithExpression(ASTNode* ast, ASTNode* expression)
+static void replace_with_expression(ASTNode* ast, ASTNode* expression)
 {
     ASTNode replacement = *expression;
 
-    freeMemory(expression);
+    free_memory(expression);
 
     *ast = replacement;
 }
 
-static void optimizeBuiltinCall(ASTNode* ast)
+static void optimize_builtin_call(ASTNode* ast)
 {
-    optimizeNodes(&ast->builtinCall.args);
+    optimize_nodes(&ast->builtin_call.args);
 
-    const Builtin* builtin = ast->builtinCall.builtin;
+    const Builtin* builtin = ast->builtin_call.builtin;
 
-    if (builtin->entry != builtinString || ast->builtinCall.args.count != 1) {
+    if (builtin->entry != builtin_string || ast->builtin_call.args.count != 1) {
         return;
     }
 
-    ASTNode* expression = ast->builtinCall.args.data[0];
+    ASTNode* expression = ast->builtin_call.args.data[0];
 
-    if (getNodeDataType(expression) != builtin->returnTypeId || getReferenceType(expression) != REFERENCE_NONE) {
+    if (get_node_data_type(expression) != builtin->return_type_id || get_reference_type(expression) != RefNone) {
         return;
     }
 
-    freeVector(&ast->builtinCall.args);
-    replaceWithExpression(ast, expression);
+    free_vector(&ast->builtin_call.args);
+    replace_with_expression(ast, expression);
 }
 
-static void foldExplicitConversion(ASTNode* ast)
+static void fold_explicit_conversion(ASTNode* ast)
 {
     ConstantValue value = {0};
-    bool constant = evaluateConstant(ast, &value);
+    bool constant = evaluate_constant(ast, &value);
 
     if (!constant) {
         return;
     }
 
-    ASTNode* replacement = createConstantNode(value, ast->conversion.typeId, ast->conversion.token);
+    ASTNode* replacement = create_constant_node(value, ast->conversion.type_id, ast->conversion.token);
     ASTNode* expression = ast->conversion.expr;
 
-    freeASTNode(expression);
+    free_ast_node(expression);
 
     ast->conversion.expr = replacement;
 }
 
-static void optimizeConversion(ASTNode* ast)
+static void optimize_conversion(ASTNode* ast)
 {
-    optimizeNode(ast->conversion.expr);
-    foldExplicitConversion(ast);
+    optimize_node(ast->conversion.expr);
+    fold_explicit_conversion(ast);
 
     ASTNode* expression = ast->conversion.expr;
-    bool literal = expression->type == AST_INTEGER || expression->type == AST_FLOAT
-        || expression->type == AST_CHARACTER;
-    bool identity = getNodeDataType(expression) == ast->conversion.typeId;
+    bool literal = expression->type == ASTInteger || expression->type == ASTFloat
+        || expression->type == ASTCharacter;
+    bool identity = get_node_data_type(expression) == ast->conversion.type_id;
 
     if (!literal && !identity) {
         return;
     }
 
-    replaceWithExpression(ast, expression);
+    replace_with_expression(ast, expression);
 }
 
-static void optimizeBinary(ASTNode* ast)
+static void optimize_binary(ASTNode* ast)
 {
-    optimizeNode(ast->binary.leftExpr);
-    optimizeNode(ast->binary.rightExpr);
-    foldBinary(ast);
+    optimize_node(ast->binary.left_expr);
+    optimize_node(ast->binary.right_expr);
+    fold_binary(ast);
 }
 
-static void optimizePrefix(ASTNode* ast)
+static void optimize_prefix(ASTNode* ast)
 {
-    if (ast->prefix.operator.type == TOKEN_CONST) {
+    if (ast->prefix.operator.type == TokenKeywordConst) {
         return;
     }
 
-    optimizeNode(ast->prefix.expr);
-    foldPrefix(ast);
+    optimize_node(ast->prefix.expr);
+    fold_prefix(ast);
 }
 
-static void optimizeNode(ASTNode* ast)
+static void optimize_node(ASTNode* ast)
 {
     switch (ast->type) {
-        case AST_ASSIGNMENT:
-            optimizeNode(ast->assignment.expr);
+        case ASTAssignment:
+            optimize_node(ast->assignment.expr);
             break;
-        case AST_BINARY:
-            optimizeBinary(ast);
+        case ASTBinary:
+            optimize_binary(ast);
             break;
-        case AST_BUILTIN_CALL:
-            optimizeBuiltinCall(ast);
+        case ASTBuiltinCall:
+            optimize_builtin_call(ast);
             break;
-        case AST_WHILE:
-            optimizeNode(ast->whileStatement.condition);
-            optimizeNodes(&ast->whileStatement.body->compound.statements);
+        case ASTWhile:
+            optimize_node(ast->while_statement.condition);
+            optimize_nodes(&ast->while_statement.body->compound.statements);
             break;
-        case AST_CONDITIONAL:
-            optimizeConditional(ast, true);
+        case ASTConditional:
+            optimize_conditional(ast, true);
             break;
-        case AST_CONVERSION:
-            optimizeConversion(ast);
+        case ASTConversion:
+            optimize_conversion(ast);
             break;
-        case AST_FUNCTION_CALL:
-            optimizeNodes(&ast->functionCall.args);
+        case ASTFunctionCall:
+            optimize_nodes(&ast->function_call.args);
             break;
-        case AST_FUNCTION_DEFINITION:
-            optimizeNodes(&ast->functionDefinition.body->compound.statements);
+        case ASTFunctionDefinition:
+            optimize_nodes(&ast->function_definition.body->compound.statements);
             break;
-        case AST_MATCH:
-            optimizeMatch(ast);
+        case ASTMatch:
+            optimize_match(ast);
             break;
-        case AST_PREFIX:
-            optimizePrefix(ast);
+        case ASTPrefix:
+            optimize_prefix(ast);
             break;
-        case AST_RETURN:
-            optimizeNode(ast->returnStatement.expr);
+        case ASTReturn:
+            optimize_node(ast->return_statement.expr);
             break;
-        case AST_VARIABLE:
-            propagateLiteralLet(ast);
+        case ASTVariable:
+            propagate_literal_let(ast);
             break;
-        case AST_VARIABLE_DEFINITION:
-            optimizeNode(ast->variableDefinition.expr);
+        case ASTVariableDefinition:
+            optimize_node(ast->variable_definition.expr);
             break;
         default:
             break;
     }
 }
 
-void optimizeAST(ASTNode* ast, size_t start)
+void optimize_ast(ASTNode* ast, size_t start)
 {
-    size_t count = countVector(&ast->compound.statements);
+    size_t count = count_vector(&ast->compound.statements);
 
     for (size_t i = start; i < count; i++) {
-        ASTNode* node = getVectorAt(&ast->compound.statements, i);
+        ASTNode* node = get_vector_at(&ast->compound.statements, i);
 
-        optimizeNode(node);
+        optimize_node(node);
     }
 }
 
-static bool hasNoValueReads(ASTNode* ast)
+static bool has_no_value_reads(ASTNode* ast)
 {
-    return ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
+    return ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
 }
 
-static void removeUnreadInitializerReads(ASTNode* ast)
+static void remove_unread_initializer_reads(ASTNode* ast)
 {
-    if (!hasNoValueReads(ast) || ast->variableDefinition.discardedReadsAnalyzed) {
+    if (!has_no_value_reads(ast) || ast->variable_definition.discarded_reads_analyzed) {
         return;
     }
 
-    ast->variableDefinition.discardedReadsAnalyzed = true;
+    ast->variable_definition.discarded_reads_analyzed = true;
 
-    removeDiscardedExpressionReads(ast->variableDefinition.expr);
+    remove_discarded_expression_reads(ast->variable_definition.expr);
 }
 
-static void removeDiscardedVariableRead(ASTNode* ast)
+static void remove_discarded_variable_read(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
 
-    if (!isVariableDefinition(symbol)) {
+    if (!is_variable_definition(symbol)) {
         return;
     }
 
-    symbol->variableDefinition.discardedReadCount++;
+    symbol->variable_definition.discarded_read_count++;
 
-    removeUnreadInitializerReads(symbol);
+    remove_unread_initializer_reads(symbol);
 }
 
-static void removeDiscardedExpressionReads(ASTNode* ast)
+static void remove_discarded_expression_reads(ASTNode* ast)
 {
     switch (ast->type) {
-        case AST_VARIABLE:
-            removeDiscardedVariableRead(ast);
+        case ASTVariable:
+            remove_discarded_variable_read(ast);
             break;
-        case AST_PREFIX:
-            removeDiscardedExpressionReads(ast->prefix.expr);
+        case ASTPrefix:
+            remove_discarded_expression_reads(ast->prefix.expr);
             break;
         default:
             break;
     }
 }
 
-static void removeDiscardedStatementVectorReads(Vector* nodes)
+static void remove_discarded_statement_vector_reads(Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
+        ASTNode* node = get_vector_at(nodes, i);
 
-        removeDiscardedStatementReads(node);
+        remove_discarded_statement_reads(node);
     }
 }
 
-static void removeDiscardedStatementReads(ASTNode* ast)
+static void remove_discarded_statement_reads(ASTNode* ast)
 {
-    if (ast->type == AST_FUNCTION_DEFINITION) {
-        removeDiscardedStatementVectorReads(&ast->functionDefinition.body->compound.statements);
+    if (ast->type == ASTFunctionDefinition) {
+        remove_discarded_statement_vector_reads(&ast->function_definition.body->compound.statements);
 
         return;
     }
 
-    if (ast->type == AST_VARIABLE_DEFINITION) {
-        removeUnreadInitializerReads(ast);
+    if (ast->type == ASTVariableDefinition) {
+        remove_unread_initializer_reads(ast);
 
         return;
     }
 
-    removeDiscardedExpressionReads(ast);
+    remove_discarded_expression_reads(ast);
 }
 
-void removeDiscardedReads(Vector* nodes, size_t start)
+void remove_discarded_reads(Vector* nodes, size_t start)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = start; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
+        ASTNode* node = get_vector_at(nodes, i);
 
-        removeDiscardedStatementReads(node);
+        remove_discarded_statement_reads(node);
     }
 }
 
-static void markCalledFunctionsInVector(Vector* nodes)
+static void mark_called_functions_in_vector(Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
+        ASTNode* node = get_vector_at(nodes, i);
 
-        markCalledFunctions(node);
+        mark_called_functions(node);
     }
 }
 
-static void markCalledFunction(ASTNode* ast)
+static void mark_called_function(ASTNode* ast)
 {
-    ASTNode* function = ast->functionCall.symbol;
+    ASTNode* function = ast->function_call.symbol;
 
-    markCalledFunctionsInVector(&ast->functionCall.args);
+    mark_called_functions_in_vector(&ast->function_call.args);
 
     if (!function) {
         return;
     }
 
-    function->functionDefinition.callCount++;
+    function->function_definition.call_count++;
 
-    if (function->functionDefinition.callCount > 1) {
+    if (function->function_definition.call_count > 1) {
         return;
     }
 
-    markCalledFunctionsInVector(&function->functionDefinition.params);
-    markCalledFunctions(function->functionDefinition.body);
+    mark_called_functions_in_vector(&function->function_definition.params);
+    mark_called_functions(function->function_definition.body);
 }
 
-static void markMatchCalledFunctions(ASTNode* ast)
+static void mark_match_called_functions(ASTNode* ast)
 {
-    markCalledFunctions(ast->match.subject);
+    mark_called_functions(ast->match.subject);
 
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
 
-        markCalledFunctions(arm->pattern);
-        markCalledFunctions(arm->guard);
-        markCalledFunctions(arm->branch);
+        mark_called_functions(arm->pattern);
+        mark_called_functions(arm->guard);
+        mark_called_functions(arm->branch);
     }
 
-    markCalledFunctions(ast->match.defaultBranch);
+    mark_called_functions(ast->match.default_branch);
 }
 
-static void markPrefixCalledFunctions(ASTNode* ast)
+static void mark_prefix_called_functions(ASTNode* ast)
 {
-    if (ast->prefix.operator.type == TOKEN_CONST && ast->prefix.evaluated) {
+    if (ast->prefix.operator.type == TokenKeywordConst && ast->prefix.evaluated) {
         return;
     }
 
-    markCalledFunctions(ast->prefix.expr);
+    mark_called_functions(ast->prefix.expr);
 }
 
-static void markCalledFunctions(ASTNode* ast)
+static void mark_called_functions(ASTNode* ast)
 {
     if (!ast) {
         return;
     }
 
     switch (ast->type) {
-        case AST_ASSIGNMENT:
-            markCalledFunctions(ast->assignment.expr);
+        case ASTAssignment:
+            mark_called_functions(ast->assignment.expr);
             break;
-        case AST_BINARY:
-            markCalledFunctions(ast->binary.leftExpr);
-            markCalledFunctions(ast->binary.rightExpr);
+        case ASTBinary:
+            mark_called_functions(ast->binary.left_expr);
+            mark_called_functions(ast->binary.right_expr);
             break;
-        case AST_BUILTIN_CALL:
-            markCalledFunctionsInVector(&ast->builtinCall.args);
+        case ASTBuiltinCall:
+            mark_called_functions_in_vector(&ast->builtin_call.args);
             break;
-        case AST_WHILE:
-            markCalledFunctions(ast->whileStatement.condition);
-            markCalledFunctions(ast->whileStatement.body);
+        case ASTWhile:
+            mark_called_functions(ast->while_statement.condition);
+            mark_called_functions(ast->while_statement.body);
             break;
-        case AST_COMPOUND:
-            markCalledFunctionsInVector(&ast->compound.statements);
+        case ASTCompound:
+            mark_called_functions_in_vector(&ast->compound.statements);
             break;
-        case AST_CONDITIONAL:
-            markCalledFunctions(ast->conditional.condition);
-            markCalledFunctions(ast->conditional.thenBranch);
-            markCalledFunctions(ast->conditional.elseBranch);
+        case ASTConditional:
+            mark_called_functions(ast->conditional.condition);
+            mark_called_functions(ast->conditional.then_branch);
+            mark_called_functions(ast->conditional.else_branch);
             break;
-        case AST_CONVERSION:
-            markCalledFunctions(ast->conversion.expr);
+        case ASTConversion:
+            mark_called_functions(ast->conversion.expr);
             break;
-        case AST_FUNCTION_CALL:
-            markCalledFunction(ast);
+        case ASTFunctionCall:
+            mark_called_function(ast);
             break;
-        case AST_MATCH:
-            markMatchCalledFunctions(ast);
+        case ASTMatch:
+            mark_match_called_functions(ast);
             break;
-        case AST_PARAMETER:
-            markCalledFunctions(ast->parameter.defaultValue);
+        case ASTParameter:
+            mark_called_functions(ast->parameter.default_value);
             break;
-        case AST_PREFIX:
-            markPrefixCalledFunctions(ast);
+        case ASTPrefix:
+            mark_prefix_called_functions(ast);
             break;
-        case AST_RETURN:
-            markCalledFunctions(ast->returnStatement.expr);
+        case ASTReturn:
+            mark_called_functions(ast->return_statement.expr);
             break;
-        case AST_VARIABLE_DEFINITION:
-            markCalledFunctions(ast->variableDefinition.expr);
+        case ASTVariableDefinition:
+            mark_called_functions(ast->variable_definition.expr);
             break;
         default:
             break;
     }
 }
 
-static void resetFunctionCallCountsInVector(Vector* nodes)
+static void reset_function_call_counts_in_vector(Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
+        ASTNode* node = get_vector_at(nodes, i);
 
-        resetFunctionCallCounts(node);
+        reset_function_call_counts(node);
     }
 }
 
-static void resetMatchFunctionCallCounts(ASTNode* ast)
+static void reset_match_function_call_counts(ASTNode* ast)
 {
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
 
-        resetFunctionCallCounts(arm->pattern);
-        resetFunctionCallCounts(arm->guard);
-        resetFunctionCallCounts(arm->branch);
+        reset_function_call_counts(arm->pattern);
+        reset_function_call_counts(arm->guard);
+        reset_function_call_counts(arm->branch);
     }
 
-    resetFunctionCallCounts(ast->match.defaultBranch);
+    reset_function_call_counts(ast->match.default_branch);
 }
 
-static void resetFunctionCallCounts(ASTNode* ast)
+static void reset_function_call_counts(ASTNode* ast)
 {
     if (!ast) {
         return;
     }
 
-    if (ast->type == AST_FUNCTION_DEFINITION) {
-        ast->functionDefinition.callCount = 0;
+    if (ast->type == ASTFunctionDefinition) {
+        ast->function_definition.call_count = 0;
 
-        resetFunctionCallCounts(ast->functionDefinition.body);
-
-        return;
-    }
-
-    if (ast->type == AST_COMPOUND) {
-        resetFunctionCallCountsInVector(&ast->compound.statements);
+        reset_function_call_counts(ast->function_definition.body);
 
         return;
     }
 
-    if (ast->type == AST_CONDITIONAL) {
-        resetFunctionCallCounts(ast->conditional.thenBranch);
-        resetFunctionCallCounts(ast->conditional.elseBranch);
+    if (ast->type == ASTCompound) {
+        reset_function_call_counts_in_vector(&ast->compound.statements);
 
         return;
     }
 
-    if (ast->type == AST_WHILE) {
-        resetFunctionCallCounts(ast->whileStatement.condition);
-        resetFunctionCallCounts(ast->whileStatement.body);
+    if (ast->type == ASTConditional) {
+        reset_function_call_counts(ast->conditional.then_branch);
+        reset_function_call_counts(ast->conditional.else_branch);
 
         return;
     }
 
-    if (ast->type == AST_MATCH) {
-        resetMatchFunctionCallCounts(ast);
+    if (ast->type == ASTWhile) {
+        reset_function_call_counts(ast->while_statement.condition);
+        reset_function_call_counts(ast->while_statement.body);
+
+        return;
+    }
+
+    if (ast->type == ASTMatch) {
+        reset_match_function_call_counts(ast);
     }
 }
 
-static void markRootCalledFunctions(ASTNode* ast)
+static void mark_root_called_functions(ASTNode* ast)
 {
-    if (ast->type == AST_FUNCTION_DEFINITION) {
+    if (ast->type == ASTFunctionDefinition) {
         return;
     }
 
-    markCalledFunctions(ast);
+    mark_called_functions(ast);
 }
 
-void markReachableFunctions(Vector* nodes)
+void mark_reachable_functions(Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
-    resetFunctionCallCountsInVector(nodes);
+    reset_function_call_counts_in_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* ast = getVectorAt(nodes, i);
+        ASTNode* ast = get_vector_at(nodes, i);
 
-        markRootCalledFunctions(ast);
+        mark_root_called_functions(ast);
     }
 }

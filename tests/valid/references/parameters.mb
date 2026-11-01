@@ -1,16 +1,16 @@
-func takeValue(n: i32) {
+func take_value(n: i32) {
     print(n)
 }
 
-func takeShared(n: &i32) {
+func take_shared(n: &i32) {
     print(n)
 }
 
-func takeExclusive(n: ^i32) {
+func take_exclusive(n: ^i32) {
     print(n)
 }
 
-func takeReferences(a: &i32, b: ^i32) {
+func take_references(a: &i32, b: ^i32) {
     print(a)
     print(b)
 }
@@ -18,19 +18,19 @@ func takeReferences(a: &i32, b: ^i32) {
 var value = 10
 var shared = &value
 
-takeValue(value)
-takeShared(value)
-takeShared(&value)
-takeValue(shared)
-takeShared(shared)
+take_value(value)
+take_shared(value)
+take_shared(&value)
+take_value(shared)
+take_shared(shared)
 
-var exclusiveValue = 20
-var exclusive = ^exclusiveValue
+var exclusive_value = 20
+var exclusive = ^exclusive_value
 
-takeValue(exclusive)
-takeExclusive(exclusive)
+take_value(exclusive)
+take_exclusive(exclusive)
 
 var a = 30
 var b = 40
 
-takeReferences(&a, ^b)
+take_references(&a, ^b)

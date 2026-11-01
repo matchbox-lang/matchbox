@@ -1,11 +1,11 @@
 #include "common/unicode.h"
 
-bool isUnicodeScalar(uint32_t value)
+bool is_unicode_scalar(uint32_t value)
 {
     return value <= 0x10FFFF && (value < 0xD800 || value > 0xDFFF);
 }
 
-static size_t utf8SequenceLength(unsigned char first)
+static size_t utf8_sequence_length(unsigned char first)
 {
     if (first <= 0x7F) {
         return 1;
@@ -26,7 +26,7 @@ static size_t utf8SequenceLength(unsigned char first)
     return 0;
 }
 
-static bool isShortestUtf8(uint32_t value, size_t length)
+static bool is_shortest_utf8(uint32_t value, size_t length)
 {
     switch (length) {
         case 1:
@@ -42,14 +42,14 @@ static bool isShortestUtf8(uint32_t value, size_t length)
     }
 }
 
-bool decodeUtf8(const char* chars, size_t length, DecodedScalar* scalar)
+bool decode_utf8(const char* chars, size_t length, DecodedScalar* scalar)
 {
     if (length == 0) {
         return false;
     }
 
     unsigned char first = (unsigned char)chars[0];
-    size_t count = utf8SequenceLength(first);
+    size_t count = utf8_sequence_length(first);
 
     if (count == 0 || count > length) {
         return false;
@@ -68,8 +68,8 @@ bool decodeUtf8(const char* chars, size_t length, DecodedScalar* scalar)
         value = (value << 6) | (next & 0x3F);
     }
 
-    bool shortest = isShortestUtf8(value, count);
-    bool valid = isUnicodeScalar(value);
+    bool shortest = is_shortest_utf8(value, count);
+    bool valid = is_unicode_scalar(value);
 
     if (!shortest || !valid) {
         return false;
@@ -81,9 +81,9 @@ bool decodeUtf8(const char* chars, size_t length, DecodedScalar* scalar)
     return true;
 }
 
-size_t encodeUtf8(uint32_t value, char bytes[4])
+size_t encode_utf8(uint32_t value, char bytes[4])
 {
-    if (!isUnicodeScalar(value)) {
+    if (!is_unicode_scalar(value)) {
         return 0;
     }
 

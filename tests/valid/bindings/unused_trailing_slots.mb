@@ -1,0 +1,29 @@
+var live = 7
+let unused = 10
+let unused_wide: i64 = 4294967296
+
+func read_live() {
+    print(live)
+}
+
+if live == 7 {
+    var local = 40
+    print(local)
+} else {
+    var local = 50
+    print(local)
+}
+
+print(live)
+read_live()
+
+func side_effect() {
+    print(60)
+    return 90
+}
+
+let unused_call = side_effect()
+let folded = 1 + 2
+
+print(folded)
+print(live)

@@ -1,0 +1,209 @@
+var value8: i8 = 2
+value8 = 2
+value8 = 2
+value8 += 3
+
+print(value8)
+
+value8 = 2
+value8 -= -128
+
+print(value8)
+
+value8 = 2
+value8 *= 127
+
+print(value8)
+
+value8 = 2
+value8 |= -1
+
+print(value8)
+
+value8 = 2
+value8 <<= 1
+
+print(value8)
+
+var value16: i16 = 2
+value16 = 2
+value16 += 3
+
+print(value16)
+
+value16 = 2
+value16 -= -128
+
+print(value16)
+
+value16 = 2
+value16 *= 127
+
+print(value16)
+
+value16 = 2
+value16 |= -1
+
+print(value16)
+
+value16 = 2
+value16 <<= 1
+
+print(value16)
+
+var value32: i32 = 2
+value32 = 2
+value32 += 3
+
+print(value32)
+
+value32 = 2
+value32 -= 3
+
+print(value32)
+
+value32 = 2
+value32 *= 3
+
+print(value32)
+
+value32 = 2
+value32 /= 3
+
+print(value32)
+
+value32 = 2
+value32 %= 3
+
+print(value32)
+
+value32 = 2
+value32 &= 3
+
+print(value32)
+
+value32 = 2
+value32 |= 3
+
+print(value32)
+
+value32 = 2
+value32 ^= 3
+
+print(value32)
+
+value32 = 2
+value32 <<= 1
+
+print(value32)
+
+value32 = 2
+value32 >>= 1
+
+print(value32)
+
+value32 = 2
+value32 += -128
+
+print(value32)
+
+value32 = 2
+value32 -= -128
+
+print(value32)
+
+value32 = 2
+value32 *= -128
+
+print(value32)
+
+value32 = 2
+value32 += 127
+
+print(value32)
+
+value32 = 2
+value32 += 128
+
+print(value32)
+
+value32 = 2
+value32 += -129
+
+print(value32)
+
+value32 = 2
+value32 &= 255
+
+print(value32)
+
+value32 = 2
+value32 |= -1
+
+print(value32)
+
+var value64: i64 = 2
+value64 = 2
+value64 += 3
+
+print(value64)
+
+value64 = 2
+value64 -= -128
+
+print(value64)
+
+value64 = 2
+value64 *= 127
+
+print(value64)
+
+value64 = 2
+value64 |= -1
+
+print(value64)
+
+value64 = 2
+value64 <<= 1
+
+print(value64)
+
+func check_wide_immediates(value: i64, bits: u64) {
+    if value + -128 != -126 {
+        exit(1)
+    }
+
+    if value - -128 != 130 {
+        exit(1)
+    }
+
+    if value * 127 != 254 {
+        exit(1)
+    }
+
+    if (bits & 255) != 2 {
+        exit(1)
+    }
+
+    if (bits | 128) != 130 {
+        exit(1)
+    }
+
+    if (bits ^ 255) != 253 {
+        exit(1)
+    }
+
+    if (bits << 32) != 8589934592 {
+        exit(1)
+    }
+
+    if (bits >> 1) != 1 {
+        exit(1)
+    }
+
+    if (value >> 1) != 1 {
+        exit(1)
+    }
+}
+
+check_wide_immediates(2, 2)

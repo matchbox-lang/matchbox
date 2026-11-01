@@ -1,0 +1,13 @@
+var value = 10
+let fixed = 20
+
+func update_global() {
+    print(value)
+    value = 15
+    print(value)
+}
+
+print(value)
+print(fixed)
+update_global()
+print(value)

@@ -2,209 +2,209 @@
 #include <float.h>
 #include <limits.h>
 
-static bool acceptsNumericType(DataType source, DataType destination);
-static bool acceptsBothNumericTypes(DataType left, DataType right, DataType destination);
+static bool accepts_numeric_type(DataType source, DataType destination);
+static bool accepts_both_numeric_types(DataType left, DataType right, DataType destination);
 
-const char* getDataTypeName(DataType type)
+const char* get_data_type_name(DataType type)
 {
     switch (type) {
-        case TYPE_I8:       return "i8";
-        case TYPE_I16:      return "i16";
-        case TYPE_I32:      return "i32";
-        case TYPE_I64:      return "i64";
-        case TYPE_U8:       return "u8";
-        case TYPE_U16:      return "u16";
-        case TYPE_U32:      return "u32";
-        case TYPE_U64:      return "u64";
-        case TYPE_ISIZE:    return "isize";
-        case TYPE_USIZE:    return "usize";
-        case TYPE_F32:      return "f32";
-        case TYPE_F64:      return "f64";
-        case TYPE_CHAR:     return "char";
-        case TYPE_STRING:   return "string";
-        case TYPE_BOOL:     return "bool";
-        case TYPE_VOID:     return "void";
+        case TypeI8:       return "i8";
+        case TypeI16:      return "i16";
+        case TypeI32:      return "i32";
+        case TypeI64:      return "i64";
+        case TypeU8:       return "u8";
+        case TypeU16:      return "u16";
+        case TypeU32:      return "u32";
+        case TypeU64:      return "u64";
+        case TypeIsize:    return "isize";
+        case TypeUsize:    return "usize";
+        case TypeF32:      return "f32";
+        case TypeF64:      return "f64";
+        case TypeChar:     return "char";
+        case TypeString:   return "string";
+        case TypeBool:     return "bool";
+        case TypeVoid:     return "void";
         default:
             return "unknown token";
     }
 }
 
-bool isFloatType(DataType type)
+bool is_float_type(DataType type)
 {
-    return type == TYPE_F32 || type == TYPE_F64;
+    return type == TypeF32 || type == TypeF64;
 }
 
-bool isIntegerType(DataType type)
+bool is_integer_type(DataType type)
 {
-    return getIntegerTypeSize(type) != 0;
+    return get_integer_type_size(type) != 0;
 }
 
-bool isSignedIntegerType(DataType type)
+bool is_signed_integer_type(DataType type)
 {
     switch (type) {
-        case TYPE_I8:
-        case TYPE_I16:
-        case TYPE_I32:
-        case TYPE_I64:
-        case TYPE_ISIZE:
+        case TypeI8:
+        case TypeI16:
+        case TypeI32:
+        case TypeI64:
+        case TypeIsize:
             return true;
         default:
             return false;
     }
 }
 
-size_t getIntegerTypeSize(DataType type)
+size_t get_integer_type_size(DataType type)
 {
     switch (type) {
-        case TYPE_I8:
-        case TYPE_U8:
+        case TypeI8:
+        case TypeU8:
             return 1;
-        case TYPE_I16:
-        case TYPE_U16:
+        case TypeI16:
+        case TypeU16:
             return 2;
-        case TYPE_I32:
-        case TYPE_U32:
+        case TypeI32:
+        case TypeU32:
             return 4;
-        case TYPE_I64:
-        case TYPE_U64:
+        case TypeI64:
+        case TypeU64:
             return 8;
-        case TYPE_ISIZE:
-        case TYPE_USIZE:
+        case TypeIsize:
+        case TypeUsize:
             return sizeof(void*);
         default:
             return 0;
     }
 }
 
-size_t getTypeSlotCount(DataType type)
+size_t get_type_slot_count(DataType type)
 {
-    return type == TYPE_I64 || type == TYPE_U64 || type == TYPE_F64 ? 2 : 1;
+    return type == TypeI64 || type == TypeU64 || type == TypeF64 ? 2 : 1;
 }
 
-bool isPrintableType(DataType type)
+bool is_printable_type(DataType type)
 {
-    return isIntegerType(type) || isFloatType(type) || type == TYPE_BOOL || type == TYPE_CHAR || type == TYPE_STRING;
+    return is_integer_type(type) || is_float_type(type) || type == TypeBool || type == TypeChar || type == TypeString;
 }
 
-bool canImplicitlyWidenInteger(DataType source, DataType destination)
+bool can_implicitly_widen_integer(DataType source, DataType destination)
 {
-    if (!isIntegerType(source) || !isIntegerType(destination)) {
+    if (!is_integer_type(source) || !is_integer_type(destination)) {
         return false;
     }
 
-    if (isSignedIntegerType(source) && !isSignedIntegerType(destination)) {
+    if (is_signed_integer_type(source) && !is_signed_integer_type(destination)) {
         return false;
     }
 
-    size_t sourceSize = getIntegerTypeSize(source);
-    size_t destinationSize = getIntegerTypeSize(destination);
-    bool sameSign = isSignedIntegerType(source) == isSignedIntegerType(destination);
+    size_t source_size = get_integer_type_size(source);
+    size_t destination_size = get_integer_type_size(destination);
+    bool same_sign = is_signed_integer_type(source) == is_signed_integer_type(destination);
 
-    return sourceSize < destinationSize || (sourceSize == destinationSize && sameSign);
+    return source_size < destination_size || (source_size == destination_size && same_sign);
 }
 
-bool canImplicitlyWidenFloat(DataType source, DataType destination)
+bool can_implicitly_widen_float(DataType source, DataType destination)
 {
-    return source == TYPE_F32 && destination == TYPE_F64;
+    return source == TypeF32 && destination == TypeF64;
 }
 
-bool canImplicitlyConvertIntegerToFloat(DataType source, DataType destination)
+bool can_implicitly_convert_integer_to_float(DataType source, DataType destination)
 {
-    if (!isIntegerType(source)) {
+    if (!is_integer_type(source)) {
         return false;
     }
 
-    size_t bits = getIntegerTypeSize(source) * CHAR_BIT;
-    bool signedType = isSignedIntegerType(source);
+    size_t bits = get_integer_type_size(source) * CHAR_BIT;
+    bool signed_type = is_signed_integer_type(source);
     size_t precision = 0;
 
-    if (destination == TYPE_F32) {
+    if (destination == TypeF32) {
         precision = FLT_MANT_DIG;
     }
 
-    if (destination == TYPE_F64) {
+    if (destination == TypeF64) {
         precision = DBL_MANT_DIG;
     }
 
-    return bits - signedType <= precision;
+    return bits - signed_type <= precision;
 }
 
-bool canImplicitlyWidenType(DataType source, DataType destination)
+bool can_implicitly_widen_type(DataType source, DataType destination)
 {
-    if (canImplicitlyWidenInteger(source, destination)) {
+    if (can_implicitly_widen_integer(source, destination)) {
         return true;
     }
 
-    if (canImplicitlyConvertIntegerToFloat(source, destination)) {
+    if (can_implicitly_convert_integer_to_float(source, destination)) {
         return true;
     }
 
-    return canImplicitlyWidenFloat(source, destination);
+    return can_implicitly_widen_float(source, destination);
 }
 
-bool canExplicitlyConvertType(DataType source, DataType destination)
+bool can_explicitly_convert_type(DataType source, DataType destination)
 {
-    bool sourceNumeric = isIntegerType(source) || isFloatType(source);
-    bool destinationNumeric = isIntegerType(destination) || isFloatType(destination);
+    bool source_numeric = is_integer_type(source) || is_float_type(source);
+    bool destination_numeric = is_integer_type(destination) || is_float_type(destination);
 
-    if (source == TYPE_BOOL && isIntegerType(destination)) {
+    if (source == TypeBool && is_integer_type(destination)) {
         return true;
     }
 
-    if (sourceNumeric && destinationNumeric) {
+    if (source_numeric && destination_numeric) {
         return true;
     }
 
-    if (source == TYPE_CHAR) {
-        return destination == TYPE_CHAR || isIntegerType(destination);
+    if (source == TypeChar) {
+        return destination == TypeChar || is_integer_type(destination);
     }
 
-    return isIntegerType(source) && destination == TYPE_CHAR;
+    return is_integer_type(source) && destination == TypeChar;
 }
 
-static bool acceptsNumericType(DataType source, DataType destination)
+static bool accepts_numeric_type(DataType source, DataType destination)
 {
-    return source == destination || canImplicitlyWidenType(source, destination);
+    return source == destination || can_implicitly_widen_type(source, destination);
 }
 
-static bool acceptsBothNumericTypes(DataType left, DataType right, DataType destination)
+static bool accepts_both_numeric_types(DataType left, DataType right, DataType destination)
 {
-    bool acceptsLeft = acceptsNumericType(left, destination);
-    bool acceptsRight = acceptsNumericType(right, destination);
+    bool accepts_left = accepts_numeric_type(left, destination);
+    bool accepts_right = accepts_numeric_type(right, destination);
 
-    return acceptsLeft && acceptsRight;
+    return accepts_left && accepts_right;
 }
 
-DataType getCommonNumericType(DataType left, DataType right)
+DataType get_common_numeric_type(DataType left, DataType right)
 {
-    bool leftNumeric = isIntegerType(left) || isFloatType(left);
-    bool rightNumeric = isIntegerType(right) || isFloatType(right);
+    bool left_numeric = is_integer_type(left) || is_float_type(left);
+    bool right_numeric = is_integer_type(right) || is_float_type(right);
 
-    if (!leftNumeric || !rightNumeric) {
-        return TYPE_UNKNOWN;
+    if (!left_numeric || !right_numeric) {
+        return TypeUnknown;
     }
 
-    if (acceptsNumericType(left, right)) {
+    if (accepts_numeric_type(left, right)) {
         return right;
     }
 
-    if (acceptsNumericType(right, left)) {
+    if (accepts_numeric_type(right, left)) {
         return left;
     }
 
     static const DataType candidates[] = {
-        TYPE_I8, TYPE_I16, TYPE_I32, TYPE_I64, TYPE_U8, TYPE_U16, TYPE_U32, TYPE_U64, TYPE_F32, TYPE_F64
+        TypeI8, TypeI16, TypeI32, TypeI64, TypeU8, TypeU16, TypeU32, TypeU64, TypeF32, TypeF64
     };
     
     size_t count = sizeof(candidates) / sizeof(*candidates);
     size_t index = 0;
 
-    while (index < count && !acceptsBothNumericTypes(left, right, candidates[index])) {
+    while (index < count && !accepts_both_numeric_types(left, right, candidates[index])) {
         index++;
     }
 
     if (index == count) {
-        return TYPE_UNKNOWN;
+        return TypeUnknown;
     }
 
     return candidates[index];

@@ -4,10 +4,10 @@ let c: f64 = 12.34
 let d: f64 = 12.34e2
 
 let large: f64 = 1.0e100
-let inferredLarge = 1e100
-let leadingDecimal = .2
-let leadingDecimalExponent = .2e2
-let leadingZeros = 001.2
+let inferred_large = 1e100
+let leading_decimal = .2
+let leading_decimal_exponent = .2e2
+let leading_zeros = 001.2
 
 func preserve32(value: f32) -> f32 {
     return value
@@ -35,23 +35,23 @@ print(returned64)
 print(literal64())
 print(contextual64)
 print(large)
-print(inferredLarge)
-print(leadingDecimal)
-print(leadingDecimalExponent)
-print(leadingZeros)
+print(inferred_large)
+print(leading_decimal)
+print(leading_decimal_exponent)
+print(leading_zeros)
 
 let exponential = exp(1.0)
-let naturalLogarithm = log(2.0)
-let decimalLogarithm = log10(100.0)
-let binaryLogarithm = log2(8.0)
+let natural_logarithm = log(2.0)
+let decimal_logarithm = log10(100.0)
+let binary_logarithm = log2(8.0)
 let sine = sin(0.5)
 let cosine = cos(0.5)
 let tangent = tan(0.5)
 
 print(exponential)
-print(naturalLogarithm)
-print(decimalLogarithm)
-print(binaryLogarithm)
+print(natural_logarithm)
+print(decimal_logarithm)
+print(binary_logarithm)
 print(sine)
 print(cosine)
 print(tangent)

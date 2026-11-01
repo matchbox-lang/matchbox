@@ -2,64 +2,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static _Thread_local ErrorContext* currentContext;
+static _Thread_local ErrorContext* current_context;
 
-_Noreturn void raiseError(void)
+_Noreturn void raise_error(void)
 {
-    if (currentContext) {
-        longjmp(currentContext->jump, 1);
+    if (current_context) {
+        longjmp(current_context->jump, 1);
     }
 
     exit(EXIT_FAILURE);
 }
 
-void beginErrorContext(ErrorContext* context, MemoryGroup* memory)
+void begin_error_context(ErrorContext* context, MemoryGroup* memory)
 {
-    context->previous = currentContext;
-    context->previousMemory = useMemoryGroup(memory);
+    context->previous = current_context;
+    context->previous_memory = use_memory_group(memory);
 
     if (!memory) {
-        useMemoryGroup(context->previousMemory);
+        use_memory_group(context->previous_memory);
     }
 
-    currentContext = context;
+    current_context = context;
 }
 
-void endErrorContext(ErrorContext* context)
+void end_error_context(ErrorContext* context)
 {
-    currentContext = context->previous;
+    current_context = context->previous;
 
-    useMemoryGroup(context->previousMemory);
+    use_memory_group(context->previous_memory);
 }
 
-void writeErrorMessage(const char* format, va_list arguments)
+void write_error_message(const char* format, va_list arguments)
 {
     fprintf(stderr, "Error: ");
     vfprintf(stderr, format, arguments);
 }
 
-void reportError(const char* format, ...)
+void report_error(const char* format, ...)
 {
     va_list arguments;
 
     va_start(arguments, format);
-    writeErrorMessage(format, arguments);
+    write_error_message(format, arguments);
     va_end(arguments);
     fprintf(stderr, "\n");
 }
 
-_Noreturn void fatalError(const char* format, ...)
+_Noreturn void fatal_error(const char* format, ...)
 {
     va_list arguments;
 
     va_start(arguments, format);
-    writeErrorMessage(format, arguments);
+    write_error_message(format, arguments);
     va_end(arguments);
     fprintf(stderr, "\n");
-    raiseError();
+    raise_error();
 }
 
-_Noreturn void outOfMemoryError(void)
+_Noreturn void out_of_memory_error(void)
 {
-    fatalError("Out of memory");
+    fatal_error("Out of memory");
 }

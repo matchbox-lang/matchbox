@@ -7,12 +7,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
-static char* createPath(size_t length)
+static char* create_path(size_t length)
 {
-    return allocateMemory(length + 1);
+    return allocate_memory(length + 1);
 }
 
-static bool pathEndsWithSeparator(const char* path)
+static bool path_ends_with_separator(const char* path)
 {
     size_t length = strlen(path);
 
@@ -27,18 +27,18 @@ static bool pathEndsWithSeparator(const char* path)
     return path[length - 1] == '/';
 }
 
-static bool pathNeedsSeparator(const char* path)
+static bool path_needs_separator(const char* path)
 {
     if (path[0] == '\0') {
         return false;
     }
 
-    return !pathEndsWithSeparator(path);
+    return !path_ends_with_separator(path);
 }
 
-static bool getPathInfo(const char* path, struct stat* info)
+static bool get_path_info(const char* path, struct stat* info)
 {
-    if (!pathEndsWithSeparator(path)) {
+    if (!path_ends_with_separator(path)) {
         return stat(path, info) == 0;
     }
 
@@ -49,63 +49,63 @@ static bool getPathInfo(const char* path, struct stat* info)
         length--;
     }
 
-    char* normalized = createPath(length);
+    char* normalized = create_path(length);
 
     memcpy(normalized, path, length);
 
     normalized[length] = '\0';
     int status = stat(normalized, info);
 
-    freeMemory(normalized);
+    free_memory(normalized);
 
     return status == 0;
 }
 
-char* joinPath(const char* directory, const char* name)
+char* join_path(const char* directory, const char* name)
 {
-    const char* separator = pathNeedsSeparator(directory) ? "\\" : "";
+    const char* separator = path_needs_separator(directory) ? "\\" : "";
     size_t length = strlen(directory) + strlen(separator) + strlen(name);
-    char* path = createPath(length);
+    char* path = create_path(length);
 
     snprintf(path, length + 1, "%s%s%s", directory, separator, name);
 
     return path;
 }
 
-void freePath(char* path)
+void free_path(char* path)
 {
-    freeMemory(path);
+    free_memory(path);
 }
 
-bool pathExists(const char* path)
+bool path_exists(const char* path)
 {
     struct stat info;
 
-    return getPathInfo(path, &info);
+    return get_path_info(path, &info);
 }
 
-bool pathHasExtension(const char* path, const char* extension)
+bool path_has_extension(const char* path, const char* extension)
 {
-    size_t pathLength = strlen(path);
-    size_t extensionLength = strlen(extension);
+    size_t path_length = strlen(path);
+    size_t extension_length = strlen(extension);
 
-    if (pathLength < extensionLength) {
+    if (path_length < extension_length) {
         return false;
     }
 
-    const char* pathExtension = path + pathLength - extensionLength;
+    const char* path_extension = path + path_length - extension_length;
 
-    return strcmp(pathExtension, extension) == 0;
+    return strcmp(path_extension, extension) == 0;
 }
 
-bool pathIsCurrentOrParentDirectory(const char* path)
+bool path_is_current_or_parent_directory(const char* path)
 {
     return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
 }
 
-bool pathIsDirectory(const char* path)
+bool path_is_directory(const char* path)
 {
     struct stat info;
 
-    return getPathInfo(path, &info) && (info.st_mode & S_IFDIR);
+    return get_path_info(path, &info) && (info.st_mode & S_IFDIR);
 }

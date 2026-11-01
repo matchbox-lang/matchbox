@@ -6,13 +6,13 @@
 int main(int argc, char* argv[])
 {
     Options options;
-    initOptions(&options);
+    init_options(&options);
 
-    if (!parseCommandLine(&options, argc, argv)) {
-        printUsage(stderr);
+    if (!parse_command_line(&options, argc, argv)) {
+        print_usage(stderr);
 
         return 1;
     }
 
-    return runProgram(&options);
+    return run_program(&options);
 }

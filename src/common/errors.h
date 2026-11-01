@@ -9,16 +9,16 @@ typedef struct ErrorContext
 {
     jmp_buf jump;
     struct ErrorContext* previous;
-    MemoryGroup* previousMemory;
+    MemoryGroup* previous_memory;
 } ErrorContext;
 
-void beginErrorContext(ErrorContext* context, MemoryGroup* memory);
-void endErrorContext(ErrorContext* context);
-_Noreturn void raiseError(void);
+void begin_error_context(ErrorContext* context, MemoryGroup* memory);
+void end_error_context(ErrorContext* context);
+_Noreturn void raise_error(void);
 
-void writeErrorMessage(const char* format, va_list arguments);
-void reportError(const char* format, ...);
-_Noreturn void fatalError(const char* format, ...);
-_Noreturn void outOfMemoryError(void);
+void write_error_message(const char* format, va_list arguments);
+void report_error(const char* format, ...);
+_Noreturn void fatal_error(const char* format, ...);
+_Noreturn void out_of_memory_error(void);
 
 #endif

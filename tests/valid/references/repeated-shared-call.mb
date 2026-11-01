@@ -1,8 +1,0 @@
-func takeShared(a: &i32, b: &i32) {
-    print(a)
-    print(b)
-}
-
-var value = 10
-
-takeShared(value, value)

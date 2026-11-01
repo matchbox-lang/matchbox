@@ -10,11 +10,11 @@ typedef struct MemoryGroup
     Allocation* allocations;
 } MemoryGroup;
 
-MemoryGroup* useMemoryGroup(MemoryGroup* group);
-void freeMemoryGroup(MemoryGroup* group);
-void* allocateMemory(size_t size);
-void* allocateZeroedMemory(size_t count, size_t size);
-void* reallocateMemory(void* pointer, size_t size);
-void freeMemory(void* pointer);
+MemoryGroup* use_memory_group(MemoryGroup* group);
+void free_memory_group(MemoryGroup* group);
+void* allocate_memory(size_t size);
+void* allocate_zeroed_memory(size_t count, size_t size);
+void* reallocate_memory(void* pointer, size_t size);
+void free_memory(void* pointer);
 
 #endif

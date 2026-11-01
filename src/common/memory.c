@@ -15,17 +15,17 @@ union Allocation
     } links;
 };
 
-static _Thread_local MemoryGroup* currentGroup;
+static _Thread_local MemoryGroup* current_group;
 
-MemoryGroup* useMemoryGroup(MemoryGroup* group)
+MemoryGroup* use_memory_group(MemoryGroup* group)
 {
-    MemoryGroup* previous = currentGroup;
-    currentGroup = group;
+    MemoryGroup* previous = current_group;
+    current_group = group;
 
     return previous;
 }
 
-static void linkAllocation(Allocation* allocation)
+static void link_allocation(Allocation* allocation)
 {
     MemoryGroup* group = allocation->links.group;
 
@@ -44,7 +44,7 @@ static void linkAllocation(Allocation* allocation)
     }
 }
 
-static void unlinkAllocation(Allocation* allocation)
+static void unlink_allocation(Allocation* allocation)
 {
     MemoryGroup* group = allocation->links.group;
 
@@ -63,68 +63,68 @@ static void unlinkAllocation(Allocation* allocation)
     }
 }
 
-void* allocateMemory(size_t size)
+void* allocate_memory(size_t size)
 {
     if (size > SIZE_MAX - sizeof(Allocation)) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     Allocation* allocation = malloc(sizeof(Allocation) + size);
 
     if (!allocation) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
-    allocation->links.group = currentGroup;
+    allocation->links.group = current_group;
     allocation->links.previous = NULL;
     allocation->links.next = NULL;
 
-    if (currentGroup) {
-        allocation->links.next = currentGroup->allocations;
+    if (current_group) {
+        allocation->links.next = current_group->allocations;
     }
 
-    linkAllocation(allocation);
+    link_allocation(allocation);
 
     return allocation + 1;
 }
 
-void* allocateZeroedMemory(size_t count, size_t size)
+void* allocate_zeroed_memory(size_t count, size_t size)
 {
     if (size != 0 && count > SIZE_MAX / size) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     size_t length = count * size;
-    void* pointer = allocateMemory(length);
+    void* pointer = allocate_memory(length);
 
     memset(pointer, 0, length);
 
     return pointer;
 }
 
-void* reallocateMemory(void* pointer, size_t size)
+void* reallocate_memory(void* pointer, size_t size)
 {
     if (!pointer) {
-        return allocateMemory(size);
+        return allocate_memory(size);
     }
 
     if (size > SIZE_MAX - sizeof(Allocation)) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     Allocation* original = (Allocation*)pointer - 1;
     Allocation* allocation = realloc(original, sizeof(Allocation) + size);
 
     if (!allocation) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
-    linkAllocation(allocation);
+    link_allocation(allocation);
 
     return allocation + 1;
 }
 
-void freeMemory(void* pointer)
+void free_memory(void* pointer)
 {
     if (!pointer) {
         return;
@@ -132,15 +132,15 @@ void freeMemory(void* pointer)
 
     Allocation* allocation = (Allocation*)pointer - 1;
 
-    unlinkAllocation(allocation);
+    unlink_allocation(allocation);
     free(allocation);
 }
 
-void freeMemoryGroup(MemoryGroup* group)
+void free_memory_group(MemoryGroup* group)
 {
     while (group->allocations) {
         void* pointer = group->allocations + 1;
 
-        freeMemory(pointer);
+        free_memory(pointer);
     }
 }

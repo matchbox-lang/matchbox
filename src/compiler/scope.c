@@ -7,116 +7,116 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-static Scope* getFrameScope(Scope* scope, Scope* parent)
+static Scope* get_frame_scope(Scope* scope, Scope* parent)
 {
     if (parent) {
-        return parent->frameScope;
+        return parent->frame_scope;
     }
 
     return scope;
 }
 
-static size_t getLocalOffset(const Scope* parent)
+static size_t get_local_offset(const Scope* parent)
 {
     if (!parent) {
         return 0;
     }
 
-    return parent->localOffset + parent->localCount;
+    return parent->local_offset + parent->local_count;
 }
 
-Scope* createScope(Scope* parent)
+Scope* create_scope(Scope* parent)
 {
-    Scope* scope = allocateMemory(sizeof(Scope));
+    Scope* scope = allocate_memory(sizeof(Scope));
     scope->parent = parent;
-    scope->frameScope = getFrameScope(scope, parent);
-    scope->localOffset = getLocalOffset(parent);
-    scope->localCount = 0;
-    scope->maxLocalCount = scope->localOffset;
-    scope->level = getScopeLevel(parent) + 1;
+    scope->frame_scope = get_frame_scope(scope, parent);
+    scope->local_offset = get_local_offset(parent);
+    scope->local_count = 0;
+    scope->max_local_count = scope->local_offset;
+    scope->level = get_scope_level(parent) + 1;
 
-    initTable(&scope->symbols, 32);
+    init_table(&scope->symbols, 32);
     
     return scope;
 }
 
-void freeScope(Scope* scope)
+void free_scope(Scope* scope)
 {
     if (!scope) {
         return;
     }
 
-    freeTable(&scope->symbols);
-    freeMemory(scope);
+    free_table(&scope->symbols);
+    free_memory(scope);
 }
 
-static size_t getSymbolSlotCount(const ASTNode* symbol)
+static size_t get_symbol_slot_count(const ASTNode* symbol)
 {
-    if (!isVariableType(symbol)) {
+    if (!is_variable_type(symbol)) {
         return 0;
     }
 
-    if (getReferenceType(symbol) != REFERENCE_NONE) {
+    if (get_reference_type(symbol) != RefNone) {
         return 1;
     }
 
-    return getTypeSlotCount(getNodeDataType(symbol));
+    return get_type_slot_count(get_node_data_type(symbol));
 }
 
-size_t getMaxLocalCount(const Scope* scope)
+size_t get_max_local_count(const Scope* scope)
 {
-    return scope->frameScope->maxLocalCount;
+    return scope->frame_scope->max_local_count;
 }
 
-size_t getNextLocalPosition(const Scope* scope)
+size_t get_next_local_position(const Scope* scope)
 {
-    return scope->localOffset + scope->localCount;
+    return scope->local_offset + scope->local_count;
 }
 
-size_t getScopeLevel(const Scope* scope)
+size_t get_scope_level(const Scope* scope)
 {
     return scope ? scope->level : 0;
 }
 
-bool isTopLevelScope(const Scope* scope)
+bool is_top_level_scope(const Scope* scope)
 {
     return scope->level == 1;
 }
 
-ASTNode* setLocalSymbol(Scope* scope, StringView id, ASTNode* symbol)
+ASTNode* set_local_symbol(Scope* scope, StringView id, ASTNode* symbol)
 {
-    if (setTableAt(&scope->symbols, id, symbol)) {
+    if (set_table_at(&scope->symbols, id, symbol)) {
         return symbol;
     }
 
     return NULL;
 }
 
-ASTNode* setLocalVariableSymbol(Scope* scope, StringView id, ASTNode* symbol)
+ASTNode* set_local_variable_symbol(Scope* scope, StringView id, ASTNode* symbol)
 {
-    scope->localCount += getSymbolSlotCount(symbol);
-    size_t localExtent = getNextLocalPosition(scope);
+    scope->local_count += get_symbol_slot_count(symbol);
+    size_t local_extent = get_next_local_position(scope);
 
-    scope->frameScope->maxLocalCount = MAX(scope->frameScope->maxLocalCount, localExtent);
+    scope->frame_scope->max_local_count = MAX(scope->frame_scope->max_local_count, local_extent);
     
-    return setLocalSymbol(scope, id, symbol);
+    return set_local_symbol(scope, id, symbol);
 }
 
-ASTNode* getLocalSymbol(const Scope* scope, StringView id)
+ASTNode* get_local_symbol(const Scope* scope, StringView id)
 {
-    return getTableAt(&scope->symbols, id);
+    return get_table_at(&scope->symbols, id);
 }
 
-ASTNode* getSymbol(const Scope* scope, StringView id)
+ASTNode* get_symbol(const Scope* scope, StringView id)
 {
-    ASTNode* symbol = getTableAt(&scope->symbols, id);
+    ASTNode* symbol = get_table_at(&scope->symbols, id);
 
     if (symbol) {
         return symbol;
     }
 
     if (scope->parent) {
-        return getSymbol(scope->parent, id);
+        return get_symbol(scope->parent, id);
     }
 
     return NULL;

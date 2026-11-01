@@ -1,5 +1,5 @@
-let signedSize: isize = 0       // Pointer-sized signed integer
-let unsignedSize: usize = 0     // Pointer-sized unsigned integer
+let signed_size: isize = 0      // Pointer-sized signed integer
+let unsigned_size: usize = 0    // Pointer-sized unsigned integer
 
 let signed8: i8 = 0             // 8-bit signed integer
 let signed16: i16 = 0           // 16-bit signed integer

@@ -2,12 +2,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-void initOptions(Options* options)
+void init_options(Options* options)
 {
-    options->mode = PROGRAM_RUN;
-    options->testOutput = TEST_OUTPUT_FAILED;
+    options->mode = ProgramRun;
+    options->test_output = TestOutputFailed;
     options->disassemble = false;
-    options->executablePath = NULL;
+    options->executable_path = NULL;
     options->filename = NULL;
-    options->testPath = NULL;
+    options->test_path = NULL;
 }

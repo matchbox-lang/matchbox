@@ -1,26 +1,26 @@
 let value: i32 = 10
 
-func printValue() -> void {
+func print_value() -> void {
     print(value)
 }
 
-printValue()
+print_value()
 
-let inverseHyperbolicCosine: f32 = acosh(2.0)
-let inverseHyperbolicSine: f64 = asinh(1.0)
-let inverseHyperbolicTangent: f32 = atanh(0.5)
-let cubeRoot: f64 = cbrt(-8.0)
-let roundedUp: f32 = ceil(1.25)
-let roundedDown: f64 = floor(1.75)
-let squareRoot: f32 = sqrt(9.0)
+let inverse_hyperbolic_cosine: f32 = acosh(2.0)
+let inverse_hyperbolic_sine: f64 = asinh(1.0)
+let inverse_hyperbolic_tangent: f32 = atanh(0.5)
+let cube_root: f64 = cbrt(-8.0)
+let rounded_up: f32 = ceil(1.25)
+let rounded_down: f64 = floor(1.75)
+let square_root: f32 = sqrt(9.0)
 let order: i32 = byteorder()
 
-print(inverseHyperbolicCosine)
-print(inverseHyperbolicSine)
-print(inverseHyperbolicTangent)
-print(cubeRoot)
-print(roundedUp)
-print(roundedDown)
-print(squareRoot)
+print(inverse_hyperbolic_cosine)
+print(inverse_hyperbolic_sine)
+print(inverse_hyperbolic_tangent)
+print(cube_root)
+print(rounded_up)
+print(rounded_down)
+print(square_root)
 print(order)
 exit(0)

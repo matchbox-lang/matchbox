@@ -25,9 +25,9 @@ let result = match value {
 
 print(result)
 
-let binaryResult = match {
+let binary_result = match {
     case true: 1
     case false: 0
 }
 
-print(binaryResult)
+print(binary_result)

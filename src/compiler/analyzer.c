@@ -19,15 +19,15 @@
 
 typedef bool (*VisitId)(StringView id, void* context);
 
-static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context);
-static void clearNodeAnalysis(ASTNode* ast, Vector* functions);
-static void analyzeNode(Analyzer* analyzer, ASTNode* ast);
-static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast);
-static void activateReferenceAccess(ASTNode* ast);
-static void transferExclusiveReference(ASTNode* expression);
-static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue);
-static ASTNode* findNodeReturn(ASTNode* ast);
-static void applyDeclaredType(ASTNode* expression, DataType type, ReferenceType referenceType);
+static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context);
+static void clear_node_analysis(ASTNode* ast, Vector* functions);
+static void analyze_node(Analyzer* analyzer, ASTNode* ast);
+static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
+static void activate_reference_access(ASTNode* ast);
+static void transfer_exclusive_reference(ASTNode* expression);
+static void update_boolean_match_coverage(MatchArm* arm, bool* covers_false, bool* covers_true);
+static ASTNode* find_node_return(ASTNode* ast);
+static void apply_declared_type(ASTNode* expression, DataType type, ReferenceType reference_type);
 
 typedef struct FunctionPath
 {
@@ -44,12 +44,12 @@ typedef struct LoopPath
 typedef struct OwnershipState
 {
     ASTNode* symbol;
-    Vector referenceOrigins;
-    size_t sharedAccessCount;
-    bool exclusiveAccessActive;
+    Vector reference_origins;
+    size_t shared_access_count;
+    bool exclusive_access_active;
     bool initialized;
     bool moved;
-    bool referenceAccessActive;
+    bool reference_access_active;
 } OwnershipState;
 
 typedef struct ScopedUses
@@ -67,121 +67,121 @@ typedef struct ReferenceUse
 typedef struct ReferenceLifetimes
 {
     size_t position;
-    Table lastUses;
+    Table last_uses;
     Vector* releases;
 } ReferenceLifetimes;
 
-static _Noreturn void binaryTypeError(Token token, DataType left, DataType right)
+static _Noreturn void binary_type_error(Token token, DataType left, DataType right)
 {
-    const char* leftName = getDataTypeName(left);
-    const char* rightName = getDataTypeName(right);
+    const char* left_name = get_data_type_name(left);
+    const char* right_name = get_data_type_name(right);
 
-    fatalSourceError(token.line, token.column, "No lossless common numeric type for %s and %s", leftName, rightName);
+    fatal_source_error(token.line, token.column, "No lossless common numeric type for %s and %s", left_name, right_name);
 }
 
-static _Noreturn void bindingAccessError(char* message, Token token, char* detail)
+static _Noreturn void binding_access_error(char* message, Token token, char* detail)
 {
-    fatalTokenError(token, detail, "%s", message);
+    fatal_token_error(token, detail, "%s", message);
 }
 
-static _Noreturn void floatLiteralOutOfRangeError(Token token, DataType type)
+static _Noreturn void float_literal_out_of_range_error(Token token, DataType type)
 {
-    const char* typeName = getDataTypeName(type);
+    const char* type_name = get_data_type_name(type);
 
-    fatalSourceError(token.line, token.column, "Float literal is outside the range of %s", typeName);
+    fatal_source_error(token.line, token.column, "Float literal is outside the range of %s", type_name);
 }
 
-static _Noreturn void floatLiteralRequiresTypeError(Token token)
+static _Noreturn void float_literal_requires_type_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Float literal requires an explicit type");
+    fatal_source_error(token.line, token.column, "Float literal requires an explicit type");
 }
 
-static _Noreturn void implicitConversionError(Token token, DataType source, DataType destination)
+static _Noreturn void implicit_conversion_error(Token token, DataType source, DataType destination)
 {
-    const char* sourceName = getDataTypeName(source);
-    const char* destinationName = getDataTypeName(destination);
+    const char* source_name = get_data_type_name(source);
+    const char* destination_name = get_data_type_name(destination);
 
-    fatalTokenError(token, "", "Cannot implicitly convert %s to %s for binding ", sourceName, destinationName);
+    fatal_token_error(token, "", "Cannot implicitly convert %s to %s for binding ", source_name, destination_name);
 }
 
-static _Noreturn void integerLiteralNotRepresentableError(Token token, DataType type)
+static _Noreturn void integer_literal_not_representable_error(Token token, DataType type)
 {
-    const char* typeName = getDataTypeName(type);
+    const char* type_name = get_data_type_name(type);
 
-    fatalSourceError(token.line, token.column, "Integer literal cannot be represented as %s", typeName);
+    fatal_source_error(token.line, token.column, "Integer literal cannot be represented as %s", type_name);
 }
 
-static _Noreturn void integerLiteralOutOfRangeError(Token token, DataType type)
+static _Noreturn void integer_literal_out_of_range_error(Token token, DataType type)
 {
-    const char* typeName = getDataTypeName(type);
+    const char* type_name = get_data_type_name(type);
 
-    fatalSourceError(token.line, token.column, "Integer literal is outside the range of %s", typeName);
+    fatal_source_error(token.line, token.column, "Integer literal is outside the range of %s", type_name);
 }
 
-static _Noreturn void integerLiteralRequiresTypeError(Token token)
+static _Noreturn void integer_literal_requires_type_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Integer literal requires an explicit type");
+    fatal_source_error(token.line, token.column, "Integer literal requires an explicit type");
 }
 
-static _Noreturn void invalidBuiltinArgumentsError(Token token)
+static _Noreturn void invalid_builtin_arguments_error(Token token)
 {
-    fatalTokenError(token, "", "Invalid arguments to builtin ");
+    fatal_token_error(token, "", "Invalid arguments to builtin ");
 }
 
-static _Noreturn void negativeUnsignedIntegerError(Token token)
+static _Noreturn void negative_unsigned_integer_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Negative integer literal cannot have an unsigned type");
+    fatal_source_error(token.line, token.column, "Negative integer literal cannot have an unsigned type");
 }
 
-static _Noreturn void redefinitionError(char* kind, Token token)
+static _Noreturn void redefinition_error(char* kind, Token token)
 {
-    fatalTokenError(token, " is already defined", "%s ", kind);
+    fatal_token_error(token, " is already defined", "%s ", kind);
 }
 
-static _Noreturn void returnOutsideFunctionError(Token token)
+static _Noreturn void return_outside_function_error(Token token)
 {
-    fatalSourceError(token.line, token.column, "Return statement is only valid inside a function");
+    fatal_source_error(token.line, token.column, "Return statement is only valid inside a function");
 }
 
-static _Noreturn void semanticError(char* message, Token token)
+static _Noreturn void semantic_error(char* message, Token token)
 {
-    fatalSourceError(token.line, token.column, "%s", message);
+    fatal_source_error(token.line, token.column, "%s", message);
 }
 
-static _Noreturn void semanticTokenError(char* message, Token token)
+static _Noreturn void semantic_token_error(char* message, Token token)
 {
-    fatalTokenError(token, "", "%s", message);
+    fatal_token_error(token, "", "%s", message);
 }
 
-static _Noreturn void symbolError(const char* detail, Token token)
+static _Noreturn void symbol_error(const char* detail, Token token)
 {
-    fatalTokenError(token, detail, "");
+    fatal_token_error(token, detail, "");
 }
 
-static _Noreturn void unsupportedExplicitConversionError(Token token, DataType source, DataType destination)
+static _Noreturn void unsupported_explicit_conversion_error(Token token, DataType source, DataType destination)
 {
-    const char* sourceName = getDataTypeName(source);
-    const char* destinationName = getDataTypeName(destination);
+    const char* source_name = get_data_type_name(source);
+    const char* destination_name = get_data_type_name(destination);
 
-    fatalSourceError(token.line, token.column, "Unsupported explicit conversion from %s to %s",
-        sourceName, destinationName);
+    fatal_source_error(token.line, token.column, "Unsupported explicit conversion from %s to %s",
+        source_name, destination_name);
 }
 
-static ASTNode* getIntegerLiteral(ASTNode* expression, bool* negative)
+static ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
 {
     *negative = false;
 
-    if (expression->type == AST_INTEGER && isSignedIntegerType(expression->integerLiteral.typeId)
-        && expression->integerLiteral.value > INT64_MAX) {
+    if (expression->type == ASTInteger && is_signed_integer_type(expression->integer_literal.type_id)
+        && expression->integer_literal.value > INT64_MAX) {
         return NULL;
     }
 
-    if (expression->type == AST_INTEGER) {
+    if (expression->type == ASTInteger) {
         return expression;
     }
 
-    if (expression->type != AST_PREFIX || expression->prefix.operator.type != TOKEN_MINUS
-        || expression->prefix.expr->type != AST_INTEGER) {
+    if (expression->type != ASTPrefix || expression->prefix.operator.type != TokenMinus
+        || expression->prefix.expr->type != ASTInteger) {
         return NULL;
     }
 
@@ -190,15 +190,15 @@ static ASTNode* getIntegerLiteral(ASTNode* expression, bool* negative)
     return expression->prefix.expr;
 }
 
-static bool integerLiteralFitsType(uint64_t value, bool negative, DataType type)
+static bool integer_literal_fits_type(uint64_t value, bool negative, DataType type)
 {
-    size_t bits = getIntegerTypeSize(type) * CHAR_BIT;
+    size_t bits = get_integer_type_size(type) * CHAR_BIT;
 
-    if (!bits || (!isSignedIntegerType(type) && negative)) {
+    if (!bits || (!is_signed_integer_type(type) && negative)) {
         return false;
     }
 
-    if (!isSignedIntegerType(type)) {
+    if (!is_signed_integer_type(type)) {
         return bits == 64 || value <= (UINT64_C(1) << bits) - 1;
     }
 
@@ -207,13 +207,13 @@ static bool integerLiteralFitsType(uint64_t value, bool negative, DataType type)
     return negative ? value <= limit : value < limit;
 }
 
-static bool integerLiteralFitsFloat(uint64_t value, DataType type)
+static bool integer_literal_fits_float(uint64_t value, DataType type)
 {
     size_t precision;
 
-    if (type == TYPE_F32) {
+    if (type == TypeF32) {
         precision = FLT_MANT_DIG;
-    } else if (type == TYPE_F64) {
+    } else if (type == TypeF64) {
         precision = DBL_MANT_DIG;
     } else {
         return false;
@@ -231,166 +231,166 @@ static bool integerLiteralFitsFloat(uint64_t value, DataType type)
         return true;
     }
 
-    size_t discardedBits = bits - precision;
-    uint64_t mask = (UINT64_C(1) << discardedBits) - 1;
+    size_t discarded_bits = bits - precision;
+    uint64_t mask = (UINT64_C(1) << discarded_bits) - 1;
 
     return (value & mask) == 0;
 }
 
-static bool applyIntegerLiteralType(ASTNode* expression, DataType type)
+static bool apply_integer_literal_type(ASTNode* expression, DataType type)
 {
     bool negative;
-    ASTNode* literal = getIntegerLiteral(expression, &negative);
+    ASTNode* literal = get_integer_literal(expression, &negative);
 
     if (!literal) {
         return false;
     }
 
-    if (negative && isIntegerType(type) && !isSignedIntegerType(type)) {
-        negativeUnsignedIntegerError(literal->integerLiteral.token);
+    if (negative && is_integer_type(type) && !is_signed_integer_type(type)) {
+        negative_unsigned_integer_error(literal->integer_literal.token);
     }
 
-    bool fitsInteger = integerLiteralFitsType(literal->integerLiteral.value, negative, type);
-    bool fitsFloat = integerLiteralFitsFloat(literal->integerLiteral.value, type);
+    bool fits_integer = integer_literal_fits_type(literal->integer_literal.value, negative, type);
+    bool fits_float = integer_literal_fits_float(literal->integer_literal.value, type);
 
-    if (isFloatType(type) && !fitsFloat) {
-        integerLiteralNotRepresentableError(literal->integerLiteral.token, type);
+    if (is_float_type(type) && !fits_float) {
+        integer_literal_not_representable_error(literal->integer_literal.token, type);
     }
 
-    if (isIntegerType(type) && !fitsInteger) {
-        integerLiteralOutOfRangeError(literal->integerLiteral.token, type);
+    if (is_integer_type(type) && !fits_integer) {
+        integer_literal_out_of_range_error(literal->integer_literal.token, type);
     }
 
-    literal->integerLiteral.typeId = type;
+    literal->integer_literal.type_id = type;
 
     return true;
 }
 
-static ASTNode* getFloatLiteral(ASTNode* expression)
+static ASTNode* get_float_literal(ASTNode* expression)
 {
-    if (expression->type == AST_PREFIX && expression->prefix.operator.type == TOKEN_MINUS) {
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenMinus) {
         expression = expression->prefix.expr;
     }
 
-    if (expression->type != AST_FLOAT) {
+    if (expression->type != ASTFloat) {
         return NULL;
     }
 
     return expression;
 }
 
-static void applyLiteralType(ASTNode* expression, DataType type)
+static void apply_literal_type(ASTNode* expression, DataType type)
 {
-    if (expression->type == AST_PREFIX && expression->prefix.operator.type == TOKEN_CONST) {
-        applyLiteralType(expression->prefix.expr, type);
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
+        apply_literal_type(expression->prefix.expr, type);
 
         return;
     }
 
-    if (isIntegerType(type) || isFloatType(type)) {
-        applyIntegerLiteralType(expression, type);
+    if (is_integer_type(type) || is_float_type(type)) {
+        apply_integer_literal_type(expression, type);
     }
 
-    expression = getFloatLiteral(expression);
+    expression = get_float_literal(expression);
 
-    if (!expression || !isFloatType(type)) {
+    if (!expression || !is_float_type(type)) {
         return;
     }
 
-    if (type == TYPE_F32 && expression->floatLiteral.value > FLT_MAX) {
-        floatLiteralOutOfRangeError(expression->floatLiteral.token, type);
+    if (type == TypeF32 && expression->float_literal.value > FLT_MAX) {
+        float_literal_out_of_range_error(expression->float_literal.token, type);
     }
 
-    expression->floatLiteral.typeId = type;
+    expression->float_literal.type_id = type;
 }
 
-static ASTNode* findFrameSymbol(Scope* scope, StringView id)
+static ASTNode* find_frame_symbol(Scope* scope, StringView id)
 {
-    Scope* frame = scope->frameScope;
+    Scope* frame = scope->frame_scope;
     ASTNode* symbol = NULL;
 
     for (Scope* current = scope;
-        current && current->frameScope == frame && !symbol;
+        current && current->frame_scope == frame && !symbol;
         current = current->parent) {
-        symbol = getLocalSymbol(current, id);
+        symbol = get_local_symbol(current, id);
     }
 
     return symbol;
 }
 
-static ASTNode* findSymbol(Analyzer* analyzer, StringView id)
+static ASTNode* find_symbol(Analyzer* analyzer, StringView id)
 {
-    ASTNode* symbol = findFrameSymbol(analyzer->currentScope, id);
+    ASTNode* symbol = find_frame_symbol(analyzer->current_scope, id);
     if (symbol) {
         return symbol;
     }
 
-    return getLocalSymbol(analyzer->topLevel->compound.scope, id);
+    return get_local_symbol(analyzer->top_level->compound.scope, id);
 }
 
-static size_t* getSharedAccessCount(ASTNode* symbol)
+static size_t* get_shared_access_count(ASTNode* symbol)
 {
-    if (isParameter(symbol)) {
-        return &symbol->parameter.sharedAccessCount;
+    if (is_parameter(symbol)) {
+        return &symbol->parameter.shared_access_count;
     }
 
-    return &symbol->variableDefinition.sharedAccessCount;
+    return &symbol->variable_definition.shared_access_count;
 }
 
-static bool hasExclusiveAccess(ASTNode* symbol)
+static bool has_exclusive_access(ASTNode* symbol)
 {
-    if (isParameter(symbol)) {
-        return symbol->parameter.exclusiveAccessActive;
+    if (is_parameter(symbol)) {
+        return symbol->parameter.exclusive_access_active;
     }
 
-    return symbol->variableDefinition.exclusiveAccessActive;
+    return symbol->variable_definition.exclusive_access_active;
 }
 
-static void setExclusiveAccess(ASTNode* symbol, bool active)
+static void set_exclusive_access(ASTNode* symbol, bool active)
 {
-    if (isParameter(symbol)) {
-        symbol->parameter.exclusiveAccessActive = active;
+    if (is_parameter(symbol)) {
+        symbol->parameter.exclusive_access_active = active;
 
         return;
     }
 
-    symbol->variableDefinition.exclusiveAccessActive = active;
+    symbol->variable_definition.exclusive_access_active = active;
 }
 
-static bool isMoved(ASTNode* symbol)
+static bool is_moved(ASTNode* symbol)
 {
-    if (isParameter(symbol)) {
+    if (is_parameter(symbol)) {
         return symbol->parameter.moved;
     }
 
-    return symbol->variableDefinition.moved;
+    return symbol->variable_definition.moved;
 }
 
-static void setMoved(ASTNode* symbol)
+static void set_moved(ASTNode* symbol)
 {
-    if (isParameter(symbol)) {
+    if (is_parameter(symbol)) {
         symbol->parameter.moved = true;
 
         return;
     }
 
-    symbol->variableDefinition.moved = true;
+    symbol->variable_definition.moved = true;
 }
 
-static void setMovedState(ASTNode* symbol, bool moved)
+static void set_moved_state(ASTNode* symbol, bool moved)
 {
-    if (isParameter(symbol)) {
+    if (is_parameter(symbol)) {
         symbol->parameter.moved = moved;
 
         return;
     }
 
-    symbol->variableDefinition.moved = moved;
+    symbol->variable_definition.moved = moved;
 }
 
-static ASTNode* getReferenceOriginOrSelf(ASTNode* symbol)
+static ASTNode* get_reference_origin_or_self(ASTNode* symbol)
 {
-    ASTNode* origin = getReferenceOrigin(symbol);
+    ASTNode* origin = get_reference_origin(symbol);
 
     if (origin) {
         return origin;
@@ -399,20 +399,20 @@ static ASTNode* getReferenceOriginOrSelf(ASTNode* symbol)
     return symbol;
 }
 
-static ASTNode* referenceOriginFromExpression(ASTNode* ast)
+static ASTNode* reference_origin_from_expression(ASTNode* ast)
 {
-    if (ast->type == AST_PREFIX && isVariable(ast->prefix.expr)) {
+    if (ast->type == ASTPrefix && is_variable(ast->prefix.expr)) {
         ASTNode* symbol = ast->prefix.expr->variable.symbol;
 
-        return getReferenceOriginOrSelf(symbol);
+        return get_reference_origin_or_self(symbol);
     }
 
-    return getReferenceOrigin(ast);
+    return get_reference_origin(ast);
 }
 
-static Vector* referenceOriginsFromExpression(ASTNode* ast)
+static Vector* reference_origins_from_expression(ASTNode* ast)
 {
-    Vector* origins = getReferenceOrigins(ast);
+    Vector* origins = get_reference_origins(ast);
 
     if (origins) {
         return origins;
@@ -423,12 +423,12 @@ static Vector* referenceOriginsFromExpression(ASTNode* ast)
     return &empty;
 }
 
-static bool containsReferenceOrigin(Vector* origins, ASTNode* origin)
+static bool contains_reference_origin(Vector* origins, ASTNode* origin)
 {
-    size_t count = countVector(origins);
+    size_t count = count_vector(origins);
 
     for (size_t i = 0; i < count; i++) {
-        if (getVectorAt(origins, i) == origin) {
+        if (get_vector_at(origins, i) == origin) {
             return true;
         }
     }
@@ -436,58 +436,58 @@ static bool containsReferenceOrigin(Vector* origins, ASTNode* origin)
     return false;
 }
 
-static void addReferenceOrigin(Vector* origins, ASTNode* origin)
+static void add_reference_origin(Vector* origins, ASTNode* origin)
 {
-    if (!origin || containsReferenceOrigin(origins, origin)) {
+    if (!origin || contains_reference_origin(origins, origin)) {
         return;
     }
 
-    pushVectorItem(origins, origin);
+    push_vector_item(origins, origin);
 }
 
-static void copyReferenceOrigins(Vector* destination, Vector* source)
+static void copy_reference_origins(Vector* destination, Vector* source)
 {
     if (destination == source) {
         return;
     }
 
     destination->count = 0;
-    size_t count = countVector(source);
+    size_t count = count_vector(source);
 
     for (size_t i = 0; i < count; i++) {
-        addReferenceOrigin(destination, getVectorAt(source, i));
+        add_reference_origin(destination, get_vector_at(source, i));
     }
 }
 
-static void mergeReferenceOrigins(Vector* destination, Vector* source)
+static void merge_reference_origins(Vector* destination, Vector* source)
 {
-    size_t count = countVector(source);
+    size_t count = count_vector(source);
 
     for (size_t i = 0; i < count; i++) {
-        addReferenceOrigin(destination, getVectorAt(source, i));
+        add_reference_origin(destination, get_vector_at(source, i));
     }
 }
 
-static void setReferenceOriginsFromExpression(ASTNode* destination, ASTNode* expression)
+static void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expression)
 {
-    Vector* destinationOrigins = getReferenceOrigins(destination);
-    Vector* origins = referenceOriginsFromExpression(expression);
-    copyReferenceOrigins(destinationOrigins, origins);
+    Vector* destination_origins = get_reference_origins(destination);
+    Vector* origins = reference_origins_from_expression(expression);
+    copy_reference_origins(destination_origins, origins);
 }
 
-static bool matchesShadowedId(StringObject* shadowed, StringView id)
+static bool matches_shadowed_id(StringObject* shadowed, StringView id)
 {
-    StringView view = getStringView(shadowed);
+    StringView view = get_string_view(shadowed);
 
-    return compareStringView(view, id);
+    return compare_string_view(view, id);
 }
 
-static bool visitUnshadowedUse(StringView id, void* context)
+static bool visit_unshadowed_use(StringView id, void* context)
 {
     ScopedUses* scope = context;
     size_t index = 0;
 
-    while (index < scope->shadowed.count && !matchesShadowedId(scope->shadowed.data[index], id)) {
+    while (index < scope->shadowed.count && !matches_shadowed_id(scope->shadowed.data[index], id)) {
         index++;
     }
 
@@ -498,68 +498,68 @@ static bool visitUnshadowedUse(StringView id, void* context)
     return scope->visit(id, scope->context);
 }
 
-static bool visitScopedStatementUses(ASTNode* ast, ScopedUses* scope)
+static bool visit_scoped_statement_uses(ASTNode* ast, ScopedUses* scope)
 {
-    bool found = visitNodeUses(ast, visitUnshadowedUse, scope);
+    bool found = visit_node_uses(ast, visit_unshadowed_use, scope);
 
-    if (ast->type == AST_VARIABLE_DEFINITION) {
-        pushVectorItem(&scope->shadowed, ast->variableDefinition.id);
+    if (ast->type == ASTVariableDefinition) {
+        push_vector_item(&scope->shadowed, ast->variable_definition.id);
     }
 
     return found;
 }
 
-static bool visitScopedStatementListUses(Vector* nodes, ScopedUses* scope)
+static bool visit_scoped_statement_list_uses(Vector* nodes, ScopedUses* scope)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
     size_t index = 0;
     bool found = false;
 
     while (index < count && !found) {
-        ASTNode* node = getVectorAt(nodes, index);
+        ASTNode* node = get_vector_at(nodes, index);
 
-        found = visitScopedStatementUses(node, scope);
+        found = visit_scoped_statement_uses(node, scope);
         index++;
     }
 
     return found;
 }
 
-static bool visitScopedBlockUses(Vector* nodes, VisitId visit, void* context)
+static bool visit_scoped_block_uses(Vector* nodes, VisitId visit, void* context)
 {
     ScopedUses scope = {.visit = visit, .context = context};
-    bool found = visitScopedStatementListUses(nodes, &scope);
+    bool found = visit_scoped_statement_list_uses(nodes, &scope);
 
-    freeVector(&scope.shadowed);
+    free_vector(&scope.shadowed);
 
     return found;
 }
 
-static bool visitFunctionUses(ASTNode* ast, VisitId visit, void* context)
+static bool visit_function_uses(ASTNode* ast, VisitId visit, void* context)
 {
     ScopedUses scope = {.visit = visit, .context = context};
-    Vector* params = &ast->functionDefinition.params;
+    Vector* params = &ast->function_definition.params;
 
     for (size_t i = 0; i < params->count; i++) {
-        ASTNode* parameter = getVectorAt(params, i);
+        ASTNode* parameter = get_vector_at(params, i);
 
-        pushVectorItem(&scope.shadowed, parameter->parameter.id);
+        push_vector_item(&scope.shadowed, parameter->parameter.id);
     }
 
-    bool found = visitNodeUses(ast->functionDefinition.body, visitUnshadowedUse, &scope);
+    bool found = visit_node_uses(ast->function_definition.body, visit_unshadowed_use, &scope);
 
-    freeVector(&scope.shadowed);
+    free_vector(&scope.shadowed);
 
     return found;
 }
 
-static bool visitNodeListUses(Vector* nodes, VisitId visit, void* context)
+static bool visit_node_list_uses(Vector* nodes, VisitId visit, void* context)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
-        bool found = visitNodeUses(node, visit, context);
+        ASTNode* node = get_vector_at(nodes, i);
+        bool found = visit_node_uses(node, visit, context);
 
         if (found) {
             return true;
@@ -569,107 +569,107 @@ static bool visitNodeListUses(Vector* nodes, VisitId visit, void* context)
     return false;
 }
 
-static bool visitMatchArmUses(MatchArm* arm, VisitId visit, void* context)
+static bool visit_match_arm_uses(MatchArm* arm, VisitId visit, void* context)
 {
-    if (visitNodeUses(arm->pattern, visit, context)) {
+    if (visit_node_uses(arm->pattern, visit, context)) {
         return true;
     }
 
     if (!arm->binding) {
-        return visitNodeUses(arm->guard, visit, context) || visitNodeUses(arm->branch, visit, context);
+        return visit_node_uses(arm->guard, visit, context) || visit_node_uses(arm->branch, visit, context);
     }
 
-    void* ids[] = {arm->binding->variableDefinition.id};
+    void* ids[] = {arm->binding->variable_definition.id};
     ScopedUses scope = {.visit = visit, .context = context, .shadowed = {.data = ids, .count = 1}};
 
-    return visitNodeUses(arm->guard, visitUnshadowedUse, &scope)
-        || visitNodeUses(arm->branch, visitUnshadowedUse, &scope);
+    return visit_node_uses(arm->guard, visit_unshadowed_use, &scope)
+        || visit_node_uses(arm->branch, visit_unshadowed_use, &scope);
 }
 
-static bool visitMatchUses(ASTNode* ast, VisitId visit, void* context)
+static bool visit_match_uses(ASTNode* ast, VisitId visit, void* context)
 {
-    if (visitNodeUses(ast->match.subject, visit, context)) {
+    if (visit_node_uses(ast->match.subject, visit, context)) {
         return true;
     }
 
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        bool found = visitMatchArmUses(arm, visit, context);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        bool found = visit_match_arm_uses(arm, visit, context);
 
         if (found) {
             return true;
         }
     }
 
-    return visitNodeUses(ast->match.defaultBranch, visit, context);
+    return visit_node_uses(ast->match.default_branch, visit, context);
 }
 
-static bool visitAssignmentUses(ASTNode* ast, VisitId visit, void* context)
+static bool visit_assignment_uses(ASTNode* ast, VisitId visit, void* context)
 {
     Token token = ast->assignment.token;
-    StringView id = createStringView(token.chars, token.length);
+    StringView id = create_string_view(token.chars, token.length);
 
-    return visit(id, context) || visitNodeUses(ast->assignment.expr, visit, context);
+    return visit(id, context) || visit_node_uses(ast->assignment.expr, visit, context);
 }
 
-static bool visitNodeUses(ASTNode* ast, VisitId visit, void* context)
+static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
 {
     if (!ast) {
         return false;
     }
 
     switch (ast->type) {
-        case AST_ASSIGNMENT:
-            return visitAssignmentUses(ast, visit, context);
-        case AST_BINARY:
-            return visitNodeUses(ast->binary.leftExpr, visit, context)
-                || visitNodeUses(ast->binary.rightExpr, visit, context);
-        case AST_BUILTIN_CALL:
-            return visitNodeListUses(&ast->builtinCall.args, visit, context);
-        case AST_COMPOUND:
-            return visitScopedBlockUses(&ast->compound.statements, visit, context);
-        case AST_WHILE:
-            return visitNodeUses(ast->whileStatement.condition, visit, context)
-                || visitNodeUses(ast->whileStatement.body, visit, context);
-        case AST_CONDITIONAL:
-            return visitNodeUses(ast->conditional.condition, visit, context)
-                || visitNodeUses(ast->conditional.thenBranch, visit, context)
-                || visitNodeUses(ast->conditional.elseBranch, visit, context);
-        case AST_CONVERSION:
-            return visitNodeUses(ast->conversion.expr, visit, context);
-        case AST_FUNCTION_CALL:
-            return visitNodeListUses(&ast->functionCall.args, visit, context);
-        case AST_FUNCTION_DEFINITION:
-            return visitFunctionUses(ast, visit, context);
-        case AST_MATCH:
-            return visitMatchUses(ast, visit, context);
-        case AST_PREFIX:
-            return visitNodeUses(ast->prefix.expr, visit, context);
-        case AST_RETURN:
-            return visitNodeUses(ast->returnStatement.expr, visit, context);
-        case AST_VARIABLE: {
-            StringView id = getStringView(ast->variable.id);
+        case ASTAssignment:
+            return visit_assignment_uses(ast, visit, context);
+        case ASTBinary:
+            return visit_node_uses(ast->binary.left_expr, visit, context)
+                || visit_node_uses(ast->binary.right_expr, visit, context);
+        case ASTBuiltinCall:
+            return visit_node_list_uses(&ast->builtin_call.args, visit, context);
+        case ASTCompound:
+            return visit_scoped_block_uses(&ast->compound.statements, visit, context);
+        case ASTWhile:
+            return visit_node_uses(ast->while_statement.condition, visit, context)
+                || visit_node_uses(ast->while_statement.body, visit, context);
+        case ASTConditional:
+            return visit_node_uses(ast->conditional.condition, visit, context)
+                || visit_node_uses(ast->conditional.then_branch, visit, context)
+                || visit_node_uses(ast->conditional.else_branch, visit, context);
+        case ASTConversion:
+            return visit_node_uses(ast->conversion.expr, visit, context);
+        case ASTFunctionCall:
+            return visit_node_list_uses(&ast->function_call.args, visit, context);
+        case ASTFunctionDefinition:
+            return visit_function_uses(ast, visit, context);
+        case ASTMatch:
+            return visit_match_uses(ast, visit, context);
+        case ASTPrefix:
+            return visit_node_uses(ast->prefix.expr, visit, context);
+        case ASTReturn:
+            return visit_node_uses(ast->return_statement.expr, visit, context);
+        case ASTVariable: {
+            StringView id = get_string_view(ast->variable.id);
 
             return visit(id, context);
         }
-        case AST_VARIABLE_DEFINITION:
-            return visitNodeUses(ast->variableDefinition.expr, visit, context);
+        case ASTVariableDefinition:
+            return visit_node_uses(ast->variable_definition.expr, visit, context);
         default:
             return false;
     }
 }
 
-static bool matchesReferenceId(StringView id, void* context)
+static bool matches_reference_id(StringView id, void* context)
 {
-    return compareStringView(id, *(StringView*)context);
+    return compare_string_view(id, *(StringView*)context);
 }
 
-static bool recordReferenceUse(StringView id, void* context)
+static bool record_reference_use(StringView id, void* context)
 {
     ReferenceLifetimes* lifetimes = context;
-    ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
+    ReferenceUse* use = get_table_at(&lifetimes->last_uses, id);
 
     if (use) {
         use->last = lifetimes->position;
@@ -677,631 +677,631 @@ static bool recordReferenceUse(StringView id, void* context)
         return false;
     }
 
-    use = allocateMemory(sizeof(ReferenceUse));
+    use = allocate_memory(sizeof(ReferenceUse));
     use->last = lifetimes->position;
-    setTableAt(&lifetimes->lastUses, id, use);
+    set_table_at(&lifetimes->last_uses, id, use);
 
     return false;
 }
 
-static void initReferenceLifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size_t start)
+static void init_reference_lifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size_t start)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
-    initTable(&lifetimes->lastUses, count * 2);
+    init_table(&lifetimes->last_uses, count * 2);
 
-    lifetimes->releases = allocateZeroedMemory(count, sizeof(Vector));
+    lifetimes->releases = allocate_zeroed_memory(count, sizeof(Vector));
 
     for (size_t i = start; i < count; i++) {
-        ASTNode* ast = getVectorAt(nodes, i);
+        ASTNode* ast = get_vector_at(nodes, i);
         lifetimes->position = i;
 
-        visitNodeUses(ast, recordReferenceUse, lifetimes);
+        visit_node_uses(ast, record_reference_use, lifetimes);
     }
 }
 
-static void scheduleReferenceRelease(ReferenceLifetimes* lifetimes, ASTNode* ast, size_t position)
+static void schedule_reference_release(ReferenceLifetimes* lifetimes, ASTNode* ast, size_t position)
 {
-    if (!isVariableDefinition(ast) || getReferenceType(ast) == REFERENCE_NONE) {
+    if (!is_variable_definition(ast) || get_reference_type(ast) == RefNone) {
         return;
     }
 
-    StringView id = getStringView(ast->variableDefinition.id);
-    ReferenceUse* use = getTableAt(&lifetimes->lastUses, id);
+    StringView id = get_string_view(ast->variable_definition.id);
+    ReferenceUse* use = get_table_at(&lifetimes->last_uses, id);
 
     if (use) {
         position = MAX(position, use->last);
     }
 
-    pushVectorItem(&lifetimes->releases[position], ast);
+    push_vector_item(&lifetimes->releases[position], ast);
 }
 
-static void freeReferenceLifetimes(ReferenceLifetimes* lifetimes, size_t count)
+static void free_reference_lifetimes(ReferenceLifetimes* lifetimes, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
-        freeVector(&lifetimes->releases[i]);
+        free_vector(&lifetimes->releases[i]);
     }
 
-    for (size_t i = 0; i < lifetimes->lastUses.capacity; i++) {
-        TableItem* item = lifetimes->lastUses.data[i];
+    for (size_t i = 0; i < lifetimes->last_uses.capacity; i++) {
+        TableItem* item = lifetimes->last_uses.data[i];
 
         while (item) {
-            freeMemory(item->value);
+            free_memory(item->value);
             item = item->next;
         }
     }
 
-    freeMemory(lifetimes->releases);
-    freeTable(&lifetimes->lastUses);
+    free_memory(lifetimes->releases);
+    free_table(&lifetimes->last_uses);
 }
 
-static void releaseReferenceAccess(ASTNode* reference)
+static void release_reference_access(ASTNode* reference)
 {
-    Vector* origins = getReferenceOrigins(reference);
-    size_t count = countVector(origins);
+    Vector* origins = get_reference_origins(reference);
+    size_t count = count_vector(origins);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* origin = getVectorAt(origins, i);
+        ASTNode* origin = get_vector_at(origins, i);
 
-        if (reference->variableDefinition.referenceType == REFERENCE_SHARED) {
-            (*getSharedAccessCount(origin))--;
+        if (reference->variable_definition.reference_type == RefShared) {
+            (*get_shared_access_count(origin))--;
         } else {
-            setExclusiveAccess(origin, false);
+            set_exclusive_access(origin, false);
         }
     }
 
-    reference->variableDefinition.referenceAccessActive = false;
+    reference->variable_definition.reference_access_active = false;
 }
 
-static void releaseInactiveReferenceAccess(Vector* references)
+static void release_inactive_reference_access(Vector* references)
 {
-    size_t count = countVector(references);
+    size_t count = count_vector(references);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* ast = getVectorAt(references, i);
+        ASTNode* ast = get_vector_at(references, i);
 
-        if (ast->variableDefinition.referenceAccessActive) {
-            releaseReferenceAccess(ast);
+        if (ast->variable_definition.reference_access_active) {
+            release_reference_access(ast);
         }
     }
 }
 
-static void analyzeNodes(Analyzer* analyzer, Vector* nodes, size_t start)
+static void analyze_nodes(Analyzer* analyzer, Vector* nodes, size_t start)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     if (start >= count) {
         return;
     }
 
     ReferenceLifetimes lifetimes;
-    ReferenceLifetimes* previousLifetimes = analyzer->referenceLifetimes;
-    Vector* previousNodes = analyzer->currentNodes;
-    size_t previousNext = analyzer->nextNode;
+    ReferenceLifetimes* previous_lifetimes = analyzer->reference_lifetimes;
+    Vector* previous_nodes = analyzer->current_nodes;
+    size_t previous_next = analyzer->next_node;
 
-    initReferenceLifetimes(&lifetimes, nodes, start);
+    init_reference_lifetimes(&lifetimes, nodes, start);
 
-    analyzer->referenceLifetimes = &lifetimes;
+    analyzer->reference_lifetimes = &lifetimes;
 
     for (size_t i = 0; i < start; i++) {
-        ASTNode* ast = getVectorAt(nodes, i);
+        ASTNode* ast = get_vector_at(nodes, i);
 
-        scheduleReferenceRelease(&lifetimes, ast, start);
+        schedule_reference_release(&lifetimes, ast, start);
     }
 
     for (size_t i = start; i < count; i++) {
-        ASTNode* ast = getVectorAt(nodes, i);
-        analyzer->currentNodes = nodes;
-        analyzer->nextNode = i + 1;
+        ASTNode* ast = get_vector_at(nodes, i);
+        analyzer->current_nodes = nodes;
+        analyzer->next_node = i + 1;
 
-        analyzeNode(analyzer, ast);
-        scheduleReferenceRelease(&lifetimes, ast, i);
-        releaseInactiveReferenceAccess(&lifetimes.releases[i]);
+        analyze_node(analyzer, ast);
+        schedule_reference_release(&lifetimes, ast, i);
+        release_inactive_reference_access(&lifetimes.releases[i]);
     }
 
-    analyzer->referenceLifetimes = previousLifetimes;
-    analyzer->currentNodes = previousNodes;
-    analyzer->nextNode = previousNext;
+    analyzer->reference_lifetimes = previous_lifetimes;
+    analyzer->current_nodes = previous_nodes;
+    analyzer->next_node = previous_next;
 
-    freeReferenceLifetimes(&lifetimes, count);
+    free_reference_lifetimes(&lifetimes, count);
 }
 
-static void analyzeExpressionNodes(Analyzer* analyzer, Vector* nodes)
+static void analyze_expression_nodes(Analyzer* analyzer, Vector* nodes)
 {
-    analyzeNodes(analyzer, nodes, 0);
+    analyze_nodes(analyzer, nodes, 0);
 }
 
-static ASTNode* getBranchResult(ASTNode* branch)
+static ASTNode* get_branch_result(ASTNode* branch)
 {
-    if (branch->type == AST_CONDITIONAL) {
+    if (branch->type == ASTConditional) {
         return branch;
     }
 
     Vector* statements = &branch->compound.statements;
-    size_t count = countVector(statements);
+    size_t count = count_vector(statements);
 
     if (!count) {
         return NULL;
     }
 
-    return getVectorAt(statements, count - 1);
+    return get_vector_at(statements, count - 1);
 }
 
-static void setExpressionReferenceType(ASTNode* ast, ReferenceType type)
+static void set_expression_reference_type(ASTNode* ast, ReferenceType type)
 {
-    if (ast->type == AST_CONDITIONAL) {
-        ast->conditional.referenceType = type;
+    if (ast->type == ASTConditional) {
+        ast->conditional.reference_type = type;
 
         return;
     }
 
-    ast->match.referenceType = type;
+    ast->match.reference_type = type;
 }
 
-static void mergeBranchReference(
-    ASTNode* ast, ASTNode* result, bool first, bool hasExpectedType, Token token)
+static void merge_branch_reference(
+    ASTNode* ast, ASTNode* result, bool first, bool has_expected_type, Token token)
 {
-    ReferenceType type = getReferenceType(result);
+    ReferenceType type = get_reference_type(result);
 
-    if (first && !hasExpectedType) {
-        setExpressionReferenceType(ast, type);
-    } else if (getReferenceType(ast) != type) {
-        semanticTokenError("Expression branches have incompatible reference types ", token);
+    if (first && !has_expected_type) {
+        set_expression_reference_type(ast, type);
+    } else if (get_reference_type(ast) != type) {
+        semantic_token_error("Expression branches have incompatible reference types ", token);
     }
 
-    Vector* origins = referenceOriginsFromExpression(result);
-    Vector* expressionOrigins = getReferenceOrigins(ast);
-    mergeReferenceOrigins(expressionOrigins, origins);
+    Vector* origins = reference_origins_from_expression(result);
+    Vector* expression_origins = get_reference_origins(ast);
+    merge_reference_origins(expression_origins, origins);
 }
 
-static Scope* enterBranchScope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
+static Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
 {
-    Scope* previousScope = analyzer->currentScope;
-    branch->compound.scope = createScope(previousScope);
-    analyzer->currentScope = branch->compound.scope;
+    Scope* previous_scope = analyzer->current_scope;
+    branch->compound.scope = create_scope(previous_scope);
+    analyzer->current_scope = branch->compound.scope;
 
     if (binding) {
-        binding->variableDefinition.scope = analyzer->currentScope;
-        binding->variableDefinition.position = getNextLocalPosition(analyzer->currentScope);
+        binding->variable_definition.scope = analyzer->current_scope;
+        binding->variable_definition.position = get_next_local_position(analyzer->current_scope);
         
-        StringView id = getStringView(binding->variableDefinition.id);
+        StringView id = get_string_view(binding->variable_definition.id);
 
-        setLocalVariableSymbol(analyzer->currentScope, id, binding);
+        set_local_variable_symbol(analyzer->current_scope, id, binding);
     }
 
-    return previousScope;
+    return previous_scope;
 }
 
-static DataType analyzeBranchContents(Analyzer* analyzer, ASTNode* branch, DataType type)
+static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, DataType type)
 {
-    size_t count = countVector(&branch->compound.statements);
+    size_t count = count_vector(&branch->compound.statements);
 
-    if (count && isIntegerType(type)) {
-        ASTNode* result = getVectorAt(&branch->compound.statements, count - 1);
-        applyIntegerLiteralType(result, type);
+    if (count && is_integer_type(type)) {
+        ASTNode* result = get_vector_at(&branch->compound.statements, count - 1);
+        apply_integer_literal_type(result, type);
     }
 
-    analyzeExpressionNodes(analyzer, &branch->compound.statements);
+    analyze_expression_nodes(analyzer, &branch->compound.statements);
 
     if (!count) {
-        return TYPE_VOID;
+        return TypeVoid;
     }
 
-    ASTNode* result = getVectorAt(&branch->compound.statements, count - 1);
-    DataType resultType = getNodeDataType(result);
+    ASTNode* result = get_vector_at(&branch->compound.statements, count - 1);
+    DataType result_type = get_node_data_type(result);
 
-    if (resultType == type || canImplicitlyWidenType(resultType, type)) {
+    if (result_type == type || can_implicitly_widen_type(result_type, type)) {
         return type;
     }
 
-    return resultType;
+    return result_type;
 }
 
-static DataType analyzeScopedBranch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, DataType type)
+static DataType analyze_scoped_branch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, DataType type)
 {
-    Scope* previousScope = enterBranchScope(analyzer, branch, binding);
-    DataType resultType = analyzeBranchContents(analyzer, branch, type);
-    analyzer->currentScope = previousScope;
+    Scope* previous_scope = enter_branch_scope(analyzer, branch, binding);
+    DataType result_type = analyze_branch_contents(analyzer, branch, type);
+    analyzer->current_scope = previous_scope;
 
-    return resultType;
+    return result_type;
 }
 
-static DataType analyzeElseBranch(Analyzer* analyzer, ASTNode* branch, DataType type)
+static DataType analyze_else_branch(Analyzer* analyzer, ASTNode* branch, DataType type)
 {
     if (!branch) {
-        return TYPE_VOID;
+        return TypeVoid;
     }
 
-    if (branch->type == AST_CONDITIONAL) {
-        branch->conditional.typeId = type;
-        analyzeNode(analyzer, branch);
+    if (branch->type == ASTConditional) {
+        branch->conditional.type_id = type;
+        analyze_node(analyzer, branch);
 
-        return getNodeDataType(branch);
+        return get_node_data_type(branch);
     }
 
-    return analyzeScopedBranch(analyzer, branch, NULL, type);
+    return analyze_scoped_branch(analyzer, branch, NULL, type);
 }
 
-static void captureSymbolOwnership(Vector* states, ASTNode* symbol)
+static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
 {
-    if (!isVariableType(symbol)) {
+    if (!is_variable_type(symbol)) {
         return;
     }
 
-    OwnershipState* state = allocateMemory(sizeof(OwnershipState));
+    OwnershipState* state = allocate_memory(sizeof(OwnershipState));
     state->symbol = symbol;
-    initVector(&state->referenceOrigins);
-    Vector* origins = getReferenceOrigins(symbol);
-    copyReferenceOrigins(&state->referenceOrigins, origins);
-    state->sharedAccessCount = *getSharedAccessCount(symbol);
-    state->exclusiveAccessActive = hasExclusiveAccess(symbol);
-    state->initialized = isInitialized(symbol);
-    state->moved = isMoved(symbol);
-    state->referenceAccessActive = isVariableDefinition(symbol) && symbol->variableDefinition.referenceAccessActive;
+    init_vector(&state->reference_origins);
+    Vector* origins = get_reference_origins(symbol);
+    copy_reference_origins(&state->reference_origins, origins);
+    state->shared_access_count = *get_shared_access_count(symbol);
+    state->exclusive_access_active = has_exclusive_access(symbol);
+    state->initialized = is_initialized(symbol);
+    state->moved = is_moved(symbol);
+    state->reference_access_active = is_variable_definition(symbol) && symbol->variable_definition.reference_access_active;
 
-    pushVectorItem(states, state);
+    push_vector_item(states, state);
 }
 
-static void captureScopeOwnership(Vector* states, Scope* scope)
+static void capture_scope_ownership(Vector* states, Scope* scope)
 {
     for (size_t i = 0; i < scope->symbols.capacity; i++) {
         TableItem* item = scope->symbols.data[i];
 
         while (item) {
-            captureSymbolOwnership(states, item->value);
+            capture_symbol_ownership(states, item->value);
             item = item->next;
         }
     }
 }
 
-static void captureOwnershipState(Vector* states, Scope* scope)
+static void capture_ownership_state(Vector* states, Scope* scope)
 {
-    initVector(states);
+    init_vector(states);
 
     while (scope) {
-        captureScopeOwnership(states, scope);
+        capture_scope_ownership(states, scope);
         scope = scope->parent;
     }
 }
 
-static void copyOwnershipState(Vector* destination, Vector* source)
+static void copy_ownership_state(Vector* destination, Vector* source)
 {
-    initVector(destination);
+    init_vector(destination);
 
-    for (size_t i = 0; i < countVector(source); i++) {
-        OwnershipState* sourceState = getVectorAt(source, i);
-        OwnershipState* destinationState = allocateMemory(sizeof(OwnershipState));
+    for (size_t i = 0; i < count_vector(source); i++) {
+        OwnershipState* source_state = get_vector_at(source, i);
+        OwnershipState* destination_state = allocate_memory(sizeof(OwnershipState));
 
-        *destinationState = *sourceState;
-        initVector(&destinationState->referenceOrigins);
-        copyReferenceOrigins(&destinationState->referenceOrigins, &sourceState->referenceOrigins);
-        pushVectorItem(destination, destinationState);
+        *destination_state = *source_state;
+        init_vector(&destination_state->reference_origins);
+        copy_reference_origins(&destination_state->reference_origins, &source_state->reference_origins);
+        push_vector_item(destination, destination_state);
     }
 }
 
-static void applyOwnershipState(OwnershipState* state)
+static void apply_ownership_state(OwnershipState* state)
 {
     ASTNode* symbol = state->symbol;
 
-    *getSharedAccessCount(symbol) = state->sharedAccessCount;
-    setExclusiveAccess(symbol, state->exclusiveAccessActive);
-    setMovedState(symbol, state->moved);
+    *get_shared_access_count(symbol) = state->shared_access_count;
+    set_exclusive_access(symbol, state->exclusive_access_active);
+    set_moved_state(symbol, state->moved);
 
-    if (!isVariableDefinition(symbol)) {
+    if (!is_variable_definition(symbol)) {
         return;
     }
 
-    Vector* origins = getReferenceOrigins(symbol);
-    copyReferenceOrigins(origins, &state->referenceOrigins);
-    symbol->variableDefinition.initialized = state->initialized;
-    symbol->variableDefinition.referenceAccessActive = state->referenceAccessActive;
+    Vector* origins = get_reference_origins(symbol);
+    copy_reference_origins(origins, &state->reference_origins);
+    symbol->variable_definition.initialized = state->initialized;
+    symbol->variable_definition.reference_access_active = state->reference_access_active;
 }
 
-static void applyOwnershipStates(Vector* states)
+static void apply_ownership_states(Vector* states)
 {
-    for (size_t i = 0; i < countVector(states); i++) {
-        applyOwnershipState(getVectorAt(states, i));
+    for (size_t i = 0; i < count_vector(states); i++) {
+        apply_ownership_state(get_vector_at(states, i));
     }
 }
 
-static void updateOwnershipStates(Vector* states)
+static void update_ownership_states(Vector* states)
 {
-    for (size_t i = 0; i < countVector(states); i++) {
-        OwnershipState* state = getVectorAt(states, i);
+    for (size_t i = 0; i < count_vector(states); i++) {
+        OwnershipState* state = get_vector_at(states, i);
         ASTNode* symbol = state->symbol;
 
-        Vector* origins = getReferenceOrigins(symbol);
-        copyReferenceOrigins(&state->referenceOrigins, origins);
-        state->sharedAccessCount = *getSharedAccessCount(symbol);
-        state->exclusiveAccessActive = hasExclusiveAccess(symbol);
-        state->initialized = isInitialized(symbol);
-        state->moved = isMoved(symbol);
-        state->referenceAccessActive = isVariableDefinition(symbol)
-            && symbol->variableDefinition.referenceAccessActive;
+        Vector* origins = get_reference_origins(symbol);
+        copy_reference_origins(&state->reference_origins, origins);
+        state->shared_access_count = *get_shared_access_count(symbol);
+        state->exclusive_access_active = has_exclusive_access(symbol);
+        state->initialized = is_initialized(symbol);
+        state->moved = is_moved(symbol);
+        state->reference_access_active = is_variable_definition(symbol)
+            && symbol->variable_definition.reference_access_active;
     }
 }
 
-static void freeOwnershipStates(Vector* states)
+static void free_ownership_states(Vector* states)
 {
-    for (size_t i = 0; i < countVector(states); i++) {
-        OwnershipState* state = getVectorAt(states, i);
-        freeVector(&state->referenceOrigins);
-        freeMemory(state);
+    for (size_t i = 0; i < count_vector(states); i++) {
+        OwnershipState* state = get_vector_at(states, i);
+        free_vector(&state->reference_origins);
+        free_memory(state);
     }
 
-    freeVector(states);
+    free_vector(states);
 }
 
-static bool branchUsesReference(ASTNode* branch, StringObject* id, ASTNode* binding)
+static bool branch_uses_reference(ASTNode* branch, StringObject* id, ASTNode* binding)
 {
     if (!branch) {
         return false;
     }
 
-    StringView view = getStringView(id);
+    StringView view = get_string_view(id);
 
-    if (binding && matchesShadowedId(binding->variableDefinition.id, view)) {
+    if (binding && matches_shadowed_id(binding->variable_definition.id, view)) {
         return false;
     }
 
-    return visitNodeUses(branch, matchesReferenceId, &view);
+    return visit_node_uses(branch, matches_reference_id, &view);
 }
 
-static bool continuationUsesReference(Analyzer* analyzer, StringObject* id)
+static bool continuation_uses_reference(Analyzer* analyzer, StringObject* id)
 {
-    LoopPath* loop = analyzer->loopPath;
+    LoopPath* loop = analyzer->loop_path;
 
     while (loop) {
-        if (branchUsesReference(loop->ast, id, NULL)) {
+        if (branch_uses_reference(loop->ast, id, NULL)) {
             return true;
         }
 
         loop = loop->previous;
     }
 
-    ReferenceLifetimes* lifetimes = analyzer->referenceLifetimes;
+    ReferenceLifetimes* lifetimes = analyzer->reference_lifetimes;
 
     if (!lifetimes) {
         return false;
     }
 
-    StringView view = getStringView(id);
-    ReferenceUse* use = getTableAt(&lifetimes->lastUses, view);
+    StringView view = get_string_view(id);
+    ReferenceUse* use = get_table_at(&lifetimes->last_uses, view);
 
-    return use && use->last >= analyzer->nextNode;
+    return use && use->last >= analyzer->next_node;
 }
 
-static void releaseReferencesDeadOnBranch(Analyzer* analyzer, Vector* states, ASTNode* branch, ASTNode* binding)
+static void release_references_dead_on_branch(Analyzer* analyzer, Vector* states, ASTNode* branch, ASTNode* binding)
 {
-    for (size_t i = 0; i < countVector(states); i++) {
-        OwnershipState* state = getVectorAt(states, i);
+    for (size_t i = 0; i < count_vector(states); i++) {
+        OwnershipState* state = get_vector_at(states, i);
         ASTNode* symbol = state->symbol;
 
-        if (!isVariableDefinition(symbol) || !symbol->variableDefinition.referenceAccessActive) {
+        if (!is_variable_definition(symbol) || !symbol->variable_definition.reference_access_active) {
             continue;
         }
 
-        StringObject* id = symbol->variableDefinition.id;
-        if (branchUsesReference(branch, id, binding) || continuationUsesReference(analyzer, id)) {
+        StringObject* id = symbol->variable_definition.id;
+        if (branch_uses_reference(branch, id, binding) || continuation_uses_reference(analyzer, id)) {
             continue;
         }
 
-        releaseReferenceAccess(symbol);
+        release_reference_access(symbol);
     }
 }
 
-static void analyzeOwnershipBranch(
+static void analyze_ownership_branch(
     Analyzer* analyzer,
     Vector* states,
     ASTNode* branch,
-    DataType expectedType,
+    DataType expected_type,
     DataType* type)
 {
-    applyOwnershipStates(states);
-    releaseReferencesDeadOnBranch(analyzer, states, branch, NULL);
-    *type = analyzeElseBranch(analyzer, branch, expectedType);
-    updateOwnershipStates(states);
+    apply_ownership_states(states);
+    release_references_dead_on_branch(analyzer, states, branch, NULL);
+    *type = analyze_else_branch(analyzer, branch, expected_type);
+    update_ownership_states(states);
 }
 
-static void mergeOwnershipState(OwnershipState* thenState, OwnershipState* elseState)
+static void merge_ownership_state(OwnershipState* then_state, OwnershipState* else_state)
 {
-    OwnershipState merged = *thenState;
-    initVector(&merged.referenceOrigins);
-    copyReferenceOrigins(&merged.referenceOrigins, &thenState->referenceOrigins);
-    mergeReferenceOrigins(&merged.referenceOrigins, &elseState->referenceOrigins);
-    merged.sharedAccessCount = MAX(thenState->sharedAccessCount, elseState->sharedAccessCount);
-    merged.exclusiveAccessActive = thenState->exclusiveAccessActive || elseState->exclusiveAccessActive;
-    merged.initialized = thenState->initialized && elseState->initialized;
-    merged.moved = thenState->moved || elseState->moved;
-    merged.referenceAccessActive = thenState->referenceAccessActive || elseState->referenceAccessActive;
+    OwnershipState merged = *then_state;
+    init_vector(&merged.reference_origins);
+    copy_reference_origins(&merged.reference_origins, &then_state->reference_origins);
+    merge_reference_origins(&merged.reference_origins, &else_state->reference_origins);
+    merged.shared_access_count = MAX(then_state->shared_access_count, else_state->shared_access_count);
+    merged.exclusive_access_active = then_state->exclusive_access_active || else_state->exclusive_access_active;
+    merged.initialized = then_state->initialized && else_state->initialized;
+    merged.moved = then_state->moved || else_state->moved;
+    merged.reference_access_active = then_state->reference_access_active || else_state->reference_access_active;
 
-    applyOwnershipState(&merged);
-    freeVector(&merged.referenceOrigins);
+    apply_ownership_state(&merged);
+    free_vector(&merged.reference_origins);
 }
 
-static void mergeOwnershipStates(Vector* thenStates, Vector* elseStates)
+static void merge_ownership_states(Vector* then_states, Vector* else_states)
 {
-    size_t count = countVector(thenStates);
+    size_t count = count_vector(then_states);
 
     for (size_t i = 0; i < count; i++) {
-        mergeOwnershipState(getVectorAt(thenStates, i), getVectorAt(elseStates, i));
+        merge_ownership_state(get_vector_at(then_states, i), get_vector_at(else_states, i));
     }
 }
 
-static void validateLoopReferenceOrigins(OwnershipState* entry, Token token)
+static void validate_loop_reference_origins(OwnershipState* entry, Token token)
 {
-    Vector* origins = getReferenceOrigins(entry->symbol);
-    size_t count = countVector(origins);
+    Vector* origins = get_reference_origins(entry->symbol);
+    size_t count = count_vector(origins);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* origin = getVectorAt(origins, i);
-        bool existing = containsReferenceOrigin(&entry->referenceOrigins, origin);
+        ASTNode* origin = get_vector_at(origins, i);
+        bool existing = contains_reference_origin(&entry->reference_origins, origin);
 
         if (!existing) {
-            semanticError("While loop cannot change the origin of an outer reference", token);
+            semantic_error("While loop cannot change the origin of an outer reference", token);
         }
     }
 }
 
-static void validateLoopOwnership(Vector* entryStates, Token token)
+static void validate_loop_ownership(Vector* entry_states, Token token)
 {
-    size_t count = countVector(entryStates);
+    size_t count = count_vector(entry_states);
 
     for (size_t i = 0; i < count; i++) {
-        OwnershipState* entry = getVectorAt(entryStates, i);
+        OwnershipState* entry = get_vector_at(entry_states, i);
         ASTNode* symbol = entry->symbol;
-        bool moved = isMoved(symbol);
+        bool moved = is_moved(symbol);
 
         if (moved && !entry->moved) {
-            semanticError("While loop cannot move an outer reference across iterations", token);
+            semantic_error("While loop cannot move an outer reference across iterations", token);
         }
 
-        validateLoopReferenceOrigins(entry, token);
+        validate_loop_reference_origins(entry, token);
     }
 }
 
-static void analyzeWhile(Analyzer* analyzer, ASTNode* ast)
+static void analyze_while(Analyzer* analyzer, ASTNode* ast)
 {
-    Vector entryStates;
-    Vector bodyStates;
-    LoopPath path = {ast, analyzer->loopPath};
-    analyzer->loopPath = &path;
+    Vector entry_states;
+    Vector body_states;
+    LoopPath path = {ast, analyzer->loop_path};
+    analyzer->loop_path = &path;
 
-    captureOwnershipState(&entryStates, analyzer->currentScope);
-    copyOwnershipState(&bodyStates, &entryStates);
-    analyzeNode(analyzer, ast->whileStatement.condition);
+    capture_ownership_state(&entry_states, analyzer->current_scope);
+    copy_ownership_state(&body_states, &entry_states);
+    analyze_node(analyzer, ast->while_statement.condition);
 
-    DataType type = getNodeDataType(ast->whileStatement.condition);
+    DataType type = get_node_data_type(ast->while_statement.condition);
 
-    if (type != TYPE_BOOL) {
-        semanticError("While condition must have type bool", ast->whileStatement.token);
+    if (type != TypeBool) {
+        semantic_error("While condition must have type bool", ast->while_statement.token);
     }
 
-    analyzeScopedBranch(analyzer, ast->whileStatement.body, NULL, TYPE_VOID);
-    validateLoopOwnership(&entryStates, ast->whileStatement.token);
-    updateOwnershipStates(&bodyStates);
+    analyze_scoped_branch(analyzer, ast->while_statement.body, NULL, TypeVoid);
+    validate_loop_ownership(&entry_states, ast->while_statement.token);
+    update_ownership_states(&body_states);
 
-    analyzer->loopPath = path.previous;
+    analyzer->loop_path = path.previous;
 
-    mergeOwnershipStates(&entryStates, &bodyStates);
-    freeOwnershipStates(&entryStates);
-    freeOwnershipStates(&bodyStates);
+    merge_ownership_states(&entry_states, &body_states);
+    free_ownership_states(&entry_states);
+    free_ownership_states(&body_states);
 }
 
-static void validateExpressionBranch(ASTNode* branch, Token token)
+static void validate_expression_branch(ASTNode* branch, Token token)
 {
-    if (branch->type == AST_CONDITIONAL) {
+    if (branch->type == ASTConditional) {
         return;
     }
 
     Vector* statements = &branch->compound.statements;
-    if (countVector(statements) != 1) {
-        semanticTokenError("Expression branch must contain exactly one expression ", token);
+    if (count_vector(statements) != 1) {
+        semantic_token_error("Expression branch must contain exactly one expression ", token);
     }
 
-    ASTNode* expression = getVectorAt(statements, 0);
-    if (!isExpressionStatement(expression)) {
-        semanticTokenError("Expression branch must contain exactly one expression ", token);
+    ASTNode* expression = get_vector_at(statements, 0);
+    if (!is_expression_statement(expression)) {
+        semantic_token_error("Expression branch must contain exactly one expression ", token);
     }
 }
 
-static void validateConditionalExpression(ASTNode* ast)
+static void validate_conditional_expression(ASTNode* ast)
 {
     if (!ast->conditional.expression) {
         return;
     }
 
-    validateExpressionBranch(ast->conditional.thenBranch, ast->conditional.token);
+    validate_expression_branch(ast->conditional.then_branch, ast->conditional.token);
 
-    if (ast->conditional.elseBranch) {
-        validateExpressionBranch(ast->conditional.elseBranch, ast->conditional.token);
+    if (ast->conditional.else_branch) {
+        validate_expression_branch(ast->conditional.else_branch, ast->conditional.token);
     }
 }
 
-static void mergeOwnershipOutcome(Vector* mergedStates, Vector* states, bool* initialized)
+static void merge_ownership_outcome(Vector* merged_states, Vector* states, bool* initialized)
 {
     if (!*initialized) {
-        copyOwnershipState(mergedStates, states);
+        copy_ownership_state(merged_states, states);
         *initialized = true;
 
         return;
     }
 
-    mergeOwnershipStates(mergedStates, states);
-    updateOwnershipStates(mergedStates);
+    merge_ownership_states(merged_states, states);
+    update_ownership_states(merged_states);
 }
 
-static void analyzeConditional(Analyzer* analyzer, ASTNode* ast)
+static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
 {
-    Vector* continuationNodes = analyzer->currentNodes;
-    size_t continuationStart = analyzer->nextNode;
+    Vector* continuation_nodes = analyzer->current_nodes;
+    size_t continuation_start = analyzer->next_node;
 
-    validateConditionalExpression(ast);
-    analyzeNode(analyzer, ast->conditional.condition);
+    validate_conditional_expression(ast);
+    analyze_node(analyzer, ast->conditional.condition);
 
-    if (getNodeDataType(ast->conditional.condition) != TYPE_BOOL) {
-        semanticError("Condition must have type bool", ast->conditional.token);
+    if (get_node_data_type(ast->conditional.condition) != TypeBool) {
+        semantic_error("Condition must have type bool", ast->conditional.token);
     }
 
-    Vector thenStates;
-    Vector elseStates;
+    Vector then_states;
+    Vector else_states;
 
-    captureOwnershipState(&thenStates, analyzer->currentScope);
-    copyOwnershipState(&elseStates, &thenStates);
+    capture_ownership_state(&then_states, analyzer->current_scope);
+    copy_ownership_state(&else_states, &then_states);
 
-    analyzer->currentNodes = continuationNodes;
-    analyzer->nextNode = continuationStart;
-    releaseReferencesDeadOnBranch(analyzer, &thenStates, ast->conditional.thenBranch, NULL);
+    analyzer->current_nodes = continuation_nodes;
+    analyzer->next_node = continuation_start;
+    release_references_dead_on_branch(analyzer, &then_states, ast->conditional.then_branch, NULL);
 
-    DataType type = ast->conditional.typeId;
-    DataType thenType = analyzeScopedBranch(analyzer, ast->conditional.thenBranch, NULL, type);
+    DataType type = ast->conditional.type_id;
+    DataType then_type = analyze_scoped_branch(analyzer, ast->conditional.then_branch, NULL, type);
 
-    updateOwnershipStates(&thenStates);
+    update_ownership_states(&then_states);
 
-    analyzer->currentNodes = continuationNodes;
-    analyzer->nextNode = continuationStart;
+    analyzer->current_nodes = continuation_nodes;
+    analyzer->next_node = continuation_start;
 
-    DataType elseType;
+    DataType else_type;
 
-    analyzeOwnershipBranch(analyzer, &elseStates, ast->conditional.elseBranch, type, &elseType);
-    mergeOwnershipStates(&thenStates, &elseStates);
-    freeOwnershipStates(&thenStates);
-    freeOwnershipStates(&elseStates);
+    analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, &else_type);
+    merge_ownership_states(&then_states, &else_states);
+    free_ownership_states(&then_states);
+    free_ownership_states(&else_states);
 
     if (!ast->conditional.expression) {
-        ast->conditional.typeId = TYPE_VOID;
+        ast->conditional.type_id = TypeVoid;
 
         return;
     }
 
-    if (!ast->conditional.elseBranch) {
-        semanticTokenError("If expression requires an else branch ", ast->conditional.token);
+    if (!ast->conditional.else_branch) {
+        semantic_token_error("If expression requires an else branch ", ast->conditional.token);
     }
 
-    if (thenType == TYPE_VOID || elseType == TYPE_VOID) {
-        semanticTokenError("Conditional expression branch must produce a value ", ast->conditional.token);
+    if (then_type == TypeVoid || else_type == TypeVoid) {
+        semantic_token_error("Conditional expression branch must produce a value ", ast->conditional.token);
     }
 
-    if (thenType != elseType) {
-        semanticTokenError("Conditional expression branches have incompatible types ", ast->conditional.token);
+    if (then_type != else_type) {
+        semantic_token_error("Conditional expression branches have incompatible types ", ast->conditional.token);
     }
 
-    bool hasExpectedType = ast->conditional.typeId != TYPE_UNKNOWN
-        && ast->conditional.typeId != TYPE_VOID;
-    ASTNode* thenResult = getBranchResult(ast->conditional.thenBranch);
-    ASTNode* elseResult = getBranchResult(ast->conditional.elseBranch);
-    mergeBranchReference(ast, thenResult, true, hasExpectedType, ast->conditional.token);
-    mergeBranchReference(ast, elseResult, false, hasExpectedType, ast->conditional.token);
+    bool has_expected_type = ast->conditional.type_id != TypeUnknown
+        && ast->conditional.type_id != TypeVoid;
+    ASTNode* then_result = get_branch_result(ast->conditional.then_branch);
+    ASTNode* else_result = get_branch_result(ast->conditional.else_branch);
+    merge_branch_reference(ast, then_result, true, has_expected_type, ast->conditional.token);
+    merge_branch_reference(ast, else_result, false, has_expected_type, ast->conditional.token);
 
-    ast->conditional.typeId = thenType;
+    ast->conditional.type_id = then_type;
 }
 
-static bool matchHasWildcard(ASTNode* ast)
+static bool match_has_wildcard(ASTNode* ast)
 {
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
         if (!arm->pattern && !arm->guard) {
             return true;
         }
@@ -1310,22 +1310,22 @@ static bool matchHasWildcard(ASTNode* ast)
     return false;
 }
 
-static bool updateAlternativeBooleanCoverage(ASTNode* pattern, bool* coversFalse, bool* coversTrue)
+static bool update_alternative_boolean_coverage(ASTNode* pattern, bool* covers_false, bool* covers_true)
 {
-    if (pattern->type != AST_BINARY || pattern->binary.operator.type != TOKEN_PIPE) {
+    if (pattern->type != ASTBinary || pattern->binary.operator.type != TokenPipe) {
         return false;
     }
 
-    MatchArm leftArm = { .pattern = pattern->binary.leftExpr };
-    MatchArm rightArm = { .pattern = pattern->binary.rightExpr };
+    MatchArm left_arm = { .pattern = pattern->binary.left_expr };
+    MatchArm right_arm = { .pattern = pattern->binary.right_expr };
     
-    updateBooleanMatchCoverage(&leftArm, coversFalse, coversTrue);
-    updateBooleanMatchCoverage(&rightArm, coversFalse, coversTrue);
+    update_boolean_match_coverage(&left_arm, covers_false, covers_true);
+    update_boolean_match_coverage(&right_arm, covers_false, covers_true);
 
     return true;
 }
 
-static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* coversTrue)
+static void update_boolean_match_coverage(MatchArm* arm, bool* covers_false, bool* covers_true)
 {
     if (arm->guard) {
         return;
@@ -1336,817 +1336,817 @@ static void updateBooleanMatchCoverage(MatchArm* arm, bool* coversFalse, bool* c
         return;
     }
 
-    if (updateAlternativeBooleanCoverage(pattern, coversFalse, coversTrue)) {
+    if (update_alternative_boolean_coverage(pattern, covers_false, covers_true)) {
         return;
     }
 
-    if (pattern->type != AST_BOOLEAN) {
+    if (pattern->type != ASTBoolean) {
         return;
     }
 
-    if (pattern->booleanLiteral.value) {
-        *coversTrue = true;
+    if (pattern->boolean_literal.value) {
+        *covers_true = true;
 
         return;
     }
 
-    *coversFalse = true;
+    *covers_false = true;
 }
 
-static bool matchHasBooleanSubject(ASTNode* ast)
+static bool match_has_boolean_subject(ASTNode* ast)
 {
     if (!ast->match.subject) {
         return true;
     }
 
-    return getNodeDataType(ast->match.subject) == TYPE_BOOL;
+    return get_node_data_type(ast->match.subject) == TypeBool;
 }
 
-static bool matchCoversBothBooleans(ASTNode* ast)
+static bool match_covers_both_booleans(ASTNode* ast)
 {
-    if (!matchHasBooleanSubject(ast)) {
+    if (!match_has_boolean_subject(ast)) {
         return false;
     }
 
-    bool coversFalse = false;
-    bool coversTrue = false;
-    size_t count = countVector(&ast->match.arms);
+    bool covers_false = false;
+    bool covers_true = false;
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        updateBooleanMatchCoverage(arm, &coversFalse, &coversTrue);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        update_boolean_match_coverage(arm, &covers_false, &covers_true);
     }
 
-    return coversFalse && coversTrue;
+    return covers_false && covers_true;
 }
 
-static bool matchIsExhaustive(ASTNode* ast)
+static bool match_is_exhaustive(ASTNode* ast)
 {
-    return ast->match.defaultBranch || matchHasWildcard(ast) || matchCoversBothBooleans(ast);
+    return ast->match.default_branch || match_has_wildcard(ast) || match_covers_both_booleans(ast);
 }
 
-static void mergeMatchBranchType(ASTNode* ast, DataType branchType, DataType* resultType)
+static void merge_match_branch_type(ASTNode* ast, DataType branch_type, DataType* result_type)
 {
-    if (branchType == TYPE_VOID) {
-        semanticTokenError("Match expression arm must produce a value ", ast->match.token);
+    if (branch_type == TypeVoid) {
+        semantic_token_error("Match expression arm must produce a value ", ast->match.token);
     }
 
-    if (*resultType == TYPE_UNKNOWN) {
-        *resultType = branchType;
+    if (*result_type == TypeUnknown) {
+        *result_type = branch_type;
 
         return;
     }
 
-    if (*resultType != branchType) {
-        semanticTokenError("Match expression arms have incompatible types ", ast->match.token);
+    if (*result_type != branch_type) {
+        semantic_token_error("Match expression arms have incompatible types ", ast->match.token);
     }
 }
 
-static void analyzeMatchPatternNode(Analyzer* analyzer, ASTNode* ast, ASTNode* pattern)
+static void analyze_match_pattern_node(Analyzer* analyzer, ASTNode* ast, ASTNode* pattern)
 {
-    if (pattern->type == AST_BINARY && pattern->binary.operator.type == TOKEN_PIPE) {
-        analyzeMatchPatternNode(analyzer, ast, pattern->binary.leftExpr);
-        analyzeMatchPatternNode(analyzer, ast, pattern->binary.rightExpr);
+    if (pattern->type == ASTBinary && pattern->binary.operator.type == TokenPipe) {
+        analyze_match_pattern_node(analyzer, ast, pattern->binary.left_expr);
+        analyze_match_pattern_node(analyzer, ast, pattern->binary.right_expr);
 
         return;
     }
 
-    analyzeNode(analyzer, pattern);
-    DataType expected = ast->match.subject ? getNodeDataType(ast->match.subject) : TYPE_BOOL;
+    analyze_node(analyzer, pattern);
+    DataType expected = ast->match.subject ? get_node_data_type(ast->match.subject) : TypeBool;
 
-    if (isIntegerType(expected)) {
-        applyIntegerLiteralType(pattern, expected);
+    if (is_integer_type(expected)) {
+        apply_integer_literal_type(pattern, expected);
     }
 
-    if (expected == TYPE_STRING) {
-        semanticTokenError("String match patterns are not supported ", ast->match.token);
+    if (expected == TypeString) {
+        semantic_token_error("String match patterns are not supported ", ast->match.token);
     }
 
-    if (getNodeDataType(pattern) != expected) {
-        semanticTokenError("Match pattern type does not match subject ", ast->match.token);
+    if (get_node_data_type(pattern) != expected) {
+        semantic_token_error("Match pattern type does not match subject ", ast->match.token);
     }
 }
 
-static void analyzeMatchPattern(Analyzer* analyzer, ASTNode* ast, MatchArm* arm)
+static void analyze_match_pattern(Analyzer* analyzer, ASTNode* ast, MatchArm* arm)
 {
     if (!arm->pattern) {
         return;
     }
 
-    analyzeMatchPatternNode(analyzer, ast, arm->pattern);
+    analyze_match_pattern_node(analyzer, ast, arm->pattern);
 }
 
-static void restoreMatchContinuation(Analyzer* analyzer, Vector* continuationNodes, size_t continuationStart)
+static void restore_match_continuation(Analyzer* analyzer, Vector* continuation_nodes, size_t continuation_start)
 {
-    analyzer->currentNodes = continuationNodes;
-    analyzer->nextNode = continuationStart;
+    analyzer->current_nodes = continuation_nodes;
+    analyzer->next_node = continuation_start;
 }
 
-static void mergeMatchResult(ASTNode* ast, ASTNode* branch, DataType branchType, DataType* resultType)
+static void merge_match_result(ASTNode* ast, ASTNode* branch, DataType branch_type, DataType* result_type)
 {
     if (!ast->match.expression) {
         return;
     }
 
-    bool first = *resultType == TYPE_UNKNOWN;
-    bool hasExpectedType = ast->match.typeId != TYPE_UNKNOWN && ast->match.typeId != TYPE_VOID;
-    ASTNode* result = getBranchResult(branch);
+    bool first = *result_type == TypeUnknown;
+    bool has_expected_type = ast->match.type_id != TypeUnknown && ast->match.type_id != TypeVoid;
+    ASTNode* result = get_branch_result(branch);
     
-    mergeBranchReference(ast, result, first, hasExpectedType, ast->match.token);
-    mergeMatchBranchType(ast, branchType, resultType);
+    merge_branch_reference(ast, result, first, has_expected_type, ast->match.token);
+    merge_match_branch_type(ast, branch_type, result_type);
 }
 
-static void analyzeMatchGuard(Analyzer* analyzer, MatchArm* arm, Vector* fallthroughStates)
+static void analyze_match_guard(Analyzer* analyzer, MatchArm* arm, Vector* fallthrough_states)
 {
     if (!arm->guard) {
         return;
     }
 
-    analyzeNode(analyzer, arm->guard);
+    analyze_node(analyzer, arm->guard);
 
-    if (getNodeDataType(arm->guard) != TYPE_BOOL) {
-        semanticError("Match guard requires a bool operand", arm->guardToken);
+    if (get_node_data_type(arm->guard) != TypeBool) {
+        semantic_error("Match guard requires a bool operand", arm->guard_token);
     }
 
-    Vector guardStates;
+    Vector guard_states;
 
-    copyOwnershipState(&guardStates, fallthroughStates);
-    updateOwnershipStates(&guardStates);
+    copy_ownership_state(&guard_states, fallthrough_states);
+    update_ownership_states(&guard_states);
 
     if (arm->pattern) {
-        mergeOwnershipStates(fallthroughStates, &guardStates);
-        updateOwnershipStates(fallthroughStates);
-        applyOwnershipStates(&guardStates);
+        merge_ownership_states(fallthrough_states, &guard_states);
+        update_ownership_states(fallthrough_states);
+        apply_ownership_states(&guard_states);
     } else {
-        updateOwnershipStates(fallthroughStates);
+        update_ownership_states(fallthrough_states);
     }
 
-    releaseReferencesDeadOnBranch(analyzer, &guardStates, arm->branch, arm->binding);
-    freeOwnershipStates(&guardStates);
+    release_references_dead_on_branch(analyzer, &guard_states, arm->branch, arm->binding);
+    free_ownership_states(&guard_states);
 }
 
-static void analyzeMatchArm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vector* continuationNodes,
-    size_t continuationStart, DataType* resultType, Vector* fallthroughStates)
+static void analyze_match_arm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vector* continuation_nodes,
+    size_t continuation_start, DataType* result_type, Vector* fallthrough_states)
 {
-    restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
-    analyzeMatchPattern(analyzer, ast, arm);
+    restore_match_continuation(analyzer, continuation_nodes, continuation_start);
+    analyze_match_pattern(analyzer, ast, arm);
 
     if (arm->binding) {
-        arm->binding->variableDefinition.typeId = getNodeDataType(ast->match.subject);
+        arm->binding->variable_definition.type_id = get_node_data_type(ast->match.subject);
     }
 
-    Scope* previousScope = enterBranchScope(analyzer, arm->branch, arm->binding);
+    Scope* previous_scope = enter_branch_scope(analyzer, arm->branch, arm->binding);
 
-    analyzeMatchGuard(analyzer, arm, fallthroughStates);
+    analyze_match_guard(analyzer, arm, fallthrough_states);
 
-    DataType branchType = analyzeBranchContents(analyzer, arm->branch, ast->match.typeId);
-    analyzer->currentScope = previousScope;
+    DataType branch_type = analyze_branch_contents(analyzer, arm->branch, ast->match.type_id);
+    analyzer->current_scope = previous_scope;
 
-    mergeMatchResult(ast, arm->branch, branchType, resultType);
+    merge_match_result(ast, arm->branch, branch_type, result_type);
 }
 
-static void analyzeMatchArmOwnership(Analyzer* analyzer, ASTNode* ast, MatchArm* arm,
-    Vector* continuationNodes, size_t continuationStart, DataType* resultType,
-    Vector* initialStates, Vector* mergedStates, bool* mergedInitialized)
+static void analyze_match_arm_ownership(Analyzer* analyzer, ASTNode* ast, MatchArm* arm,
+    Vector* continuation_nodes, size_t continuation_start, DataType* result_type,
+    Vector* initial_states, Vector* merged_states, bool* merged_initialized)
 {
     Vector states;
-    copyOwnershipState(&states, initialStates);
-    applyOwnershipStates(&states);
+    copy_ownership_state(&states, initial_states);
+    apply_ownership_states(&states);
 
     if (!arm->guard) {
-        releaseReferencesDeadOnBranch(analyzer, &states, arm->branch, arm->binding);
+        release_references_dead_on_branch(analyzer, &states, arm->branch, arm->binding);
     }
 
-    analyzeMatchArm(analyzer, ast, arm, continuationNodes, continuationStart, resultType, initialStates);
-    updateOwnershipStates(&states);
-    mergeOwnershipOutcome(mergedStates, &states, mergedInitialized);
-    freeOwnershipStates(&states);
+    analyze_match_arm(analyzer, ast, arm, continuation_nodes, continuation_start, result_type, initial_states);
+    update_ownership_states(&states);
+    merge_ownership_outcome(merged_states, &states, merged_initialized);
+    free_ownership_states(&states);
 }
 
-static void analyzeMatchArms(Analyzer* analyzer, ASTNode* ast, Vector* continuationNodes, size_t continuationStart,
-    DataType* resultType, Vector* initialStates, Vector* mergedStates, bool* mergedInitialized)
+static void analyze_match_arms(Analyzer* analyzer, ASTNode* ast, Vector* continuation_nodes, size_t continuation_start,
+    DataType* result_type, Vector* initial_states, Vector* merged_states, bool* merged_initialized)
 {
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        analyzeMatchArmOwnership(analyzer, ast, arm, continuationNodes, continuationStart, resultType,
-            initialStates, mergedStates, mergedInitialized);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        analyze_match_arm_ownership(analyzer, ast, arm, continuation_nodes, continuation_start, result_type,
+            initial_states, merged_states, merged_initialized);
     }
 }
 
-static void analyzeMatchSubject(Analyzer* analyzer, ASTNode* ast)
+static void analyze_match_subject(Analyzer* analyzer, ASTNode* ast)
 {
     if (!ast->match.subject) {
         return;
     }
 
-    analyzeNode(analyzer, ast->match.subject);
+    analyze_node(analyzer, ast->match.subject);
 }
 
-static void analyzeMatchDefault(Analyzer* analyzer, ASTNode* ast, Vector* continuationNodes,
-    size_t continuationStart, DataType* resultType, Vector* initialStates,
-    Vector* mergedStates, bool* mergedInitialized)
+static void analyze_match_default(Analyzer* analyzer, ASTNode* ast, Vector* continuation_nodes,
+    size_t continuation_start, DataType* result_type, Vector* initial_states,
+    Vector* merged_states, bool* merged_initialized)
 {
-    if (!ast->match.defaultBranch) {
+    if (!ast->match.default_branch) {
         return;
     }
 
     Vector states;
 
-    copyOwnershipState(&states, initialStates);
-    applyOwnershipStates(&states);
-    restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
-    releaseReferencesDeadOnBranch(analyzer, &states, ast->match.defaultBranch, NULL);
+    copy_ownership_state(&states, initial_states);
+    apply_ownership_states(&states);
+    restore_match_continuation(analyzer, continuation_nodes, continuation_start);
+    release_references_dead_on_branch(analyzer, &states, ast->match.default_branch, NULL);
 
-    DataType branchType = analyzeScopedBranch(analyzer, ast->match.defaultBranch, NULL, ast->match.typeId);
+    DataType branch_type = analyze_scoped_branch(analyzer, ast->match.default_branch, NULL, ast->match.type_id);
     
-    mergeMatchResult(ast, ast->match.defaultBranch, branchType, resultType);
-    updateOwnershipStates(&states);
-    mergeOwnershipOutcome(mergedStates, &states, mergedInitialized);
-    freeOwnershipStates(&states);
+    merge_match_result(ast, ast->match.default_branch, branch_type, result_type);
+    update_ownership_states(&states);
+    merge_ownership_outcome(merged_states, &states, merged_initialized);
+    free_ownership_states(&states);
 }
 
-static void finalizeMatchType(ASTNode* ast, DataType resultType)
+static void finalize_match_type(ASTNode* ast, DataType result_type)
 {
     if (!ast->match.expression) {
-        ast->match.typeId = TYPE_VOID;
+        ast->match.type_id = TypeVoid;
 
         return;
     }
 
-    if (!matchIsExhaustive(ast)) {
-        semanticTokenError("Match expression must be exhaustive ", ast->match.token);
+    if (!match_is_exhaustive(ast)) {
+        semantic_token_error("Match expression must be exhaustive ", ast->match.token);
     }
 
-    ast->match.typeId = resultType;
+    ast->match.type_id = result_type;
 }
 
-static void finalizeMatchOwnership(ASTNode* ast, Vector* initialStates,
-    Vector* mergedStates, bool* mergedInitialized)
+static void finalize_match_ownership(ASTNode* ast, Vector* initial_states,
+    Vector* merged_states, bool* merged_initialized)
 {
-    if (!matchIsExhaustive(ast)) {
-        mergeOwnershipOutcome(mergedStates, initialStates, mergedInitialized);
+    if (!match_is_exhaustive(ast)) {
+        merge_ownership_outcome(merged_states, initial_states, merged_initialized);
     }
 
-    applyOwnershipStates(mergedStates);
-    freeOwnershipStates(mergedStates);
-    freeOwnershipStates(initialStates);
+    apply_ownership_states(merged_states);
+    free_ownership_states(merged_states);
+    free_ownership_states(initial_states);
 }
 
-static void validateMatchExpression(ASTNode* ast)
+static void validate_match_expression(ASTNode* ast)
 {
     if (!ast->match.expression) {
         return;
     }
 
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        validateExpressionBranch(arm->branch, ast->match.token);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        validate_expression_branch(arm->branch, ast->match.token);
     }
 
-    if (ast->match.defaultBranch) {
-        validateExpressionBranch(ast->match.defaultBranch, ast->match.token);
+    if (ast->match.default_branch) {
+        validate_expression_branch(ast->match.default_branch, ast->match.token);
     }
 }
 
-static void analyzeMatch(Analyzer* analyzer, ASTNode* ast)
+static void analyze_match(Analyzer* analyzer, ASTNode* ast)
 {
-    Vector* continuationNodes = analyzer->currentNodes;
-    size_t continuationStart = analyzer->nextNode;
-    DataType resultType = TYPE_UNKNOWN;
-    Vector initialStates;
-    Vector mergedStates;
-    bool mergedInitialized = false;
+    Vector* continuation_nodes = analyzer->current_nodes;
+    size_t continuation_start = analyzer->next_node;
+    DataType result_type = TypeUnknown;
+    Vector initial_states;
+    Vector merged_states;
+    bool merged_initialized = false;
 
-    validateMatchExpression(ast);
-    analyzeMatchSubject(analyzer, ast);
-    captureOwnershipState(&initialStates, analyzer->currentScope);
-    analyzeMatchArms(analyzer, ast, continuationNodes, continuationStart, &resultType,
-        &initialStates, &mergedStates, &mergedInitialized);
-    analyzeMatchDefault(analyzer, ast, continuationNodes, continuationStart, &resultType,
-        &initialStates, &mergedStates, &mergedInitialized);
-    restoreMatchContinuation(analyzer, continuationNodes, continuationStart);
-    finalizeMatchOwnership(ast, &initialStates, &mergedStates, &mergedInitialized);
-    finalizeMatchType(ast, resultType);
+    validate_match_expression(ast);
+    analyze_match_subject(analyzer, ast);
+    capture_ownership_state(&initial_states, analyzer->current_scope);
+    analyze_match_arms(analyzer, ast, continuation_nodes, continuation_start, &result_type,
+        &initial_states, &merged_states, &merged_initialized);
+    analyze_match_default(analyzer, ast, continuation_nodes, continuation_start, &result_type,
+        &initial_states, &merged_states, &merged_initialized);
+    restore_match_continuation(analyzer, continuation_nodes, continuation_start);
+    finalize_match_ownership(ast, &initial_states, &merged_states, &merged_initialized);
+    finalize_match_type(ast, result_type);
 }
 
-static DataType getFloatBinaryType(DataType leftType, DataType rightType)
+static DataType get_float_binary_type(DataType left_type, DataType right_type)
 {
-    if (leftType == TYPE_F64 || rightType == TYPE_F64) {
-        return TYPE_F64;
+    if (left_type == TypeF64 || right_type == TypeF64) {
+        return TypeF64;
     }
 
-    return TYPE_F32;
+    return TypeF32;
 }
 
-static void applyBinaryFloatLiteralTypes(ASTNode* left, ASTNode* right)
+static void apply_binary_float_literal_types(ASTNode* left, ASTNode* right)
 {
-    DataType leftType = getNodeDataType(left);
-    DataType rightType = getNodeDataType(right);
+    DataType left_type = get_node_data_type(left);
+    DataType right_type = get_node_data_type(right);
 
-    if (!isFloatType(leftType) || !isFloatType(rightType)) {
+    if (!is_float_type(left_type) || !is_float_type(right_type)) {
         return;
     }
 
-    DataType type = getFloatBinaryType(leftType, rightType);
+    DataType type = get_float_binary_type(left_type, right_type);
 
-    if (!getFloatLiteral(left)) {
-        type = leftType;
+    if (!get_float_literal(left)) {
+        type = left_type;
     }
 
-    if (!getFloatLiteral(right)) {
-        type = rightType;
+    if (!get_float_literal(right)) {
+        type = right_type;
     }
 
-    applyLiteralType(left, type);
-    applyLiteralType(right, type);
+    apply_literal_type(left, type);
+    apply_literal_type(right, type);
 }
 
-static void applyBinaryIntegerLiteralTypes(ASTNode* left, ASTNode* right)
+static void apply_binary_integer_literal_types(ASTNode* left, ASTNode* right)
 {
-    DataType leftType = getNodeDataType(left);
-    DataType rightType = getNodeDataType(right);
+    DataType left_type = get_node_data_type(left);
+    DataType right_type = get_node_data_type(right);
     bool negative;
-    ASTNode* leftLiteral = getIntegerLiteral(left, &negative);
-    ASTNode* rightLiteral = getIntegerLiteral(right, &negative);
-    bool sameSignedness = isSignedIntegerType(leftType) == isSignedIntegerType(rightType);
-    bool widenLeft = sameSignedness && canImplicitlyWidenInteger(leftType, rightType);
+    ASTNode* left_literal = get_integer_literal(left, &negative);
+    ASTNode* right_literal = get_integer_literal(right, &negative);
+    bool same_signedness = is_signed_integer_type(left_type) == is_signed_integer_type(right_type);
+    bool widen_left = same_signedness && can_implicitly_widen_integer(left_type, right_type);
 
-    if (leftLiteral && rightLiteral && widenLeft) {
-        applyIntegerLiteralType(left, rightType);
+    if (left_literal && right_literal && widen_left) {
+        apply_integer_literal_type(left, right_type);
 
-        leftType = rightType;
+        left_type = right_type;
     }
 
-    if (isIntegerType(leftType)) {
-        applyIntegerLiteralType(right, leftType);
+    if (is_integer_type(left_type)) {
+        apply_integer_literal_type(right, left_type);
 
-        rightType = getNodeDataType(right);
+        right_type = get_node_data_type(right);
     }
 
-    if (isIntegerType(rightType)) {
-        applyIntegerLiteralType(left, rightType);
+    if (is_integer_type(right_type)) {
+        apply_integer_literal_type(left, right_type);
     }
 }
 
-static void analyzeBinary(Analyzer* analyzer, ASTNode* ast)
+static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
 {
-    analyzeNode(analyzer, ast->binary.leftExpr);
-    analyzeNode(analyzer, ast->binary.rightExpr);
+    analyze_node(analyzer, ast->binary.left_expr);
+    analyze_node(analyzer, ast->binary.right_expr);
 
-    DataType leftType = getNodeDataType(ast->binary.leftExpr);
-    DataType rightType = getNodeDataType(ast->binary.rightExpr);
-    TokenType operatorType = ast->binary.operator.type;
+    DataType left_type = get_node_data_type(ast->binary.left_expr);
+    DataType right_type = get_node_data_type(ast->binary.right_expr);
+    TokenType operator_type = ast->binary.operator.type;
 
-    bool comparison = isComparisonToken(operatorType) || isEqualityToken(operatorType);
+    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
 
     if (comparison) {
-        applyBinaryFloatLiteralTypes(ast->binary.leftExpr, ast->binary.rightExpr);
+        apply_binary_float_literal_types(ast->binary.left_expr, ast->binary.right_expr);
     }
 
-    bool leftText = leftType == TYPE_CHAR || leftType == TYPE_STRING;
-    bool rightText = rightType == TYPE_CHAR || rightType == TYPE_STRING;
+    bool left_text = left_type == TypeChar || left_type == TypeString;
+    bool right_text = right_type == TypeChar || right_type == TypeString;
 
-    if (ast->binary.operator.type == TOKEN_PLUS && leftText && rightText) {
-        ast->binary.typeId = TYPE_STRING;
+    if (ast->binary.operator.type == TokenPlus && left_text && right_text) {
+        ast->binary.type_id = TypeString;
 
         return;
     }
 
-    applyBinaryIntegerLiteralTypes(ast->binary.leftExpr, ast->binary.rightExpr);
+    apply_binary_integer_literal_types(ast->binary.left_expr, ast->binary.right_expr);
 
-    leftType = getNodeDataType(ast->binary.leftExpr);
-    rightType = getNodeDataType(ast->binary.rightExpr);
-    DataType commonType = getCommonNumericType(leftType, rightType);
-    bool floatOperands = isFloatType(commonType);
+    left_type = get_node_data_type(ast->binary.left_expr);
+    right_type = get_node_data_type(ast->binary.right_expr);
+    DataType common_type = get_common_numeric_type(left_type, right_type);
+    bool float_operands = is_float_type(common_type);
 
-    if (leftType != rightType && commonType == TYPE_UNKNOWN) {
-        binaryTypeError(ast->binary.operator, leftType, rightType);
+    if (left_type != right_type && common_type == TypeUnknown) {
+        binary_type_error(ast->binary.operator, left_type, right_type);
     }
 
-    if (commonType == TYPE_UNKNOWN) {
-        commonType = leftType;
+    if (common_type == TypeUnknown) {
+        common_type = left_type;
     }
 
-    ast->binary.operandType = commonType;
+    ast->binary.operand_type = common_type;
 
-    if (leftType == TYPE_STRING) {
-        semanticError("Invalid operator for string operands", ast->binary.operator);
+    if (left_type == TypeString) {
+        semantic_error("Invalid operator for string operands", ast->binary.operator);
     }
 
-    if (leftType == TYPE_CHAR && !isCharacterComparisonToken(ast->binary.operator.type)) {
-        semanticError("Invalid operator for char operands", ast->binary.operator);
+    if (left_type == TypeChar && !is_character_comparison_token(ast->binary.operator.type)) {
+        semantic_error("Invalid operator for char operands", ast->binary.operator);
     }
 
-    if (isLogicalToken(ast->binary.operator.type) && leftType != TYPE_BOOL) {
-        semanticError("Logical operators require bool operands", ast->binary.operator);
+    if (is_logical_token(ast->binary.operator.type) && left_type != TypeBool) {
+        semantic_error("Logical operators require bool operands", ast->binary.operator);
     }
 
-    if (isComparisonToken(ast->binary.operator.type) && !isIntegerType(leftType) && !floatOperands && leftType != TYPE_CHAR) {
-        semanticError("Comparison operators require compatible operand types", ast->binary.operator);
+    if (is_comparison_token(ast->binary.operator.type) && !is_integer_type(left_type) && !float_operands && left_type != TypeChar) {
+        semantic_error("Comparison operators require compatible operand types", ast->binary.operator);
     }
 
-    if (ast->binary.operator.type == TOKEN_POWER && leftType != TYPE_I32) {
-        semanticError("Invalid operands for binary operator", ast->binary.operator);
+    if (ast->binary.operator.type == TokenPower && left_type != TypeI32) {
+        semantic_error("Invalid operands for binary operator", ast->binary.operator);
     }
 
-    if (floatOperands && !isTermToken(ast->binary.operator.type)
-        && !isFactorToken(ast->binary.operator.type) && !isComparisonToken(ast->binary.operator.type)
-        && !isEqualityToken(ast->binary.operator.type)) {
-        semanticError("Invalid operands for binary operator", ast->binary.operator);
+    if (float_operands && !is_term_token(ast->binary.operator.type)
+        && !is_factor_token(ast->binary.operator.type) && !is_comparison_token(ast->binary.operator.type)
+        && !is_equality_token(ast->binary.operator.type)) {
+        semantic_error("Invalid operands for binary operator", ast->binary.operator);
     }
 
-    ast->binary.typeId = commonType;
+    ast->binary.type_id = common_type;
 
-    if (ast->binary.operator.type == TOKEN_SPACESHIP) {
-        ast->binary.typeId = TYPE_I32;
+    if (ast->binary.operator.type == TokenSpaceship) {
+        ast->binary.type_id = TypeI32;
     }
 
-    if (isBoolOperatorToken(ast->binary.operator.type)) {
-        ast->binary.typeId = TYPE_BOOL;
+    if (is_bool_operator_token(ast->binary.operator.type)) {
+        ast->binary.type_id = TypeBool;
     }
 }
 
-static void trackVariableRead(ASTNode* symbol)
+static void track_variable_read(ASTNode* symbol)
 {
-    if (!isVariableDefinition(symbol)) {
+    if (!is_variable_definition(symbol)) {
         return;
     }
 
-    symbol->variableDefinition.readCount++;
+    symbol->variable_definition.read_count++;
 }
 
-static void validateConstantBinding(Analyzer* analyzer, ASTNode* symbol, Token token)
+static void validate_constant_binding(Analyzer* analyzer, ASTNode* symbol, Token token)
 {
-    if (!analyzer->constantScope || (isVariableDefinition(symbol) && symbol->variableDefinition.constant)) {
+    if (!analyzer->constant_scope || (is_variable_definition(symbol) && symbol->variable_definition.constant)) {
         return;
     }
 
-    Scope* scope = getScope(symbol);
+    Scope* scope = get_scope(symbol);
 
-    if (scope->level > analyzer->constantScope->level) {
+    if (scope->level > analyzer->constant_scope->level) {
         return;
     }
 
-    fatalTokenError(token, " in constant expression", "Cannot access runtime binding ");
+    fatal_token_error(token, " in constant expression", "Cannot access runtime binding ");
 }
 
-static void validateConstantReference(Analyzer* analyzer, ASTNode* symbol, Token token)
+static void validate_constant_reference(Analyzer* analyzer, ASTNode* symbol, Token token)
 {
-    if (!analyzer->constantScope || !symbol) {
+    if (!analyzer->constant_scope || !symbol) {
         return;
     }
 
-    Scope* scope = getScope(symbol);
-    bool calledFunction = analyzer->functionPath != analyzer->constantFunctions;
+    Scope* scope = get_scope(symbol);
+    bool called_function = analyzer->function_path != analyzer->constant_functions;
 
-    if (scope->level > analyzer->constantScope->level || (calledFunction && !isTopLevelScope(scope))) {
+    if (scope->level > analyzer->constant_scope->level || (called_function && !is_top_level_scope(scope))) {
         return;
     }
 
     Token binding = token;
 
-    if (symbol->type == AST_PARAMETER) {
+    if (symbol->type == ASTParameter) {
         binding = symbol->parameter.token;
     }
 
-    if (isVariableDefinition(symbol)) {
-        binding = symbol->variableDefinition.token;
+    if (is_variable_definition(symbol)) {
+        binding = symbol->variable_definition.token;
     }
 
     binding.line = token.line;
     binding.column = token.column;
 
-    fatalTokenError(binding, " in constant expression", "Cannot reference runtime binding ");
+    fatal_token_error(binding, " in constant expression", "Cannot reference runtime binding ");
 }
 
-static void validateConstantMutation(ASTNode* symbol, ReferenceType type, Token token)
+static void validate_constant_mutation(ASTNode* symbol, ReferenceType type, Token token)
 {
-    if (type == REFERENCE_EXCLUSIVE && isVariableDefinition(symbol) && symbol->variableDefinition.constant) {
-        semanticTokenError("Cannot mutate constant ", token);
+    if (type == RefExclusive && is_variable_definition(symbol) && symbol->variable_definition.constant) {
+        semantic_token_error("Cannot mutate constant ", token);
     }
 }
 
-static void analyzeVariable(Analyzer* analyzer, ASTNode* ast)
+static void analyze_variable(Analyzer* analyzer, ASTNode* ast)
 {
-    StringView id = getStringView(ast->variable.id);
-    ASTNode* symbol = findSymbol(analyzer, id);
+    StringView id = get_string_view(ast->variable.id);
+    ASTNode* symbol = find_symbol(analyzer, id);
 
-    if (!symbol || !isVariableType(symbol)) {
-        symbolError(" is undefined", ast->variable.token);
+    if (!symbol || !is_variable_type(symbol)) {
+        symbol_error(" is undefined", ast->variable.token);
     }
 
-    validateConstantBinding(analyzer, symbol, ast->variable.token);
+    validate_constant_binding(analyzer, symbol, ast->variable.token);
 
-    if (!isInitialized(symbol)) {
-        symbolError(" is uninitialized", ast->variable.token);
+    if (!is_initialized(symbol)) {
+        symbol_error(" is uninitialized", ast->variable.token);
     }
 
-    if (isMoved(symbol)) {
-        symbolError(" is moved", ast->variable.token);
+    if (is_moved(symbol)) {
+        symbol_error(" is moved", ast->variable.token);
     }
 
-    if (getReferenceType(symbol) == REFERENCE_NONE
-        && hasExclusiveAccess(symbol)) {
-        bindingAccessError("Cannot read binding ", ast->variable.token, " while exclusive access is active");
+    if (get_reference_type(symbol) == RefNone
+        && has_exclusive_access(symbol)) {
+        binding_access_error("Cannot read binding ", ast->variable.token, " while exclusive access is active");
     }
 
-    ast->variable.scope = analyzer->currentScope;
+    ast->variable.scope = analyzer->current_scope;
     ast->variable.symbol = symbol;
-    trackVariableRead(symbol);
+    track_variable_read(symbol);
 }
 
-static ASTNode* getReferenceVariable(ASTNode* ast)
+static ASTNode* get_reference_variable(ASTNode* ast)
 {
-    if (!isVariable(ast->prefix.expr)) {
-        semanticError("References require a binding", ast->prefix.operator);
+    if (!is_variable(ast->prefix.expr)) {
+        semantic_error("References require a binding", ast->prefix.operator);
     }
 
     return ast->prefix.expr;
 }
 
-static ASTNode* findReferenceSymbol(Analyzer* analyzer, ASTNode* variable)
+static ASTNode* find_reference_symbol(Analyzer* analyzer, ASTNode* variable)
 {
-    StringView id = getStringView(variable->variable.id);
-    ASTNode* symbol = findSymbol(analyzer, id);
+    StringView id = get_string_view(variable->variable.id);
+    ASTNode* symbol = find_symbol(analyzer, id);
 
-    if (!symbol || !isVariableType(symbol)) {
-        symbolError(" is undefined", variable->variable.token);
+    if (!symbol || !is_variable_type(symbol)) {
+        symbol_error(" is undefined", variable->variable.token);
     }
 
-    if (!isInitialized(symbol)) {
-        symbolError(" is uninitialized", variable->variable.token);
+    if (!is_initialized(symbol)) {
+        symbol_error(" is uninitialized", variable->variable.token);
     }
 
-    if (isMoved(symbol)) {
-        symbolError(" is moved", variable->variable.token);
+    if (is_moved(symbol)) {
+        symbol_error(" is moved", variable->variable.token);
     }
 
     return symbol;
 }
 
-static void validateReferenceAccess(ASTNode* ast, ASTNode* variable, ASTNode* symbol)
+static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* symbol)
 {
-    ReferenceType requested = getReferenceType(ast);
-    ReferenceType existing = getReferenceType(symbol);
+    ReferenceType requested = get_reference_type(ast);
+    ReferenceType existing = get_reference_type(symbol);
 
-    validateConstantMutation(symbol, requested, variable->variable.token);
+    validate_constant_mutation(symbol, requested, variable->variable.token);
 
-    if (existing != REFERENCE_NONE) {
-        semanticError("Cannot create a reference to another reference", ast->prefix.operator);
+    if (existing != RefNone) {
+        semantic_error("Cannot create a reference to another reference", ast->prefix.operator);
     }
 
-    if (requested == REFERENCE_SHARED && hasExclusiveAccess(symbol)) {
-        bindingAccessError("Cannot share binding ", variable->variable.token, " while exclusive access is active");
+    if (requested == RefShared && has_exclusive_access(symbol)) {
+        binding_access_error("Cannot share binding ", variable->variable.token, " while exclusive access is active");
     }
 
-    if (requested == REFERENCE_EXCLUSIVE
-        && (hasExclusiveAccess(symbol) || *getSharedAccessCount(symbol))) {
-        bindingAccessError("Cannot take exclusive access to binding ", variable->variable.token, " while another access is active");
+    if (requested == RefExclusive
+        && (has_exclusive_access(symbol) || *get_shared_access_count(symbol))) {
+        binding_access_error("Cannot take exclusive access to binding ", variable->variable.token, " while another access is active");
     }
 }
 
-static void markAddressTaken(ASTNode* symbol)
+static void mark_address_taken(ASTNode* symbol)
 {
-    if (!symbol || !isVariableDefinition(symbol)) {
+    if (!symbol || !is_variable_definition(symbol)) {
         return;
     }
 
-    symbol->variableDefinition.addressTaken = true;
+    symbol->variable_definition.address_taken = true;
 }
 
-static void analyzeReference(Analyzer* analyzer, ASTNode* ast)
+static void analyze_reference(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* variable = getReferenceVariable(ast);
-    ASTNode* symbol = findReferenceSymbol(analyzer, variable);
+    ASTNode* variable = get_reference_variable(ast);
+    ASTNode* symbol = find_reference_symbol(analyzer, variable);
 
-    validateConstantBinding(analyzer, symbol, variable->variable.token);
-    validateConstantReference(analyzer, symbol, variable->variable.token);
-    validateReferenceAccess(ast, variable, symbol);
-    markAddressTaken(symbol);
+    validate_constant_binding(analyzer, symbol, variable->variable.token);
+    validate_constant_reference(analyzer, symbol, variable->variable.token);
+    validate_reference_access(ast, variable, symbol);
+    mark_address_taken(symbol);
 
-    variable->variable.scope = analyzer->currentScope;
+    variable->variable.scope = analyzer->current_scope;
     variable->variable.symbol = symbol;
-    Vector* origins = getReferenceOrigins(ast);
+    Vector* origins = get_reference_origins(ast);
     
-    addReferenceOrigin(origins, symbol);
-    trackVariableRead(symbol);
+    add_reference_origin(origins, symbol);
+    track_variable_read(symbol);
 }
 
-static void analyzeParameterDefault(Analyzer* analyzer, ASTNode* ast)
+static void analyze_parameter_default(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* value = ast->parameter.defaultValue;
+    ASTNode* value = ast->parameter.default_value;
 
     if (!value) {
         return;
     }
 
-    if (ast->parameter.referenceType != REFERENCE_NONE) {
-        semanticTokenError("Reference parameter cannot have a default: ", ast->parameter.token);
+    if (ast->parameter.reference_type != RefNone) {
+        semantic_token_error("Reference parameter cannot have a default: ", ast->parameter.token);
     }
 
-    Scope* previousScope = analyzer->currentScope;
-    analyzer->currentScope = previousScope->parent;
-    applyDeclaredType(value, ast->parameter.typeId, REFERENCE_NONE);
-    analyzeNode(analyzer, value);
-    analyzer->currentScope = previousScope;
+    Scope* previous_scope = analyzer->current_scope;
+    analyzer->current_scope = previous_scope->parent;
+    apply_declared_type(value, ast->parameter.type_id, RefNone);
+    analyze_node(analyzer, value);
+    analyzer->current_scope = previous_scope;
 
-    DataType source = getNodeDataType(value);
-    DataType destination = ast->parameter.typeId;
-    bool compatible = source == destination || canImplicitlyWidenType(source, destination);
+    DataType source = get_node_data_type(value);
+    DataType destination = ast->parameter.type_id;
+    bool compatible = source == destination || can_implicitly_widen_type(source, destination);
 
     if (!compatible) {
-        semanticTokenError("Default value type does not match parameter ", ast->parameter.token);
+        semantic_token_error("Default value type does not match parameter ", ast->parameter.token);
     }
 }
 
-static void analyzeParameter(Analyzer* analyzer, ASTNode* ast)
+static void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 {
-    StringView id = getStringView(ast->parameter.id);
+    StringView id = get_string_view(ast->parameter.id);
 
-    if (getLocalSymbol(analyzer->currentScope, id)) {
-        redefinitionError("Parameter", ast->parameter.token);
+    if (get_local_symbol(analyzer->current_scope, id)) {
+        redefinition_error("Parameter", ast->parameter.token);
     }
 
-    ast->parameter.scope = analyzer->currentScope;
+    ast->parameter.scope = analyzer->current_scope;
 
-    analyzeParameterDefault(analyzer, ast);
+    analyze_parameter_default(analyzer, ast);
 
-    if (getReferenceType(ast) != REFERENCE_NONE) {
-        Vector* origins = getReferenceOrigins(ast);
-        addReferenceOrigin(origins, ast);
+    if (get_reference_type(ast) != RefNone) {
+        Vector* origins = get_reference_origins(ast);
+        add_reference_origin(origins, ast);
     }
 
-    setLocalSymbol(analyzer->currentScope, id, ast);
+    set_local_symbol(analyzer->current_scope, id, ast);
 }
 
-static void validateTypedVariadicArgument(ASTNode* argument, DataType type, Token token)
+static void validate_typed_variadic_argument(ASTNode* argument, DataType type, Token token)
 {
-    applyLiteralType(argument, type);
+    apply_literal_type(argument, type);
 
-    DataType argumentType = getNodeDataType(argument);
+    DataType argument_type = get_node_data_type(argument);
 
-    if (argumentType != type && !canImplicitlyWidenType(argumentType, type)) {
-        semanticTokenError("Variadic arguments must convert losslessly to the parameter type ", token);
+    if (argument_type != type && !can_implicitly_widen_type(argument_type, type)) {
+        semantic_token_error("Variadic arguments must convert losslessly to the parameter type ", token);
     }
 }
 
-static void validateTypedVariadicArguments(Vector* args, const Builtin* builtin, Token token)
+static void validate_typed_variadic_arguments(Vector* args, const Builtin* builtin, Token token)
 {
     if (!args->count) {
-        semanticTokenError("Numeric variadic builtins require at least one argument ", token);
+        semantic_token_error("Numeric variadic builtins require at least one argument ", token);
     }
 
     for (size_t i = 0; i < args->count; i++) {
-        validateTypedVariadicArgument(args->data[i], builtin->params[0], token);
+        validate_typed_variadic_argument(args->data[i], builtin->params[0], token);
     }
 }
 
-static void validateVariadicArguments(Vector* args, const Builtin* builtin, Token token)
+static void validate_variadic_arguments(Vector* args, const Builtin* builtin, Token token)
 {
-    if (builtin->paramCount == BUILTIN_TYPED_VARIADIC) {
-        validateTypedVariadicArguments(args, builtin, token);
+    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
+        validate_typed_variadic_arguments(args, builtin, token);
 
         return;
     }
 
     char* message = "Invalid value in string construction ";
 
-    if (builtin->entry == builtinPrint) {
+    if (builtin->entry == builtin_print) {
         message = "Invalid value in print ";
     }
 
     for (size_t i = 0; i < args->count; i++) {
         ASTNode* argument = args->data[i];
-        DataType type = getNodeDataType(argument);
-        bool valid = isPrintableType(type);
+        DataType type = get_node_data_type(argument);
+        bool valid = is_printable_type(type);
 
         if (!valid) {
-            semanticTokenError(message, token);
+            semantic_token_error(message, token);
         }
     }
 }
 
-static void validateBuiltinCall(ASTNode* ast, const Builtin* builtin, Token token)
+static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token token)
 {
-    size_t count = countVector(&ast->functionCall.args);
+    size_t count = count_vector(&ast->function_call.args);
 
-    if (builtin->paramCount < 0) {
-        validateVariadicArguments(&ast->functionCall.args, builtin, token);
+    if (builtin->param_count < 0) {
+        validate_variadic_arguments(&ast->function_call.args, builtin, token);
 
         return;
     }
 
-    if (count != (size_t)builtin->paramCount) {
-        semanticTokenError("Invalid arguments to function ", token);
+    if (count != (size_t)builtin->param_count) {
+        semantic_token_error("Invalid arguments to function ", token);
     }
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* arg = getVectorAt(&ast->functionCall.args, i);
-        applyLiteralType(arg, builtin->params[i]);
+        ASTNode* arg = get_vector_at(&ast->function_call.args, i);
+        apply_literal_type(arg, builtin->params[i]);
 
-        DataType argumentType = getNodeDataType(arg);
-        DataType parameterType = builtin->params[i];
+        DataType argument_type = get_node_data_type(arg);
+        DataType parameter_type = builtin->params[i];
 
-        if (argumentType != parameterType
-            && !canImplicitlyWidenType(argumentType, parameterType)) {
-            semanticTokenError("Invalid arguments to function ", token);
+        if (argument_type != parameter_type
+            && !can_implicitly_widen_type(argument_type, parameter_type)) {
+            semantic_token_error("Invalid arguments to function ", token);
         }
     }
 }
 
-static void convertBuiltinCall(ASTNode* ast, const Builtin* builtin)
+static void convert_builtin_call(ASTNode* ast, const Builtin* builtin)
 {
-    Vector args = ast->functionCall.args;
-    Token token = ast->functionCall.token;
+    Vector args = ast->function_call.args;
+    Token token = ast->function_call.token;
 
-    freeStringObject(ast->functionCall.id);
+    free_string_object(ast->function_call.id);
 
-    ast->type = AST_BUILTIN_CALL;
-    ast->builtinCall.builtin = builtin;
-    ast->builtinCall.args = args;
-    ast->builtinCall.token = token;
+    ast->type = ASTBuiltinCall;
+    ast->builtin_call.builtin = builtin;
+    ast->builtin_call.args = args;
+    ast->builtin_call.token = token;
 }
 
-static bool isNumericLiteralArgument(ASTNode* argument)
+static bool is_numeric_literal_argument(ASTNode* argument)
 {
     bool negative;
-    ASTNode* integer = getIntegerLiteral(argument, &negative);
-    ASTNode* floating = getFloatLiteral(argument);
+    ASTNode* integer = get_integer_literal(argument, &negative);
+    ASTNode* floating = get_float_literal(argument);
 
     return integer || floating;
 }
 
-static DataType getNonliteralArgumentType(ASTNode* argument)
+static DataType get_nonliteral_argument_type(ASTNode* argument)
 {
-    bool literal = isNumericLiteralArgument(argument);
+    bool literal = is_numeric_literal_argument(argument);
 
     if (literal) {
-        return TYPE_UNKNOWN;
+        return TypeUnknown;
     }
 
-    return getNodeDataType(argument);
+    return get_node_data_type(argument);
 }
 
-static bool variadicArgumentFitsType(ASTNode* argument, DataType type)
+static bool variadic_argument_fits_type(ASTNode* argument, DataType type)
 {
     bool negative;
-    ASTNode* integer = getIntegerLiteral(argument, &negative);
+    ASTNode* integer = get_integer_literal(argument, &negative);
 
     if (integer) {
-        bool fitsInteger = integerLiteralFitsType(integer->integerLiteral.value, negative, type);
-        bool fitsFloat = integerLiteralFitsFloat(integer->integerLiteral.value, type);
+        bool fits_integer = integer_literal_fits_type(integer->integer_literal.value, negative, type);
+        bool fits_float = integer_literal_fits_float(integer->integer_literal.value, type);
 
-        return fitsInteger || fitsFloat;
+        return fits_integer || fits_float;
     }
 
-    ASTNode* floating = getFloatLiteral(argument);
+    ASTNode* floating = get_float_literal(argument);
 
     if (floating) {
-        bool numeric = isFloatType(type);
-        bool fits = type == TYPE_F64 || floating->floatLiteral.value <= FLT_MAX;
+        bool numeric = is_float_type(type);
+        bool fits = type == TypeF64 || floating->float_literal.value <= FLT_MAX;
 
         return numeric && fits;
     }
 
-    DataType argumentType = getNodeDataType(argument);
+    DataType argument_type = get_node_data_type(argument);
 
-    return argumentType == type || canImplicitlyWidenType(argumentType, type);
+    return argument_type == type || can_implicitly_widen_type(argument_type, type);
 }
 
-static bool typedVariadicCallMatches(Vector* args, const Builtin* builtin)
+static bool typed_variadic_call_matches(Vector* args, const Builtin* builtin)
 {
-    if (!builtin || builtin->paramCount != BUILTIN_TYPED_VARIADIC) {
+    if (!builtin || builtin->param_count != BUILTIN_TYPED_VARIADIC) {
         return false;
     }
 
     bool matches = true;
 
     for (size_t i = 0; i < args->count && matches; i++) {
-        matches = variadicArgumentFitsType(args->data[i], builtin->params[0]);
+        matches = variadic_argument_fits_type(args->data[i], builtin->params[0]);
     }
 
     return matches;
 }
 
-static const Builtin* resolveContextualVariadicCall(ASTNode* ast)
+static const Builtin* resolve_contextual_variadic_call(ASTNode* ast)
 {
-    Vector* args = &ast->functionCall.args;
-    DataType type = TYPE_UNKNOWN;
+    Vector* args = &ast->function_call.args;
+    DataType type = TypeUnknown;
 
-    for (size_t i = 0; i < args->count && type == TYPE_UNKNOWN; i++) {
-        type = getNonliteralArgumentType(args->data[i]);
+    for (size_t i = 0; i < args->count && type == TypeUnknown; i++) {
+        type = get_nonliteral_argument_type(args->data[i]);
     }
 
-    if (type == TYPE_UNKNOWN) {
+    if (type == TypeUnknown) {
         return NULL;
     }
 
-    const Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, &type, 1);
-    bool matches = typedVariadicCallMatches(args, builtin);
+    const Builtin* builtin = resolve_builtin(ast->function_call.id->chars, &type, 1);
+    bool matches = typed_variadic_call_matches(args, builtin);
 
     if (!matches) {
         return NULL;
@@ -2155,536 +2155,536 @@ static const Builtin* resolveContextualVariadicCall(ASTNode* ast)
     return builtin;
 }
 
-static DataType getBuiltinArgumentType(ASTNode* argument)
+static DataType get_builtin_argument_type(ASTNode* argument)
 {
-    DataType type = getNodeDataType(argument);
+    DataType type = get_node_data_type(argument);
 
-    if (type == TYPE_UNKNOWN) {
-        return TYPE_U64;
+    if (type == TypeUnknown) {
+        return TypeU64;
     }
 
     return type;
 }
 
-static const Builtin* resolveBuiltinCall(ASTNode* ast)
+static const Builtin* resolve_builtin_call(ASTNode* ast)
 {
-    const Builtin* contextual = resolveContextualVariadicCall(ast);
+    const Builtin* contextual = resolve_contextual_variadic_call(ast);
 
     if (contextual) {
         return contextual;
     }
 
-    size_t count = ast->functionCall.args.count;
-    DataType* argumentTypes = NULL;
+    size_t count = ast->function_call.args.count;
+    DataType* argument_types = NULL;
 
     if (count > SIZE_MAX / sizeof(DataType)) {
-        outOfMemoryError();
+        out_of_memory_error();
     }
 
     if (count) {
-        argumentTypes = allocateMemory(count * sizeof(DataType));
+        argument_types = allocate_memory(count * sizeof(DataType));
     }
 
     for (size_t i = 0; i < count; i++) {
-        argumentTypes[i] = getBuiltinArgumentType(ast->functionCall.args.data[i]);
+        argument_types[i] = get_builtin_argument_type(ast->function_call.args.data[i]);
     }
 
-    const Builtin* builtin = resolveBuiltin(ast->functionCall.id->chars, argumentTypes, count);
+    const Builtin* builtin = resolve_builtin(ast->function_call.id->chars, argument_types, count);
 
-    freeMemory(argumentTypes);
+    free_memory(argument_types);
 
     return builtin;
 }
 
-static void validateBuiltinResolution(ASTNode* ast, const Builtin* builtin)
+static void validate_builtin_resolution(ASTNode* ast, const Builtin* builtin)
 {
     if (builtin) {
         return;
     }
 
-    if (isBuiltinName(ast->functionCall.id->chars)) {
-        invalidBuiltinArgumentsError(ast->functionCall.token);
+    if (is_builtin_name(ast->function_call.id->chars)) {
+        invalid_builtin_arguments_error(ast->function_call.token);
     }
 
-    symbolError(" is undefined", ast->functionCall.token);
+    symbol_error(" is undefined", ast->function_call.token);
 }
 
-static void analyzeBuiltinCall(ASTNode* ast)
+static void analyze_builtin_call(ASTNode* ast)
 {
-    const Builtin* builtin = resolveBuiltinCall(ast);
+    const Builtin* builtin = resolve_builtin_call(ast);
 
-    validateBuiltinResolution(ast, builtin);
-    validateBuiltinCall(ast, builtin, ast->functionCall.token);
-    convertBuiltinCall(ast, builtin);
+    validate_builtin_resolution(ast, builtin);
+    validate_builtin_call(ast, builtin, ast->function_call.token);
+    convert_builtin_call(ast, builtin);
 }
 
-static bool hasRequiredOmittedParameter(ASTNode* callee, size_t count, size_t paramCount)
+static bool has_required_omitted_parameter(ASTNode* callee, size_t count, size_t param_count)
 {
-    if (count >= paramCount) {
+    if (count >= param_count) {
         return false;
     }
 
-    ASTNode* firstOmitted = getVectorAt(&callee->functionDefinition.params, count);
+    ASTNode* first_omitted = get_vector_at(&callee->function_definition.params, count);
 
-    return !firstOmitted->parameter.defaultValue;
+    return !first_omitted->parameter.default_value;
 }
 
-static void validateFunctionCall(ASTNode* caller, ASTNode* callee, Token token)
+static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token)
 {
-    size_t count = countVector(&caller->functionCall.args);
-    size_t paramCount = countVector(&callee->functionDefinition.params);
+    size_t count = count_vector(&caller->function_call.args);
+    size_t param_count = count_vector(&callee->function_definition.params);
 
-    if (count > paramCount || hasRequiredOmittedParameter(callee, count, paramCount)) {
-        semanticTokenError("Invalid arguments to function ", token);
+    if (count > param_count || has_required_omitted_parameter(callee, count, param_count)) {
+        semantic_token_error("Invalid arguments to function ", token);
     }
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
-        ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
-        applyLiteralType(arg, param->parameter.typeId);
+        ASTNode* arg = get_vector_at(&caller->function_call.args, i);
+        ASTNode* param = get_vector_at(&callee->function_definition.params, i);
+        apply_literal_type(arg, param->parameter.type_id);
 
-        ReferenceType argumentType = getReferenceType(arg);
-        ReferenceType parameterType = getReferenceType(param);
-        bool valueParameter = parameterType == REFERENCE_NONE;
-        bool implicitAccess = argumentType == REFERENCE_NONE;
-        bool compatibleReference = valueParameter || implicitAccess || argumentType == parameterType
-            || (argumentType == REFERENCE_EXCLUSIVE && parameterType == REFERENCE_SHARED);
-        DataType argumentValueType = getNodeDataType(arg);
-        DataType parameterValueType = param->parameter.typeId;
-        bool compatibleValue = argumentValueType == parameterValueType
-            || (argumentType == REFERENCE_NONE && parameterType == REFERENCE_NONE
-                && canImplicitlyWidenType(argumentValueType, parameterValueType));
+        ReferenceType argument_type = get_reference_type(arg);
+        ReferenceType parameter_type = get_reference_type(param);
+        bool value_parameter = parameter_type == RefNone;
+        bool implicit_access = argument_type == RefNone;
+        bool compatible_reference = value_parameter || implicit_access || argument_type == parameter_type
+            || (argument_type == RefExclusive && parameter_type == RefShared);
+        DataType argument_value_type = get_node_data_type(arg);
+        DataType parameter_value_type = param->parameter.type_id;
+        bool compatible_value = argument_value_type == parameter_value_type
+            || (argument_type == RefNone && parameter_type == RefNone
+                && can_implicitly_widen_type(argument_value_type, parameter_value_type));
 
-        if (!compatibleValue || !compatibleReference) {
-            semanticTokenError("Invalid arguments to function ", token);
+        if (!compatible_value || !compatible_reference) {
+            semantic_token_error("Invalid arguments to function ", token);
         }
     }
 }
 
-static void validateGlobalBindingAccess(Analyzer* analyzer, ASTNode* origin, ReferenceType type, Token token)
+static void validate_global_binding_access(Analyzer* analyzer, ASTNode* origin, ReferenceType type, Token token)
 {
-    validateConstantMutation(origin, type, token);
+    validate_constant_mutation(origin, type, token);
 
-    if (!origin || !isTopLevelScope(getScope(origin))) {
+    if (!origin || !is_top_level_scope(get_scope(origin))) {
         return;
     }
 
-    validateConstantBinding(analyzer, origin, token);
+    validate_constant_binding(analyzer, origin, token);
 
-    if (type == REFERENCE_SHARED && hasExclusiveAccess(origin)) {
-        bindingAccessError("Function requires shared access to binding ", token, " while exclusive access is active");
+    if (type == RefShared && has_exclusive_access(origin)) {
+        binding_access_error("Function requires shared access to binding ", token, " while exclusive access is active");
     }
 
-    if (type == REFERENCE_EXCLUSIVE
-        && (hasExclusiveAccess(origin) || *getSharedAccessCount(origin))) {
-        bindingAccessError("Function requires exclusive access to binding ", token, " while another access is active");
+    if (type == RefExclusive
+        && (has_exclusive_access(origin) || *get_shared_access_count(origin))) {
+        binding_access_error("Function requires exclusive access to binding ", token, " while another access is active");
     }
 }
 
-static bool referenceArgumentRequiresBinding(ReferenceType type)
+static bool reference_argument_requires_binding(ReferenceType type)
 {
-    return type == REFERENCE_EXCLUSIVE;
+    return type == RefExclusive;
 }
 
-static void validateCallArgumentAccess(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, Token token)
+static void validate_call_argument_access(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, Token token)
 {
-    size_t count = countVector(&caller->functionCall.args);
+    size_t count = count_vector(&caller->function_call.args);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* param = getVectorAt(&callee->functionDefinition.params, i);
-        ReferenceType type = getReferenceType(param);
+        ASTNode* param = get_vector_at(&callee->function_definition.params, i);
+        ReferenceType type = get_reference_type(param);
 
-        if (type == REFERENCE_NONE) {
+        if (type == RefNone) {
             continue;
         }
 
-        ASTNode* arg = getVectorAt(&caller->functionCall.args, i);
+        ASTNode* arg = get_vector_at(&caller->function_call.args, i);
 
-        if (getReferenceType(arg) != REFERENCE_NONE) {
+        if (get_reference_type(arg) != RefNone) {
             continue;
         }
 
-        ASTNode* origin = referenceOriginFromExpression(arg);
+        ASTNode* origin = reference_origin_from_expression(arg);
 
-        if (!origin && isVariable(arg)) {
-            origin = getReferenceOriginOrSelf(arg->variable.symbol);
+        if (!origin && is_variable(arg)) {
+            origin = get_reference_origin_or_self(arg->variable.symbol);
         }
 
-        if (!origin && referenceArgumentRequiresBinding(type)) {
-            semanticTokenError("Reference access requires a binding for ", token);
+        if (!origin && reference_argument_requires_binding(type)) {
+            semantic_token_error("Reference access requires a binding for ", token);
         }
 
-        validateGlobalBindingAccess(analyzer, origin, type, token);
-        validateConstantReference(analyzer, origin, token);
-        markAddressTaken(origin);
+        validate_global_binding_access(analyzer, origin, type, token);
+        validate_constant_reference(analyzer, origin, token);
+        mark_address_taken(origin);
     }
 }
 
-static bool functionInPath(FunctionPath* path, ASTNode* function)
+static bool function_in_path(FunctionPath* path, ASTNode* function)
 {
     if (!path || path->function == function) {
         return path != NULL;
     }
 
-    return functionInPath(path->previous, function);
+    return function_in_path(path->previous, function);
 }
 
-static void validateGlobalAccessInNodes(Analyzer* analyzer, Vector* nodes)
+static void validate_global_access_in_nodes(Analyzer* analyzer, Vector* nodes)
 {
-    size_t count = countVector(nodes);
+    size_t count = count_vector(nodes);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* node = getVectorAt(nodes, i);
+        ASTNode* node = get_vector_at(nodes, i);
 
-        validateNodeGlobalAccess(analyzer, node);
+        validate_node_global_access(analyzer, node);
     }
 }
 
-static void validateFunctionGlobalAccess(Analyzer* analyzer, ASTNode* function)
+static void validate_function_global_access(Analyzer* analyzer, ASTNode* function)
 {
-    if (analyzer->constantScope && functionInPath(analyzer->constantFunctions, function)) {
-        semanticTokenError("Cannot evaluate incomplete function ", function->functionDefinition.token);
+    if (analyzer->constant_scope && function_in_path(analyzer->constant_functions, function)) {
+        semantic_token_error("Cannot evaluate incomplete function ", function->function_definition.token);
     }
 
-    if (functionInPath(analyzer->functionPath, function)) {
+    if (function_in_path(analyzer->function_path, function)) {
         return;
     }
 
-    FunctionPath path = {function, analyzer->functionPath};
-    analyzer->functionPath = &path;
+    FunctionPath path = {function, analyzer->function_path};
+    analyzer->function_path = &path;
 
-    validateGlobalAccessInNodes(analyzer, &function->functionDefinition.body->compound.statements);
+    validate_global_access_in_nodes(analyzer, &function->function_definition.body->compound.statements);
 
-    analyzer->functionPath = path.previous;
+    analyzer->function_path = path.previous;
 }
 
-static void validateBranchGlobalAccess(Analyzer* analyzer, ASTNode* branch)
+static void validate_branch_global_access(Analyzer* analyzer, ASTNode* branch)
 {
     if (!branch) {
         return;
     }
 
-    if (branch->type == AST_CONDITIONAL) {
-        validateNodeGlobalAccess(analyzer, branch);
+    if (branch->type == ASTConditional) {
+        validate_node_global_access(analyzer, branch);
 
         return;
     }
 
-    validateGlobalAccessInNodes(analyzer, &branch->compound.statements);
+    validate_global_access_in_nodes(analyzer, &branch->compound.statements);
 }
 
-static void validateMatchArmGlobalAccess(Analyzer* analyzer, MatchArm* arm)
+static void validate_match_arm_global_access(Analyzer* analyzer, MatchArm* arm)
 {
     if (arm->pattern) {
-        validateNodeGlobalAccess(analyzer, arm->pattern);
+        validate_node_global_access(analyzer, arm->pattern);
     }
 
     if (arm->guard) {
-        validateNodeGlobalAccess(analyzer, arm->guard);
+        validate_node_global_access(analyzer, arm->guard);
     }
 
-    validateBranchGlobalAccess(analyzer, arm->branch);
+    validate_branch_global_access(analyzer, arm->branch);
 }
 
-static void validateMatchGlobalAccess(Analyzer* analyzer, ASTNode* ast)
+static void validate_match_global_access(Analyzer* analyzer, ASTNode* ast)
 {
     if (ast->match.subject) {
-        validateNodeGlobalAccess(analyzer, ast->match.subject);
+        validate_node_global_access(analyzer, ast->match.subject);
     }
 
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
 
-        validateMatchArmGlobalAccess(analyzer, arm);
+        validate_match_arm_global_access(analyzer, arm);
     }
 
-    validateBranchGlobalAccess(analyzer, ast->match.defaultBranch);
+    validate_branch_global_access(analyzer, ast->match.default_branch);
 }
 
-static void validatePrefixGlobalAccess(Analyzer* analyzer, ASTNode* ast)
+static void validate_prefix_global_access(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* origin = referenceOriginFromExpression(ast);
-    ReferenceType type = getReferenceType(ast);
+    ASTNode* origin = reference_origin_from_expression(ast);
+    ReferenceType type = get_reference_type(ast);
 
-    if (type != REFERENCE_NONE) {
-        validateConstantReference(analyzer, origin, ast->prefix.operator);
+    if (type != RefNone) {
+        validate_constant_reference(analyzer, origin, ast->prefix.operator);
     }
 
-    validateGlobalBindingAccess(analyzer, origin, type, ast->prefix.operator);
-    validateNodeGlobalAccess(analyzer, ast->prefix.expr);
+    validate_global_binding_access(analyzer, origin, type, ast->prefix.operator);
+    validate_node_global_access(analyzer, ast->prefix.expr);
 }
 
-static void validateNodeGlobalAccess(Analyzer* analyzer, ASTNode* ast)
+static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
-        case AST_ASSIGNMENT: {
-            ASTNode* origin = getReferenceOriginOrSelf(ast->assignment.symbol);
-            validateGlobalBindingAccess(analyzer, origin, REFERENCE_EXCLUSIVE, ast->assignment.token);
-            validateNodeGlobalAccess(analyzer, ast->assignment.expr);
+        case ASTAssignment: {
+            ASTNode* origin = get_reference_origin_or_self(ast->assignment.symbol);
+            validate_global_binding_access(analyzer, origin, RefExclusive, ast->assignment.token);
+            validate_node_global_access(analyzer, ast->assignment.expr);
             break;
         }
-        case AST_BINARY:
-            validateNodeGlobalAccess(analyzer, ast->binary.leftExpr);
-            validateNodeGlobalAccess(analyzer, ast->binary.rightExpr);
+        case ASTBinary:
+            validate_node_global_access(analyzer, ast->binary.left_expr);
+            validate_node_global_access(analyzer, ast->binary.right_expr);
             break;
-        case AST_BUILTIN_CALL:
-            validateGlobalAccessInNodes(analyzer, &ast->builtinCall.args);
+        case ASTBuiltinCall:
+            validate_global_access_in_nodes(analyzer, &ast->builtin_call.args);
             break;
-        case AST_WHILE:
-            validateNodeGlobalAccess(analyzer, ast->whileStatement.condition);
-            validateBranchGlobalAccess(analyzer, ast->whileStatement.body);
+        case ASTWhile:
+            validate_node_global_access(analyzer, ast->while_statement.condition);
+            validate_branch_global_access(analyzer, ast->while_statement.body);
             break;
-        case AST_CONDITIONAL:
-            validateNodeGlobalAccess(analyzer, ast->conditional.condition);
-            validateBranchGlobalAccess(analyzer, ast->conditional.thenBranch);
-            validateBranchGlobalAccess(analyzer, ast->conditional.elseBranch);
+        case ASTConditional:
+            validate_node_global_access(analyzer, ast->conditional.condition);
+            validate_branch_global_access(analyzer, ast->conditional.then_branch);
+            validate_branch_global_access(analyzer, ast->conditional.else_branch);
             break;
-        case AST_MATCH:
-            validateMatchGlobalAccess(analyzer, ast);
+        case ASTMatch:
+            validate_match_global_access(analyzer, ast);
             break;
-        case AST_CONVERSION:
-            validateNodeGlobalAccess(analyzer, ast->conversion.expr);
+        case ASTConversion:
+            validate_node_global_access(analyzer, ast->conversion.expr);
             break;
-        case AST_FUNCTION_CALL:
-            validateCallArgumentAccess(analyzer, ast, ast->functionCall.symbol, ast->functionCall.token);
-            validateGlobalAccessInNodes(analyzer, &ast->functionCall.args);
-            validateFunctionGlobalAccess(analyzer, ast->functionCall.symbol);
+        case ASTFunctionCall:
+            validate_call_argument_access(analyzer, ast, ast->function_call.symbol, ast->function_call.token);
+            validate_global_access_in_nodes(analyzer, &ast->function_call.args);
+            validate_function_global_access(analyzer, ast->function_call.symbol);
             break;
-        case AST_PREFIX:
-            validatePrefixGlobalAccess(analyzer, ast);
+        case ASTPrefix:
+            validate_prefix_global_access(analyzer, ast);
             break;
-        case AST_RETURN:
-            validateNodeGlobalAccess(analyzer, ast->returnStatement.expr);
+        case ASTReturn:
+            validate_node_global_access(analyzer, ast->return_statement.expr);
             break;
-        case AST_VARIABLE: {
-            ASTNode* origin = getReferenceOriginOrSelf(ast->variable.symbol);
-            validateGlobalBindingAccess(analyzer, origin, REFERENCE_SHARED, ast->variable.token);
+        case ASTVariable: {
+            ASTNode* origin = get_reference_origin_or_self(ast->variable.symbol);
+            validate_global_binding_access(analyzer, origin, RefShared, ast->variable.token);
             break;
         }
-        case AST_VARIABLE_DEFINITION:
-            validateNodeGlobalAccess(analyzer, ast->variableDefinition.expr);
+        case ASTVariableDefinition:
+            validate_node_global_access(analyzer, ast->variable_definition.expr);
             break;
         default:
             break;
     }
 }
 
-static ReferenceType getArgumentReferenceType(ASTNode* argument, ASTNode* parameter)
+static ReferenceType get_argument_reference_type(ASTNode* argument, ASTNode* parameter)
 {
-    ReferenceType type = getReferenceType(argument);
+    ReferenceType type = get_reference_type(argument);
 
-    if (type != REFERENCE_NONE) {
+    if (type != RefNone) {
         return type;
     }
 
-    return getReferenceType(parameter);
+    return get_reference_type(parameter);
 }
 
-static ASTNode* getArgumentReferenceOrigin(ASTNode* argument)
+static ASTNode* get_argument_reference_origin(ASTNode* argument)
 {
-    ASTNode* origin = referenceOriginFromExpression(argument);
+    ASTNode* origin = reference_origin_from_expression(argument);
 
-    if (origin || !isVariable(argument)) {
+    if (origin || !is_variable(argument)) {
         return origin;
     }
 
-    return getReferenceOriginOrSelf(argument->variable.symbol);
+    return get_reference_origin_or_self(argument->variable.symbol);
 }
 
-static bool referenceAccessConflicts(ASTNode* leftOrigin, ReferenceType leftType,
-    ASTNode* right, ASTNode* rightParameter)
+static bool reference_access_conflicts(ASTNode* left_origin, ReferenceType left_type,
+    ASTNode* right, ASTNode* right_parameter)
 {
-    ReferenceType rightType = getArgumentReferenceType(right, rightParameter);
+    ReferenceType right_type = get_argument_reference_type(right, right_parameter);
 
-    if (leftType != REFERENCE_EXCLUSIVE && rightType != REFERENCE_EXCLUSIVE) {
+    if (left_type != RefExclusive && right_type != RefExclusive) {
         return false;
     }
 
-    Vector* rightOrigins = referenceOriginsFromExpression(right);
-    if (containsReferenceOrigin(rightOrigins, leftOrigin)) {
+    Vector* right_origins = reference_origins_from_expression(right);
+    if (contains_reference_origin(right_origins, left_origin)) {
         return true;
     }
 
-    ASTNode* rightOrigin = getArgumentReferenceOrigin(right);
+    ASTNode* right_origin = get_argument_reference_origin(right);
 
-    return leftOrigin == rightOrigin;
+    return left_origin == right_origin;
 }
 
-static void validateArgumentOriginAccess(Vector* arguments, Vector* parameters,
-    size_t position, ASTNode* leftOrigin, ReferenceType leftType, Token token)
+static void validate_argument_origin_access(Vector* arguments, Vector* parameters,
+    size_t position, ASTNode* left_origin, ReferenceType left_type, Token token)
 {
-    size_t count = countVector(arguments);
+    size_t count = count_vector(arguments);
 
     for (size_t i = position + 1; i < count; i++) {
-        ASTNode* right = getVectorAt(arguments, i);
-        ASTNode* rightParameter = getVectorAt(parameters, i);
+        ASTNode* right = get_vector_at(arguments, i);
+        ASTNode* right_parameter = get_vector_at(parameters, i);
 
-        if (!referenceAccessConflicts(leftOrigin, leftType, right, rightParameter)) {
+        if (!reference_access_conflicts(left_origin, left_type, right, right_parameter)) {
             continue;
         }
 
-        semanticTokenError("Conflicting reference access in call ", token);
+        semantic_token_error("Conflicting reference access in call ", token);
     }
 }
 
-static void validateArgumentAccess(Vector* arguments, Vector* parameters,
+static void validate_argument_access(Vector* arguments, Vector* parameters,
     size_t position, Token token)
 {
-    ASTNode* left = getVectorAt(arguments, position);
-    ASTNode* leftParameter = getVectorAt(parameters, position);
-    ReferenceType leftType = getArgumentReferenceType(left, leftParameter);
+    ASTNode* left = get_vector_at(arguments, position);
+    ASTNode* left_parameter = get_vector_at(parameters, position);
+    ReferenceType left_type = get_argument_reference_type(left, left_parameter);
 
-    if (leftType == REFERENCE_NONE) {
+    if (left_type == RefNone) {
         return;
     }
 
-    Vector* origins = referenceOriginsFromExpression(left);
-    size_t count = countVector(origins);
+    Vector* origins = reference_origins_from_expression(left);
+    size_t count = count_vector(origins);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* origin = getVectorAt(origins, i);
-        validateArgumentOriginAccess(arguments, parameters, position, origin, leftType, token);
+        ASTNode* origin = get_vector_at(origins, i);
+        validate_argument_origin_access(arguments, parameters, position, origin, left_type, token);
     }
 
     if (count) {
         return;
     }
 
-    ASTNode* origin = getArgumentReferenceOrigin(left);
+    ASTNode* origin = get_argument_reference_origin(left);
     if (origin) {
-        validateArgumentOriginAccess(arguments, parameters, position, origin, leftType, token);
+        validate_argument_origin_access(arguments, parameters, position, origin, left_type, token);
     }
 }
 
-static void validateArgumentAccesses(ASTNode* caller, ASTNode* callee)
+static void validate_argument_accesses(ASTNode* caller, ASTNode* callee)
 {
-    Vector* arguments = &caller->functionCall.args;
-    Vector* parameters = &callee->functionDefinition.params;
-    size_t count = countVector(arguments);
+    Vector* arguments = &caller->function_call.args;
+    Vector* parameters = &callee->function_definition.params;
+    size_t count = count_vector(arguments);
 
     for (size_t i = 0; i < count; i++) {
-        validateArgumentAccess(arguments, parameters, i, caller->functionCall.token);
+        validate_argument_access(arguments, parameters, i, caller->function_call.token);
     }
 }
 
-static void setCallReferenceOrigins(ASTNode* caller, ASTNode* callee)
+static void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 {
-    ASTNode* returned = callee->functionDefinition.returnReferenceOrigin;
+    ASTNode* returned = callee->function_definition.return_reference_origin;
 
-    if (!returned || !isParameter(returned)) {
-        Vector* origins = getReferenceOrigins(caller);
-        addReferenceOrigin(origins, returned);
+    if (!returned || !is_parameter(returned)) {
+        Vector* origins = get_reference_origins(caller);
+        add_reference_origin(origins, returned);
 
         return;
     }
 
-    size_t count = countVector(&callee->functionDefinition.params);
+    size_t count = count_vector(&callee->function_definition.params);
 
     for (size_t i = 0; i < count; i++) {
-        if (getVectorAt(&callee->functionDefinition.params, i) != returned) {
+        if (get_vector_at(&callee->function_definition.params, i) != returned) {
             continue;
         }
 
-        ASTNode* argument = getVectorAt(&caller->functionCall.args, i);
-        setReferenceOriginsFromExpression(caller, argument);
+        ASTNode* argument = get_vector_at(&caller->function_call.args, i);
+        set_reference_origins_from_expression(caller, argument);
 
         return;
     }
 }
 
-static void inferConversionLiteral(ASTNode* ast)
+static void infer_conversion_literal(ASTNode* ast)
 {
-    DataType type = getTokenDataType(ast->functionCall.token.type);
-    size_t count = countVector(&ast->functionCall.args);
+    DataType type = get_token_data_type(ast->function_call.token.type);
+    size_t count = count_vector(&ast->function_call.args);
 
-    if ((!isIntegerType(type) && !isFloatType(type) && type != TYPE_CHAR) || count != 1) {
+    if ((!is_integer_type(type) && !is_float_type(type) && type != TypeChar) || count != 1) {
         return;
     }
 
-    ASTNode* expression = ast->functionCall.args.data[0];
-    DataType source = getNodeDataType(expression);
+    ASTNode* expression = ast->function_call.args.data[0];
+    DataType source = get_node_data_type(expression);
 
-    if (source == TYPE_UNKNOWN && expression->type == AST_INTEGER) {
-        applyIntegerLiteralType(expression, TYPE_U64);
+    if (source == TypeUnknown && expression->type == ASTInteger) {
+        apply_integer_literal_type(expression, TypeU64);
     }
 }
 
-static void analyzeTypeConversion(ASTNode* ast)
+static void analyze_type_conversion(ASTNode* ast)
 {
-    Token token = ast->functionCall.token;
-    DataType destination = getTokenDataType(token.type);
-    size_t count = countVector(&ast->functionCall.args);
+    Token token = ast->function_call.token;
+    DataType destination = get_token_data_type(token.type);
+    size_t count = count_vector(&ast->function_call.args);
 
     if (count != 1) {
-        semanticError("Explicit type conversion requires exactly one argument", token);
+        semantic_error("Explicit type conversion requires exactly one argument", token);
     }
 
-    ASTNode* expression = ast->functionCall.args.data[0];
-    DataType source = getNodeDataType(expression);
-    bool supported = canExplicitlyConvertType(source, destination);
-    ReferenceType reference = getReferenceType(expression);
+    ASTNode* expression = ast->function_call.args.data[0];
+    DataType source = get_node_data_type(expression);
+    bool supported = can_explicitly_convert_type(source, destination);
+    ReferenceType reference = get_reference_type(expression);
 
     if (!supported) {
-        unsupportedExplicitConversionError(token, source, destination);
+        unsupported_explicit_conversion_error(token, source, destination);
     }
 
-    if (reference != REFERENCE_NONE) {
-        semanticError("Explicit type conversions require a value", token);
+    if (reference != RefNone) {
+        semantic_error("Explicit type conversions require a value", token);
     }
 
-    freeStringObject(ast->functionCall.id);
-    freeVector(&ast->functionCall.args);
-    freeVector(&ast->functionCall.referenceOrigins);
+    free_string_object(ast->function_call.id);
+    free_vector(&ast->function_call.args);
+    free_vector(&ast->function_call.reference_origins);
 
-    ast->type = AST_CONVERSION;
+    ast->type = ASTConversion;
     ast->conversion.expr = expression;
     ast->conversion.token = token;
-    ast->conversion.typeId = destination;
+    ast->conversion.type_id = destination;
 }
 
-static void analyzeFunctionCall(Analyzer* analyzer, ASTNode* ast)
+static void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
 {
-    inferConversionLiteral(ast);
-    analyzeExpressionNodes(analyzer, &ast->functionCall.args);
+    infer_conversion_literal(ast);
+    analyze_expression_nodes(analyzer, &ast->function_call.args);
 
-    DataType calledType = getTokenDataType(ast->functionCall.token.type);
+    DataType called_type = get_token_data_type(ast->function_call.token.type);
 
-    if (isIntegerType(calledType) || isFloatType(calledType) || calledType == TYPE_CHAR) {
-        analyzeTypeConversion(ast);
+    if (is_integer_type(called_type) || is_float_type(called_type) || called_type == TypeChar) {
+        analyze_type_conversion(ast);
 
         return;
     }
 
-    StringView id = getStringView(ast->functionCall.id);
-    ASTNode* symbol = findSymbol(analyzer, id);
+    StringView id = get_string_view(ast->function_call.id);
+    ASTNode* symbol = find_symbol(analyzer, id);
     
     if (!symbol) {
-        analyzeBuiltinCall(ast);
+        analyze_builtin_call(ast);
         return;
     }
 
-    if (!isFunctionDefinition(symbol)) {
-        symbolError(" is undefined", ast->functionCall.token);
+    if (!is_function_definition(symbol)) {
+        symbol_error(" is undefined", ast->function_call.token);
     }
 
-    ast->functionCall.scope = analyzer->currentScope;
-    ast->functionCall.symbol = symbol;
-    validateFunctionCall(ast, symbol, ast->functionCall.token);
-    validateCallArgumentAccess(analyzer, ast, symbol, ast->functionCall.token);
-    validateArgumentAccesses(ast, symbol);
-    validateFunctionGlobalAccess(analyzer, symbol);
-    setCallReferenceOrigins(ast, symbol);
+    ast->function_call.scope = analyzer->current_scope;
+    ast->function_call.symbol = symbol;
+    validate_function_call(ast, symbol, ast->function_call.token);
+    validate_call_argument_access(analyzer, ast, symbol, ast->function_call.token);
+    validate_argument_accesses(ast, symbol);
+    validate_function_global_access(analyzer, symbol);
+    set_call_reference_origins(ast, symbol);
 }
 
-static ASTNode* findFunctionReturn(Vector* statements)
+static ASTNode* find_function_return(Vector* statements)
 {
-    size_t count = countVector(statements);
+    size_t count = count_vector(statements);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* statement = getVectorAt(statements, i);
-        ASTNode* result = findNodeReturn(statement);
+        ASTNode* statement = get_vector_at(statements, i);
+        ASTNode* result = find_node_return(statement);
 
         if (result) {
             return result;
@@ -2694,874 +2694,874 @@ static ASTNode* findFunctionReturn(Vector* statements)
     return NULL;
 }
 
-static ASTNode* findConditionalReturn(ASTNode* ast)
+static ASTNode* find_conditional_return(ASTNode* ast)
 {
-    ASTNode* result = findNodeReturn(ast->conditional.thenBranch);
+    ASTNode* result = find_node_return(ast->conditional.then_branch);
 
     if (result) {
         return result;
     }
 
-    return findNodeReturn(ast->conditional.elseBranch);
+    return find_node_return(ast->conditional.else_branch);
 }
 
-static ASTNode* findMatchReturn(ASTNode* ast)
+static ASTNode* find_match_return(ASTNode* ast)
 {
-    size_t count = countVector(&ast->match.arms);
+    size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = getVectorAt(&ast->match.arms, i);
-        ASTNode* result = findNodeReturn(arm->branch);
+        MatchArm* arm = get_vector_at(&ast->match.arms, i);
+        ASTNode* result = find_node_return(arm->branch);
 
         if (result) {
             return result;
         }
     }
 
-    return findNodeReturn(ast->match.defaultBranch);
+    return find_node_return(ast->match.default_branch);
 }
 
-static ASTNode* findNodeReturn(ASTNode* ast)
+static ASTNode* find_node_return(ASTNode* ast)
 {
     if (!ast) {
         return NULL;
     }
 
     switch (ast->type) {
-        case AST_RETURN:
+        case ASTReturn:
             return ast;
-        case AST_COMPOUND:
-            return findFunctionReturn(&ast->compound.statements);
-        case AST_WHILE:
-            return findNodeReturn(ast->whileStatement.body);
-        case AST_CONDITIONAL:
-            return findConditionalReturn(ast);
-        case AST_MATCH:
-            return findMatchReturn(ast);
+        case ASTCompound:
+            return find_function_return(&ast->compound.statements);
+        case ASTWhile:
+            return find_node_return(ast->while_statement.body);
+        case ASTConditional:
+            return find_conditional_return(ast);
+        case ASTMatch:
+            return find_match_return(ast);
         default:
             return NULL;
     }
 }
 
-static DataType getFunctionReturnValueType(Vector* statements)
+static DataType get_function_return_value_type(Vector* statements)
 {
-    ASTNode* result = findFunctionReturn(statements);
+    ASTNode* result = find_function_return(statements);
 
     if (!result) {
-        return TYPE_VOID;
+        return TypeVoid;
     }
 
-    return getNodeDataType(result->returnStatement.expr);
+    return get_node_data_type(result->return_statement.expr);
 }
 
-static void validateFunctionReturnValueType(ASTNode* ast, DataType type)
+static void validate_function_return_value_type(ASTNode* ast, DataType type)
 {
-    DataType returnType = ast->functionDefinition.returnTypeId;
+    DataType return_type = ast->function_definition.return_type_id;
 
-    bool valueReturn = ast->functionDefinition.returnReferenceType == REFERENCE_NONE;
+    bool value_return = ast->function_definition.return_reference_type == RefNone;
 
-    if (returnType != type
-        && (!valueReturn || !canImplicitlyWidenType(type, returnType))) {
-        semanticTokenError("Invalid return type for function ", ast->functionDefinition.token);
+    if (return_type != type
+        && (!value_return || !can_implicitly_widen_type(type, return_type))) {
+        semantic_token_error("Invalid return type for function ", ast->function_definition.token);
     }
 }
 
-static void setParameterPositions(ASTNode* ast)
+static void set_parameter_positions(ASTNode* ast)
 {
-    size_t count = countVector(&ast->functionDefinition.params);
+    size_t count = count_vector(&ast->function_definition.params);
     size_t position = 0;
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* param = getVectorAt(&ast->functionDefinition.params, i);
+        ASTNode* param = get_vector_at(&ast->function_definition.params, i);
         param->parameter.position = position;
-        position += getReferenceType(param) == REFERENCE_NONE ? getTypeSlotCount(getNodeDataType(param)) : 1;
+        position += get_reference_type(param) == RefNone ? get_type_slot_count(get_node_data_type(param)) : 1;
     }
 }
 
-static void resolveFunctionReturnValueType(ASTNode* ast)
+static void resolve_function_return_value_type(ASTNode* ast)
 {
-    DataType type = getFunctionReturnValueType(&ast->functionDefinition.body->compound.statements);
+    DataType type = get_function_return_value_type(&ast->function_definition.body->compound.statements);
 
-    if (ast->functionDefinition.hasExplicitReturnType) {
-        validateFunctionReturnValueType(ast, type);
+    if (ast->function_definition.has_explicit_return_type) {
+        validate_function_return_value_type(ast, type);
         return;
     }
 
-    ast->functionDefinition.returnTypeId = type;
+    ast->function_definition.return_type_id = type;
 }
 
-static void validateParameterOrder(ASTNode* parameter, bool* hasDefault)
+static void validate_parameter_order(ASTNode* parameter, bool* has_default)
 {
-    if (parameter->parameter.defaultValue) {
-        *hasDefault = true;
+    if (parameter->parameter.default_value) {
+        *has_default = true;
 
         return;
     }
 
-    if (*hasDefault) {
-        semanticTokenError("Required parameter cannot follow a default parameter: ", parameter->parameter.token);
+    if (*has_default) {
+        semantic_token_error("Required parameter cannot follow a default parameter: ", parameter->parameter.token);
     }
 }
 
-static void analyzeParameters(Analyzer* analyzer, Vector* parameters)
+static void analyze_parameters(Analyzer* analyzer, Vector* parameters)
 {
-    bool hasDefault = false;
+    bool has_default = false;
 
     for (size_t i = 0; i < parameters->count; i++) {
         ASTNode* parameter = parameters->data[i];
 
-        validateParameterOrder(parameter, &hasDefault);
-        analyzeNode(analyzer, parameter);
+        validate_parameter_order(parameter, &has_default);
+        analyze_node(analyzer, parameter);
     }
 }
 
-static void analyzeFunction(Analyzer* analyzer, ASTNode* ast)
+static void analyze_function(Analyzer* analyzer, ASTNode* ast)
 {
-    StringView id = getStringView(ast->functionDefinition.id);
+    StringView id = get_string_view(ast->function_definition.id);
 
-    if (getLocalSymbol(analyzer->currentScope, id)) {
-        redefinitionError("Function", ast->functionDefinition.token);
+    if (get_local_symbol(analyzer->current_scope, id)) {
+        redefinition_error("Function", ast->function_definition.token);
     }
 
-    Scope* parent = analyzer->currentScope;
-    ASTNode* previousFunction = analyzer->function;
-    LoopPath* previousLoop = analyzer->loopPath;
-    Scope* scope = createScope(parent);
-    scope->frameScope = scope;
-    scope->localOffset = 0;
-    scope->maxLocalCount = 0;
-    ast->functionDefinition.scope = scope;
-    ast->functionDefinition.body->compound.scope = scope;
-    analyzer->currentScope = scope;
+    Scope* parent = analyzer->current_scope;
+    ASTNode* previous_function = analyzer->function;
+    LoopPath* previous_loop = analyzer->loop_path;
+    Scope* scope = create_scope(parent);
+    scope->frame_scope = scope;
+    scope->local_offset = 0;
+    scope->max_local_count = 0;
+    ast->function_definition.scope = scope;
+    ast->function_definition.body->compound.scope = scope;
+    analyzer->current_scope = scope;
     analyzer->function = ast;
-    analyzer->loopPath = NULL;
+    analyzer->loop_path = NULL;
 
-    setLocalSymbol(scope, id, ast);
-    analyzeParameters(analyzer, &ast->functionDefinition.params);
-    setParameterPositions(ast);
-    setLocalSymbol(parent, id, ast);
+    set_local_symbol(scope, id, ast);
+    analyze_parameters(analyzer, &ast->function_definition.params);
+    set_parameter_positions(ast);
+    set_local_symbol(parent, id, ast);
 
-    FunctionPath path = {ast, analyzer->functionPath};
-    analyzer->functionPath = &path;
+    FunctionPath path = {ast, analyzer->function_path};
+    analyzer->function_path = &path;
 
-    analyzeExpressionNodes(analyzer, &ast->functionDefinition.body->compound.statements);
+    analyze_expression_nodes(analyzer, &ast->function_definition.body->compound.statements);
 
-    analyzer->functionPath = path.previous;
-    analyzer->currentScope = parent;
-    analyzer->function = previousFunction;
-    analyzer->loopPath = previousLoop;
+    analyzer->function_path = path.previous;
+    analyzer->current_scope = parent;
+    analyzer->function = previous_function;
+    analyzer->loop_path = previous_loop;
 
-    resolveFunctionReturnValueType(ast);
+    resolve_function_return_value_type(ast);
 }
 
-static ASTNode* findAssignmentSymbol(Analyzer* analyzer, ASTNode* ast)
+static ASTNode* find_assignment_symbol(Analyzer* analyzer, ASTNode* ast)
 {
     Token token = ast->assignment.token;
-    StringView id = createStringView(token.chars, token.length);
-    ASTNode* symbol = findSymbol(analyzer, id);
+    StringView id = create_string_view(token.chars, token.length);
+    ASTNode* symbol = find_symbol(analyzer, id);
 
-    if (!symbol || !isVariableType(symbol)) {
-        symbolError(" is undefined", ast->assignment.token);
+    if (!symbol || !is_variable_type(symbol)) {
+        symbol_error(" is undefined", ast->assignment.token);
     }
 
     return symbol;
 }
 
-static void validateCompoundAssignmentTarget(ASTNode* ast, ASTNode* symbol)
+static void validate_compound_assignment_target(ASTNode* ast, ASTNode* symbol)
 {
-    if (ast->assignment.operator.type == TOKEN_EQUAL) {
+    if (ast->assignment.operator.type == TokenEqual) {
         return;
     }
 
-    if (!isInitialized(symbol)) {
-        symbolError(" is uninitialized", ast->assignment.token);
+    if (!is_initialized(symbol)) {
+        symbol_error(" is uninitialized", ast->assignment.token);
     }
 
-    if (getReferenceType(symbol) == REFERENCE_SHARED) {
-        semanticTokenError("Cannot mutate through shared reference ", ast->assignment.token);
+    if (get_reference_type(symbol) == RefShared) {
+        semantic_token_error("Cannot mutate through shared reference ", ast->assignment.token);
     }
 }
 
-static void validateAssignmentTarget(ASTNode* ast, ASTNode* symbol)
+static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
 
-    if (isVariableDefinition(symbol) && symbol->variableDefinition.constant) {
-        semanticTokenError("Cannot reassign constant ", token);
+    if (is_variable_definition(symbol) && symbol->variable_definition.constant) {
+        semantic_token_error("Cannot reassign constant ", token);
     }
 
-    if (isMoved(symbol)) {
-        symbolError(" is moved", token);
+    if (is_moved(symbol)) {
+        symbol_error(" is moved", token);
     }
 
-    if (getReferenceType(symbol) == REFERENCE_NONE && hasExclusiveAccess(symbol)) {
-        bindingAccessError("Cannot mutate binding ", token, " while exclusive access is active");
+    if (get_reference_type(symbol) == RefNone && has_exclusive_access(symbol)) {
+        binding_access_error("Cannot mutate binding ", token, " while exclusive access is active");
     }
 
-    if (getReferenceType(symbol) == REFERENCE_NONE && *getSharedAccessCount(symbol)) {
-        bindingAccessError("Cannot mutate binding ", token, " while shared access is active");
+    if (get_reference_type(symbol) == RefNone && *get_shared_access_count(symbol)) {
+        binding_access_error("Cannot mutate binding ", token, " while shared access is active");
     }
 
-    if (getReferenceType(symbol) == REFERENCE_NONE && isVariableDefinition(symbol)
-        && symbol->variableDefinition.fixed && isInitialized(symbol)) {
-        semanticTokenError("Cannot reassign fixed binding ", token);
+    if (get_reference_type(symbol) == RefNone && is_variable_definition(symbol)
+        && symbol->variable_definition.fixed && is_initialized(symbol)) {
+        semantic_token_error("Cannot reassign fixed binding ", token);
     }
 }
 
-static void validateAssignmentType(ASTNode* ast, ASTNode* symbol)
+static void validate_assignment_type(ASTNode* ast, ASTNode* symbol)
 {
     ASTNode* expression = ast->assignment.expr;
-    DataType expressionType = getNodeDataType(expression);
-    DataType bindingType = getNodeDataType(symbol);
-    ReferenceType bindingReferenceType = getReferenceType(symbol);
-    ReferenceType expressionReferenceType = getReferenceType(expression);
+    DataType expression_type = get_node_data_type(expression);
+    DataType binding_type = get_node_data_type(symbol);
+    ReferenceType binding_reference_type = get_reference_type(symbol);
+    ReferenceType expression_reference_type = get_reference_type(expression);
 
-    if (ast->assignment.operator.type != TOKEN_EQUAL && bindingReferenceType == REFERENCE_EXCLUSIVE) {
-        bindingReferenceType = REFERENCE_NONE;
+    if (ast->assignment.operator.type != TokenEqual && binding_reference_type == RefExclusive) {
+        binding_reference_type = RefNone;
     }
 
-    bool compatibleValue = bindingType == expressionType || (bindingReferenceType == REFERENCE_NONE
-        && expressionReferenceType == REFERENCE_NONE && canImplicitlyWidenType(expressionType, bindingType));
+    bool compatible_value = binding_type == expression_type || (binding_reference_type == RefNone
+        && expression_reference_type == RefNone && can_implicitly_widen_type(expression_type, binding_type));
 
-    if (compatibleValue && bindingReferenceType == expressionReferenceType) {
+    if (compatible_value && binding_reference_type == expression_reference_type) {
         return;
     }
 
-    if (bindingReferenceType == REFERENCE_NONE && expressionReferenceType == REFERENCE_NONE) {
-        implicitConversionError(ast->assignment.token, expressionType, bindingType);
+    if (binding_reference_type == RefNone && expression_reference_type == RefNone) {
+        implicit_conversion_error(ast->assignment.token, expression_type, binding_type);
     }
 
-    semanticTokenError("Assignment type does not match binding ", ast->assignment.token);
+    semantic_token_error("Assignment type does not match binding ", ast->assignment.token);
 }
 
-static void updateReferenceBinding(ASTNode* ast, ASTNode* symbol, bool initializesBinding)
+static void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_binding)
 {
-    if (ast->assignment.operator.type != TOKEN_EQUAL || getReferenceType(symbol) == REFERENCE_NONE) {
+    if (ast->assignment.operator.type != TokenEqual || get_reference_type(symbol) == RefNone) {
         return;
     }
 
-    setReferenceOriginsFromExpression(symbol, ast->assignment.expr);
+    set_reference_origins_from_expression(symbol, ast->assignment.expr);
 
-    if (getReferenceType(symbol) == REFERENCE_EXCLUSIVE && isVariable(ast->assignment.expr)) {
-        transferExclusiveReference(ast->assignment.expr);
+    if (get_reference_type(symbol) == RefExclusive && is_variable(ast->assignment.expr)) {
+        transfer_exclusive_reference(ast->assignment.expr);
     } else {
-        activateReferenceAccess(symbol);
+        activate_reference_access(symbol);
     }
 
-    symbol->variableDefinition.referenceAccessActive = true;
-    ast->assignment.initializesBinding = initializesBinding;
+    symbol->variable_definition.reference_access_active = true;
+    ast->assignment.initializes_binding = initializes_binding;
 }
 
-static void analyzeAssignment(Analyzer* analyzer, ASTNode* ast)
+static void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* symbol = findAssignmentSymbol(analyzer, ast);
-    bool initializesBinding = !isInitialized(symbol);
+    ASTNode* symbol = find_assignment_symbol(analyzer, ast);
+    bool initializes_binding = !is_initialized(symbol);
 
-    validateConstantBinding(analyzer, symbol, ast->assignment.token);
-    validateAssignmentTarget(ast, symbol);
-    validateCompoundAssignmentTarget(ast, symbol);
-    trackVariableRead(symbol);
+    validate_constant_binding(analyzer, symbol, ast->assignment.token);
+    validate_assignment_target(ast, symbol);
+    validate_compound_assignment_target(ast, symbol);
+    track_variable_read(symbol);
 
-    if (ast->assignment.operator.type == TOKEN_EQUAL && isVariableDefinition(symbol)
-        && !initializesBinding && symbol->variableDefinition.referenceAccessActive) {
-        releaseReferenceAccess(symbol);
+    if (ast->assignment.operator.type == TokenEqual && is_variable_definition(symbol)
+        && !initializes_binding && symbol->variable_definition.reference_access_active) {
+        release_reference_access(symbol);
     }
 
-    applyLiteralType(ast->assignment.expr, getNodeDataType(symbol));
-    analyzeNode(analyzer, ast->assignment.expr);
-    validateAssignmentType(ast, symbol);
+    apply_literal_type(ast->assignment.expr, get_node_data_type(symbol));
+    analyze_node(analyzer, ast->assignment.expr);
+    validate_assignment_type(ast, symbol);
 
-    DataType bindingType = getNodeDataType(symbol);
+    DataType binding_type = get_node_data_type(symbol);
 
-    if (bindingType == TYPE_STRING && ast->assignment.operator.type != TOKEN_EQUAL) {
-        semanticError("Invalid operator for string assignment", ast->assignment.operator);
+    if (binding_type == TypeString && ast->assignment.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for string assignment", ast->assignment.operator);
     }
 
-    if (bindingType == TYPE_CHAR && ast->assignment.operator.type != TOKEN_EQUAL) {
-        semanticError("Invalid operator for char assignment", ast->assignment.operator);
+    if (binding_type == TypeChar && ast->assignment.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for char assignment", ast->assignment.operator);
     }
 
-    if (isFloatType(getNodeDataType(symbol))
-        && !isFloatAssignmentToken(ast->assignment.operator.type)) {
-        semanticError("Invalid operands for assignment", ast->assignment.operator);
+    if (is_float_type(get_node_data_type(symbol))
+        && !is_float_assignment_token(ast->assignment.operator.type)) {
+        semantic_error("Invalid operands for assignment", ast->assignment.operator);
     }
 
-    if (ast->assignment.operator.type == TOKEN_POWER_EQUAL && getNodeDataType(symbol) != TYPE_I32) {
-        semanticError("Invalid operands for assignment", ast->assignment.operator);
+    if (ast->assignment.operator.type == TokenPowerEqual && get_node_data_type(symbol) != TypeI32) {
+        semantic_error("Invalid operands for assignment", ast->assignment.operator);
     }
 
-    ast->assignment.scope = analyzer->currentScope;
+    ast->assignment.scope = analyzer->current_scope;
     ast->assignment.symbol = symbol;
 
-    updateReferenceBinding(ast, symbol, initializesBinding);
-    initializeVariable(symbol);
+    update_reference_binding(ast, symbol, initializes_binding);
+    initialize_variable(symbol);
 }
 
-static void transferExclusiveReference(ASTNode* expression)
+static void transfer_exclusive_reference(ASTNode* expression)
 {
     ASTNode* source = expression->variable.symbol;
-    setMoved(source);
+    set_moved(source);
 
-    if (!isVariableDefinition(source)) {
+    if (!is_variable_definition(source)) {
         return;
     }
 
-    source->variableDefinition.referenceAccessActive = false;
+    source->variable_definition.reference_access_active = false;
 }
 
-static void activateReferenceAccess(ASTNode* ast)
+static void activate_reference_access(ASTNode* ast)
 {
-    Vector* origins = getReferenceOrigins(ast);
-    size_t count = countVector(origins);
+    Vector* origins = get_reference_origins(ast);
+    size_t count = count_vector(origins);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* origin = getVectorAt(origins, i);
+        ASTNode* origin = get_vector_at(origins, i);
 
-        if (ast->variableDefinition.referenceType == REFERENCE_SHARED) {
-            (*getSharedAccessCount(origin))++;
+        if (ast->variable_definition.reference_type == RefShared) {
+            (*get_shared_access_count(origin))++;
         } else {
-            setExclusiveAccess(origin, true);
+            set_exclusive_access(origin, true);
         }
     }
 }
 
-static void initializeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
+static void initialize_variable_definition(Analyzer* analyzer, ASTNode* ast)
 {
-    ast->variableDefinition.scope = analyzer->currentScope;
-    ast->variableDefinition.position = getNextLocalPosition(analyzer->currentScope);
-    ast->variableDefinition.initialized = false;
+    ast->variable_definition.scope = analyzer->current_scope;
+    ast->variable_definition.position = get_next_local_position(analyzer->current_scope);
+    ast->variable_definition.initialized = false;
 }
 
-static void applyDeclaredType(ASTNode* expression, DataType type, ReferenceType referenceType)
+static void apply_declared_type(ASTNode* expression, DataType type, ReferenceType reference_type)
 {
-    if (expression->type == AST_PREFIX && expression->prefix.operator.type == TOKEN_CONST) {
-        applyDeclaredType(expression->prefix.expr, type, referenceType);
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
+        apply_declared_type(expression->prefix.expr, type, reference_type);
 
         return;
     }
 
-    if (type == TYPE_UNKNOWN) {
+    if (type == TypeUnknown) {
         return;
     }
 
-    applyLiteralType(expression, type);
+    apply_literal_type(expression, type);
 
-    if (expression->type == AST_CONDITIONAL) {
-        expression->conditional.typeId = type;
-        expression->conditional.referenceType = referenceType;
+    if (expression->type == ASTConditional) {
+        expression->conditional.type_id = type;
+        expression->conditional.reference_type = reference_type;
     }
 
-    if (expression->type == AST_MATCH) {
-        expression->match.typeId = type;
-        expression->match.referenceType = referenceType;
+    if (expression->type == ASTMatch) {
+        expression->match.type_id = type;
+        expression->match.reference_type = reference_type;
     }
 }
 
-static bool variableTypesMatch(ASTNode* ast, DataType type, ReferenceType referenceType)
+static bool variable_types_match(ASTNode* ast, DataType type, ReferenceType reference_type)
 {
-    ReferenceType declaredReferenceType = ast->variableDefinition.referenceType;
+    ReferenceType declared_reference_type = ast->variable_definition.reference_type;
 
-    if (declaredReferenceType != referenceType) {
+    if (declared_reference_type != reference_type) {
         return false;
     }
 
-    DataType declaredType = ast->variableDefinition.typeId;
-    if (declaredType == type) {
+    DataType declared_type = ast->variable_definition.type_id;
+    if (declared_type == type) {
         return true;
     }
 
-    if (referenceType != REFERENCE_NONE) {
+    if (reference_type != RefNone) {
         return false;
     }
 
-    return canImplicitlyWidenType(type, declaredType);
+    return can_implicitly_widen_type(type, declared_type);
 }
 
-static void validateVariableTypeMatch(ASTNode* ast, DataType type, ReferenceType referenceType)
+static void validate_variable_type_match(ASTNode* ast, DataType type, ReferenceType reference_type)
 {
-    if (variableTypesMatch(ast, type, referenceType)) {
+    if (variable_types_match(ast, type, reference_type)) {
         return;
     }
 
-    DataType declaredType = ast->variableDefinition.typeId;
-    ReferenceType declaredReferenceType = ast->variableDefinition.referenceType;
+    DataType declared_type = ast->variable_definition.type_id;
+    ReferenceType declared_reference_type = ast->variable_definition.reference_type;
 
-    if (declaredReferenceType == REFERENCE_NONE && referenceType == REFERENCE_NONE) {
-        implicitConversionError(ast->variableDefinition.token, type, declaredType);
+    if (declared_reference_type == RefNone && reference_type == RefNone) {
+        implicit_conversion_error(ast->variable_definition.token, type, declared_type);
     }
 
-    semanticTokenError("Initializer type does not match variable ", ast->variableDefinition.token);
+    semantic_token_error("Initializer type does not match variable ", ast->variable_definition.token);
 }
 
-static void resolveVariableType(ASTNode* ast, ASTNode* expression)
+static void resolve_variable_type(ASTNode* ast, ASTNode* expression)
 {
-    DataType type = getNodeDataType(expression);
-    ReferenceType referenceType = getReferenceType(expression);
+    DataType type = get_node_data_type(expression);
+    ReferenceType reference_type = get_reference_type(expression);
 
-    if (ast->variableDefinition.typeId != TYPE_UNKNOWN) {
-        validateVariableTypeMatch(ast, type, referenceType);
+    if (ast->variable_definition.type_id != TypeUnknown) {
+        validate_variable_type_match(ast, type, reference_type);
 
         return;
     }
 
-    if (type == TYPE_UNKNOWN && expression->type == AST_FLOAT) {
-        floatLiteralRequiresTypeError(expression->floatLiteral.token);
+    if (type == TypeUnknown && expression->type == ASTFloat) {
+        float_literal_requires_type_error(expression->float_literal.token);
     }
 
-    if (type == TYPE_UNKNOWN) {
-        integerLiteralRequiresTypeError(ast->variableDefinition.token);
+    if (type == TypeUnknown) {
+        integer_literal_requires_type_error(ast->variable_definition.token);
     }
 
-    ast->variableDefinition.typeId = type;
-    ast->variableDefinition.referenceType = referenceType;
+    ast->variable_definition.type_id = type;
+    ast->variable_definition.reference_type = reference_type;
 }
 
-static void analyzeVariableInitializer(Analyzer* analyzer, ASTNode* ast)
+static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* expression = ast->variableDefinition.expr;
+    ASTNode* expression = ast->variable_definition.expr;
 
-    if (isNone(expression)) {
+    if (is_none(expression)) {
         return;
     }
 
-    applyDeclaredType(expression, ast->variableDefinition.typeId, ast->variableDefinition.referenceType);
-    analyzeNode(analyzer, expression);
-    resolveVariableType(ast, expression);
+    apply_declared_type(expression, ast->variable_definition.type_id, ast->variable_definition.reference_type);
+    analyze_node(analyzer, expression);
+    resolve_variable_type(ast, expression);
 
-    setReferenceOriginsFromExpression(ast, expression);
-    initializeVariable(ast);
+    set_reference_origins_from_expression(ast, expression);
+    initialize_variable(ast);
 }
 
-static void validateVariableType(ASTNode* ast)
+static void validate_variable_type(ASTNode* ast)
 {
-    if (ast->variableDefinition.typeId == TYPE_VOID) {
-        semanticTokenError("Invalid type for variable ", ast->variableDefinition.token);
+    if (ast->variable_definition.type_id == TypeVoid) {
+        semantic_token_error("Invalid type for variable ", ast->variable_definition.token);
     }
 }
 
-static void trackVariableReference(ASTNode* ast)
+static void track_variable_reference(ASTNode* ast)
 {
-    if (ast->variableDefinition.referenceType == REFERENCE_NONE || !ast->variableDefinition.initialized) {
+    if (ast->variable_definition.reference_type == RefNone || !ast->variable_definition.initialized) {
         return;
     }
 
-    ASTNode* expression = ast->variableDefinition.expr;
-    bool transfersExclusive = ast->variableDefinition.referenceType == REFERENCE_EXCLUSIVE && isVariable(expression);
+    ASTNode* expression = ast->variable_definition.expr;
+    bool transfers_exclusive = ast->variable_definition.reference_type == RefExclusive && is_variable(expression);
 
-    if (transfersExclusive) {
-        transferExclusiveReference(expression);
+    if (transfers_exclusive) {
+        transfer_exclusive_reference(expression);
     } else {
-        activateReferenceAccess(ast);
+        activate_reference_access(ast);
     }
 
-    ast->variableDefinition.referenceAccessActive = true;
+    ast->variable_definition.reference_access_active = true;
 }
 
-static void analyzeVariableDefinition(Analyzer* analyzer, ASTNode* ast)
+static void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
 {
-    StringView id = getStringView(ast->variableDefinition.id);
+    StringView id = get_string_view(ast->variable_definition.id);
 
-    if (getLocalSymbol(analyzer->currentScope, id)) {
-        redefinitionError("Variable", ast->variableDefinition.token);
+    if (get_local_symbol(analyzer->current_scope, id)) {
+        redefinition_error("Variable", ast->variable_definition.token);
     }
 
-    initializeVariableDefinition(analyzer, ast);
-    analyzeVariableInitializer(analyzer, ast);
-    validateVariableType(ast);
-    setLocalVariableSymbol(analyzer->currentScope, id, ast);
-    trackVariableReference(ast);
+    initialize_variable_definition(analyzer, ast);
+    analyze_variable_initializer(analyzer, ast);
+    validate_variable_type(ast);
+    set_local_variable_symbol(analyzer->current_scope, id, ast);
+    track_variable_reference(ast);
 }
 
-static bool canReturnReferenceOrigin(ASTNode* origin)
+static bool can_return_reference_origin(ASTNode* origin)
 {
     if (!origin) {
         return false;
     }
 
-    if (isTopLevelScope(getScope(origin))) {
+    if (is_top_level_scope(get_scope(origin))) {
         return true;
     }
 
-    return isParameter(origin) && getReferenceType(origin) != REFERENCE_NONE;
+    return is_parameter(origin) && get_reference_type(origin) != RefNone;
 }
 
-static ReferenceType getExpectedReturnReferenceType(Analyzer* analyzer)
+static ReferenceType get_expected_return_reference_type(Analyzer* analyzer)
 {
     if (!analyzer->function) {
-        return REFERENCE_NONE;
+        return RefNone;
     }
 
-    return analyzer->function->functionDefinition.returnReferenceType;
+    return analyzer->function->function_definition.return_reference_type;
 }
 
-static void validateReturnScope(Analyzer* analyzer, ASTNode* ast)
+static void validate_return_scope(Analyzer* analyzer, ASTNode* ast)
 {
-    if (analyzer->currentScope->level < 2) {
-        returnOutsideFunctionError(ast->returnStatement.token);
+    if (analyzer->current_scope->level < 2) {
+        return_outside_function_error(ast->return_statement.token);
     }
 }
 
-static ReferenceType validateReturnReferenceType(Analyzer* analyzer, ASTNode* ast)
+static ReferenceType validate_return_reference_type(Analyzer* analyzer, ASTNode* ast)
 {
-    ReferenceType expected = getExpectedReturnReferenceType(analyzer);
+    ReferenceType expected = get_expected_return_reference_type(analyzer);
 
-    if (getReferenceType(ast->returnStatement.expr) != expected) {
-        semanticTokenError("Invalid reference return from function ", ast->returnStatement.token);
+    if (get_reference_type(ast->return_statement.expr) != expected) {
+        semantic_token_error("Invalid reference return from function ", ast->return_statement.token);
     }
 
     return expected;
 }
 
-static void trackReturnOrigin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
+static void track_return_origin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
 {
-    if (!canReturnReferenceOrigin(origin)) {
-        semanticTokenError("Reference to local binding cannot escape function ", ast->returnStatement.token);
+    if (!can_return_reference_origin(origin)) {
+        semantic_token_error("Reference to local binding cannot escape function ", ast->return_statement.token);
     }
 
     ASTNode* function = analyzer->function;
-    ASTNode* previous = function->functionDefinition.returnReferenceOrigin;
+    ASTNode* previous = function->function_definition.return_reference_origin;
 
     if (previous && previous != origin) {
-        semanticTokenError("Reference returns must share one lifetime in function ", ast->returnStatement.token);
+        semantic_token_error("Reference returns must share one lifetime in function ", ast->return_statement.token);
     }
 
-    function->functionDefinition.returnReferenceOrigin = origin;
+    function->function_definition.return_reference_origin = origin;
 }
 
-static void trackReturnReferenceOrigin(Analyzer* analyzer, ASTNode* ast)
+static void track_return_reference_origin(Analyzer* analyzer, ASTNode* ast)
 {
-    Vector* origins = referenceOriginsFromExpression(ast->returnStatement.expr);
-    size_t count = countVector(origins);
+    Vector* origins = reference_origins_from_expression(ast->return_statement.expr);
+    size_t count = count_vector(origins);
 
     if (!count) {
-        ASTNode* origin = referenceOriginFromExpression(ast->returnStatement.expr);
-        trackReturnOrigin(analyzer, ast, origin);
+        ASTNode* origin = reference_origin_from_expression(ast->return_statement.expr);
+        track_return_origin(analyzer, ast, origin);
 
         return;
     }
 
     for (size_t i = 0; i < count; i++) {
-        trackReturnOrigin(analyzer, ast, getVectorAt(origins, i));
+        track_return_origin(analyzer, ast, get_vector_at(origins, i));
     }
 }
 
-static void analyzeReturn(Analyzer* analyzer, ASTNode* ast)
+static void analyze_return(Analyzer* analyzer, ASTNode* ast)
 {
-    validateReturnScope(analyzer, ast);
+    validate_return_scope(analyzer, ast);
 
     ASTNode* function = analyzer->function;
 
-    if (function->functionDefinition.hasExplicitReturnType) {
-        applyLiteralType(ast->returnStatement.expr, function->functionDefinition.returnTypeId);
+    if (function->function_definition.has_explicit_return_type) {
+        apply_literal_type(ast->return_statement.expr, function->function_definition.return_type_id);
     }
 
-    analyzeNode(analyzer, ast->returnStatement.expr);
+    analyze_node(analyzer, ast->return_statement.expr);
 
-    if (validateReturnReferenceType(analyzer, ast) == REFERENCE_NONE) {
+    if (validate_return_reference_type(analyzer, ast) == RefNone) {
         return;
     }
 
-    trackReturnReferenceOrigin(analyzer, ast);
+    track_return_reference_origin(analyzer, ast);
 }
 
-static void inferNegatedIntegerLiteralType(ASTNode* ast)
+static void infer_negated_integer_literal_type(ASTNode* ast)
 {
     bool negative;
-    ASTNode* literal = getIntegerLiteral(ast, &negative);
+    ASTNode* literal = get_integer_literal(ast, &negative);
 
     if (!literal || !negative) {
         return;
     }
 
-    if (literal->integerLiteral.typeId != TYPE_UNKNOWN) {
+    if (literal->integer_literal.type_id != TypeUnknown) {
         return;
     }
 
-    applyIntegerLiteralType(ast, TYPE_I64);
+    apply_integer_literal_type(ast, TypeI64);
 }
 
-static void analyzeConstantExpression(Analyzer* analyzer, ASTNode* ast)
+static void analyze_constant_expression(Analyzer* analyzer, ASTNode* ast)
 {
-    Scope* previous = analyzer->constantScope;
-    FunctionPath* previousFunctions = analyzer->constantFunctions;
-    analyzer->constantScope = analyzer->currentScope;
-    analyzer->constantFunctions = analyzer->functionPath;
+    Scope* previous = analyzer->constant_scope;
+    FunctionPath* previous_functions = analyzer->constant_functions;
+    analyzer->constant_scope = analyzer->current_scope;
+    analyzer->constant_functions = analyzer->function_path;
 
-    analyzeNode(analyzer, ast->prefix.expr);
+    analyze_node(analyzer, ast->prefix.expr);
 
-    analyzer->constantScope = previous;
-    analyzer->constantFunctions = previousFunctions;
+    analyzer->constant_scope = previous;
+    analyzer->constant_functions = previous_functions;
 
-    if (getReferenceType(ast->prefix.expr) != REFERENCE_NONE || getNodeDataType(ast) == TYPE_VOID) {
-        semanticError("Constant expression must produce a value", ast->prefix.operator);
+    if (get_reference_type(ast->prefix.expr) != RefNone || get_node_data_type(ast) == TypeVoid) {
+        semantic_error("Constant expression must produce a value", ast->prefix.operator);
     }
 }
 
-static void analyzePrefix(Analyzer* analyzer, ASTNode* ast)
+static void analyze_prefix(Analyzer* analyzer, ASTNode* ast)
 {
-    if (ast->prefix.operator.type == TOKEN_CONST) {
-        analyzeConstantExpression(analyzer, ast);
+    if (ast->prefix.operator.type == TokenKeywordConst) {
+        analyze_constant_expression(analyzer, ast);
 
         return;
     }
 
-    if (getReferenceType(ast) != REFERENCE_NONE) {
-        analyzeReference(analyzer, ast);
+    if (get_reference_type(ast) != RefNone) {
+        analyze_reference(analyzer, ast);
 
         return;
     }
 
-    inferNegatedIntegerLiteralType(ast);
-    analyzeNode(analyzer, ast->prefix.expr);
+    infer_negated_integer_literal_type(ast);
+    analyze_node(analyzer, ast->prefix.expr);
 
-    if (ast->prefix.operator.type == TOKEN_NOT && getNodeDataType(ast->prefix.expr) != TYPE_BOOL) {
-        semanticError("Logical not requires a bool operand", ast->prefix.operator);
+    if (ast->prefix.operator.type == TokenKeywordNot && get_node_data_type(ast->prefix.expr) != TypeBool) {
+        semantic_error("Logical not requires a bool operand", ast->prefix.operator);
     }
 
-    DataType type = getNodeDataType(ast->prefix.expr);
+    DataType type = get_node_data_type(ast->prefix.expr);
 
-    if (type == TYPE_STRING) {
-        semanticError("Invalid prefix operator for string operands", ast->prefix.operator);
+    if (type == TypeString) {
+        semantic_error("Invalid prefix operator for string operands", ast->prefix.operator);
     }
 
-    if (type == TYPE_CHAR) {
-        semanticError("Invalid prefix operator for char operands", ast->prefix.operator);
+    if (type == TypeChar) {
+        semantic_error("Invalid prefix operator for char operands", ast->prefix.operator);
     }
 
-    bool numeric = isSignedIntegerType(type) || isFloatType(type);
+    bool numeric = is_signed_integer_type(type) || is_float_type(type);
 
-    if (ast->prefix.operator.type == TOKEN_MINUS && !numeric) {
-        semanticError("Negation requires a signed numeric operand", ast->prefix.operator);
+    if (ast->prefix.operator.type == TokenMinus && !numeric) {
+        semantic_error("Negation requires a signed numeric operand", ast->prefix.operator);
     }
 }
 
-static void analyzeResolvedBuiltinCall(Analyzer* analyzer, ASTNode* ast)
+static void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
 {
-    analyzeExpressionNodes(analyzer, &ast->builtinCall.args);
+    analyze_expression_nodes(analyzer, &ast->builtin_call.args);
 
-    if (ast->builtinCall.builtin->paramCount >= 0) {
+    if (ast->builtin_call.builtin->param_count >= 0) {
         return;
     }
 
-    Token token = ast->builtinCall.token;
+    Token token = ast->builtin_call.token;
 
-    validateVariadicArguments(&ast->builtinCall.args, ast->builtinCall.builtin, token);
+    validate_variadic_arguments(&ast->builtin_call.args, ast->builtin_call.builtin, token);
 }
 
-static void analyzeNode(Analyzer* analyzer, ASTNode* ast)
+static void analyze_node(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
-        case AST_ASSIGNMENT:
-            analyzeAssignment(analyzer, ast);
+        case ASTAssignment:
+            analyze_assignment(analyzer, ast);
             break;
-        case AST_BINARY:
-            analyzeBinary(analyzer, ast);
+        case ASTBinary:
+            analyze_binary(analyzer, ast);
             break;
-        case AST_BUILTIN_CALL:
-            analyzeResolvedBuiltinCall(analyzer, ast);
+        case ASTBuiltinCall:
+            analyze_resolved_builtin_call(analyzer, ast);
             break;
-        case AST_WHILE:
-            analyzeWhile(analyzer, ast);
+        case ASTWhile:
+            analyze_while(analyzer, ast);
             break;
-        case AST_CONDITIONAL:
-            analyzeConditional(analyzer, ast);
+        case ASTConditional:
+            analyze_conditional(analyzer, ast);
             break;
-        case AST_CONVERSION:
-            analyzeNode(analyzer, ast->conversion.expr);
+        case ASTConversion:
+            analyze_node(analyzer, ast->conversion.expr);
             break;
-        case AST_FUNCTION_CALL:
-            analyzeFunctionCall(analyzer, ast);
+        case ASTFunctionCall:
+            analyze_function_call(analyzer, ast);
             break;
-        case AST_FUNCTION_DEFINITION:
-            analyzeFunction(analyzer, ast);
+        case ASTFunctionDefinition:
+            analyze_function(analyzer, ast);
             break;
-        case AST_MATCH:
-            analyzeMatch(analyzer, ast);
+        case ASTMatch:
+            analyze_match(analyzer, ast);
             break;
-        case AST_PARAMETER:
-            analyzeParameter(analyzer, ast);
+        case ASTParameter:
+            analyze_parameter(analyzer, ast);
             break;
-        case AST_PREFIX:
-            analyzePrefix(analyzer, ast);
+        case ASTPrefix:
+            analyze_prefix(analyzer, ast);
             break;
-        case AST_RETURN:
-            analyzeReturn(analyzer, ast);
+        case ASTReturn:
+            analyze_return(analyzer, ast);
             break;
-        case AST_VARIABLE_DEFINITION:
-            analyzeVariableDefinition(analyzer, ast);
+        case ASTVariableDefinition:
+            analyze_variable_definition(analyzer, ast);
             break;
-        case AST_VARIABLE:
-            analyzeVariable(analyzer, ast);
+        case ASTVariable:
+            analyze_variable(analyzer, ast);
             break;
         default:
             break;
     }
 }
 
-void initAnalyzer(Analyzer* analyzer, ASTNode* ast)
+void init_analyzer(Analyzer* analyzer, ASTNode* ast)
 {
-    analyzer->topLevel = ast;
+    analyzer->top_level = ast;
     analyzer->function = NULL;
-    analyzer->currentScope = ast->compound.scope;
-    analyzer->constantScope = NULL;
-    analyzer->currentNodes = NULL;
-    analyzer->nextNode = 0;
-    analyzer->referenceLifetimes = NULL;
-    analyzer->functionPath = NULL;
-    analyzer->constantFunctions = NULL;
-    analyzer->loopPath = NULL;
+    analyzer->current_scope = ast->compound.scope;
+    analyzer->constant_scope = NULL;
+    analyzer->current_nodes = NULL;
+    analyzer->next_node = 0;
+    analyzer->reference_lifetimes = NULL;
+    analyzer->function_path = NULL;
+    analyzer->constant_functions = NULL;
+    analyzer->loop_path = NULL;
 }
 
 bool analyze(Analyzer* analyzer, size_t start)
 {
-    analyzer->currentScope = analyzer->topLevel->compound.scope;
-    analyzeNodes(analyzer, &analyzer->topLevel->compound.statements, start);
-    validateConstantExpressions(analyzer->topLevel, start);
+    analyzer->current_scope = analyzer->top_level->compound.scope;
+    analyze_nodes(analyzer, &analyzer->top_level->compound.statements, start);
+    validate_constant_expressions(analyzer->top_level, start);
 
     return true;
 }
 
-static void clearAnalysisVector(Vector* nodes, Vector* functions)
+static void clear_analysis_vector(Vector* nodes, Vector* functions)
 {
     for (size_t i = 0; i < nodes->count; i++) {
-        clearNodeAnalysis(nodes->data[i], functions);
+        clear_node_analysis(nodes->data[i], functions);
     }
 }
 
-static void clearVariableAnalysis(ASTNode* ast, Vector* functions)
+static void clear_variable_analysis(ASTNode* ast, Vector* functions)
 {
-    ast->variableDefinition.scope = NULL;
-    ast->variableDefinition.initialized = false;
-    ast->variableDefinition.moved = false;
-    ast->variableDefinition.sharedAccessCount = 0;
-    ast->variableDefinition.exclusiveAccessActive = false;
-    ast->variableDefinition.referenceAccessActive = false;
-    ast->variableDefinition.referenceOrigins.count = 0;
-    ast->variableDefinition.readCount = 0;
-    ast->variableDefinition.discardedReadCount = 0;
-    ast->variableDefinition.discardedReadsAnalyzed = false;
-    ast->variableDefinition.addressTaken = false;
+    ast->variable_definition.scope = NULL;
+    ast->variable_definition.initialized = false;
+    ast->variable_definition.moved = false;
+    ast->variable_definition.shared_access_count = 0;
+    ast->variable_definition.exclusive_access_active = false;
+    ast->variable_definition.reference_access_active = false;
+    ast->variable_definition.reference_origins.count = 0;
+    ast->variable_definition.read_count = 0;
+    ast->variable_definition.discarded_read_count = 0;
+    ast->variable_definition.discarded_reads_analyzed = false;
+    ast->variable_definition.address_taken = false;
 
-    clearNodeAnalysis(ast->variableDefinition.expr, functions);
+    clear_node_analysis(ast->variable_definition.expr, functions);
 }
 
-static void clearFunctionAnalysis(ASTNode* ast, Vector* functions)
+static void clear_function_analysis(ASTNode* ast, Vector* functions)
 {
-    ast->functionDefinition.scope = NULL;
-    ast->functionDefinition.returnReferenceOrigin = NULL;
-    ast->functionDefinition.callCount = 0;
+    ast->function_definition.scope = NULL;
+    ast->function_definition.return_reference_origin = NULL;
+    ast->function_definition.call_count = 0;
 
-    pushVectorItem(functions, ast);
-    clearAnalysisVector(&ast->functionDefinition.params, functions);
-    clearNodeAnalysis(ast->functionDefinition.body, functions);
+    push_vector_item(functions, ast);
+    clear_analysis_vector(&ast->function_definition.params, functions);
+    clear_node_analysis(ast->function_definition.body, functions);
 }
 
-static void clearMatchArmAnalysis(MatchArm* arm, Vector* functions)
+static void clear_match_arm_analysis(MatchArm* arm, Vector* functions)
 {
-    clearNodeAnalysis(arm->pattern, functions);
-    clearNodeAnalysis(arm->binding, functions);
-    clearNodeAnalysis(arm->guard, functions);
-    clearNodeAnalysis(arm->branch, functions);
+    clear_node_analysis(arm->pattern, functions);
+    clear_node_analysis(arm->binding, functions);
+    clear_node_analysis(arm->guard, functions);
+    clear_node_analysis(arm->branch, functions);
 }
 
-static void clearMatchAnalysis(ASTNode* ast, Vector* functions)
+static void clear_match_analysis(ASTNode* ast, Vector* functions)
 {
-    ast->match.referenceOrigins.count = 0;
+    ast->match.reference_origins.count = 0;
 
-    clearNodeAnalysis(ast->match.subject, functions);
-    clearNodeAnalysis(ast->match.defaultBranch, functions);
+    clear_node_analysis(ast->match.subject, functions);
+    clear_node_analysis(ast->match.default_branch, functions);
 
     for (size_t i = 0; i < ast->match.arms.count; i++) {
-        clearMatchArmAnalysis(ast->match.arms.data[i], functions);
+        clear_match_arm_analysis(ast->match.arms.data[i], functions);
     }
 }
 
-static void clearNodeAnalysis(ASTNode* ast, Vector* functions)
+static void clear_node_analysis(ASTNode* ast, Vector* functions)
 {
     if (!ast) {
         return;
     }
 
     switch (ast->type) {
-        case AST_COMPOUND:
-            freeScope(ast->compound.scope);
+        case ASTCompound:
+            free_scope(ast->compound.scope);
             ast->compound.scope = NULL;
-            clearAnalysisVector(&ast->compound.statements, functions);
+            clear_analysis_vector(&ast->compound.statements, functions);
             break;
-        case AST_VARIABLE_DEFINITION:
-            clearVariableAnalysis(ast, functions);
+        case ASTVariableDefinition:
+            clear_variable_analysis(ast, functions);
             break;
-        case AST_FUNCTION_DEFINITION:
-            clearFunctionAnalysis(ast, functions);
+        case ASTFunctionDefinition:
+            clear_function_analysis(ast, functions);
             break;
-        case AST_PARAMETER:
+        case ASTParameter:
             ast->parameter.scope = NULL;
-            ast->parameter.sharedAccessCount = 0;
-            ast->parameter.exclusiveAccessActive = false;
+            ast->parameter.shared_access_count = 0;
+            ast->parameter.exclusive_access_active = false;
             ast->parameter.moved = false;
-            ast->parameter.referenceOrigins.count = 0;
-            clearNodeAnalysis(ast->parameter.defaultValue, functions);
+            ast->parameter.reference_origins.count = 0;
+            clear_node_analysis(ast->parameter.default_value, functions);
             break;
-        case AST_VARIABLE:
+        case ASTVariable:
             ast->variable.scope = NULL;
             ast->variable.symbol = NULL;
             break;
-        case AST_ASSIGNMENT:
+        case ASTAssignment:
             ast->assignment.scope = NULL;
             ast->assignment.symbol = NULL;
-            ast->assignment.initializesBinding = false;
-            clearNodeAnalysis(ast->assignment.expr, functions);
+            ast->assignment.initializes_binding = false;
+            clear_node_analysis(ast->assignment.expr, functions);
             break;
-        case AST_FUNCTION_CALL:
-            ast->functionCall.scope = NULL;
-            ast->functionCall.symbol = NULL;
-            ast->functionCall.referenceOrigins.count = 0;
-            clearAnalysisVector(&ast->functionCall.args, functions);
+        case ASTFunctionCall:
+            ast->function_call.scope = NULL;
+            ast->function_call.symbol = NULL;
+            ast->function_call.reference_origins.count = 0;
+            clear_analysis_vector(&ast->function_call.args, functions);
             break;
-        case AST_BUILTIN_CALL:
-            clearAnalysisVector(&ast->builtinCall.args, functions);
+        case ASTBuiltinCall:
+            clear_analysis_vector(&ast->builtin_call.args, functions);
             break;
-        case AST_CONDITIONAL:
-            ast->conditional.referenceOrigins.count = 0;
-            clearNodeAnalysis(ast->conditional.condition, functions);
-            clearNodeAnalysis(ast->conditional.thenBranch, functions);
-            clearNodeAnalysis(ast->conditional.elseBranch, functions);
+        case ASTConditional:
+            ast->conditional.reference_origins.count = 0;
+            clear_node_analysis(ast->conditional.condition, functions);
+            clear_node_analysis(ast->conditional.then_branch, functions);
+            clear_node_analysis(ast->conditional.else_branch, functions);
             break;
-        case AST_MATCH:
-            clearMatchAnalysis(ast, functions);
+        case ASTMatch:
+            clear_match_analysis(ast, functions);
             break;
-        case AST_WHILE:
-            clearNodeAnalysis(ast->whileStatement.condition, functions);
-            clearNodeAnalysis(ast->whileStatement.body, functions);
+        case ASTWhile:
+            clear_node_analysis(ast->while_statement.condition, functions);
+            clear_node_analysis(ast->while_statement.body, functions);
             break;
-        case AST_BINARY:
-            clearNodeAnalysis(ast->binary.leftExpr, functions);
-            clearNodeAnalysis(ast->binary.rightExpr, functions);
+        case ASTBinary:
+            clear_node_analysis(ast->binary.left_expr, functions);
+            clear_node_analysis(ast->binary.right_expr, functions);
             break;
-        case AST_PREFIX:
-            ast->prefix.referenceOrigins.count = 0;
-            clearNodeAnalysis(ast->prefix.expr, functions);
+        case ASTPrefix:
+            ast->prefix.reference_origins.count = 0;
+            clear_node_analysis(ast->prefix.expr, functions);
             break;
-        case AST_CONVERSION:
-            clearNodeAnalysis(ast->conversion.expr, functions);
+        case ASTConversion:
+            clear_node_analysis(ast->conversion.expr, functions);
             break;
-        case AST_RETURN:
-            clearNodeAnalysis(ast->returnStatement.expr, functions);
+        case ASTReturn:
+            clear_node_analysis(ast->return_statement.expr, functions);
             break;
         default:
             break;
     }
 }
 
-void rebuildAnalyzer(Analyzer* analyzer, Vector* functions)
+void rebuild_analyzer(Analyzer* analyzer, Vector* functions)
 {
-    ASTNode* ast = analyzer->topLevel;
+    ASTNode* ast = analyzer->top_level;
 
-    initVector(functions);
-    clearNodeAnalysis(ast, functions);
+    init_vector(functions);
+    clear_node_analysis(ast, functions);
 
-    ast->compound.scope = createScope(NULL);
+    ast->compound.scope = create_scope(NULL);
 
-    initAnalyzer(analyzer, ast);
+    init_analyzer(analyzer, ast);
     analyze(analyzer, 0);
 }

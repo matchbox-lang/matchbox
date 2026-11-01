@@ -1,5 +1,0 @@
-func localReference() -> &i32 {
-    let value = 10
-    
-    return &value
-}

@@ -3709,6 +3709,62 @@ void freeCompiler(Compiler* compiler)
     freeASTNode(compiler->ast);
 }
 
+static void compileStatementBytecode(Compiler* compiler, CompileStatements compileStatements)
+{
+    CodeObject* code = currentCodeObject(compiler);
+    clearCodeObject(code);
+
+    compiler->peepholeBarrier = 0;
+    compileStatements(compiler, &compiler->ast->compound.statements);
+    emitHlt(compiler);
+    optimizeBytecode(compiler->module, code, compiler->registerCount);
+}
+
+static bool hasUnusedCompiledFunctions(Compiler* compiler)
+{
+    bool unused = false;
+
+    for (size_t i = 1; i < compiler->functionReferences.count; i++) {
+        ASTNode* ast = compiler->functionReferences.data[i];
+        unused = unused || (ast && !ast->functionDefinition.callCount);
+    }
+
+    return unused;
+}
+
+static void discardCompiledFunctions(Compiler* compiler)
+{
+    while (compiler->module->functions.count > 1) {
+        FunctionObject* function = popVectorItem(&compiler->module->functions);
+
+        freeFunctionObject(function);
+    }
+
+    compiler->functionReferences.count = 1;
+    compiler->module->globalCount = 0;
+    compiler->function->maxStackCount = 0;
+    compiler->statementIndex = 0;
+    compiler->registerCount = 0;
+    compiler->frameBaseCount = 0;
+    compiler->localPositionOffset = 0;
+}
+
+static void eliminateCompileTimeFunctions(Compiler* compiler)
+{
+    if (compiler->repl) {
+        return;
+    }
+
+    markReachableFunctions(&compiler->ast->compound.statements);
+
+    if (!hasUnusedCompiledFunctions(compiler)) {
+        return;
+    }
+
+    discardCompiledFunctions(compiler);
+    compileStatementBytecode(compiler, compileTopLevelStatements);
+}
+
 static bool compileSource(Compiler* compiler, const char* source, CompileStatements compileStatements)
 {
     if (!compiler->module) {
@@ -3730,14 +3786,8 @@ static bool compileSource(Compiler* compiler, const char* source, CompileStateme
         markReachableFunctions(&compiler->ast->compound.statements);
     }
 
-    clearCodeObject(currentCodeObject(compiler));
-    compiler->peepholeBarrier = 0;
-    compileStatements(compiler, &compiler->ast->compound.statements);
-    emitHlt(compiler);
-
-    CodeObject* code = currentCodeObject(compiler);
-
-    optimizeBytecode(compiler->module, code, compiler->registerCount);
+    compileStatementBytecode(compiler, compileStatements);
+    eliminateCompileTimeFunctions(compiler);
 
     return true;
 }

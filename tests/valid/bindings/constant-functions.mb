@@ -23,3 +23,7 @@ const SUM_RESULT = sum(5)
 
 assert(FACTORIAL_RESULT == 120)
 assert(SUM_RESULT == 10)
+
+let runtimeResult = factorial(6)
+
+assert(runtimeResult == 720)

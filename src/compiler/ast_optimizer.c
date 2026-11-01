@@ -620,6 +620,15 @@ static void markMatchCalledFunctions(ASTNode* ast)
     markCalledFunctions(ast->match.defaultBranch);
 }
 
+static void markPrefixCalledFunctions(ASTNode* ast)
+{
+    if (ast->prefix.operator.type == TOKEN_CONST && ast->prefix.evaluated) {
+        return;
+    }
+
+    markCalledFunctions(ast->prefix.expr);
+}
+
 static void markCalledFunctions(ASTNode* ast)
 {
     if (!ast) {
@@ -659,7 +668,7 @@ static void markCalledFunctions(ASTNode* ast)
             markMatchCalledFunctions(ast);
             break;
         case AST_PREFIX:
-            markCalledFunctions(ast->prefix.expr);
+            markPrefixCalledFunctions(ast);
             break;
         case AST_RETURN:
             markCalledFunctions(ast->returnStatement.expr);

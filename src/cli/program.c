@@ -82,9 +82,7 @@ void printUsage(FILE* stream)
     fprintf(stream, "       %s check [path]\n", PROGRAM_COMMAND);
     fprintf(stream, "       %s test [-a | -p] [path]\n\n", PROGRAM_COMMAND);
     fprintf(stream, "Commands:\n");
-    fprintf(stream, "  check [path]          Check source code for errors without building\n");
-    fprintf(stream, "                        Recursively check .mb files (default path: .)\n");
-    fprintf(stream, "                        Skip discovered tests/ directories; explicit paths are included\n");
+    fprintf(stream, "  check [path]          Check source code without building\n");
     fprintf(stream, "  test [path]           Run test files\n");
     fprintf(stream, "\n");
     fprintf(stream, "Options:\n");

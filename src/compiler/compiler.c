@@ -1461,6 +1461,24 @@ static void evaluateConstantExpression(Compiler* compiler, ASTNode* ast)
     freeConstantEvaluation(vm, function);
 }
 
+static int emitScalarConstant(Compiler* compiler, ASTNode* ast, size_t position)
+{
+    DataType type = getNodeDataType(ast);
+    Value value = compiler->module->constants.data[position];
+    uint64_t integer = AS_UNSIGNED(value);
+    bool scalar = isIntegerType(type) || type == TYPE_BOOL || type == TYPE_CHAR;
+
+    if (type == TYPE_BOOL) {
+        integer = AS_BOOL(value);
+    }
+
+    if (scalar && isNarrowIntegerImmediate(integer, type)) {
+        return emitLdi(compiler, (int16_t)integer);
+    }
+
+    return emitLdc(compiler, position);
+}
+
 static Operand compileConstant(Compiler* compiler, ASTNode* ast)
 {
     if (!ast->prefix.evaluated) {
@@ -1476,7 +1494,7 @@ static Operand compileConstant(Compiler* compiler, ASTNode* ast)
         return makeWideOperand(reg, true);
     }
 
-    int reg = emitLdc(compiler, position);
+    int reg = emitScalarConstant(compiler, ast, position);
 
     return makeOperand(reg, true);
 }
@@ -2613,9 +2631,10 @@ static void compileVariableDefinition(Compiler* compiler, ASTNode* ast)
     Operand value;
     size_t slots = getNodeSlotCount(ast);
     bool unused = ast->variableDefinition.readCount == ast->variableDefinition.discardedReadCount;
+    bool constantValue = ast->variableDefinition.constant && !ast->variableDefinition.addressTaken;
     bool preserve = compiler->repl && isCompilingTopLevel(compiler);
 
-    if (compileUnusedVariableDefinition(compiler, ast, slots, unused, preserve)) {
+    if (compileUnusedVariableDefinition(compiler, ast, slots, unused || constantValue, preserve)) {
         return;
     }
 

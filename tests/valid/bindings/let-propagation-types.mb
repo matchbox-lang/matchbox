@@ -28,3 +28,10 @@ print(wrappedCopy)
 let negative = 0 - 10
 
 print(negative / 2)
+
+let name = "Alice"
+let nameCopy = name
+let punctuation = '!'
+
+print(name)
+print(nameCopy + punctuation)

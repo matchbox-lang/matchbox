@@ -16,3 +16,9 @@ print(TEXT)
 assert(CHARACTER == 'a')
 assert(TRUTH)
 assert(WIDENED == 10)
+
+const SMALL_NEGATIVE = -10
+const LARGE_INTEGER = 65535
+
+assert(SMALL_NEGATIVE == -10)
+assert(LARGE_INTEGER == 65535)

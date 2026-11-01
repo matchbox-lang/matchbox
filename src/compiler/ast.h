@@ -254,6 +254,7 @@ ASTNode* getReferenceOrigin(const ASTNode* ast);
 Vector* getReferenceOrigins(ASTNode* ast);
 ReferenceType getReferenceType(const ASTNode* ast);
 bool isExpressionStatement(const ASTNode* ast);
+bool isLiteral(const ASTNode* ast);
 bool isTextLiteral(const ASTNode* ast);
 bool isFunctionCall(const ASTNode* ast);
 bool isFunctionDefinition(const ASTNode* ast);

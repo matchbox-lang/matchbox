@@ -549,6 +549,24 @@ bool isExpressionStatement(const ASTNode* ast)
     }
 }
 
+bool isLiteral(const ASTNode* ast)
+{
+    if (!ast) {
+        return false;
+    }
+
+    switch (ast->type) {
+        case AST_INTEGER:
+        case AST_FLOAT:
+        case AST_STRING:
+        case AST_CHARACTER:
+        case AST_BOOLEAN:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool isTextLiteral(const ASTNode* ast)
 {
     return ast && (ast->type == AST_STRING || ast->type == AST_CHARACTER);

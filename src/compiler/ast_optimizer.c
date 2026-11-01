@@ -106,7 +106,7 @@ static void foldBinary(ASTNode* ast)
 
 static bool isLiteralOfType(ASTNode* ast, DataType type)
 {
-    if (ast->type != AST_INTEGER && ast->type != AST_BOOLEAN && ast->type != AST_FLOAT) {
+    if (!isLiteral(ast)) {
         return false;
     }
 
@@ -127,9 +127,27 @@ static void setLiteralToken(ASTNode* ast, Token token)
         case AST_FLOAT:
             ast->floatLiteral.token = token;
             break;
+        case AST_STRING:
+            ast->stringLiteral.token = token;
+            break;
+        case AST_CHARACTER:
+            ast->characterLiteral.token = token;
+            break;
         default:
             break;
     }
+}
+
+static ASTNode copyLiteralInitializer(ASTNode* initializer)
+{
+    ASTNode replacement = *initializer;
+
+    if (initializer->type == AST_STRING) {
+        StringObject* string = initializer->stringLiteral.value;
+        replacement.stringLiteral.value = copyStringObject(string->chars, string->length);
+    }
+
+    return replacement;
 }
 
 static void propagateLiteralLet(ASTNode* ast)
@@ -163,7 +181,7 @@ static void propagateLiteralLet(ASTNode* ast)
         return;
     }
 
-    ASTNode replacement = *initializer;
+    ASTNode replacement = copyLiteralInitializer(initializer);
     Token token = ast->variable.token;
 
     setLiteralToken(&replacement, token);

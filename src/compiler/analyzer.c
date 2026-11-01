@@ -1790,7 +1790,7 @@ static void validateConstantBinding(Analyzer* analyzer, ASTNode* symbol, Token t
         return;
     }
 
-    semanticTokenError("Cannot access runtime binding in constant expression ", token);
+    fatalTokenError(token, " in constant expression", "Cannot access runtime binding ");
 }
 
 static void validateConstantReference(Analyzer* analyzer, ASTNode* symbol, Token token)
@@ -1806,7 +1806,20 @@ static void validateConstantReference(Analyzer* analyzer, ASTNode* symbol, Token
         return;
     }
 
-    semanticTokenError("Cannot reference runtime binding in constant expression ", token);
+    Token binding = token;
+
+    if (symbol->type == AST_PARAMETER) {
+        binding = symbol->parameter.token;
+    }
+
+    if (isVariableDefinition(symbol)) {
+        binding = symbol->variableDefinition.token;
+    }
+
+    binding.line = token.line;
+    binding.column = token.column;
+
+    fatalTokenError(binding, " in constant expression", "Cannot reference runtime binding ");
 }
 
 static void validateConstantMutation(ASTNode* symbol, ReferenceType type, Token token)

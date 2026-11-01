@@ -507,6 +507,20 @@ static CallArea openCallArea(Compiler* compiler)
     return call;
 }
 
+static void relocateCallArea(Compiler* compiler, CallArea* call, size_t argumentSlots)
+{
+    int firstArgument = call->frameRegister;
+    CallArea relocated = openCallArea(compiler);
+
+    for (size_t i = 0; i < argumentSlots; i++) {
+        int destination = allocateRegister(compiler);
+
+        emitMov(compiler, destination, firstArgument + i);
+    }
+
+    call->frameRegister = relocated.frameRegister;
+}
+
 static void allocateCallAreaRegister(Compiler* compiler)
 {
     emitLdi(compiler, 0);
@@ -524,11 +538,14 @@ static Operand closeCallArea(Compiler* compiler, FunctionObject* function,
     emitCallInstruction(compiler, call.frameRegister, functionPosition);
 
     if (!discard && function->returnCount) {
+        Operand result = {call.frameRegister - 2, true, function->returnCount};
+
+        emitOperandMov(compiler, call.resultRegister, result);
+
+        result.reg = call.resultRegister;
         compiler->registerCount = call.resultRegister + function->returnCount;
 
-        return function->returnCount == 2
-            ? makeWideOperand(call.resultRegister, true)
-            : makeOperand(call.resultRegister, true);
+        return result;
     }
 
     compiler->registerCount = call.resultRegister;
@@ -2121,7 +2138,7 @@ static void compileArgument(Compiler* compiler, Vector* args, Vector* params, si
     storeArgument(compiler, argument, destination, reserved);
 }
 
-static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
+static bool compileArguments(Compiler* compiler, Vector* args, Vector* params)
 {
     size_t count = args->count;
 
@@ -2146,6 +2163,8 @@ static void compileArguments(Compiler* compiler, Vector* args, Vector* params)
         compileArgument(compiler, args, params, i, firstRegister, offset, reserved);
         offset += getNodeSlotCount(layout);
     }
+
+    return reserved;
 }
 
 static uint16_t makeFunctionPosition(size_t position)
@@ -2357,8 +2376,11 @@ static Operand compileCall(Compiler* compiler, FunctionObject* function, uint16_
     }
 
     CallArea call = openCallArea(compiler);
+    bool reserved = compileArguments(compiler, args, params);
 
-    compileArguments(compiler, args, params);
+    if (reserved) {
+        relocateCallArea(compiler, &call, function->paramCount);
+    }
 
     return closeCallArea(compiler, function, functionPosition, call, discard);
 }
@@ -2492,12 +2514,12 @@ static Operand compileReferenceExpression(Compiler* compiler, ASTNode* ast)
 
     if (getReferenceType(ast) == REFERENCE_NONE && ast->type != AST_VARIABLE) {
         Operand value = compileExpression(compiler, ast, false);
-        int valueRegister = allocateRegister(compiler);
+        int valueRegister = allocateRegisters(compiler, value.slots);
 
-        emitMov(compiler, valueRegister, value.reg);
+        emitOperandMov(compiler, valueRegister, value);
         emitInstruction(compiler, OP_REFL, value.reg, valueRegister, 0);
 
-        return value;
+        return makeOperand(value.reg, true);
     }
 
     if (ast->type == AST_PREFIX) {

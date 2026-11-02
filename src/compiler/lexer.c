@@ -15,6 +15,8 @@ typedef struct Keyword
 } Keyword;
 
 static bool skip_whitespace(Lexer* lexer);
+static Token scan_discovery_token(Lexer* lexer);
+static void skip_discovery_interpolation(Lexer* lexer);
 
 static const Keyword keywords[] = {
     {"alignof",     7, TokenKeywordAlignof},
@@ -66,6 +68,7 @@ static const Keyword keywords[] = {
     {"static",      6, TokenKeywordStatic},
     {"string",      6, TokenKeywordString},
     {"struct",      6, TokenKeywordStruct},
+    {"test",        4, TokenKeywordTest},
     {"throw",       5, TokenKeywordThrow},
     {"true",        4, TokenKeywordTrue},
     {"try",         3, TokenKeywordTry},
@@ -834,4 +837,164 @@ Token scan_token(Lexer* lexer)
         default:
             return make_token(lexer, TokenUnknown);
     }
+}
+
+static bool scan_discovery_literal_end(Lexer* lexer, char delimiter, size_t width)
+{
+    if (is_end_of_file(lexer) || scan_string_end(lexer, delimiter, width)) {
+        return true;
+    }
+
+    bool single_line = delimiter != '`' && width == 1;
+    char c = peek(lexer);
+
+    return single_line && is_newline(c);
+}
+
+static void skip_discovery_interpolation_character(Lexer* lexer, char c)
+{
+    if (c != '{' && c != '}') {
+        return;
+    }
+
+    if (peek(lexer) == c) {
+        advance(lexer);
+
+        return;
+    }
+
+    if (c == '{') {
+        skip_discovery_interpolation(lexer);
+    }
+}
+
+static bool skip_discovery_literal_character(Lexer* lexer, char delimiter, size_t width, bool interpolated)
+{
+    if (scan_discovery_literal_end(lexer, delimiter, width)) {
+        return true;
+    }
+
+    char c = advance(lexer);
+
+    if (c == '\\' && delimiter != '`' && !is_end_of_file(lexer)) {
+        advance(lexer);
+
+        return false;
+    }
+
+    if (interpolated) {
+        skip_discovery_interpolation_character(lexer, c);
+    }
+
+    return false;
+}
+
+static void skip_discovery_literal(Lexer* lexer, char delimiter, bool interpolated)
+{
+    size_t width = 1;
+
+    if (delimiter != '\'') {
+        width = scan_string_delimiter(lexer, delimiter);
+    }
+
+    while (!skip_discovery_literal_character(lexer, delimiter, width, interpolated)) {
+        continue;
+    }
+}
+
+static Token scan_discovery_interpolated_string(Lexer* lexer)
+{
+    char delimiter = peek(lexer);
+
+    if (delimiter != '"' && delimiter != '`') {
+        return make_token(lexer, TokenUnknown);
+    }
+
+    advance(lexer);
+    skip_discovery_literal(lexer, delimiter, true);
+
+    return make_token(lexer, TokenStringLiteral);
+}
+
+static Token scan_discovery_symbol(Lexer* lexer, char c)
+{
+    switch (c) {
+        case '"':
+        case '`':
+        case '\'':
+            skip_discovery_literal(lexer, c, false);
+
+            return make_token(lexer, TokenStringLiteral);
+        case '$':
+            return scan_discovery_interpolated_string(lexer);
+        case '{':
+            return make_token(lexer, TokenLbrace);
+        case '}':
+            return make_token(lexer, TokenRbrace);
+        default:
+            return make_token(lexer, TokenUnknown);
+    }
+}
+
+static Token scan_discovery_token(Lexer* lexer)
+{
+    if (!skip_whitespace(lexer)) {
+        return make_token(lexer, TokenEof);
+    }
+
+    lexer->start = lexer->current;
+
+    if (is_end_of_file(lexer)) {
+        return make_token(lexer, TokenEof);
+    }
+
+    char c = advance(lexer);
+
+    if (is_alpha(c) || is_digit(c)) {
+        return scan_identifier(lexer);
+    }
+
+    return scan_discovery_symbol(lexer, c);
+}
+
+static void update_discovery_depth(Token token, size_t* depth)
+{
+    switch (token.type) {
+        case TokenLbrace:
+            (*depth)++;
+            break;
+        case TokenRbrace:
+            (*depth)--;
+            break;
+        case TokenEof:
+            *depth = 0;
+            break;
+        default:
+            break;
+    }
+}
+
+static void skip_discovery_interpolation(Lexer* lexer)
+{
+    size_t depth = 1;
+
+    while (depth > 0) {
+        Token token = scan_discovery_token(lexer);
+
+        update_discovery_depth(token, &depth);
+    }
+}
+
+bool source_has_test_keyword(const char* source)
+{
+    Lexer lexer;
+    Token token;
+
+    init_lexer(&lexer, source);
+
+    do {
+        token = scan_discovery_token(&lexer);
+    } while (token.type != TokenKeywordTest && token.type != TokenEof);
+
+    return token.type == TokenKeywordTest;
 }

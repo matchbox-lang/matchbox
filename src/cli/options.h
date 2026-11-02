@@ -8,7 +8,8 @@ typedef enum TestOutput
 {
     TestOutputAll,
     TestOutputFailed,
-    TestOutputPassed
+    TestOutputPassed,
+    TestOutputSkipped
 } TestOutput;
 
 typedef struct Options
@@ -16,6 +17,7 @@ typedef struct Options
     ProgramMode mode;
     TestOutput test_output;
     bool disassemble;
+    bool programs;
     const char* executable_path;
     const char* filename;
     const char* test_path;

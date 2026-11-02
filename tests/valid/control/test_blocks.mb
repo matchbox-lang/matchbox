@@ -23,3 +23,11 @@ test {
     assert(result == EXPECTED)
     assert(count == 0)
 }
+
+test skip "skip failure" {
+    assert(false)
+}
+
+test skip {
+    exit(1)
+}

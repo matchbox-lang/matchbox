@@ -23,6 +23,7 @@ typedef struct TestCase
     char* name;
     size_t statement_index;
     int line;
+    bool skipped;
 } TestCase;
 
 typedef struct TestRun
@@ -31,6 +32,7 @@ typedef struct TestRun
     Vector paths;
     Vector cases;
     int passed;
+    int skipped;
     int failed;
     int validation_failed;
 } TestRun;
@@ -48,7 +50,9 @@ static bool should_print_result(TestOutput output, bool passed)
 
 static void print_test_location(FILE* stream, const TestCase* test)
 {
-    fprintf(stream, "%s", test->path);
+    const char* path = path_for_display(test->path);
+
+    fprintf(stream, "%s", path);
 
     if (test->line > 0) {
         fprintf(stream, ":%d", test->line);
@@ -93,6 +97,7 @@ static void add_test_case(TestRun* run, const char* path, ASTNode* ast, size_t i
 
     test->path = path;
     test->statement_index = index;
+    test->skipped = ast->function_definition.is_test_skipped;
 
     Token name = ast->function_definition.test_name;
 
@@ -323,8 +328,27 @@ static bool run_isolated_block(const TestCase* test)
     return passed;
 }
 
+static void skip_test_case(TestRun* run, const TestCase* test)
+{
+    run->skipped++;
+
+    if (run->output != TestOutputAll) {
+        return;
+    }
+
+    printf("SKIP ");
+    print_test_location(stdout, test);
+    printf("\n");
+}
+
 static void run_test_case(TestRun* run, const TestCase* test)
 {
+    if (test->skipped) {
+        skip_test_case(run, test);
+
+        return;
+    }
+
     fflush(stdout);
 
     bool passed = run_isolated_block(test);
@@ -420,7 +444,7 @@ static void run_test_cases(TestRun* run)
 
 static int report_test_run(const TestRun* run, const char* path)
 {
-    printf("%d passed; %d failed.\n", run->passed, run->failed);
+    printf("%d passed; %d skipped; %d failed.\n", run->passed, run->skipped, run->failed);
 
     if (run->validation_failed > 0) {
         report_error("%d paths failed validation", run->validation_failed);

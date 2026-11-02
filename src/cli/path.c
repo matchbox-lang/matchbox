@@ -77,6 +77,15 @@ void free_path(char* path)
     free_memory(path);
 }
 
+const char* path_for_display(const char* path)
+{
+    while (path[0] == '.' && (path[1] == '/' || path[1] == '\\')) {
+        path += 2;
+    }
+
+    return path;
+}
+
 bool path_exists(const char* path)
 {
     struct stat info;

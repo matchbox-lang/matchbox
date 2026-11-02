@@ -1336,6 +1336,23 @@ static ASTNode* parse_function_definition(Parser* parser)
     return ast;
 }
 
+static void parse_test_skip(Parser* parser, ASTNode* ast)
+{
+    Token token = parser->current_token;
+
+    if (token.type != TokenIdentifier || token.length != 4) {
+        return;
+    }
+
+    if (memcmp(token.chars, "skip", 4) != 0) {
+        return;
+    }
+
+    ast->function_definition.is_test_skipped = true;
+
+    consume(parser, TokenIdentifier);
+}
+
 static void parse_test_name(Parser* parser, ASTNode* ast)
 {
     if (parser->current_token.type != TokenStringLiteral) {
@@ -1399,6 +1416,7 @@ static ASTNode* parse_test_definition(Parser* parser)
 
     ASTNode* ast = create_test_definition_node(parser, token);
 
+    parse_test_skip(parser, ast);
     parse_test_name(parser, ast);
 
     if (!parse_test_body(parser, ast)) {

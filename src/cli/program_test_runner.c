@@ -117,13 +117,15 @@ static void print_program_test_result(const ProgramTestRun* run, const char* pat
         return;
     }
 
+    const char* display_path = path_for_display(path);
+
     if (passed) {
-        printf("PASS %s\n", path);
+        printf("PASS %s\n", display_path);
 
         return;
     }
 
-    printf("FAIL %s (process status %d)\n", path, status);
+    printf("FAIL %s (process status %d)\n", display_path, status);
     print_process_output(output);
 }
 
@@ -332,7 +334,7 @@ static void run_program_test_cases(ProgramTestRun* run)
 
 static int report_program_test_run(const ProgramTestRun* run)
 {
-    printf("%d passed; %d failed.\n", run->passed, run->failed);
+    printf("%d passed; 0 skipped; %d failed.\n", run->passed, run->failed);
 
     if (run->failed > 0 || run->discovery_failed > 0) {
         return EXIT_FAILURE;

@@ -322,7 +322,7 @@ static bool discover_program_tests(ProgramTestRun* run, const char* path)
 
 static void run_program_test_cases(ProgramTestRun* run)
 {
-    printf("Running %lu program tests...\n", (unsigned long)run->paths.count);
+    printf("Running %lu programs...\n", (unsigned long)run->paths.count);
     fflush(stdout);
 
     for (size_t i = 0; i < run->paths.count; i++) {

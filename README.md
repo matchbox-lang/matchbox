@@ -78,21 +78,34 @@ Build the project before running local examples:
 make
 ```
 
-Run a known-working example from the test suite:
+Run a working example from the test suite:
 
 ```sh
 matchbox tests/valid/functions/basic.mb
 ```
 
-Run tests from the executable:
+Run test blocks or test programs:
 
 ```sh
 matchbox test
+matchbox test --program
 ```
 
-The test command runs all `.mb` files under `tests/` by default and shows failed results. Pass a file or directory to run a smaller set, such as `matchbox test tests/valid/functions/basic.mb`. Use `-a` to show all results or `-p` to show only passed results. Tests under `tests/future/` document planned language behavior, use the `.fail.mb` suffix, and run with the rest of the suite by default.
+`matchbox test` runs top-level `test` blocks.
 
-Tests whose names end in `.fail.mb` are expected to fail. Use one invalid behavior per failure test so a successful compilation or execution is reported as a regression. Organize related tests in subdirectories and run a focused suite by passing its directory, such as `matchbox test tests/invalid/references`. Test directories and files use lowercase kebab-case names.
+```
+let count = 0
+
+test {
+    const EXPECTED = 4
+    let result = 2 + 2
+
+    assert(result == EXPECTED)
+    assert(count == 0)
+}
+```
+
+Use `--program` to run entire .mb programs instead, treating `.fail.mb` files as expected failures. Specify a path to narrow the search. By default, tests are discovered in the current directory. Only failed results are displayed by default. Use `-a` to show all results or `-p` to show passed results.
 
 ## License
 

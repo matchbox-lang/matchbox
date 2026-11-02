@@ -8,7 +8,8 @@ typedef enum TestOutput
 {
     TestOutputAll,
     TestOutputFailed,
-    TestOutputPassed
+    TestOutputPassed,
+    TestOutputSkipped
 } TestOutput;
 
 typedef struct Options

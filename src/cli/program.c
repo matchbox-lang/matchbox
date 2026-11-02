@@ -81,7 +81,7 @@ void print_usage(FILE* stream)
 {
     fprintf(stream, "Usage: %s [options] [--] [file]\n", PROGRAM_COMMAND);
     fprintf(stream, "       %s check [path]\n", PROGRAM_COMMAND);
-    fprintf(stream, "       %s test [-a | -p] [--program] [path]\n\n", PROGRAM_COMMAND);
+    fprintf(stream, "       %s test [-a | -p | -s] [--program] [path]\n\n", PROGRAM_COMMAND);
     fprintf(stream, "Commands:\n");
     fprintf(stream, "  check [path]         Check source code without building\n");
     fprintf(stream, "  test [path]          Run test blocks\n");
@@ -93,6 +93,7 @@ void print_usage(FILE* stream)
     fprintf(stream, "\nTest options:\n");
     fprintf(stream, "  -a                   Show all test results\n");
     fprintf(stream, "  -p                   Show passed test results\n");
+    fprintf(stream, "  -s                   Show skipped test results\n");
     fprintf(stream, "      --program        Run program tests\n");
 }
 

@@ -101,18 +101,22 @@ static bool should_print_result(TestOutput output, bool passed)
     return (output == TestOutputPassed) == passed;
 }
 
-static void print_process_output(const Vector* output)
+static void print_process_output(FILE* stream, const Vector* output)
 {
     for (size_t i = 0; i < output->count; i++) {
         const char* buffer = output->data[i];
 
-        fputs(buffer, stdout);
+        fputs(buffer, stream);
     }
 }
 
 static void print_program_test_result(const ProgramTestRun* run, const char* path, int status, const Vector* output,
     bool passed)
 {
+    if (run->output == TestOutputSkipped && passed) {
+        return;
+    }
+
     if (!should_print_result(run->output, passed)) {
         return;
     }
@@ -125,8 +129,14 @@ static void print_program_test_result(const ProgramTestRun* run, const char* pat
         return;
     }
 
-    printf("FAIL %s (process status %d)\n", display_path, status);
-    print_process_output(output);
+    FILE* stream = stdout;
+
+    if (run->output == TestOutputSkipped) {
+        stream = stderr;
+    }
+
+    fprintf(stream, "FAIL %s (process status %d)\n", display_path, status);
+    print_process_output(stream, output);
 }
 
 static char* create_program_test_command(const char* executable_path, const char* path)

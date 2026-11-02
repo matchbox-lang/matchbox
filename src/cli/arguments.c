@@ -70,6 +70,12 @@ static bool parse_option(Options* options, const char* arg)
         return true;
     }
 
+    if (test_command && strcmp(arg, "-s") == 0) {
+        options->test_output = TestOutputSkipped;
+
+        return true;
+    }
+
     unknown_option_error(arg);
 
     return false;

@@ -45,6 +45,10 @@ static bool should_print_result(TestOutput output, bool passed)
         return true;
     }
 
+    if (output == TestOutputSkipped) {
+        return false;
+    }
+
     return (output == TestOutputPassed) == passed;
 }
 
@@ -82,7 +86,9 @@ static void print_test_result(const TestRun* run, const TestCase* test, bool pas
 
 static void report_filtered_test_failure(const TestRun* run, const TestCase* test, bool passed)
 {
-    if (passed || run->output != TestOutputPassed) {
+    bool filtered = run->output == TestOutputPassed || run->output == TestOutputSkipped;
+
+    if (passed || !filtered) {
         return;
     }
 
@@ -332,7 +338,7 @@ static void skip_test_case(TestRun* run, const TestCase* test)
 {
     run->skipped++;
 
-    if (run->output != TestOutputAll) {
+    if (run->output != TestOutputAll && run->output != TestOutputSkipped) {
         return;
     }
 

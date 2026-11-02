@@ -122,6 +122,8 @@ int run_program(const Options* options)
     }
 
     if (!options->filename) {
+        print_version();
+
         return run_repl();
     }
 

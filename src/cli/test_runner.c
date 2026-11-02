@@ -37,7 +37,7 @@ typedef struct TestRun
     int validation_failed;
 } TestRun;
 
-static void discover_path(TestRun* run, const char* path);
+static void discover_test_path(TestRun* run, const char* path);
 
 static bool should_print_result(TestOutput output, bool passed)
 {
@@ -178,7 +178,7 @@ static void discover_source_tests(TestRun* run, const char* path, ErrorContext* 
     collect_test_cases(run, path, &ast->compound.statements);
 }
 
-static bool discover_file_with_context(TestRun* run, const char* path, MemoryGroup* memory)
+static bool discover_test_file_with_context(TestRun* run, const char* path, MemoryGroup* memory)
 {
     ErrorContext context;
 
@@ -196,14 +196,14 @@ static bool discover_file_with_context(TestRun* run, const char* path, MemoryGro
     return true;
 }
 
-static void discover_file(TestRun* run, const char* path)
+static void discover_test_file(TestRun* run, const char* path)
 {
     if (path_has_extension(path, ".fail.mb")) {
         return;
     }
 
     MemoryGroup memory = {0};
-    bool valid = discover_file_with_context(run, path, &memory);
+    bool valid = discover_test_file_with_context(run, path, &memory);
 
     free_memory_group(&memory);
 
@@ -216,7 +216,7 @@ static void discover_file(TestRun* run, const char* path)
     }
 }
 
-static void discover_directory_entry(TestRun* run, const char* path, const char* name)
+static void discover_test_directory_entry(TestRun* run, const char* path, const char* name)
 {
     if (path_is_current_or_parent_directory(name)) {
         return;
@@ -224,11 +224,11 @@ static void discover_directory_entry(TestRun* run, const char* path, const char*
 
     char* child = join_path(path, name);
 
-    discover_path(run, child);
+    discover_test_path(run, child);
     free_path(child);
 }
 
-static void discover_directory(TestRun* run, const char* path)
+static void discover_test_directory(TestRun* run, const char* path)
 {
     DIR* directory = opendir(path);
     if (!directory) {
@@ -244,7 +244,7 @@ static void discover_directory(TestRun* run, const char* path)
     errno = 0;
 
     while ((entry = readdir(directory))) {
-        discover_directory_entry(run, path, entry->d_name);
+        discover_test_directory_entry(run, path, entry->d_name);
 
         errno = 0;
     }
@@ -260,10 +260,10 @@ static void discover_directory(TestRun* run, const char* path)
     }
 }
 
-static void discover_path(TestRun* run, const char* path)
+static void discover_test_path(TestRun* run, const char* path)
 {
     if (path_is_directory(path)) {
-        discover_directory(run, path);
+        discover_test_directory(run, path);
 
         return;
     }
@@ -307,7 +307,7 @@ static bool run_test_block(const TestCase* test)
     return status == EXIT_SUCCESS;
 }
 
-static bool run_block_with_context(const TestCase* test, MemoryGroup* memory)
+static bool run_test_block_with_context(const TestCase* test, MemoryGroup* memory)
 {
     ErrorContext context;
     
@@ -326,10 +326,10 @@ static bool run_block_with_context(const TestCase* test, MemoryGroup* memory)
     return passed;
 }
 
-static bool run_isolated_block(const TestCase* test)
+static bool run_isolated_test_block(const TestCase* test)
 {
     MemoryGroup memory = {0};
-    bool passed = run_block_with_context(test, &memory);
+    bool passed = run_test_block_with_context(test, &memory);
 
     free_memory_group(&memory);
 
@@ -359,7 +359,7 @@ static void run_test_case(TestRun* run, const TestCase* test)
 
     fflush(stdout);
 
-    bool passed = run_isolated_block(test);
+    bool passed = run_isolated_test_block(test);
 
     report_filtered_test_failure(run, test, passed);
     print_test_result(run, test, passed);
@@ -428,13 +428,13 @@ static void init_test_run(TestRun* run, TestOutput output)
 
 static bool discover_tests(TestRun* run, const char* path)
 {
-    discover_path(run, path);
+    discover_test_path(run, path);
     qsort(run->paths.data, run->paths.count, sizeof(void*), compare_paths);
 
     for (size_t i = 0; i < run->paths.count; i++) {
         const char* filename = run->paths.data[i];
 
-        discover_file(run, filename);
+        discover_test_file(run, filename);
     }
 
     if (run->validation_failed > 0) {

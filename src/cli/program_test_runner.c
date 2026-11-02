@@ -182,7 +182,7 @@ static bool run_program_test_file(const ProgramTestRun* run, const char* path)
     return passed;
 }
 
-static void count_program_test_result(ProgramTestRun* run, const char* path)
+static void run_program_test_case(ProgramTestRun* run, const char* path)
 {
     bool passed = run_program_test_file(run, path);
 
@@ -195,7 +195,7 @@ static void count_program_test_result(ProgramTestRun* run, const char* path)
     run->failed++;
 }
 
-static void discover_program_test_entry(ProgramTestRun* run, const char* path, const char* name)
+static void discover_program_test_directory_entry(ProgramTestRun* run, const char* path, const char* name)
 {
     if (path_is_current_or_parent_directory(name)) {
         return;
@@ -224,7 +224,7 @@ static void discover_program_test_directory(ProgramTestRun* run, const char* pat
     errno = 0;
 
     while ((entry = readdir(directory))) {
-        discover_program_test_entry(run, path, entry->d_name);
+        discover_program_test_directory_entry(run, path, entry->d_name);
 
         errno = 0;
     }
@@ -337,7 +337,7 @@ static void run_program_test_cases(ProgramTestRun* run)
     for (size_t i = 0; i < run->paths.count; i++) {
         const char* filename = run->paths.data[i];
 
-        count_program_test_result(run, filename);
+        run_program_test_case(run, filename);
     }
 }
 

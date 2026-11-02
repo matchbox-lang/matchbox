@@ -110,8 +110,7 @@ static void print_process_output(FILE* stream, const Vector* output)
     }
 }
 
-static void print_program_test_result(const ProgramTestRun* run, const char* path, int status, const Vector* output,
-    bool passed)
+static void print_program_test_result(const ProgramTestRun* run, const char* path, const Vector* output, bool passed)
 {
     if (run->output == TestOutputSkipped && passed) {
         return;
@@ -135,7 +134,7 @@ static void print_program_test_result(const ProgramTestRun* run, const char* pat
         stream = stderr;
     }
 
-    fprintf(stream, "FAIL %s (process status %d)\n", display_path, status);
+    fprintf(stream, "FAIL %s\n", display_path);
     print_process_output(stream, output);
 }
 
@@ -177,7 +176,7 @@ static bool run_program_test_file(const ProgramTestRun* run, const char* path)
     bool expects_failure = path_has_extension(path, ".fail.mb");
     bool passed = read_success && check_process_result(status, expects_failure);
 
-    print_program_test_result(run, path, status, &output, passed);
+    print_program_test_result(run, path, &output, passed);
     free_process_output(&output);
 
     return passed;

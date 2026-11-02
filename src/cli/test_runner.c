@@ -210,7 +210,9 @@ static void discover_file(TestRun* run, const char* path)
     if (!valid) {
         run->validation_failed++;
 
-        report_error("Validation failed for %s", path);
+        const char* display_path = path_for_display(path);
+
+        report_error("Validation failed for %s", display_path);
     }
 }
 

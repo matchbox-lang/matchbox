@@ -334,7 +334,7 @@ static void run_program_test_cases(ProgramTestRun* run)
 
 static int report_program_test_run(const ProgramTestRun* run)
 {
-    printf("%d passed; 0 skipped; %d failed.\n", run->passed, run->failed);
+    printf("%d passed; %d failed; 0 skipped.\n", run->passed, run->failed);
 
     if (run->failed > 0 || run->discovery_failed > 0) {
         return EXIT_FAILURE;

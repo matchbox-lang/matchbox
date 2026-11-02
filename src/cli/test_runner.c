@@ -444,7 +444,7 @@ static void run_test_cases(TestRun* run)
 
 static int report_test_run(const TestRun* run, const char* path)
 {
-    printf("%d passed; %d skipped; %d failed.\n", run->passed, run->skipped, run->failed);
+    printf("%d passed; %d failed; %d skipped.\n", run->passed, run->failed, run->skipped);
 
     if (run->validation_failed > 0) {
         report_error("%d paths failed validation", run->validation_failed);

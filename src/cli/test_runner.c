@@ -424,7 +424,7 @@ static void init_test_run(TestRun* run, TestOutput output)
     init_vector(&run->cases);
 }
 
-static void discover_tests(TestRun* run, const char* path)
+static bool discover_tests(TestRun* run, const char* path)
 {
     discover_path(run, path);
     qsort(run->paths.data, run->paths.count, sizeof(void*), compare_paths);
@@ -434,6 +434,18 @@ static void discover_tests(TestRun* run, const char* path)
 
         discover_file(run, filename);
     }
+
+    if (run->validation_failed > 0) {
+        return false;
+    }
+
+    if (run->cases.count == 0) {
+        report_error("No test blocks found in %s", path);
+
+        return false;
+    }
+
+    return true;
 }
 
 static void run_test_cases(TestRun* run)
@@ -448,21 +460,11 @@ static void run_test_cases(TestRun* run)
     }
 }
 
-static int report_test_run(const TestRun* run, const char* path)
+static int report_test_run(const TestRun* run)
 {
     printf("%d passed; %d failed; %d skipped.\n", run->passed, run->failed, run->skipped);
 
-    if (run->validation_failed > 0) {
-        report_error("%d paths failed validation", run->validation_failed);
-    }
-
-    if (run->cases.count == 0) {
-        report_error("No test found in %s", path);
-
-        return EXIT_FAILURE;
-    }
-
-    if (run->failed > 0 || run->validation_failed > 0) {
+    if (run->failed > 0) {
         return EXIT_FAILURE;
     }
 
@@ -480,10 +482,18 @@ int run_tests(const Options* options)
     TestRun run;
 
     init_test_run(&run, options->test_output);
-    discover_tests(&run, path);
+
+    bool discovered = discover_tests(&run, path);
+
+    if (!discovered) {
+        free_test_run(&run);
+
+        return EXIT_FAILURE;
+    }
+
     run_test_cases(&run);
 
-    int status = report_test_run(&run, path);
+    int status = report_test_run(&run);
 
     free_test_run(&run);
 

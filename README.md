@@ -105,7 +105,7 @@ test {
 }
 ```
 
-Use `--program` to run entire .mb programs instead, treating `.fail.mb` files as expected failures. Specify a path to narrow the search. By default, tests are discovered in the current directory. Only failed results are displayed by default. Use `-a` to show all results or `-p` to show passed results.
+Use `--program` to run entire `.mb` programs instead, treating `.fail.mb` files as expected failures. Specify a path to narrow the search. By default, tests are discovered in the current directory. Only failed results are displayed by default. Use `-a` to show all results or `-p` to show passed results.
 
 ## License
 

@@ -1,10 +1,7 @@
 let result = match 9 {
-    case 1 | 2:
-        10
-    case 3 | 4:
-        20
-    default:
-        30
+    case 1 | 2: 10
+    case 3 | 4: 20
+    case _: 30
 }
 
 print(result)

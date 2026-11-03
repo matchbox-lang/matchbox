@@ -160,7 +160,6 @@ typedef struct ASTNode
             Token token;
             ASTNode* subject;
             Vector arms;
-            ASTNode* default_branch;
             DataType type_id;
             ReferenceType reference_type;
             Vector reference_origins;

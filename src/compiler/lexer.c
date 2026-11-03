@@ -32,7 +32,6 @@ static const Keyword keywords[] = {
     {"const",       5, TokenKeywordConst},
     {"continue",    8, TokenKeywordContinue},
     {"defer",       5, TokenKeywordDefer},
-    {"default",     7, TokenKeywordDefault},
     {"else",        4, TokenKeywordElse},
     {"end",         3, TokenKeywordEnd},
     {"enum",        4, TokenKeywordEnum},

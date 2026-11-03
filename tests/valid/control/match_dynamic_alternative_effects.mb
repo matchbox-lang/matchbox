@@ -7,7 +7,7 @@ func check(value) {
     match value {
         case 1 | 2 | pattern():
             print(10)
-        default:
+        case _:
             print(20)
     }
 

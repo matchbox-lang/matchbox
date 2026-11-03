@@ -1,13 +1,9 @@
 func check(value) {
     let result = match value {
-        case 0:
-            10
-        case 2 | 3 | 4:
-            20
-        case 4 | 5:
-            30
-        default:
-            40
+        case 0: 10
+        case 2 | 3 | 4: 20
+        case 4 | 5: 30
+        case _: 40
     }
 
     print(result)

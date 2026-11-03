@@ -3,7 +3,7 @@ func select(choose: bool, value: i32) -> i32 {
     
     let result = match choose {
         case true: value
-        default: local
+        case _: local
     }
 
     return result

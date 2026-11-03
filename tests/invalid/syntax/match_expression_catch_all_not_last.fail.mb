@@ -1,0 +1,6 @@
+let result = match 2 {
+    case _: 0
+    case 2: 1
+}
+
+print(result)

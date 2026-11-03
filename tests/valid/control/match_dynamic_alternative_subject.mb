@@ -6,6 +6,6 @@ func subject() {
 match subject() {
     case 1 | 2 | 3:
         print(10)
-    default:
+    case _:
         print(20)
 }

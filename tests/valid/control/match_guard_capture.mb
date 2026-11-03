@@ -4,6 +4,6 @@ let other = 20
 match value {
     case n if n == other:
         print("Equal")
-    default:
+    case _:
         print("Different")
 }

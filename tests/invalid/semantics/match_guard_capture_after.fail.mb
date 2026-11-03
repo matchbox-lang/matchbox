@@ -1,7 +1,7 @@
 match 10 {
     case n if true:
         print(n)
-    default:
+    case _:
         print(0)
 }
 

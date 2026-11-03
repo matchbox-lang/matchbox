@@ -6,6 +6,6 @@ value = 20
 match false {
     case true:
         print(0)
-    default:
+    case _:
         print(exclusive)
 }

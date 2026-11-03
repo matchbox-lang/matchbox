@@ -111,8 +111,6 @@ static void validate_match(const ASTNode* ast, bool check_zero)
 
         validate_match_arm(arm, check_zero);
     }
-
-    validate_node(ast->match.default_branch, check_zero);
 }
 
 static void validate_node(const ASTNode* ast, bool check_zero)

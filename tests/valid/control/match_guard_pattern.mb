@@ -8,6 +8,6 @@ match 10 {
         print(0)
     case 5 | 10 if guard():
         print(1)
-    default:
+    case _:
         print(0)
 }

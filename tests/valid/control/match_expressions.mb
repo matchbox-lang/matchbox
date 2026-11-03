@@ -1,8 +1,8 @@
 let value = 2
 
-let default_result = match value {
+let fallback_result = match value {
     case 0: 10
-    default: 20
+    case _: 20
 }
 
 let wildcard_result = match value {
@@ -28,10 +28,10 @@ let implicit_boolean_result = match {
 let fixed_result = match 2 {
     case 1: 110
     case 2: 120
-    default: 130
+    case _: 130
 }
 
-print(default_result)
+print(fallback_result)
 print(wildcard_result)
 print(capture_result)
 print(explicit_boolean_result)

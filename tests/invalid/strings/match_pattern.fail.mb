@@ -1,6 +1,6 @@
 match "Hello" {
     case "Hello":
         print(1)
-    default:
+    case _:
         print(2)
 }

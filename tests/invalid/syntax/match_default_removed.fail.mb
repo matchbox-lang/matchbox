@@ -1,0 +1,6 @@
+match 2 {
+    case 1:
+        print(0)
+    default:
+        print(1)
+}

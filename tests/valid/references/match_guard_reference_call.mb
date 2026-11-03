@@ -8,6 +8,6 @@ let exclusive = ^value
 match true {
     case _ if guard(exclusive):
         print(0)
-    default:
+    case _:
         print(exclusive)
 }

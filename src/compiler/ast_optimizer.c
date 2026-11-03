@@ -348,8 +348,6 @@ static void optimize_match(ASTNode* ast)
 
         optimize_match_arm(arm);
     }
-
-    optimize_conditional_branch(ast->match.default_branch);
 }
 
 static void replace_with_expression(ASTNode* ast, ASTNode* expression)
@@ -617,8 +615,6 @@ static void mark_match_called_functions(ASTNode* ast)
         mark_called_functions(arm->guard);
         mark_called_functions(arm->branch);
     }
-
-    mark_called_functions(ast->match.default_branch);
 }
 
 static void mark_prefix_called_functions(ASTNode* ast)
@@ -707,8 +703,6 @@ static void reset_match_function_call_counts(ASTNode* ast)
         reset_function_call_counts(arm->guard);
         reset_function_call_counts(arm->branch);
     }
-
-    reset_function_call_counts(ast->match.default_branch);
 }
 
 static void reset_function_call_counts(ASTNode* ast)

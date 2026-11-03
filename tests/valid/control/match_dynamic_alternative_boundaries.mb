@@ -4,7 +4,7 @@ func check(value) {
             print(10)
         case -129 | 128 | 1000:
             print(20)
-        default:
+        case _:
             print(30)
     }
 }

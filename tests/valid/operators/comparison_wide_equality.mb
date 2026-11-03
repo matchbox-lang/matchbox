@@ -13,7 +13,7 @@ func compare(left: u64, right: u64) {
             print(2)
         case 0:
             print(3)
-        default:
+        case _:
             print(4)
     }
 }

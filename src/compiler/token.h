@@ -19,7 +19,6 @@ typedef enum TokenType
     TokenKeywordWhile,
     TokenKeywordMatch,
     TokenKeywordCase,
-    TokenKeywordDefault,
     TokenKeywordBreak,
     TokenKeywordContinue,
     TokenKeywordReturn,

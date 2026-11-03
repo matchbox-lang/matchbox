@@ -603,7 +603,7 @@ static bool visit_match_uses(ASTNode* ast, VisitId visit, void* context)
         }
     }
 
-    return visit_node_uses(ast->match.default_branch, visit, context);
+    return false;
 }
 
 static bool visit_assignment_uses(ASTNode* ast, VisitId visit, void* context)
@@ -1382,7 +1382,7 @@ static bool match_covers_both_booleans(ASTNode* ast)
 
 static bool match_is_exhaustive(ASTNode* ast)
 {
-    return ast->match.default_branch || match_has_wildcard(ast) || match_covers_both_booleans(ast);
+    return match_has_wildcard(ast) || match_covers_both_booleans(ast);
 }
 
 static void merge_match_branch_type(ASTNode* ast, DataType branch_type, DataType* result_type)
@@ -1544,29 +1544,6 @@ static void analyze_match_subject(Analyzer* analyzer, ASTNode* ast)
     analyze_node(analyzer, ast->match.subject);
 }
 
-static void analyze_match_default(Analyzer* analyzer, ASTNode* ast, Vector* continuation_nodes,
-    size_t continuation_start, DataType* result_type, Vector* initial_states,
-    Vector* merged_states, bool* merged_initialized)
-{
-    if (!ast->match.default_branch) {
-        return;
-    }
-
-    Vector states;
-
-    copy_ownership_state(&states, initial_states);
-    apply_ownership_states(&states);
-    restore_match_continuation(analyzer, continuation_nodes, continuation_start);
-    release_references_dead_on_branch(analyzer, &states, ast->match.default_branch, NULL);
-
-    DataType branch_type = analyze_scoped_branch(analyzer, ast->match.default_branch, NULL, ast->match.type_id);
-    
-    merge_match_result(ast, ast->match.default_branch, branch_type, result_type);
-    update_ownership_states(&states);
-    merge_ownership_outcome(merged_states, &states, merged_initialized);
-    free_ownership_states(&states);
-}
-
 static void finalize_match_type(ASTNode* ast, DataType result_type)
 {
     if (!ast->match.expression) {
@@ -1606,10 +1583,6 @@ static void validate_match_expression(ASTNode* ast)
         MatchArm* arm = get_vector_at(&ast->match.arms, i);
         validate_expression_branch(arm->branch, ast->match.token);
     }
-
-    if (ast->match.default_branch) {
-        validate_expression_branch(ast->match.default_branch, ast->match.token);
-    }
 }
 
 static void analyze_match(Analyzer* analyzer, ASTNode* ast)
@@ -1625,8 +1598,6 @@ static void analyze_match(Analyzer* analyzer, ASTNode* ast)
     analyze_match_subject(analyzer, ast);
     capture_ownership_state(&initial_states, analyzer->current_scope);
     analyze_match_arms(analyzer, ast, continuation_nodes, continuation_start, &result_type,
-        &initial_states, &merged_states, &merged_initialized);
-    analyze_match_default(analyzer, ast, continuation_nodes, continuation_start, &result_type,
         &initial_states, &merged_states, &merged_initialized);
     restore_match_continuation(analyzer, continuation_nodes, continuation_start);
     finalize_match_ownership(ast, &initial_states, &merged_states, &merged_initialized);
@@ -2399,8 +2370,6 @@ static void validate_match_global_access(Analyzer* analyzer, ASTNode* ast)
 
         validate_match_arm_global_access(analyzer, arm);
     }
-
-    validate_branch_global_access(analyzer, ast->match.default_branch);
 }
 
 static void validate_prefix_global_access(Analyzer* analyzer, ASTNode* ast)
@@ -2718,7 +2687,7 @@ static ASTNode* find_match_return(ASTNode* ast)
         }
     }
 
-    return find_node_return(ast->match.default_branch);
+    return NULL;
 }
 
 static ASTNode* find_node_return(ASTNode* ast)
@@ -3473,7 +3442,6 @@ static void clear_match_analysis(ASTNode* ast, Vector* functions)
     ast->match.reference_origins.count = 0;
 
     clear_node_analysis(ast->match.subject, functions);
-    clear_node_analysis(ast->match.default_branch, functions);
 
     for (size_t i = 0; i < ast->match.arms.count; i++) {
         clear_match_arm_analysis(ast->match.arms.data[i], functions);

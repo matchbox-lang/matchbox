@@ -3265,7 +3265,7 @@ static size_t compile_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* arm,
     return end_jump;
 }
 
-static bool compile_next_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
+static void compile_next_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* arm, Operand subject, int destination,
     bool has_following_arm, Vector* end_jumps, bool reference)
 {
     bool unconditional = !arm->pattern && !arm->guard;
@@ -3275,40 +3275,19 @@ static bool compile_next_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* a
     if (end_jump != SIZE_MAX) {
         push_vector_item(end_jumps, (void*)(uintptr_t)end_jump);
     }
-
-    return unconditional;
 }
 
-static bool compile_match_arms(
+static void compile_match_arms(
     Compiler* compiler, ASTNode* ast, Operand subject, int destination, Vector* end_jumps, bool reference)
 {
     size_t count = count_vector(&ast->match.arms);
 
     for (size_t i = 0; i < count; i++) {
         MatchArm* arm = get_vector_at(&ast->match.arms, i);
-        bool has_following_arm = i + 1 < count || ast->match.default_branch;
-        bool unconditional = compile_next_match_arm(compiler, ast, arm, subject, destination, has_following_arm,
-            end_jumps, reference);
+        bool has_following_arm = i + 1 < count;
 
-        if (unconditional) {
-            return true;
-        }
+        compile_next_match_arm(compiler, ast, arm, subject, destination, has_following_arm, end_jumps, reference);
     }
-
-    return false;
-}
-
-static void compile_match_default(
-    Compiler* compiler, ASTNode* ast, int destination, int branch_register_count, bool reference)
-{
-    if (!ast->match.default_branch) {
-        return;
-    }
-
-    DataType type = get_node_data_type(ast);
-
-    compile_conditional_branch(compiler, ast->match.default_branch, type, destination, reference);
-    compiler->register_count = branch_register_count;
 }
 
 static Operand match_result_operand(DataType type, int destination)
@@ -3448,7 +3427,7 @@ static bool find_literal_match_branch(ASTNode* ast, ASTNode** branch, ASTNode** 
         }
     }
 
-    *branch = ast->match.default_branch;
+    *branch = NULL;
     *binding = NULL;
 
     return true;
@@ -3508,16 +3487,10 @@ static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference)
         subject = compile_match_subject(compiler, ast->match.subject);
     }
 
-    int branch_register_count = compiler->register_count;
-
     Vector end_jumps;
     init_vector(&end_jumps);
 
-    bool unconditional_arm = compile_match_arms(compiler, ast, subject, destination, &end_jumps, reference);
-
-    if (!unconditional_arm) {
-        compile_match_default(compiler, ast, destination, branch_register_count, reference);
-    }
+    compile_match_arms(compiler, ast, subject, destination, &end_jumps, reference);
 
     mark_match_join(compiler, &end_jumps);
     free_vector(&end_jumps);

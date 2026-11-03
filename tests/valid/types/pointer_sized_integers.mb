@@ -49,8 +49,10 @@ let branch: isize = if unsigned == 202 {
 }
 
 let matched = match unsigned {
-    case 201 | 202: negative
-    default: returned
+    case 201 | 202:
+        negative
+    case _:
+        returned
 }
 
 if branch != -123 or matched != -123 {

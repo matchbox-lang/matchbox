@@ -7,6 +7,13 @@ match {
         print(0)
     case true if not checked:
         print(1)
-    default:
+    case _:
         print(0)
+}
+
+match {
+    case _ if checked:
+        assert(false)
+    case _:
+        assert(not checked)
 }

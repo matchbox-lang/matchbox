@@ -6,7 +6,7 @@ func pattern(value) {
 match 2 {
     case 1 | 2 | pattern(3):
         print(20)
-    default:
+    case _:
         print(30)
 }
 

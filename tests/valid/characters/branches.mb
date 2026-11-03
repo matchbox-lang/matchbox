@@ -9,7 +9,7 @@ let selected = if value == 'a' {
 let result = match selected {
     case 'a' | 'b': 'c'
     case '😀': 'é'
-    default: 'd'
+    case _: 'd'
 }
 
 print(selected)

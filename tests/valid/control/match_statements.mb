@@ -15,7 +15,7 @@ match value {
 match value {
     case 1:
         print(30)
-    default:
+    case _:
         print(40)
 }
 

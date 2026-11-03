@@ -27,7 +27,6 @@ const char* get_token_type_name(TokenType type)
         case TokenKeywordWhile:               return "while";
         case TokenKeywordMatch:               return "match";
         case TokenKeywordCase:                return "case";
-        case TokenKeywordDefault:             return "default";
         case TokenKeywordBreak:               return "break";
         case TokenKeywordContinue:            return "continue";
         case TokenKeywordReturn:              return "return";
@@ -331,7 +330,7 @@ bool is_prefix_token(TokenType type)
 
 bool is_match_arm_end_token(TokenType type)
 {
-    return type == TokenKeywordCase || type == TokenKeywordDefault || type == TokenRbrace;
+    return type == TokenKeywordCase || type == TokenRbrace;
 }
 
 bool is_wildcard_token(Token token)

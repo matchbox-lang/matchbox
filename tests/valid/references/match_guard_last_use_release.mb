@@ -4,7 +4,7 @@ let exclusive = ^value
 match true {
     case _ if exclusive == 10:
         print(1)
-    default:
+    case _:
         print(0)
 }
 

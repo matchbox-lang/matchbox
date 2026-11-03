@@ -332,7 +332,6 @@ void free_ast_node(ASTNode* ast)
         case ASTMatch:
             free_ast_node(ast->match.subject);
             free_match_arms(&ast->match.arms);
-            free_ast_node(ast->match.default_branch);
             free_vector(&ast->match.reference_origins);
             break;
         case ASTParameter:

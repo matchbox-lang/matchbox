@@ -27,7 +27,7 @@ check(mixed == 2)
 
 let from_match = match 2 {
     case 1: 0
-    default: if (true) -4 else 1 + 2
+    case _: if (true) -4 else 1 + 2
 }
 
 let from_if = if (false)
@@ -35,7 +35,7 @@ let from_if = if (false)
 else
     match 2 {
         case 1: 0
-        default: 5
+        case _: 5
     }
 
 check(from_match == -4)

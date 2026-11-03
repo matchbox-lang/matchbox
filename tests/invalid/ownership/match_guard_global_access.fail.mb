@@ -4,7 +4,7 @@ func check() {
     match true {
         case _ if value == 10:
             print(1)
-        default:
+        case _:
             print(0)
     }
 }

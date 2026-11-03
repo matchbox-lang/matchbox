@@ -8,7 +8,7 @@ let selected = if condition {
 
 let result = match 2 {
     case 1: "One"
-    default: selected
+    case _: selected
 }
 
 print(result)

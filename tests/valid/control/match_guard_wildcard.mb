@@ -1,6 +1,16 @@
 match 10 {
     case _ if false:
         print(0)
-    case _:
+    case _ if true:
         print(1)
+    case _:
+        assert(false)
 }
+
+let result = match 10 {
+    case _ if false: 0
+    case _ if true: 1
+    case _: 2
+}
+
+assert(result == 1)

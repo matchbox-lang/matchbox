@@ -23,7 +23,7 @@ match reference + 0 {
     case reference if reference == 30:
         value += 1
         print(reference)
-    default:
+    case _:
         exit(1)
 }
 

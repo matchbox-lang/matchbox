@@ -719,25 +719,13 @@ static bool parse_match_arm(Parser* parser, ASTNode* ast)
     consume(parser, TokenColon);
     arm->branch = parse_match_branch(parser, ast->match.expression);
 
+    if (!arm->pattern && !arm->guard && parser->current_token.type == TokenKeywordCase) {
+        Token token = parser->current_token;
+
+        fatal_source_error(token.line, token.column, "Catch-all match arm must be last");
+    }
+
     return arm->branch != NULL;
-}
-
-static bool parse_match_default(Parser* parser, ASTNode* ast)
-{
-    if (parser->current_token.type != TokenKeywordDefault) {
-        return true;
-    }
-
-    consume(parser, TokenKeywordDefault);
-
-    if (is_end_of_file(parser)) {
-        return false;
-    }
-
-    consume(parser, TokenColon);
-    ast->match.default_branch = parse_match_branch(parser, ast->match.expression);
-
-    return ast->match.default_branch != NULL;
 }
 
 static ASTNode* parse_match(Parser* parser, bool expression)
@@ -765,12 +753,6 @@ static ASTNode* parse_match(Parser* parser, bool expression)
 
             return NULL;
         }
-    }
-
-    if (!parse_match_default(parser, ast)) {
-        free_ast_node(ast);
-
-        return NULL;
     }
 
     if (is_end_of_file(parser)) {

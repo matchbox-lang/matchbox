@@ -1,0 +1,6 @@
+match {
+    case _:
+        print(0)
+    case true:
+        print(1)
+}

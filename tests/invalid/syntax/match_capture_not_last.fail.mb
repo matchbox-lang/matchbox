@@ -1,0 +1,6 @@
+match 2 {
+    case captured:
+        print(captured)
+    case 2:
+        print(1)
+}

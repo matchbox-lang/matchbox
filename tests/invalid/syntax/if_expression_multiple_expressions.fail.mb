@@ -1,0 +1,5 @@
+let value = if (true)
+    10
+    20
+else
+    30

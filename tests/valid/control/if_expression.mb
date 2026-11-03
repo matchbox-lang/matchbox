@@ -1,0 +1,42 @@
+func check(value: bool) {
+    if not value {
+        exit(1)
+    }
+}
+
+check(if (true) true else false)
+check(not (if (false) true else false))
+check((if (false) 1 else if (false) 2 else 3) == 3)
+check((if (true) if (false) 1 else 2 else 3) == 2)
+check((if (true or false) 1 + 2 else 4 * 5) == 3)
+check((if (if (false) true else true) 4 else 5) == 4)
+
+let selected =
+    if (false) 1 else
+    if (true) 2 else 3
+
+check(selected == 2)
+
+let mixed =
+    if (true)
+        if (false) 1 else 2
+    else
+        3
+
+check(mixed == 2)
+
+let from_match = match 2 {
+    case 1: 0
+    default: if (true) -4 else 1 + 2
+}
+
+let from_if = if (false)
+    0
+else
+    match 2 {
+        case 1: 0
+        default: 5
+    }
+
+check(from_match == -4)
+check(from_if == 5)

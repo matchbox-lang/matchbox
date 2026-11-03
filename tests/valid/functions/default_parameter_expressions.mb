@@ -1,8 +1,13 @@
 const BASE = 4
 
 func computed(n = BASE * 2 + 1) = n
-func countdown(n = 3) -> i32 = n <= 0 ? 0 : countdown(n - 1) + 1
 func text(value: string = "de" + "fault") = value
+
+func countdown(n = 3) -> i32 = if n <= 0 {
+    0
+} else {
+    countdown(n - 1) + 1
+}
 
 let computed_default = computed()
 let recursive_default = countdown()

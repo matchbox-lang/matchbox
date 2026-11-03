@@ -12,7 +12,11 @@ if (inferred != -5) exit(1)
 if (typed != -5) exit(1)
 if (block != -5) exit(1)
 
-func factorial(n: i32) -> i32 = n <= 1 ? 1 : n * factorial(n - 1)
+func factorial(n: i32) -> i32 = if n <= 1 {
+    1
+} else {
+    n * factorial(n - 1)
+}
 
 let recursive = factorial(5)
 

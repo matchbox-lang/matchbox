@@ -1,16 +1,21 @@
 var condition = true
 let narrow: f32 = 2.5
-let selected: f64 = condition ?
+
+let selected: f64 = if condition {
     narrow
-    : narrow
+} else {
+    narrow
+}
 
 if selected != 2.5 {
     exit(1)
 }
 
-let wide: i64 = condition ?
+let wide: i64 = if condition {
     3000000000
-    : 4000000000
+} else {
+    4000000000
+}
 
 if wide != 3000000000 {
     exit(1)
@@ -18,17 +23,22 @@ if wide != 3000000000 {
 
 var left = 10
 var right = 20
-let shared: &i32 = condition ?
+
+let shared: &i32 = if condition {
     &left
-    : &right
+} else {
+    &right
+}
 
 if shared != 10 {
     exit(1)
 }
 
-let exclusive: ^i32 = condition ?
+let exclusive: ^i32 = if condition {
     ^left
-    : ^right
+} else {
+    ^right
+}
 
 if exclusive != 10 {
     exit(1)

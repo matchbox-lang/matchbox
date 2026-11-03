@@ -26,7 +26,7 @@ print(narrowed)
 
 let base = 96
 let computed = char(base + 1)
-let selected = char(true ? 97 : 98)
+let selected = char(if (true) 97 else 98)
 
 assert(computed == 'a')
 assert(selected == 'a')

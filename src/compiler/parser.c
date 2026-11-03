@@ -33,8 +33,8 @@ static ASTNode* parse_identifier(Parser* parser);
 static ASTNode* parse_function_call(Parser* parser);
 static ASTNode* parse_prefix(Parser* parser);
 static bool parse_blocklevel_statements(Parser* parser, Vector* nodes);
-static ASTNode* parse_conditional(Parser* parser, bool allow_single_line_body);
-static ASTNode* parse_match(Parser* parser);
+static ASTNode* parse_conditional(Parser* parser, bool expression);
+static ASTNode* parse_match(Parser* parser, bool expression);
 static ASTNode* parse_statement(Parser* parser);
 
 static _Noreturn void expected_expression_error(Token token)
@@ -421,9 +421,9 @@ static ASTNode* parse_primary(Parser* parser)
         case TokenKeywordFalse:
             return parse_boolean_literal_node(parser, parser->current_token);
         case TokenKeywordIf:
-            return parse_conditional(parser, false);
+            return parse_conditional(parser, true);
         case TokenKeywordMatch:
-            return parse_match(parser);
+            return parse_match(parser, true);
         case TokenKeywordI8:
         case TokenKeywordI16:
         case TokenKeywordI32:
@@ -484,126 +484,97 @@ static ASTNode* parse_conditional_branch(Parser* parser)
     return branch;
 }
 
-static ASTNode* parse_conditional_else(Parser* parser, bool allow_single_line_body)
+static ASTNode* parse_if_condition(Parser* parser)
 {
-    if (parser->current_token.type != TokenKeywordElse) {
-        return NULL;
+    Parser start = *parser;
+    ASTNode* condition = parse_expression(parser);
+
+    if (!condition || parser->current_token.type == TokenLbrace) {
+        return condition;
     }
 
-    consume(parser, TokenKeywordElse);
-    if (parser->current_token.type == TokenKeywordIf) {
-        return parse_conditional(parser, allow_single_line_body);
-    }
+    free_ast_node(condition);
 
-    return parse_conditional_branch(parser);
+    *parser = start;
+
+    return parse_group_expression(parser);
 }
 
-static bool is_parenthesized_condition(Parser start, Token end)
+static bool parse_branch_statement(Parser* parser, ASTNode* branch, bool expression)
 {
-    if (start.current_token.type != TokenLparen) {
+    ASTNode* statement = NULL;
+
+    if (expression) {
+        statement = parse_expression(parser);
+    } else {
+        statement = parse_statement(parser);
+    }
+
+    if (!statement) {
         return false;
     }
 
-    Token token = start.current_token;
-    int depth = 1;
+    push_vector_item(&branch->compound.statements, statement);
 
-    while (depth > 0 && token.type != TokenEof && token.type != TokenIncompleteInput) {
-        token = scan_token(&start.lexer);
-        depth += token.type == TokenLparen;
-        depth -= token.type == TokenRparen;
-    }
-
-    return depth == 0 && token.chars == end.chars;
+    return true;
 }
 
-static void validate_single_line_if_branch_end(Parser* parser, Token token)
+static ASTNode* parse_if_branch(Parser* parser, bool expression)
 {
-    Token end = parser->previous_token;
-    bool multiline = end.line != token.line || memchr(end.chars, '\n', end.length)
-        || memchr(end.chars, '\r', end.length);
+    bool braced = parser->current_token.type == TokenLbrace;
 
-    if (multiline) {
-        fatal_source_error(token.line, token.column, "Expected statement to end on the same physical line as if");
+    if (braced && !expression) {
+        return parse_conditional_branch(parser);
     }
 
-    if (parser->current_token.type == TokenSemicolon) {
-        return;
+    if (braced) {
+        consume(parser, TokenLbrace);
     }
-
-    if (parser->current_token.type == TokenKeywordElse) {
-        fatal_token_error(parser->current_token, "", "Unexpected ");
-    }
-
-    bool same_line_statement = !is_end_of_file(parser) && parser->current_token.line == token.line
-        && parser->current_token.type != TokenRbrace;
-
-    if (same_line_statement) {
-        fatal_token_error(parser->current_token, "", "Expected end of line but found ");
-    }
-}
-
-static ASTNode* parse_single_line_if_branch(Parser* parser, Token token)
-{
-    if (is_end_of_file(parser)) {
-        return NULL;
-    }
-
-    if (parser->current_token.line != token.line) {
-        fatal_source_error(token.line, token.column, "Expected statement on the same physical line as if");
-    }
-
-    if (parser->current_token.type == TokenKeywordIf) {
-        expected_token_error(TokenLbrace, parser->current_token);
-    }
-
-    ASTNode* statement = parse_statement(parser);
-
-    if (!statement) {
-        return NULL;
-    }
-
-    validate_single_line_if_branch_end(parser, token);
 
     ASTNode* branch = create_compound_node(NULL);
 
-    push_vector_item(&branch->compound.statements, statement);
+    if (!parse_branch_statement(parser, branch, expression)) {
+        free_ast_node(branch);
+
+        return NULL;
+    }
+
+    if (!braced) {
+        return branch;
+    }
+
+    if (parser->current_token.type == TokenSemicolon) {
+        consume(parser, TokenSemicolon);
+    }
+
+    if (is_end_of_file(parser)) {
+        free_ast_node(branch);
+
+        return NULL;
+    }
+
+    consume(parser, TokenRbrace);
 
     return branch;
 }
 
-static ASTNode* parse_if_branch(Parser* parser, Parser start, Token token, bool allow_single_line_body)
-{
-    if (parser->current_token.type == TokenLbrace) {
-        return parse_conditional_branch(parser);
-    }
-
-    if (!allow_single_line_body) {
-        expected_token_error(TokenLbrace, parser->current_token);
-    }
-
-    bool parenthesized = is_parenthesized_condition(start, parser->previous_token);
-
-    if (!parenthesized) {
-        expected_token_error(TokenLbrace, parser->current_token);
-    }
-
-    return parse_single_line_if_branch(parser, token);
-}
-
-static ASTNode* parse_conditional(Parser* parser, bool allow_single_line_body)
+static ASTNode* parse_conditional(Parser* parser, bool expression)
 {
     Token token = parser->current_token;
 
     consume(parser, TokenKeywordIf);
 
-    Parser condition_start = *parser;
-    ASTNode* condition = parse_expression(parser);
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
+    ASTNode* condition = parse_if_condition(parser);
+
     if (!condition) {
         return NULL;
     }
 
-    bool single_line_body = parser->current_token.type != TokenLbrace;
-    ASTNode* then_branch = parse_if_branch(parser, condition_start, token, allow_single_line_body);
+    ASTNode* then_branch = parse_if_branch(parser, expression);
 
     if (!then_branch) {
         free_ast_node(condition);
@@ -611,31 +582,34 @@ static ASTNode* parse_conditional(Parser* parser, bool allow_single_line_body)
         return NULL;
     }
 
-    if (single_line_body) {
-        return create_conditional_node(token, condition, then_branch, NULL);
+    ASTNode* ast = create_conditional_node(token, condition, then_branch, NULL);
+    ast->conditional.expression = expression;
+
+    if (!expression && parser->current_token.type != TokenKeywordElse) {
+        return ast;
     }
 
-    bool has_else = parser->current_token.type == TokenKeywordElse;
-    ASTNode* else_branch = parse_conditional_else(parser, allow_single_line_body);
-
-    if (has_else && !else_branch) {
-        free_ast_node(condition);
-        free_ast_node(then_branch);
+    if (is_end_of_file(parser)) {
+        free_ast_node(ast);
 
         return NULL;
     }
 
-    return create_conditional_node(token, condition, then_branch, else_branch);
-}
+    consume(parser, TokenKeywordElse);
 
-static void mark_conditional_statement(ASTNode* ast)
-{
-    ast->conditional.expression = false;
-
-    ASTNode* else_branch = ast->conditional.else_branch;
-    if (else_branch && else_branch->type == ASTConditional) {
-        mark_conditional_statement(else_branch);
+    if (parser->current_token.type == TokenKeywordIf) {
+        ast->conditional.else_branch = parse_conditional(parser, expression);
+    } else {
+        ast->conditional.else_branch = parse_if_branch(parser, expression);
     }
+
+    if (!ast->conditional.else_branch) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
 }
 
 static bool is_match_branch_end(Parser* parser)
@@ -643,9 +617,9 @@ static bool is_match_branch_end(Parser* parser)
     return is_match_arm_end_token(parser->current_token.type) || is_end_of_file(parser);
 }
 
-static void consume_match_statement_separator(Parser* parser, Token token)
+static void consume_match_statement_separator(Parser* parser)
 {
-    bool same_line_statement = parser->current_token.line == token.line
+    bool same_line_statement = parser->current_token.line == parser->previous_token.line
         && !is_match_arm_end_token(parser->current_token.type)
         && parser->previous_token.type != TokenRbrace;
 
@@ -654,22 +628,18 @@ static void consume_match_statement_separator(Parser* parser, Token token)
     }
 }
 
-static bool parse_match_branch_statement(Parser* parser, ASTNode* branch)
+static bool parse_match_branch_statement(Parser* parser, ASTNode* branch, bool expression)
 {
-    Token token = parser->current_token;
-    ASTNode* statement = parse_statement(parser);
-
-    if (!statement) {
+    if (!parse_branch_statement(parser, branch, expression)) {
         return false;
     }
 
-    consume_match_statement_separator(parser, token);
-    push_vector_item(&branch->compound.statements, statement);
+    consume_match_statement_separator(parser);
 
     return true;
 }
 
-static ASTNode* parse_match_branch(Parser* parser)
+static ASTNode* parse_match_branch(Parser* parser, bool expression)
 {
     ASTNode* branch = create_compound_node(NULL);
 
@@ -685,7 +655,7 @@ static ASTNode* parse_match_branch(Parser* parser)
     }
 
     while (!is_match_branch_end(parser)) {
-        if (!parse_match_branch_statement(parser, branch)) {
+        if (!parse_match_branch_statement(parser, branch, expression)) {
             free_ast_node(branch);
 
             return NULL;
@@ -747,7 +717,7 @@ static bool parse_match_arm(Parser* parser, ASTNode* ast)
     }
 
     consume(parser, TokenColon);
-    arm->branch = parse_match_branch(parser);
+    arm->branch = parse_match_branch(parser, ast->match.expression);
 
     return arm->branch != NULL;
 }
@@ -765,17 +735,18 @@ static bool parse_match_default(Parser* parser, ASTNode* ast)
     }
 
     consume(parser, TokenColon);
-    ast->match.default_branch = parse_match_branch(parser);
+    ast->match.default_branch = parse_match_branch(parser, ast->match.expression);
 
     return ast->match.default_branch != NULL;
 }
 
-static ASTNode* parse_match(Parser* parser)
+static ASTNode* parse_match(Parser* parser, bool expression)
 {
     Token token = parser->current_token;
     consume(parser, TokenKeywordMatch);
 
     ASTNode* ast = create_match_node(token);
+    ast->match.expression = expression;
 
     if (parser->current_token.type != TokenLbrace) {
         ast->match.subject = parse_expression(parser);
@@ -1007,59 +978,9 @@ static ASTNode* parse_boolean_or(Parser* parser)
     return expr;
 }
 
-static ASTNode* parse_ternary_branch(Parser* parser)
-{
-    ASTNode* expression = parse_expression(parser);
-
-    if (!expression) {
-        return NULL;
-    }
-
-    ASTNode* branch = create_compound_node(NULL);
-
-    push_vector_item(&branch->compound.statements, expression);
-
-    return branch;
-}
-
-static ASTNode* parse_ternary(Parser* parser, ASTNode* condition)
-{
-    Token token = parser->current_token;
-
-    consume(parser, TokenQuestion);
-
-    ASTNode* then_branch = parse_ternary_branch(parser);
-
-    if (!then_branch || is_end_of_file(parser)) {
-        free_ast_node(condition);
-        free_ast_node(then_branch);
-
-        return NULL;
-    }
-
-    consume(parser, TokenColon);
-
-    ASTNode* else_branch = parse_ternary_branch(parser);
-
-    if (!else_branch) {
-        free_ast_node(condition);
-        free_ast_node(then_branch);
-
-        return NULL;
-    }
-
-    return create_conditional_node(token, condition, then_branch, else_branch);
-}
-
 static ASTNode* parse_expression(Parser* parser)
 {
-    ASTNode* condition = parse_boolean_or(parser);
-
-    if (!condition || parser->current_token.type != TokenQuestion) {
-        return condition;
-    }
-
-    return parse_ternary(parser, condition);
+    return parse_boolean_or(parser);
 }
 
 static ASTNode* parse_return_statement(Parser* parser)
@@ -1574,30 +1495,6 @@ static ASTNode* parse_while_statement(Parser* parser)
     return create_while_node(token, condition, body);
 }
 
-static ASTNode* parse_if_statement(Parser* parser)
-{
-    ASTNode* ast = parse_conditional(parser, true);
-    if (!ast) {
-        return NULL;
-    }
-
-    mark_conditional_statement(ast);
-
-    return ast;
-}
-
-static ASTNode* parse_match_statement(Parser* parser)
-{
-    ASTNode* ast = parse_match(parser);
-    if (!ast) {
-        return NULL;
-    }
-
-    ast->match.expression = false;
-
-    return ast;
-}
-
 static ASTNode* parse_constant_statement(Parser* parser)
 {
     Lexer lexer = parser->lexer;
@@ -1633,9 +1530,9 @@ static ASTNode* parse_statement(Parser* parser)
         case TokenKeywordWhile:
             return parse_while_statement(parser);
         case TokenKeywordIf:
-            return parse_if_statement(parser);
+            return parse_conditional(parser, false);
         case TokenKeywordMatch:
-            return parse_match_statement(parser);
+            return parse_match(parser, false);
         default:
             return parse_expression(parser);
     }
@@ -1652,7 +1549,7 @@ static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
         }
 
         bool same_line_statement = !is_end_of_file(parser) &&
-            parser->current_token.line == token.line &&
+            parser->current_token.line == parser->previous_token.line &&
             parser->current_token.type != type &&
             parser->previous_token.type != TokenRbrace;
 

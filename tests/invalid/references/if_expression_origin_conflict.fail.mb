@@ -1,9 +1,12 @@
 var condition = true
 var left = 10
 var right = 20
-let reference: &i32 = condition ?
+
+let reference: &i32 = if condition {
     &left
-    : &right
+} else {
+    &right
+}
 
 left = 30
 

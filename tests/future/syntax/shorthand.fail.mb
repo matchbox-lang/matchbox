@@ -1,4 +1,4 @@
-let c = a ? a : b
+let c = if (true) a else b
 let c = a ?? b
 
 let matrix: i32[2][3] = [1, 2, 3, 4, 5, 6]
@@ -9,7 +9,7 @@ let c = [y for x in matrix for y in x]
 let d = [[y for y in range(5)] for x in range(5)]
 let e = [[y for y in x] for x in matrix]
 
-if (x == y) print(true)
+if (x == y) print(1)
 
 func neg(n) = -n
 

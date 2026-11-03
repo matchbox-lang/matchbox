@@ -1,32 +1,31 @@
-let score = 82
+const score = 85
 
 if score >= 90 {
-    print(4)
+    print("A")
 } else if score >= 80 {
-    print(3)
+    print("B")
 } else if score >= 70 {
-    print(2)
+    print("C")
 } else {
-    print(1)
+    print("F")
 }
+
+let grade = if (score >= 90)
+    "A"
+else if (score >= 80)
+    "B"
+else if (score >= 70)
+    "C"
+else
+    "F"
+
+print(grade)
 
 let x = 10
 let y = 20
 
 if x < y {
     if y < 100 {
-        print(1)
+        print(true)
     }
 }
-
-var grade = if score >= 90 {
-    4
-} else if score >= 80 {
-    3
-} else if score >= 70 {
-    2
-} else {
-    1
-}
-
-print(grade)

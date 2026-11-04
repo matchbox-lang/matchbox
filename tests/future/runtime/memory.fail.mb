@@ -1,4 +1,4 @@
 let x = alloc(8)
 
 x[0] = 10
-realloc(x, 16)
+resize(x, 16)

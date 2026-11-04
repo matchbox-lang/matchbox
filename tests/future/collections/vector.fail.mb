@@ -1,0 +1,8 @@
+let x = vector() // T[*]
+
+reserve(x, 8)
+push(x, 10)
+resize(x, 16)
+
+print(x.capacity)
+print(x.size)

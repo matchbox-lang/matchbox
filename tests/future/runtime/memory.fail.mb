@@ -1,4 +1,0 @@
-let x = alloc(8)
-
-x[0] = 10
-resize(x, 16)

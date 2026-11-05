@@ -8,9 +8,9 @@ void builtin_abs_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float n = AS_F32(frame[0]);
-    float x = fabsf(n);
+    float result = fabsf(n);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_abs_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -19,9 +19,9 @@ void builtin_abs_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double n = read_f64(frame, 0);
-    double x = fabs(n);
+    double result = fabs(n);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_abs_i32(VM* vm, const FunctionObject* function, Value* frame)
@@ -30,9 +30,9 @@ void builtin_abs_i32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     int32_t n = AS_SIGNED(frame[0]);
-    int32_t x = ABS(n);
+    int32_t result = ABS(n);
     
-    frame[-2] = SIGNED_VALUE(x);
+    frame[-2] = SIGNED_VALUE(result);
 }
 
 void builtin_abs_i64(VM* vm, const FunctionObject* function, Value* frame)
@@ -41,9 +41,9 @@ void builtin_abs_i64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     int64_t n = read_i64(frame, 0);
-    int64_t x = ABS(n);
+    int64_t result = ABS(n);
 
-    write_i64(frame, x);
+    write_i64(frame, result);
 }
 
 void builtin_acos_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -52,9 +52,9 @@ void builtin_acos_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = acosf(a);
+    float result = acosf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_acos_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -63,9 +63,9 @@ void builtin_acos_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = acos(a);
+    double result = acos(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_acosh_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -74,9 +74,9 @@ void builtin_acosh_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = acoshf(a);
+    float result = acoshf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_acosh_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -85,9 +85,9 @@ void builtin_acosh_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = acosh(a);
+    double result = acosh(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_asin_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -96,9 +96,9 @@ void builtin_asin_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = asinf(a);
+    float result = asinf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_asin_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -107,9 +107,9 @@ void builtin_asin_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = asin(a);
+    double result = asin(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_asinh_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -118,9 +118,9 @@ void builtin_asinh_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = asinhf(a);
+    float result = asinhf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_asinh_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -129,9 +129,9 @@ void builtin_asinh_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = asinh(a);
+    double result = asinh(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_atan2_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -141,9 +141,9 @@ void builtin_atan2_f32(VM* vm, const FunctionObject* function, Value* frame)
 
     float a = AS_F32(frame[0]);
     float b = AS_F32(frame[1]);
-    float x = atan2f(a, b);
+    float result = atan2f(a, b);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_atan2_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -153,9 +153,9 @@ void builtin_atan2_f64(VM* vm, const FunctionObject* function, Value* frame)
 
     double a = read_f64(frame, 0);
     double b = read_f64(frame, 2);
-    double x = atan2(a, b);
+    double result = atan2(a, b);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_atan_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -164,9 +164,9 @@ void builtin_atan_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = atanf(a);
+    float result = atanf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_atan_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -175,9 +175,9 @@ void builtin_atan_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = atan(a);
+    double result = atan(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_atanh_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -186,9 +186,9 @@ void builtin_atanh_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = atanhf(a);
+    float result = atanhf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_atanh_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -197,9 +197,9 @@ void builtin_atanh_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = atanh(a);
+    double result = atanh(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_avg_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -227,9 +227,9 @@ void builtin_cbrt_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = cbrtf(a);
+    float result = cbrtf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_cbrt_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -238,9 +238,9 @@ void builtin_cbrt_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = cbrt(a);
+    double result = cbrt(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_ceil_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -249,9 +249,9 @@ void builtin_ceil_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = ceilf(a);
+    float result = ceilf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_ceil_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -260,9 +260,9 @@ void builtin_ceil_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = ceil(a);
+    double result = ceil(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_clamp_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -273,15 +273,15 @@ void builtin_clamp_f32(VM* vm, const FunctionObject* function, Value* frame)
     float a = AS_F32(frame[0]);
     float b = AS_F32(frame[1]);
     float c = AS_F32(frame[2]);
-    float x = a;
+    float result = a;
 
     if (a < b) {
-        x = b;
+        result = b;
     } else if (a > c) {
-        x = c;
+        result = c;
     }
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_clamp_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -292,15 +292,15 @@ void builtin_clamp_f64(VM* vm, const FunctionObject* function, Value* frame)
     double a = read_f64(frame, 0);
     double b = read_f64(frame, 2);
     double c = read_f64(frame, 4);
-    double x = a;
+    double result = a;
 
     if (a < b) {
-        x = b;
+        result = b;
     } else if (a > c) {
-        x = c;
+        result = c;
     }
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_clamp_i32(VM* vm, const FunctionObject* function, Value* frame)
@@ -345,9 +345,9 @@ void builtin_cos_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = cosf(a);
+    float result = cosf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_cos_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -356,9 +356,9 @@ void builtin_cos_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = cos(a);
+    double result = cos(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_cosh_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -367,9 +367,9 @@ void builtin_cosh_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = coshf(a);
+    float result = coshf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_cosh_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -378,9 +378,9 @@ void builtin_cosh_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = cosh(a);
+    double result = cosh(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_deg_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -389,9 +389,9 @@ void builtin_deg_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = a * 57.2957795130823208768f;
+    float result = a * 57.2957795130823208768f;
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_deg_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -400,9 +400,9 @@ void builtin_deg_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = a * 57.2957795130823208768;
+    double result = a * 57.2957795130823208768;
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_exp_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -411,9 +411,9 @@ void builtin_exp_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = expf(a);
+    float result = expf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_exp_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -422,9 +422,9 @@ void builtin_exp_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = exp(a);
+    double result = exp(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_floor_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -433,9 +433,9 @@ void builtin_floor_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = floorf(a);
+    float result = floorf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_floor_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -444,9 +444,9 @@ void builtin_floor_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = floor(a);
+    double result = floor(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_hypot_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -456,9 +456,9 @@ void builtin_hypot_f32(VM* vm, const FunctionObject* function, Value* frame)
 
     float a = AS_F32(frame[0]);
     float b = AS_F32(frame[1]);
-    float x = hypotf(a, b);
+    float result = hypotf(a, b);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_hypot_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -468,9 +468,9 @@ void builtin_hypot_f64(VM* vm, const FunctionObject* function, Value* frame)
 
     double a = read_f64(frame, 0);
     double b = read_f64(frame, 2);
-    double x = hypot(a, b);
+    double result = hypot(a, b);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_ilerp_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -488,9 +488,9 @@ void builtin_ilerp_f32(VM* vm, const FunctionObject* function, Value* frame)
         return;
     }
 
-    float x = (v - a) / (b - a);
+    float result = (v - a) / (b - a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_ilerp_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -508,9 +508,9 @@ void builtin_ilerp_f64(VM* vm, const FunctionObject* function, Value* frame)
         return;
     }
 
-    double x = (v - a) / (b - a);
+    double result = (v - a) / (b - a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_ldexp_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -520,9 +520,9 @@ void builtin_ldexp_f32(VM* vm, const FunctionObject* function, Value* frame)
 
     float a = AS_F32(frame[0]);
     int32_t exponent = AS_I32(frame[1]);
-    float x = ldexpf(a, exponent);
+    float result = ldexpf(a, exponent);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_ldexp_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -532,9 +532,9 @@ void builtin_ldexp_f64(VM* vm, const FunctionObject* function, Value* frame)
 
     double a = read_f64(frame, 0);
     int32_t exponent = AS_I32(frame[2]);
-    double x = ldexp(a, exponent);
+    double result = ldexp(a, exponent);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_lerp_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -545,9 +545,9 @@ void builtin_lerp_f32(VM* vm, const FunctionObject* function, Value* frame)
     float a = AS_F32(frame[0]);
     float b = AS_F32(frame[1]);
     float t = AS_F32(frame[2]);
-    float x = a + (b - a) * t;
+    float result = a + (b - a) * t;
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_lerp_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -558,9 +558,9 @@ void builtin_lerp_f64(VM* vm, const FunctionObject* function, Value* frame)
     double a = read_f64(frame, 0);
     double b = read_f64(frame, 2);
     double t = read_f64(frame, 4);
-    double x = a + (b - a) * t;
+    double result = a + (b - a) * t;
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_log10_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -569,9 +569,9 @@ void builtin_log10_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = log10f(a);
+    float result = log10f(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_log10_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -580,9 +580,9 @@ void builtin_log10_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = log10(a);
+    double result = log10(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_log2_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -591,9 +591,9 @@ void builtin_log2_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = log2f(a);
+    float result = log2f(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_log2_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -602,9 +602,9 @@ void builtin_log2_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = log2(a);
+    double result = log2(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_log_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -613,9 +613,9 @@ void builtin_log_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = logf(a);
+    float result = logf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_log_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -624,9 +624,9 @@ void builtin_log_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = log(a);
+    double result = log(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_max_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -804,9 +804,9 @@ void builtin_pow_f32(VM* vm, const FunctionObject* function, Value* frame)
 
     float a = AS_F32(frame[0]);
     float b = AS_F32(frame[1]);
-    float x = powf(a, b);
+    float result = powf(a, b);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_pow_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -816,9 +816,9 @@ void builtin_pow_f64(VM* vm, const FunctionObject* function, Value* frame)
 
     double a = read_f64(frame, 0);
     double b = read_f64(frame, 2);
-    double x = pow(a, b);
+    double result = pow(a, b);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_pow_i32(VM* vm, const FunctionObject* function, Value* frame)
@@ -828,9 +828,9 @@ void builtin_pow_i32(VM* vm, const FunctionObject* function, Value* frame)
 
     int32_t a = AS_SIGNED(frame[0]);
     int32_t b = AS_SIGNED(frame[1]);
-    int32_t x = pow(a, b);
+    int32_t result = pow(a, b);
 
-    frame[-2] = SIGNED_VALUE(x);
+    frame[-2] = SIGNED_VALUE(result);
 }
 
 void builtin_pow_i64(VM* vm, const FunctionObject* function, Value* frame)
@@ -840,9 +840,9 @@ void builtin_pow_i64(VM* vm, const FunctionObject* function, Value* frame)
 
     int64_t a = read_i64(frame, 0);
     int64_t b = read_i64(frame, 2);
-    int64_t x = pow(a, b);
+    int64_t result = pow(a, b);
 
-    write_i64(frame, x);
+    write_i64(frame, result);
 }
 
 void builtin_rad_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -851,9 +851,9 @@ void builtin_rad_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = a * 0.01745329251994329577f;
+    float result = a * 0.01745329251994329577f;
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_rad_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -862,9 +862,9 @@ void builtin_rad_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = a * 0.01745329251994329577;
+    double result = a * 0.01745329251994329577;
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_sign_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -873,13 +873,13 @@ void builtin_sign_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = (a > 0) - (a < 0);
+    float result = (a > 0) - (a < 0);
 
     if (isnan(a)) {
-        x = a;
+        result = a;
     }
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_sign_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -888,13 +888,13 @@ void builtin_sign_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = (a > 0) - (a < 0);
+    double result = (a > 0) - (a < 0);
 
     if (isnan(a)) {
-        x = a;
+        result = a;
     }
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_sign_i32(VM* vm, const FunctionObject* function, Value* frame)
@@ -903,9 +903,9 @@ void builtin_sign_i32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     int32_t a = AS_SIGNED(frame[0]);
-    int32_t x = (a > 0) - (a < 0);
+    int32_t result = (a > 0) - (a < 0);
 
-    frame[-2] = SIGNED_VALUE(x);
+    frame[-2] = SIGNED_VALUE(result);
 }
 
 void builtin_sign_i64(VM* vm, const FunctionObject* function, Value* frame)
@@ -914,9 +914,9 @@ void builtin_sign_i64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     int64_t a = read_i64(frame, 0);
-    int64_t x = (a > 0) - (a < 0);
+    int64_t result = (a > 0) - (a < 0);
 
-    write_i64(frame, x);
+    write_i64(frame, result);
 }
 
 void builtin_sin_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -925,9 +925,9 @@ void builtin_sin_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = sinf(a);
+    float result = sinf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_sin_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -936,9 +936,9 @@ void builtin_sin_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = sin(a);
+    double result = sin(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_sinh_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -947,9 +947,9 @@ void builtin_sinh_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = sinhf(a);
+    float result = sinhf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_sinh_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -958,9 +958,9 @@ void builtin_sinh_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = sinh(a);
+    double result = sinh(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_sqrt_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -969,9 +969,9 @@ void builtin_sqrt_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = sqrtf(a);
+    float result = sqrtf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_sqrt_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -980,9 +980,9 @@ void builtin_sqrt_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = sqrt(a);
+    double result = sqrt(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_sum_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -1069,9 +1069,9 @@ void builtin_tan_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = tanf(a);
+    float result = tanf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_tan_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -1080,9 +1080,9 @@ void builtin_tan_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = tan(a);
+    double result = tan(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }
 
 void builtin_tanh_f32(VM* vm, const FunctionObject* function, Value* frame)
@@ -1091,9 +1091,9 @@ void builtin_tanh_f32(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     float a = AS_F32(frame[0]);
-    float x = tanhf(a);
+    float result = tanhf(a);
 
-    frame[-2] = F32_VALUE(x);
+    frame[-2] = F32_VALUE(result);
 }
 
 void builtin_tanh_f64(VM* vm, const FunctionObject* function, Value* frame)
@@ -1102,7 +1102,7 @@ void builtin_tanh_f64(VM* vm, const FunctionObject* function, Value* frame)
     (void)function;
 
     double a = read_f64(frame, 0);
-    double x = tanh(a);
+    double result = tanh(a);
 
-    write_f64(frame, x);
+    write_f64(frame, result);
 }

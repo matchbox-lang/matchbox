@@ -35,7 +35,6 @@ static char* read_file_contents(FILE* file)
 char* get_file_contents(const char* filename)
 {
     FILE* file = fopen(filename, "rb");
-
     if (!file) {
         return NULL;
     }
@@ -54,13 +53,13 @@ char* get_file_contents(const char* filename)
 
 size_t put_file_contents(const char* filename, const void* data)
 {
-    FILE* fp = fopen(filename, "wb");
-    if (!fp) {
+    FILE* file = fopen(filename, "wb");
+    if (!file) {
         return 0;
     }
 
-    size_t size = fwrite(data, 1, strlen(data), fp);
-    fclose(fp);
+    size_t size = fwrite(data, 1, strlen(data), file);
+    fclose(file);
 
     return size;
 }

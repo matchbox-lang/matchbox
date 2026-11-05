@@ -65,7 +65,6 @@ static int run_source(const char* source, bool disassemble)
 static int run_file(const Options* options)
 {
     char* source = get_file_contents(options->filename);
-    
     if (!source) {
         read_file_error(options->filename);
     }

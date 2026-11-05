@@ -55,7 +55,6 @@ char* get_file_contents(const char* filename)
 size_t put_file_contents(const char* filename, const void* data)
 {
     FILE* fp = fopen(filename, "wb");
-
     if (!fp) {
         return 0;
     }

@@ -20,7 +20,6 @@ static bool check_path(const char* path);
 static bool check_source_file(const char* path)
 {
     char* source = get_file_contents(path);
-
     if (!source) {
         const char* detail = strerror(errno);
 

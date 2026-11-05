@@ -1469,7 +1469,6 @@ static ASTNode* parse_variable_definition(Parser* parser)
 {
     Token keyword = parser->current_token;
     ASTNode* ast = parse_variable_binding(parser, keyword);
-
     if (!ast) {
         return NULL;
     }

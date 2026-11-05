@@ -143,7 +143,6 @@ static void collect_test_cases(TestRun* run, const char* path, Vector* nodes)
 static char* read_test_source(const char* path)
 {
     char* source = get_file_contents(path);
-
     if (!source) {
         const char* detail = strerror(errno);
 

@@ -1,0 +1,40 @@
+let wide_zero: i64 = 0
+let wide_negative: f64 = -3.5
+let wide_positive: f64 = 3.5
+let wide_float_zero: f64 = 0.0
+let wide_negative_zero: f64 = -0.0
+let narrow_negative: i8 = -1
+
+let negative_int: i32 = sign(i32.MIN)
+let zero_int: i32 = sign(0)
+let positive_int: i32 = sign(i32.MAX)
+let negative_wide_int: i64 = sign(i64.MIN)
+let zero_wide_int: i64 = sign(wide_zero)
+let positive_wide_int: i64 = sign(i64.MAX)
+let negative_float: f32 = sign(-3.5)
+let zero_float: f32 = sign(0.0)
+let positive_float: f32 = sign(3.5)
+let negative_wide_float: f64 = sign(wide_negative)
+let zero_wide_float: f64 = sign(wide_float_zero)
+let positive_wide_float: f64 = sign(wide_positive)
+
+assert(negative_int == -1 and zero_int == 0 and positive_int == 1)
+assert(negative_wide_int == -1 and zero_wide_int == 0 and positive_wide_int == 1)
+assert(negative_float == -1.0 and zero_float == 0.0 and positive_float == 1.0)
+assert(negative_wide_float == -1.0 and zero_wide_float == 0.0 and positive_wide_float == 1.0)
+
+let nan_float = sign(f32.NAN)
+let nan_wide_float = sign(f64.NAN)
+let negative_infinity = sign(f32.NEG_INFINITY)
+let positive_infinity = sign(f32.INFINITY)
+let negative_wide_infinity = sign(f64.NEG_INFINITY)
+let positive_wide_infinity = sign(f64.INFINITY)
+let negative_zero = sign(-0.0)
+let negative_wide_zero = sign(wide_negative_zero)
+let widened: i32 = sign(narrow_negative)
+
+assert(nan_float != nan_float and nan_wide_float != nan_wide_float)
+assert(negative_infinity == -1.0 and positive_infinity == 1.0)
+assert(negative_wide_infinity == -1.0 and positive_wide_infinity == 1.0)
+assert(negative_zero == 0.0 and negative_wide_zero == 0.0)
+assert(widened == -1)

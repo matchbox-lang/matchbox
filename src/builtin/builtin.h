@@ -5,7 +5,7 @@
 #include "runtime/function_object.h"
 #include "runtime/value.h"
 
-#define BUILTINS_MAX 95
+#define BUILTINS_MAX 99
 #define BUILTIN_PARAMS_MAX 4
 #define BUILTIN_VARIADIC -1
 #define BUILTIN_TYPED_VARIADIC -2

@@ -867,6 +867,58 @@ void builtin_rad_f64(VM* vm, const FunctionObject* function, Value* frame)
     write_f64(frame, x);
 }
 
+void builtin_sign_f32(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float x = (a > 0) - (a < 0);
+
+    if (isnan(a)) {
+        x = a;
+    }
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtin_sign_f64(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = read_f64(frame, 0);
+    double x = (a > 0) - (a < 0);
+
+    if (isnan(a)) {
+        x = a;
+    }
+
+    write_f64(frame, x);
+}
+
+void builtin_sign_i32(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int32_t a = AS_SIGNED(frame[0]);
+    int32_t x = (a > 0) - (a < 0);
+
+    frame[-2] = SIGNED_VALUE(x);
+}
+
+void builtin_sign_i64(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    int64_t a = read_i64(frame, 0);
+    int64_t x = (a > 0) - (a < 0);
+
+    write_i64(frame, x);
+}
+
 void builtin_sin_f32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;

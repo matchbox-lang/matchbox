@@ -473,6 +473,46 @@ void builtin_hypot_f64(VM* vm, const FunctionObject* function, Value* frame)
     write_f64(frame, x);
 }
 
+void builtin_ilerp_f32(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float v = AS_F32(frame[2]);
+
+    if (a == b) {
+        frame[-2] = F32_VALUE(0.0f);
+
+        return;
+    }
+
+    float x = (v - a) / (b - a);
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtin_ilerp_f64(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = read_f64(frame, 0);
+    double b = read_f64(frame, 2);
+    double v = read_f64(frame, 4);
+
+    if (a == b) {
+        write_f64(frame, 0.0);
+
+        return;
+    }
+
+    double x = (v - a) / (b - a);
+
+    write_f64(frame, x);
+}
+
 void builtin_ldexp_f32(VM* vm, const FunctionObject* function, Value* frame)
 {
     (void)vm;
@@ -493,6 +533,32 @@ void builtin_ldexp_f64(VM* vm, const FunctionObject* function, Value* frame)
     double a = read_f64(frame, 0);
     int32_t exponent = AS_I32(frame[2]);
     double x = ldexp(a, exponent);
+
+    write_f64(frame, x);
+}
+
+void builtin_lerp_f32(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    float a = AS_F32(frame[0]);
+    float b = AS_F32(frame[1]);
+    float t = AS_F32(frame[2]);
+    float x = a + (b - a) * t;
+
+    frame[-2] = F32_VALUE(x);
+}
+
+void builtin_lerp_f64(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    double a = read_f64(frame, 0);
+    double b = read_f64(frame, 2);
+    double t = read_f64(frame, 4);
+    double x = a + (b - a) * t;
 
     write_f64(frame, x);
 }

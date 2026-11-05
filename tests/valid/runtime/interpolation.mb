@@ -1,0 +1,42 @@
+let start: f32 = 2.0
+let finish: f32 = 10.0
+let first: f32 = lerp(start, finish, 0.0)
+let last: f32 = lerp(start, finish, 1.0)
+let middle: f32 = lerp(start, finish, 0.25)
+let outside: f32 = lerp(start, finish, -0.5)
+let inverse: f32 = ilerp(start, finish, middle)
+let reversed: f32 = ilerp(finish, start, 12.0)
+
+assert(first == start)
+assert(last == finish)
+assert(middle == 4.0)
+assert(outside == -2.0)
+assert(inverse == 0.25)
+assert(reversed == -0.25)
+
+let wide_start: f64 = 2.000000000000001
+let wide_end: f64 = 10.0
+let wide_t: f64 = 1.5
+let wide_first: f64 = lerp(wide_start, finish, 0.0)
+let wide_last: f64 = lerp(start, wide_end, 1.0)
+let wide_outside: f64 = lerp(finish, start, wide_t)
+let wide_inverse: f64 = ilerp(wide_start, finish, wide_start)
+let wide_middle: f64 = ilerp(start, wide_end, 4.0)
+let wide_reversed: f64 = ilerp(finish, start, wide_outside)
+
+assert(wide_first == wide_start)
+assert(wide_last == wide_end)
+assert(wide_outside == -2.0)
+assert(wide_inverse == 0.0)
+assert(wide_middle == 0.25)
+assert(wide_reversed == 1.5)
+
+let equal: f32 = ilerp(start, start, start)
+let equal_outside: f32 = ilerp(start, start, finish)
+let wide_equal: f64 = ilerp(wide_start, wide_start, wide_start)
+let wide_equal_outside: f64 = ilerp(wide_start, wide_start, wide_end)
+
+assert(equal == 0.0)
+assert(equal_outside == 0.0)
+assert(wide_equal == 0.0)
+assert(wide_equal_outside == 0.0)

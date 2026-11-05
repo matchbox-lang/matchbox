@@ -60,9 +60,13 @@ static _Noreturn void expected_type_error(Token token)
     fatal_token_error(token, "", "Expected type but found ");
 }
 
-static _Noreturn void invalid_string_error(Token token)
+static _Noreturn void invalid_string_error(Token token, bool escape)
 {
-    fatal_source_error(token.line, token.column, "Invalid UTF-8 or escape in string literal");
+    if (escape) {
+        fatal_source_error(token.line, token.column, "Invalid escape sequence in string literal");
+    }
+
+    fatal_source_error(token.line, token.column, "Invalid UTF-8 encoding in string literal");
 }
 
 static void advance(Parser* parser)
@@ -314,7 +318,7 @@ static ASTNode* parse_string_segment(StringReader* reader)
 
         if (!valid) {
             free_memory(bytes);
-            invalid_string_error(reader->token);
+            invalid_string_error(reader->token, !reader->raw && c == '\\');
         }
 
         size_t encoded_length = encode_utf8(scalar.value, bytes + count);

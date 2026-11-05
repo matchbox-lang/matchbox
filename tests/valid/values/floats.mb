@@ -74,3 +74,9 @@ print(f64.EPSILON)
 print(small_exponent)
 print(large_exponent)
 print($"{-f32.EPSILON}")
+
+print($"{f32.NAN} {f32.INFINITY} {f32.NEG_INFINITY} {-f32.NAN}")
+print($"{f64.NAN} {f64.INFINITY} {f64.NEG_INFINITY} {-f64.NAN}")
+
+print(f32.NAN, " ", f32.INFINITY, " ", f32.NEG_INFINITY)
+print(f64.NAN, " ", f64.INFINITY, " ", f64.NEG_INFINITY)

@@ -1,9 +1,33 @@
 #include "common/float_format.h"
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static bool format_special_float(char* buffer, size_t size, double value)
+{
+    if (isnan(value)) {
+        snprintf(buffer, size, "NaN");
+
+        return true;
+    }
+
+    if (value == INFINITY) {
+        snprintf(buffer, size, "Infinity");
+
+        return true;
+    }
+
+    if (value == -INFINITY) {
+        snprintf(buffer, size, "-Infinity");
+
+        return true;
+    }
+
+    return false;
+}
 
 static void normalize_float_exponent(char* buffer, size_t size)
 {
@@ -71,6 +95,10 @@ static bool same_f64_bits(double left, double right)
 
 void format_shortest_f32(char* buffer, size_t size, float value)
 {
+    if (format_special_float(buffer, size, value)) {
+        return;
+    }
+
     char candidate[32];
     size_t shortest = SIZE_MAX;
 
@@ -101,6 +129,10 @@ void format_shortest_f32(char* buffer, size_t size, float value)
 
 void format_shortest_f64(char* buffer, size_t size, double value)
 {
+    if (format_special_float(buffer, size, value)) {
+        return;
+    }
+
     char candidate[32];
     size_t shortest = SIZE_MAX;
 

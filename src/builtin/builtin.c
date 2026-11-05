@@ -8,6 +8,7 @@
 
 static const Builtin builtins[BUILTINS_MAX] = {
     // I/O
+    {"input",       builtin_input,          0,  {},                                     TypeString},
     {"print",       builtin_print,         -1,  {TypeUnknown},                          TypeVoid},
 
     // Math                                                                             

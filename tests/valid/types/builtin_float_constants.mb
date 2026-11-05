@@ -1,0 +1,23 @@
+assert(f32.MIN == -3.4028234663852886e38 and f32.MAX == 3.4028234663852886e38)
+assert(f64.MIN == -1.7976931348623157e308 and f64.MAX == 1.7976931348623157e308)
+assert(f32.EPSILON == 1.1920928955078125e-7)
+assert(f64.EPSILON == 2.220446049250313e-16)
+assert(f32.MIN_POSITIVE == 1.1754943508222875e-38)
+assert(f64.MIN_POSITIVE == 2.2250738585072014e-308)
+assert(1.0 + f32.EPSILON > 1.0)
+assert(1.0 + f64.EPSILON > 1.0)
+assert(f32.INFINITY > f32.MAX and f32.NEG_INFINITY < f32.MIN)
+assert(f64.INFINITY > f64.MAX and f64.NEG_INFINITY < f64.MIN)
+assert(f32.NEG_INFINITY == -f32.INFINITY)
+assert(f64.NEG_INFINITY == -f64.INFINITY)
+assert(f32.NAN != f32.NAN and f64.NAN != f64.NAN)
+assert(not (f32.NAN < 0.0) and not (f32.NAN >= 0.0))
+assert(not (f64.NAN > 0.0) and not (f64.NAN <= 0.0))
+
+const LIMIT = f64.MAX
+let widened: f64 = f32.EPSILON
+let special = f32.NAN
+
+assert(LIMIT == f64.MAX)
+assert(widened == 1.1920928955078125e-7)
+assert(special != special)

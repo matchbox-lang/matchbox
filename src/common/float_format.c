@@ -5,6 +5,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void normalize_float_exponent(char* buffer, size_t size)
+{
+    if (size == 0) {
+        return;
+    }
+
+    char* exponent = strchr(buffer, 'e');
+    if (!exponent) {
+        return;
+    }
+
+    exponent++;
+    if (*exponent == '+' || *exponent == '-') {
+        exponent++;
+    }
+
+    char* digits = exponent;
+    while (digits[0] == '0' && digits[1] != '\0') {
+        digits++;
+    }
+
+    size_t length = strlen(digits) + 1;
+
+    memmove(exponent, digits, length);
+}
+
 static void append_float_fraction(char* buffer, size_t size)
 {
     if (size == 0) {
@@ -47,7 +73,9 @@ void format_shortest_f32(char* buffer, size_t size, float value)
 {
     char candidate[32];
     size_t shortest = SIZE_MAX;
+
     snprintf(buffer, size, "%.9g", value);
+    normalize_float_exponent(buffer, size);
 
     for (int precision = 1; precision <= 9; precision++) {
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
@@ -56,6 +84,8 @@ void format_shortest_f32(char* buffer, size_t size, float value)
         if (!same_f32_bits(value, parsed)) {
             continue;
         }
+
+        normalize_float_exponent(candidate, sizeof(candidate));
 
         size_t length = strlen(candidate);
         if (length >= shortest) {
@@ -73,7 +103,9 @@ void format_shortest_f64(char* buffer, size_t size, double value)
 {
     char candidate[32];
     size_t shortest = SIZE_MAX;
+
     snprintf(buffer, size, "%.17g", value);
+    normalize_float_exponent(buffer, size);
 
     for (int precision = 1; precision <= 17; precision++) {
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
@@ -82,6 +114,8 @@ void format_shortest_f64(char* buffer, size_t size, double value)
         if (!same_f64_bits(value, parsed)) {
             continue;
         }
+
+        normalize_float_exponent(candidate, sizeof(candidate));
 
         size_t length = strlen(candidate);
         if (length >= shortest) {

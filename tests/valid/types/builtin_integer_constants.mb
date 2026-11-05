@@ -1,0 +1,35 @@
+assert(i8.MIN == -128 and i8.MAX == 127)
+assert(i16.MIN == -32768 and i16.MAX == 32767)
+assert(i32.MIN == -2147483648 and i32.MAX == 2147483647)
+assert(i64.MIN == -9223372036854775808 and i64.MAX == 9223372036854775807)
+assert(u8.MIN == 0 and u8.MAX == 255)
+assert(u16.MIN == 0 and u16.MAX == 65535)
+assert(u32.MIN == 0 and u32.MAX == 4294967295)
+assert(u64.MIN == 0 and u64.MAX == 18446744073709551615)
+assert(usize.MIN == 0 and usize.MAX == usize(-1))
+assert(isize.MAX == isize(usize.MAX >> 1))
+assert(isize.MIN == -isize.MAX - 1)
+assert(char.MIN == '\0' and char.MAX == '\u{10FFFF}')
+
+const LOW = i64.MIN
+const HIGH = u64.MAX
+let widened: i16 = i8.MAX
+var copied = i8.MIN
+
+copied += 1
+
+assert(LOW == i64.MIN and HIGH == u64.MAX)
+assert(widened == 127 and copied == -127)
+assert(-i8.MAX == -127 and -i64.MAX == i64.MIN + 1)
+
+func default_limit(value: i16 = i16.MAX) -> i16 {
+    return value
+}
+
+assert(default_limit() == i16.MAX)
+
+func preserve_small(value: i8) -> i8 {
+    return value
+}
+
+assert(preserve_small(-i8.MAX) == -127)

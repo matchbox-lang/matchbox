@@ -5,6 +5,7 @@
 #include "common/util.h"
 #include "common/vector.h"
 #include "compiler/ast.h"
+#include "compiler/builtin_constant.h"
 #include "compiler/diagnostics.h"
 #include "compiler/lexer.h"
 #include "compiler/literal.h"
@@ -414,6 +415,36 @@ static ASTNode* parse_string_literal(Parser* parser)
     return ast;
 }
 
+static ASTNode* parse_type_expression(Parser* parser)
+{
+    Token type_token = parser->current_token;
+    DataType type = get_token_data_type(type_token.type);
+
+    consume(parser, type_token.type);
+
+    if (parser->current_token.type != TokenDot) {
+        return parse_function_call(parser);
+    }
+
+    consume(parser, TokenDot);
+
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
+    Token name = parser->current_token;
+
+    consume(parser, TokenIdentifier);
+
+    ASTNode* ast = resolve_builtin_constant(type, name);
+    if (!ast) {
+        fatal_source_error(name.line, name.column, "Unknown built-in constant %.*s.%.*s",
+            (int)type_token.length, type_token.chars, (int)name.length, name.chars);
+    }
+
+    return ast;
+}
+
 static ASTNode* parse_primary(Parser* parser)
 {
     switch (parser->current_token.type) {
@@ -438,8 +469,9 @@ static ASTNode* parse_primary(Parser* parser)
         case TokenKeywordF64:
         case TokenKeywordChar:
         case TokenKeywordString:
-            consume(parser, parser->current_token.type);
-            return parse_function_call(parser);
+        case TokenKeywordBool:
+        case TokenKeywordVoid:
+            return parse_type_expression(parser);
         case TokenStringLiteral:
             return parse_string_literal(parser);
         case TokenCharacterLiteral:

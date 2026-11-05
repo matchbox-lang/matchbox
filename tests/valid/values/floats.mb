@@ -65,3 +65,12 @@ print(whole64)
 print(0.0)
 print(-0.0)
 print(-25.0)
+
+let small_exponent: f64 = 1e-9
+let large_exponent: f64 = 1e9
+
+print(f32.EPSILON)
+print(f64.EPSILON)
+print(small_exponent)
+print(large_exponent)
+print($"{-f32.EPSILON}")

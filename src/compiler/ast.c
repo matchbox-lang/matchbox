@@ -129,6 +129,16 @@ ASTNode* create_conditional_node(Token token, ASTNode* condition, ASTNode* then_
     return ast;
 }
 
+ASTNode* create_conversion_node(Token token, ASTNode* expr, DataType type_id)
+{
+    ASTNode* ast = create_ast_node(ASTConversion);
+    ast->conversion.expr = expr;
+    ast->conversion.token = token;
+    ast->conversion.type_id = type_id;
+
+    return ast;
+}
+
 ASTNode* create_float_node(Token token, double value, DataType type_id)
 {
     ASTNode* ast = create_ast_node(ASTFloat);

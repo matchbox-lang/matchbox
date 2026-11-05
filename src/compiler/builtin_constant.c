@@ -72,10 +72,6 @@ ASTNode* resolve_builtin_constant(DataType type, Token name)
     }
 
     ASTNode* literal = create_constant_node(builtin_constants[index].value, type, name);
-    ASTNode* ast = create_ast_node(ASTConversion);
-    ast->conversion.expr = literal;
-    ast->conversion.token = name;
-    ast->conversion.type_id = type;
 
-    return ast;
+    return create_conversion_node(name, literal, type);
 }

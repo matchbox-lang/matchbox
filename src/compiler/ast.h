@@ -238,6 +238,7 @@ ASTNode* create_builtin_call_node(Token token, const Builtin* builtin);
 ASTNode* create_character_node(Token token, uint32_t value);
 ASTNode* create_compound_node(Scope* scope);
 ASTNode* create_conditional_node(Token token, ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch);
+ASTNode* create_conversion_node(Token token, ASTNode* expr, DataType type_id);
 ASTNode* create_float_node(Token token, double value, DataType type_id);
 ASTNode* create_function_call_node(Token token);
 ASTNode* create_function_definition_node(Token token, StringObject* id);

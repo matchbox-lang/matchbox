@@ -56,9 +56,6 @@ const char* get_token_type_name(TokenType type)
         case TokenKeywordAwait:         return "await";
         case TokenKeywordDefer:         return "defer";
         case TokenKeywordTry:           return "try";
-        case TokenKeywordCatch:         return "catch";
-        case TokenKeywordFinally:       return "finally";
-        case TokenKeywordThrow:         return "throw";
         case TokenKeywordVoid:          return "void";
         case TokenKeywordI8:            return "i8";
         case TokenKeywordI16:           return "i16";

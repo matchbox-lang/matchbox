@@ -1,0 +1,21 @@
+enum Result[T, E] {
+    Success(T)
+    Error(E)
+}
+
+func calculate() {
+    return Success(5)
+}
+
+func process() {
+    let value = try calculate()
+
+    return Success(value + 10)
+}
+
+match process() {
+    case Success(value):
+        print(value)
+    case Error(error):
+        print(error)
+}

@@ -3,9 +3,9 @@ enum Optional[T] {
     None
 }
 
-let num = Some(5)
+let value = Some(5)
 
-if let n = num {
+if let n = value {
     print(n)
 } else {
     print("None")

@@ -8,10 +8,10 @@ func write_count() {
     count += 1
 }
 
-func write_then_fail() {
+func write_then_fail() -> Result[i32, string] {
     write_count()
 
-    throw "Task failed"
+    return Error("Task failed")
 }
 
 func await_once() {
@@ -23,10 +23,12 @@ func await_once() {
 func failed_task() {
     let task = spawn write_then_fail()
 
-    try {
-        await task
-    } catch {
-        write_count()
+    match await task {
+        case Success(value):
+            print(value)
+        case Error(error):
+            print(error)
+            write_count()
     }
 }
 
@@ -35,11 +37,7 @@ func cancel_task() {
 
     task.cancel()
 
-    try {
-        await task
-    } catch {
-        print("Caught cancellation")
-    }
+    await task
 
     read_count()
 }

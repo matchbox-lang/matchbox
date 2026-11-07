@@ -7,31 +7,20 @@ class Resource {
 }
 
 func consume_resource(resource: Resource) {
+    print(resource.name)
 }
 
-func destruction_on_return(condition: bool) {
-    let resource = Resource("return")
+func process(result) {
+    let resource = Resource("return or error")
+    let value = try result
 
-    if condition {
-        return
-    }
+    return Success(value)
 }
 
-func destruction_on_throw() {
-    try {
-        let resource = Resource("throw")
-        throw "Failure"
-    } catch {
-        print("Caught failure")
-    }
-}
+let success = Success(5)
+let failure = Error("Failure")
+let resource = Resource("move")
 
-func destruction_after_move() {
-    let resource = Resource("move")
-    
-    consume_resource(resource)
-}
-
-destruction_on_return(false)
-destruction_on_throw()
-destruction_after_move()
+process(success)
+process(failure)
+consume_resource(resource)

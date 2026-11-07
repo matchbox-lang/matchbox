@@ -1,7 +1,6 @@
 print("runtime")
 
 func evaluate() {
-    print("constant")
     return 42
 }
 

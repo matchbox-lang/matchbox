@@ -17,6 +17,7 @@ typedef struct Builtin
     int param_count;
     DataType params[BUILTIN_PARAMS_MAX];
     DataType return_type_id;
+    bool constant_evaluable;
 } Builtin;
 
 bool is_builtin_name(const char* name);

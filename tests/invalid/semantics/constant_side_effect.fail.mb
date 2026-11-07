@@ -1,0 +1,10 @@
+func evaluate() {
+    print("Constant")
+    return 42
+}
+
+func indirect() {
+    return evaluate()
+}
+
+const VALUE = indirect()

@@ -1,0 +1,5 @@
+func evaluate(value: string = input()) {
+    return value
+}
+
+const VALUE = evaluate()

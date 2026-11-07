@@ -20,9 +20,14 @@ func sum(n) {
 
 const FACTORIAL_RESULT = factorial(5)
 const SUM_RESULT = sum(5)
+const ABS_RESULT = abs(-42)
+const TEXT_RESULT = string(SUM_RESULT)
 
 assert(FACTORIAL_RESULT == 120)
 assert(SUM_RESULT == 10)
+assert(ABS_RESULT == 42)
+
+print(TEXT_RESULT)
 
 let runtime_result = factorial(6)
 

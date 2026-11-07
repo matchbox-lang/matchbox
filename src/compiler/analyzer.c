@@ -2180,11 +2180,21 @@ static void validate_builtin_resolution(ASTNode* ast, const Builtin* builtin)
     symbol_error(" is undefined", ast->function_call.token);
 }
 
-static void analyze_builtin_call(ASTNode* ast)
+static void validate_constant_builtin(Analyzer* analyzer, const Builtin* builtin, Token token)
+{
+    if (!analyzer->constant_scope || builtin->constant_evaluable) {
+        return;
+    }
+
+    fatal_token_error(token, " during constant evaluation", "Cannot call builtin ");
+}
+
+static void analyze_builtin_call(Analyzer* analyzer, ASTNode* ast)
 {
     const Builtin* builtin = resolve_builtin_call(ast);
 
     validate_builtin_resolution(ast, builtin);
+    validate_constant_builtin(analyzer, builtin, ast->function_call.token);
     validate_builtin_call(ast, builtin, ast->function_call.token);
     convert_builtin_call(ast, builtin);
 }
@@ -2399,6 +2409,7 @@ static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
             validate_node_global_access(analyzer, ast->binary.right_expr);
             break;
         case ASTBuiltinCall:
+            validate_constant_builtin(analyzer, ast->builtin_call.builtin, ast->builtin_call.token);
             validate_global_access_in_nodes(analyzer, &ast->builtin_call.args);
             break;
         case ASTWhile:
@@ -2630,7 +2641,7 @@ static void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
     ASTNode* symbol = find_symbol(analyzer, id);
     
     if (!symbol) {
-        analyze_builtin_call(ast);
+        analyze_builtin_call(analyzer, ast);
         return;
     }
 

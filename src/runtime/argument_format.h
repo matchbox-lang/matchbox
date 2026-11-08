@@ -17,8 +17,8 @@ typedef struct ArgumentFormat
     size_t capacity;
 } ArgumentFormat;
 
-ArgumentFormat compile_argument_format(ModuleObject* module, DataType type);
-bool matches_argument_format(const ArgumentFormat* format, DataType type);
+ArgumentFormat compile_argument_format(ModuleObject* module, Type type);
+bool matches_argument_format(const ArgumentFormat* format, Type type);
 void format_arguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count);
 StringObject* concatenate_arguments(const Value* frame, const ArgumentFormat* formats, size_t count);
 void format_i8_argument(Writer* writer, const Value* argument);

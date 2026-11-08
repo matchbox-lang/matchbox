@@ -1,6 +1,7 @@
 #include "compiler/parser.h"
 #include "builtin/builtin.h"
 #include "builtin/string.h"
+#include "common/array_type.h"
 #include "common/memory.h"
 #include "common/util.h"
 #include "common/vector.h"
@@ -116,7 +117,7 @@ static bool is_end_of_file(Parser* parser)
     return parser->current_token.type == TokenIncompleteInput || parser->current_token.type == TokenEof;
 }
 
-static DataType infer_integer_literal_type(uint64_t value, bool negative)
+static TypeKind infer_integer_literal_type(uint64_t value, bool negative)
 {
     uint64_t limit32 = (uint64_t)INT32_MAX + negative;
     uint64_t limit64 = (uint64_t)INT64_MAX + negative;
@@ -132,7 +133,7 @@ static DataType infer_integer_literal_type(uint64_t value, bool negative)
     return TypeUnknown;
 }
 
-static DataType infer_float_literal_type(double value)
+static TypeKind infer_float_literal_type(double value)
 {
     if (value > FLT_MAX) {
         return TypeF64;
@@ -159,7 +160,7 @@ static ASTNode* parse_boolean_literal_node(Parser* parser, Token token)
 
 static ASTNode* finish_integer_literal_node(Parser* parser, Token token, uint64_t value)
 {
-    DataType type_id = infer_integer_literal_type(value, false);
+    Type type_id = {.kind = infer_integer_literal_type(value, false)};
     ASTNode* ast = create_integer_node(token, value, type_id);
 
     consume(parser, token.type);
@@ -177,7 +178,7 @@ static ASTNode* parse_integer_literal_node(Parser* parser, Token token)
 static ASTNode* parse_float_literal_node(Parser* parser, Token token)
 {
     double value = parse_float_literal(token);
-    DataType type_id = infer_float_literal_type(value);
+    Type type_id = {.kind = infer_float_literal_type(value)};
     ASTNode* ast = create_float_node(token, value, type_id);
 
     consume(parser, token.type);
@@ -423,7 +424,7 @@ static ASTNode* parse_string_literal(Parser* parser)
 static ASTNode* parse_type_expression(Parser* parser)
 {
     Token type_token = parser->current_token;
-    DataType type = get_token_data_type(type_token.type);
+    TypeKind kind = get_token_data_type(type_token.type);
 
     consume(parser, type_token.type);
 
@@ -441,7 +442,7 @@ static ASTNode* parse_type_expression(Parser* parser)
 
     consume(parser, TokenIdentifier);
 
-    ASTNode* ast = resolve_builtin_constant(type, name);
+    ASTNode* ast = resolve_builtin_constant(kind, name);
     if (!ast) {
         fatal_source_error(name.line, name.column, "Unknown built-in constant %.*s.%.*s",
             (int)type_token.length, type_token.chars, (int)name.length, name.chars);
@@ -908,7 +909,7 @@ static ASTNode* parse_postfix(Parser* parser)
     return ast;
 }
 
-static void parse_dimension(Parser* parser, ASTNode* ast)
+static void parse_dimension(Parser* parser, Vector* dimensions)
 {
     consume(parser, TokenLsquare);
 
@@ -918,14 +919,27 @@ static void parse_dimension(Parser* parser, ASTNode* ast)
         expected_expression_error(parser->current_token);
     }
 
-    push_vector_item(&ast->dimensions, count);
+    push_vector_item(dimensions, count);
     consume(parser, TokenRsquare);
 }
 
-static void parse_dimensions(Parser* parser, ASTNode* ast)
+static void parse_dimensions(Parser* parser, Type* type)
 {
+    if (parser->current_token.type != TokenLsquare) {
+        return;
+    }
+
+    ArrayType* array_type = allocate_zeroed_memory(1, sizeof(ArrayType) + 1);
+    Vector* dimensions = allocate_memory(sizeof(Vector));
+    array_type->element_type = *type;
+    array_type->dimensions = dimensions;
+
+    init_vector(dimensions);
+
+    *type = (Type){.kind = TypeArray, .array = array_type};
+
     while (parser->current_token.type == TokenLsquare) {
-        parse_dimension(parser, ast);
+        parse_dimension(parser, dimensions);
     }
 }
 
@@ -964,7 +978,7 @@ static ASTNode* parse_prefix(Parser* parser)
     }
 
     if (token.type == TokenMinus && expr->type == ASTInteger) {
-        expr->integer_literal.type_id = infer_integer_literal_type(expr->integer_literal.value, true);
+        expr->integer_literal.type_id = (Type){.kind = infer_integer_literal_type(expr->integer_literal.value, true)};
     }
 
     return create_prefix_node(token, expr);
@@ -1227,10 +1241,10 @@ static ASTNode* parse_parameter(Parser* parser)
         consume(parser, TokenColon);
 
         ast->parameter.reference_type = parse_reference_type(parser);
-        ast->parameter.type_id = get_token_data_type(parser->current_token.type);
+        ast->parameter.type_id = (Type){.kind = get_token_data_type(parser->current_token.type)};
 
         consume_type(parser);
-        parse_dimensions(parser, ast);
+        parse_dimensions(parser, &ast->parameter.type_id);
     }
 
     if (!parse_parameter_default(parser, ast)) {
@@ -1311,10 +1325,10 @@ static void parse_function_return_type(Parser* parser, ASTNode* ast)
     consume(parser, TokenArrow);
 
     ast->function_definition.return_reference_type = parse_reference_type(parser);
-    ast->function_definition.return_type_id = get_token_data_type(parser->current_token.type);
+    ast->function_definition.return_type_id = (Type){.kind = get_token_data_type(parser->current_token.type)};
 
     consume_type(parser);
-    parse_dimensions(parser, ast);
+    parse_dimensions(parser, &ast->function_definition.return_type_id);
 
     ast->function_definition.has_explicit_return_type = true;
 }
@@ -1458,7 +1472,7 @@ static ASTNode* create_test_definition_node(const Parser* parser, Token token)
 
     ast->function_definition.is_test = true;
     ast->function_definition.has_explicit_return_type = true;
-    ast->function_definition.return_type_id = TypeVoid;
+    ast->function_definition.return_type_id = (Type){.kind = TypeVoid};
 
     return ast;
 }
@@ -1518,10 +1532,10 @@ static void parse_variable_type(Parser* parser, ASTNode* ast)
         consume(parser, TokenColon);
 
         ast->variable_definition.reference_type = parse_reference_type(parser);
-        ast->variable_definition.type_id = get_token_data_type(parser->current_token.type);
+        ast->variable_definition.type_id = (Type){.kind = get_token_data_type(parser->current_token.type)};
 
         consume_type(parser);
-        parse_dimensions(parser, ast);
+        parse_dimensions(parser, &ast->variable_definition.type_id);
 
         return;
     }
@@ -1542,8 +1556,8 @@ static bool parse_variable_initializer(Parser* parser, ASTNode* ast)
 
     ast->variable_definition.expr = create_ast_node(ASTNone);
 
-    if (ast->variable_definition.type_id == TypeUnknown) {
-        ast->variable_definition.type_id = TypeI32;
+    if (ast->variable_definition.type_id.kind == TypeUnknown) {
+        ast->variable_definition.type_id = (Type){.kind = TypeI32};
     }
 
     return true;
@@ -1580,7 +1594,7 @@ static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword
     parse_variable_type(parser, ast);
 
     bool requires_initializer = ast->variable_definition.fixed
-        && (ast->variable_definition.constant || !ast->dimensions.count);
+        && (ast->variable_definition.constant || ast->variable_definition.type_id.kind != TypeArray);
 
     if (requires_initializer && parser->current_token.type != TokenEqual) {
         expected_token_error(TokenEqual, parser->current_token);

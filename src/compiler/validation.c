@@ -13,12 +13,12 @@ static void validate_nodes(const Vector* nodes, size_t start, bool check_zero)
     }
 }
 
-static void validate_zero_divisor(const ASTNode* divisor, Token operator, DataType type, bool check_zero)
+static void validate_zero_divisor(const ASTNode* divisor, Token operator, Type type, bool check_zero)
 {
     bool division = operator.type == TokenSlash || operator.type == TokenSlashEqual;
     bool remainder = operator.type == TokenPercent || operator.type == TokenPercentEqual;
 
-    if (!check_zero || !is_integer_type(type) || (!division && !remainder)) {
+    if (!check_zero || !is_integer_type(type.kind) || (!division && !remainder)) {
         return;
     }
 
@@ -68,9 +68,9 @@ static void validate_conversion(const ASTNode* ast, bool check_zero)
 
     ConstantValue value = {0};
     bool constant = evaluate_constant(ast, &value);
-    DataType source = get_node_data_type(ast->conversion.expr);
+    Type source = get_node_data_type(ast->conversion.expr);
 
-    if (constant || ast->conversion.type_id != TypeChar || source == TypeU8 || source == TypeChar) {
+    if (constant || ast->conversion.type_id.kind != TypeChar || source.kind == TypeU8 || source.kind == TypeChar) {
         return;
     }
 
@@ -83,7 +83,7 @@ static void validate_assignment(const ASTNode* ast, bool check_zero)
 {
     validate_node(ast->assignment.expr, check_zero);
 
-    DataType type = get_node_data_type(ast->assignment.symbol);
+    Type type = get_node_data_type(ast->assignment.symbol);
 
     validate_zero_divisor(ast->assignment.expr, ast->assignment.operator, type, check_zero);
 }

@@ -26,14 +26,14 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions);
 static void analyze_node(Analyzer* analyzer, ASTNode* ast);
 static void analyze_array(Analyzer* analyzer, ASTNode* ast);
 static void consume_array(ASTNode* ast);
-static void resolve_dimensions(Analyzer* analyzer, ASTNode* ast, DataType* type);
-static void apply_array_type(ASTNode* ast, DataType type);
+static void resolve_dimensions(Analyzer* analyzer, Type* type);
+static void apply_array_type(ASTNode* ast, Type type);
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
 static void activate_reference_access(ASTNode* ast);
 static void transfer_exclusive_reference(ASTNode* expression);
 static void update_boolean_match_coverage(MatchArm* arm, bool* covers_false, bool* covers_true);
 static ASTNode* find_node_return(ASTNode* ast);
-static void apply_declared_type(ASTNode* expression, DataType type, ReferenceType reference_type);
+static void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type);
 
 typedef struct FunctionPath
 {
@@ -78,7 +78,7 @@ typedef struct ReferenceLifetimes
     Vector* releases;
 } ReferenceLifetimes;
 
-static _Noreturn void binary_type_error(Token token, DataType left, DataType right)
+static _Noreturn void binary_type_error(Token token, Type left, Type right)
 {
     const char* left_name = get_data_type_name(left);
     const char* right_name = get_data_type_name(right);
@@ -91,7 +91,7 @@ static _Noreturn void binding_access_error(char* message, Token token, char* det
     fatal_token_error(token, detail, "%s", message);
 }
 
-static _Noreturn void float_literal_out_of_range_error(Token token, DataType type)
+static _Noreturn void float_literal_out_of_range_error(Token token, Type type)
 {
     const char* type_name = get_data_type_name(type);
 
@@ -103,7 +103,7 @@ static _Noreturn void float_literal_requires_type_error(Token token)
     fatal_source_error(token.line, token.column, "Float literal requires an explicit type");
 }
 
-static _Noreturn void implicit_conversion_error(Token token, DataType source, DataType destination)
+static _Noreturn void implicit_conversion_error(Token token, Type source, Type destination)
 {
     const char* source_name = get_data_type_name(source);
     const char* destination_name = get_data_type_name(destination);
@@ -111,14 +111,14 @@ static _Noreturn void implicit_conversion_error(Token token, DataType source, Da
     fatal_token_error(token, "", "Cannot implicitly convert %s to %s for binding ", source_name, destination_name);
 }
 
-static _Noreturn void integer_literal_not_representable_error(Token token, DataType type)
+static _Noreturn void integer_literal_not_representable_error(Token token, Type type)
 {
     const char* type_name = get_data_type_name(type);
 
     fatal_source_error(token.line, token.column, "Integer literal cannot be represented as %s", type_name);
 }
 
-static _Noreturn void integer_literal_out_of_range_error(Token token, DataType type)
+static _Noreturn void integer_literal_out_of_range_error(Token token, Type type)
 {
     const char* type_name = get_data_type_name(type);
 
@@ -165,7 +165,7 @@ static _Noreturn void symbol_error(const char* detail, Token token)
     fatal_token_error(token, detail, "");
 }
 
-static _Noreturn void unsupported_explicit_conversion_error(Token token, DataType source, DataType destination)
+static _Noreturn void unsupported_explicit_conversion_error(Token token, Type source, Type destination)
 {
     const char* source_name = get_data_type_name(source);
     const char* destination_name = get_data_type_name(destination);
@@ -178,7 +178,7 @@ static ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
 {
     *negative = false;
 
-    if (expression->type == ASTInteger && is_signed_integer_type(expression->integer_literal.type_id)
+    if (expression->type == ASTInteger && is_signed_integer_type(expression->integer_literal.type_id.kind)
         && expression->integer_literal.value > INT64_MAX) {
         return NULL;
     }
@@ -197,15 +197,15 @@ static ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
     return expression->prefix.expr;
 }
 
-static bool integer_literal_fits_type(uint64_t value, bool negative, DataType type)
+static bool integer_literal_fits_type(uint64_t value, bool negative, Type type)
 {
-    size_t bits = get_integer_type_size(type) * CHAR_BIT;
+    size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
 
-    if (!bits || (!is_signed_integer_type(type) && negative)) {
+    if (!bits || (!is_signed_integer_type(type.kind) && negative)) {
         return false;
     }
 
-    if (!is_signed_integer_type(type)) {
+    if (!is_signed_integer_type(type.kind)) {
         return bits == 64 || value <= (UINT64_C(1) << bits) - 1;
     }
 
@@ -214,13 +214,13 @@ static bool integer_literal_fits_type(uint64_t value, bool negative, DataType ty
     return negative ? value <= limit : value < limit;
 }
 
-static bool integer_literal_fits_float(uint64_t value, DataType type)
+static bool integer_literal_fits_float(uint64_t value, Type type)
 {
     size_t precision;
 
-    if (type == TypeF32) {
+    if (type.kind == TypeF32) {
         precision = FLT_MANT_DIG;
-    } else if (type == TypeF64) {
+    } else if (type.kind == TypeF64) {
         precision = DBL_MANT_DIG;
     } else {
         return false;
@@ -244,7 +244,7 @@ static bool integer_literal_fits_float(uint64_t value, DataType type)
     return (value & mask) == 0;
 }
 
-static bool apply_integer_literal_type(ASTNode* expression, DataType type)
+static bool apply_integer_literal_type(ASTNode* expression, Type type)
 {
     bool negative;
     ASTNode* literal = get_integer_literal(expression, &negative);
@@ -253,18 +253,18 @@ static bool apply_integer_literal_type(ASTNode* expression, DataType type)
         return false;
     }
 
-    if (negative && is_integer_type(type) && !is_signed_integer_type(type)) {
+    if (negative && is_integer_type(type.kind) && !is_signed_integer_type(type.kind)) {
         negative_unsigned_integer_error(literal->integer_literal.token);
     }
 
     bool fits_integer = integer_literal_fits_type(literal->integer_literal.value, negative, type);
     bool fits_float = integer_literal_fits_float(literal->integer_literal.value, type);
 
-    if (is_float_type(type) && !fits_float) {
+    if (is_float_type(type.kind) && !fits_float) {
         integer_literal_not_representable_error(literal->integer_literal.token, type);
     }
 
-    if (is_integer_type(type) && !fits_integer) {
+    if (is_integer_type(type.kind) && !fits_integer) {
         integer_literal_out_of_range_error(literal->integer_literal.token, type);
     }
 
@@ -286,9 +286,9 @@ static ASTNode* get_float_literal(ASTNode* expression)
     return expression;
 }
 
-static void apply_literal_type(ASTNode* expression, DataType type)
+static void apply_literal_type(ASTNode* expression, Type type)
 {
-    if (expression->type == ASTArray && is_array_type(type)) {
+    if (expression->type == ASTArray && is_array_type(type.kind)) {
         apply_array_type(expression, type);
 
         return;
@@ -300,17 +300,17 @@ static void apply_literal_type(ASTNode* expression, DataType type)
         return;
     }
 
-    if (is_integer_type(type) || is_float_type(type)) {
+    if (is_integer_type(type.kind) || is_float_type(type.kind)) {
         apply_integer_literal_type(expression, type);
     }
 
     expression = get_float_literal(expression);
 
-    if (!expression || !is_float_type(type)) {
+    if (!expression || !is_float_type(type.kind)) {
         return;
     }
 
-    if (type == TypeF32 && expression->float_literal.value > FLT_MAX) {
+    if (type.kind == TypeF32 && expression->float_literal.value > FLT_MAX) {
         float_literal_out_of_range_error(expression->float_literal.token, type);
     }
 
@@ -892,7 +892,7 @@ static Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* b
     return previous_scope;
 }
 
-static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, DataType type, bool moves_result)
+static Type analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Type type, bool moves_result)
 {
     size_t count = count_vector(&branch->compound.statements);
 
@@ -905,37 +905,37 @@ static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Dat
     analyze_expression_nodes(analyzer, &branch->compound.statements);
 
     if (!count) {
-        return TypeVoid;
+        return (Type){.kind = TypeVoid};
     }
 
     ASTNode* result = get_vector_at(&branch->compound.statements, count - 1);
-    DataType result_type = get_node_data_type(result);
+    Type result_type = get_node_data_type(result);
 
     if (moves_result) {
         consume_array(result);
     }
 
-    if (result_type == type || can_implicitly_widen_type(result_type, type)) {
+    if (types_equal(result_type, type) || can_implicitly_widen_type(result_type.kind, type.kind)) {
         return type;
     }
 
     return result_type;
 }
 
-static DataType analyze_scoped_branch(
-    Analyzer* analyzer, ASTNode* branch, ASTNode* binding, DataType type, bool moves_result)
+static Type analyze_scoped_branch(
+    Analyzer* analyzer, ASTNode* branch, ASTNode* binding, Type type, bool moves_result)
 {
     Scope* previous_scope = enter_branch_scope(analyzer, branch, binding);
-    DataType result_type = analyze_branch_contents(analyzer, branch, type, moves_result);
+    Type result_type = analyze_branch_contents(analyzer, branch, type, moves_result);
     analyzer->current_scope = previous_scope;
 
     return result_type;
 }
 
-static DataType analyze_else_branch(Analyzer* analyzer, ASTNode* branch, DataType type, bool moves_result)
+static Type analyze_else_branch(Analyzer* analyzer, ASTNode* branch, Type type, bool moves_result)
 {
     if (!branch) {
-        return TypeVoid;
+        return (Type){.kind = TypeVoid};
     }
 
     if (branch->type == ASTConditional) {
@@ -1125,8 +1125,8 @@ static void analyze_ownership_branch(
     Analyzer* analyzer,
     Vector* states,
     ASTNode* branch,
-    DataType expected_type,
-    DataType* type,
+    Type expected_type,
+    Type* type,
     bool moves_result)
 {
     apply_ownership_states(states);
@@ -1218,13 +1218,13 @@ static void analyze_while(Analyzer* analyzer, ASTNode* ast)
     copy_ownership_state(&body_states, &entry_states);
     analyze_node(analyzer, ast->while_statement.condition);
 
-    DataType type = get_node_data_type(ast->while_statement.condition);
+    Type type = get_node_data_type(ast->while_statement.condition);
 
-    if (type != TypeBool) {
+    if (type.kind != TypeBool) {
         semantic_error("While condition must have type bool", ast->while_statement.token);
     }
 
-    analyze_scoped_branch(analyzer, ast->while_statement.body, NULL, TypeVoid, false);
+    analyze_scoped_branch(analyzer, ast->while_statement.body, NULL, (Type){.kind = TypeVoid}, false);
     validate_loop_ownership(&entry_states, ast->while_statement.token);
     update_ownership_states(&body_states);
 
@@ -1286,7 +1286,7 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     validate_conditional_expression(ast);
     analyze_node(analyzer, ast->conditional.condition);
 
-    if (get_node_data_type(ast->conditional.condition) != TypeBool) {
+    if (get_node_data_type(ast->conditional.condition).kind != TypeBool) {
         semantic_error("Condition must have type bool", ast->conditional.token);
     }
 
@@ -1300,8 +1300,8 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     analyzer->next_node = continuation_start;
     release_references_dead_on_branch(analyzer, &then_states, ast->conditional.then_branch, NULL);
 
-    DataType type = ast->conditional.type_id;
-    DataType then_type = analyze_scoped_branch(
+    Type type = ast->conditional.type_id;
+    Type then_type = analyze_scoped_branch(
         analyzer, ast->conditional.then_branch, NULL, type, ast->conditional.expression);
 
     update_ownership_states(&then_states);
@@ -1309,7 +1309,7 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     analyzer->current_nodes = continuation_nodes;
     analyzer->next_node = continuation_start;
 
-    DataType else_type;
+    Type else_type;
 
     analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, &else_type,
         ast->conditional.expression);
@@ -1318,7 +1318,7 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     free_ownership_states(&else_states);
 
     if (!ast->conditional.expression) {
-        ast->conditional.type_id = TypeVoid;
+        ast->conditional.type_id = (Type){.kind = TypeVoid};
 
         return;
     }
@@ -1327,16 +1327,16 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
         semantic_token_error("If expression requires an else branch ", ast->conditional.token);
     }
 
-    if (then_type == TypeVoid || else_type == TypeVoid) {
+    if (then_type.kind == TypeVoid || else_type.kind == TypeVoid) {
         semantic_token_error("Conditional expression branch must produce a value ", ast->conditional.token);
     }
 
-    if (then_type != else_type) {
+    if (!types_equal(then_type, else_type)) {
         semantic_token_error("Conditional expression branches have incompatible types ", ast->conditional.token);
     }
 
-    bool has_expected_type = ast->conditional.type_id != TypeUnknown
-        && ast->conditional.type_id != TypeVoid;
+    bool has_expected_type = ast->conditional.type_id.kind != TypeUnknown
+        && ast->conditional.type_id.kind != TypeVoid;
     ASTNode* then_result = get_branch_result(ast->conditional.then_branch);
     ASTNode* else_result = get_branch_result(ast->conditional.else_branch);
     merge_branch_reference(ast, then_result, true, has_expected_type, ast->conditional.token);
@@ -1408,7 +1408,7 @@ static bool match_has_boolean_subject(ASTNode* ast)
         return true;
     }
 
-    return get_node_data_type(ast->match.subject) == TypeBool;
+    return get_node_data_type(ast->match.subject).kind == TypeBool;
 }
 
 static bool match_covers_both_booleans(ASTNode* ast)
@@ -1434,19 +1434,19 @@ static bool match_is_exhaustive(ASTNode* ast)
     return match_has_wildcard(ast) || match_covers_both_booleans(ast);
 }
 
-static void merge_match_branch_type(ASTNode* ast, DataType branch_type, DataType* result_type)
+static void merge_match_branch_type(ASTNode* ast, Type branch_type, Type* result_type)
 {
-    if (branch_type == TypeVoid) {
+    if (branch_type.kind == TypeVoid) {
         semantic_token_error("Match expression arm must produce a value ", ast->match.token);
     }
 
-    if (*result_type == TypeUnknown) {
+    if (result_type->kind == TypeUnknown) {
         *result_type = branch_type;
 
         return;
     }
 
-    if (*result_type != branch_type) {
+    if (!types_equal(*result_type, branch_type)) {
         semantic_token_error("Match expression arms have incompatible types ", ast->match.token);
     }
 }
@@ -1461,17 +1461,19 @@ static void analyze_match_pattern_node(Analyzer* analyzer, ASTNode* ast, ASTNode
     }
 
     analyze_node(analyzer, pattern);
-    DataType expected = ast->match.subject ? get_node_data_type(ast->match.subject) : TypeBool;
+    Type expected = ast->match.subject ? get_node_data_type(ast->match.subject) : (Type){.kind = TypeBool};
 
-    if (is_integer_type(expected)) {
+    if (is_integer_type(expected.kind)) {
         apply_integer_literal_type(pattern, expected);
     }
 
-    if (expected == TypeString) {
+    if (expected.kind == TypeString) {
         semantic_token_error("String match patterns are not supported ", ast->match.token);
     }
 
-    if (get_node_data_type(pattern) != expected) {
+    Type pattern_type = get_node_data_type(pattern);
+
+    if (!types_equal(pattern_type, expected)) {
         semantic_token_error("Match pattern type does not match subject ", ast->match.token);
     }
 }
@@ -1491,14 +1493,14 @@ static void restore_match_continuation(Analyzer* analyzer, Vector* continuation_
     analyzer->next_node = continuation_start;
 }
 
-static void merge_match_result(ASTNode* ast, ASTNode* branch, DataType branch_type, DataType* result_type)
+static void merge_match_result(ASTNode* ast, ASTNode* branch, Type branch_type, Type* result_type)
 {
     if (!ast->match.expression) {
         return;
     }
 
-    bool first = *result_type == TypeUnknown;
-    bool has_expected_type = ast->match.type_id != TypeUnknown && ast->match.type_id != TypeVoid;
+    bool first = result_type->kind == TypeUnknown;
+    bool has_expected_type = ast->match.type_id.kind != TypeUnknown && ast->match.type_id.kind != TypeVoid;
     ASTNode* result = get_branch_result(branch);
     
     merge_branch_reference(ast, result, first, has_expected_type, ast->match.token);
@@ -1513,7 +1515,7 @@ static void analyze_match_guard(Analyzer* analyzer, MatchArm* arm, Vector* fallt
 
     analyze_node(analyzer, arm->guard);
 
-    if (get_node_data_type(arm->guard) != TypeBool) {
+    if (get_node_data_type(arm->guard).kind != TypeBool) {
         semantic_error("Match guard requires a bool operand", arm->guard_token);
     }
 
@@ -1535,7 +1537,7 @@ static void analyze_match_guard(Analyzer* analyzer, MatchArm* arm, Vector* fallt
 }
 
 static void analyze_match_arm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, Vector* continuation_nodes,
-    size_t continuation_start, DataType* result_type, Vector* fallthrough_states)
+    size_t continuation_start, Type* result_type, Vector* fallthrough_states)
 {
     restore_match_continuation(analyzer, continuation_nodes, continuation_start);
     analyze_match_pattern(analyzer, ast, arm);
@@ -1548,14 +1550,14 @@ static void analyze_match_arm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, V
 
     analyze_match_guard(analyzer, arm, fallthrough_states);
 
-    DataType branch_type = analyze_branch_contents(analyzer, arm->branch, ast->match.type_id, ast->match.expression);
+    Type branch_type = analyze_branch_contents(analyzer, arm->branch, ast->match.type_id, ast->match.expression);
     analyzer->current_scope = previous_scope;
 
     merge_match_result(ast, arm->branch, branch_type, result_type);
 }
 
 static void analyze_match_arm_ownership(Analyzer* analyzer, ASTNode* ast, MatchArm* arm,
-    Vector* continuation_nodes, size_t continuation_start, DataType* result_type,
+    Vector* continuation_nodes, size_t continuation_start, Type* result_type,
     Vector* initial_states, Vector* merged_states, bool* merged_initialized)
 {
     Vector states;
@@ -1573,7 +1575,7 @@ static void analyze_match_arm_ownership(Analyzer* analyzer, ASTNode* ast, MatchA
 }
 
 static void analyze_match_arms(Analyzer* analyzer, ASTNode* ast, Vector* continuation_nodes, size_t continuation_start,
-    DataType* result_type, Vector* initial_states, Vector* merged_states, bool* merged_initialized)
+    Type* result_type, Vector* initial_states, Vector* merged_states, bool* merged_initialized)
 {
     size_t count = count_vector(&ast->match.arms);
 
@@ -1593,10 +1595,10 @@ static void analyze_match_subject(Analyzer* analyzer, ASTNode* ast)
     analyze_node(analyzer, ast->match.subject);
 }
 
-static void finalize_match_type(ASTNode* ast, DataType result_type)
+static void finalize_match_type(ASTNode* ast, Type result_type)
 {
     if (!ast->match.expression) {
-        ast->match.type_id = TypeVoid;
+        ast->match.type_id = (Type){.kind = TypeVoid};
 
         return;
     }
@@ -1638,7 +1640,7 @@ static void analyze_match(Analyzer* analyzer, ASTNode* ast)
 {
     Vector* continuation_nodes = analyzer->current_nodes;
     size_t continuation_start = analyzer->next_node;
-    DataType result_type = TypeUnknown;
+    Type result_type = (Type){.kind = TypeUnknown};
     Vector initial_states;
     Vector merged_states;
     bool merged_initialized = false;
@@ -1653,25 +1655,25 @@ static void analyze_match(Analyzer* analyzer, ASTNode* ast)
     finalize_match_type(ast, result_type);
 }
 
-static DataType get_float_binary_type(DataType left_type, DataType right_type)
+static Type get_float_binary_type(Type left_type, Type right_type)
 {
-    if (left_type == TypeF64 || right_type == TypeF64) {
-        return TypeF64;
+    if (left_type.kind == TypeF64 || right_type.kind == TypeF64) {
+        return (Type){.kind = TypeF64};
     }
 
-    return TypeF32;
+    return (Type){.kind = TypeF32};
 }
 
 static void apply_binary_float_literal_types(ASTNode* left, ASTNode* right)
 {
-    DataType left_type = get_node_data_type(left);
-    DataType right_type = get_node_data_type(right);
+    Type left_type = get_node_data_type(left);
+    Type right_type = get_node_data_type(right);
 
-    if (!is_float_type(left_type) || !is_float_type(right_type)) {
+    if (!is_float_type(left_type.kind) || !is_float_type(right_type.kind)) {
         return;
     }
 
-    DataType type = get_float_binary_type(left_type, right_type);
+    Type type = get_float_binary_type(left_type, right_type);
 
     if (!get_float_literal(left)) {
         type = left_type;
@@ -1687,13 +1689,13 @@ static void apply_binary_float_literal_types(ASTNode* left, ASTNode* right)
 
 static void apply_binary_integer_literal_types(ASTNode* left, ASTNode* right)
 {
-    DataType left_type = get_node_data_type(left);
-    DataType right_type = get_node_data_type(right);
+    Type left_type = get_node_data_type(left);
+    Type right_type = get_node_data_type(right);
     bool negative;
     ASTNode* left_literal = get_integer_literal(left, &negative);
     ASTNode* right_literal = get_integer_literal(right, &negative);
-    bool same_signedness = is_signed_integer_type(left_type) == is_signed_integer_type(right_type);
-    bool widen_left = same_signedness && can_implicitly_widen_integer(left_type, right_type);
+    bool same_signedness = is_signed_integer_type(left_type.kind) == is_signed_integer_type(right_type.kind);
+    bool widen_left = same_signedness && can_implicitly_widen_integer(left_type.kind, right_type.kind);
 
     if (left_literal && right_literal && widen_left) {
         apply_integer_literal_type(left, right_type);
@@ -1701,13 +1703,13 @@ static void apply_binary_integer_literal_types(ASTNode* left, ASTNode* right)
         left_type = right_type;
     }
 
-    if (is_integer_type(left_type)) {
+    if (is_integer_type(left_type.kind)) {
         apply_integer_literal_type(right, left_type);
 
         right_type = get_node_data_type(right);
     }
 
-    if (is_integer_type(right_type)) {
+    if (is_integer_type(right_type.kind)) {
         apply_integer_literal_type(left, right_type);
     }
 }
@@ -1717,11 +1719,11 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
     analyze_node(analyzer, ast->binary.left_expr);
     analyze_node(analyzer, ast->binary.right_expr);
 
-    DataType left_type = get_node_data_type(ast->binary.left_expr);
-    DataType right_type = get_node_data_type(ast->binary.right_expr);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
     TokenType operator_type = ast->binary.operator.type;
 
-    if (is_array_type(left_type) || is_array_type(right_type)) {
+    if (is_array_type(left_type.kind) || is_array_type(right_type.kind)) {
         semantic_error("Binary operators are not supported for arrays", ast->binary.operator);
     }
 
@@ -1731,11 +1733,11 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
         apply_binary_float_literal_types(ast->binary.left_expr, ast->binary.right_expr);
     }
 
-    bool left_text = left_type == TypeChar || left_type == TypeString;
-    bool right_text = right_type == TypeChar || right_type == TypeString;
+    bool left_text = left_type.kind == TypeChar || left_type.kind == TypeString;
+    bool right_text = right_type.kind == TypeChar || right_type.kind == TypeString;
 
     if (ast->binary.operator.type == TokenPlus && left_text && right_text) {
-        ast->binary.type_id = TypeString;
+        ast->binary.type_id = (Type){.kind = TypeString};
 
         return;
     }
@@ -1744,36 +1746,37 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
 
     left_type = get_node_data_type(ast->binary.left_expr);
     right_type = get_node_data_type(ast->binary.right_expr);
-    DataType common_type = get_common_numeric_type(left_type, right_type);
-    bool float_operands = is_float_type(common_type);
+    Type common_type = {.kind = get_common_numeric_type(left_type.kind, right_type.kind)};
+    bool float_operands = is_float_type(common_type.kind);
 
-    if (left_type != right_type && common_type == TypeUnknown) {
+    if (!types_equal(left_type, right_type) && common_type.kind == TypeUnknown) {
         binary_type_error(ast->binary.operator, left_type, right_type);
     }
 
-    if (common_type == TypeUnknown) {
+    if (common_type.kind == TypeUnknown) {
         common_type = left_type;
     }
 
     ast->binary.operand_type = common_type;
 
-    if (left_type == TypeString) {
+    if (left_type.kind == TypeString) {
         semantic_error("Invalid operator for string operands", ast->binary.operator);
     }
 
-    if (left_type == TypeChar && !is_character_comparison_token(ast->binary.operator.type)) {
+    if (left_type.kind == TypeChar && !is_character_comparison_token(ast->binary.operator.type)) {
         semantic_error("Invalid operator for char operands", ast->binary.operator);
     }
 
-    if (is_logical_token(ast->binary.operator.type) && left_type != TypeBool) {
+    if (is_logical_token(ast->binary.operator.type) && left_type.kind != TypeBool) {
         semantic_error("Logical operators require bool operands", ast->binary.operator);
     }
 
-    if (is_comparison_token(ast->binary.operator.type) && !is_integer_type(left_type) && !float_operands && left_type != TypeChar) {
+    if (is_comparison_token(ast->binary.operator.type) && !is_integer_type(left_type.kind)
+        && !float_operands && left_type.kind != TypeChar) {
         semantic_error("Comparison operators require compatible operand types", ast->binary.operator);
     }
 
-    if (ast->binary.operator.type == TokenPower && left_type != TypeI32) {
+    if (ast->binary.operator.type == TokenPower && left_type.kind != TypeI32) {
         semantic_error("Invalid operands for binary operator", ast->binary.operator);
     }
 
@@ -1786,11 +1789,11 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
     ast->binary.type_id = common_type;
 
     if (ast->binary.operator.type == TokenSpaceship) {
-        ast->binary.type_id = TypeI32;
+        ast->binary.type_id = (Type){.kind = TypeI32};
     }
 
     if (is_bool_operator_token(ast->binary.operator.type)) {
-        ast->binary.type_id = TypeBool;
+        ast->binary.type_id = (Type){.kind = TypeBool};
     }
 }
 
@@ -1978,9 +1981,9 @@ static void analyze_parameter_default(Analyzer* analyzer, ASTNode* ast)
     analyze_node(analyzer, value);
     analyzer->current_scope = previous_scope;
 
-    DataType source = get_node_data_type(value);
-    DataType destination = ast->parameter.type_id;
-    bool compatible = source == destination || can_implicitly_widen_type(source, destination);
+    Type source = get_node_data_type(value);
+    Type destination = ast->parameter.type_id;
+    bool compatible = types_equal(source, destination) || can_implicitly_widen_type(source.kind, destination.kind);
 
     if (!compatible) {
         semantic_token_error("Default value type does not match parameter ", ast->parameter.token);
@@ -1989,7 +1992,7 @@ static void analyze_parameter_default(Analyzer* analyzer, ASTNode* ast)
 
 static void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 {
-    resolve_dimensions(analyzer, ast, &ast->parameter.type_id);
+    resolve_dimensions(analyzer, &ast->parameter.type_id);
 
     StringView id = get_string_view(ast->parameter.id);
 
@@ -2009,13 +2012,13 @@ static void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
     set_local_symbol(analyzer->current_scope, id, ast);
 }
 
-static void validate_typed_variadic_argument(ASTNode* argument, DataType type, Token token)
+static void validate_typed_variadic_argument(ASTNode* argument, Type type, Token token)
 {
     apply_literal_type(argument, type);
 
-    DataType argument_type = get_node_data_type(argument);
+    Type argument_type = get_node_data_type(argument);
 
-    if (argument_type != type && !can_implicitly_widen_type(argument_type, type)) {
+    if (!types_equal(argument_type, type) && !can_implicitly_widen_type(argument_type.kind, type.kind)) {
         semantic_token_error("Variadic arguments must convert losslessly to the parameter type ", token);
     }
 }
@@ -2027,7 +2030,7 @@ static void validate_typed_variadic_arguments(Vector* args, const Builtin* built
     }
 
     for (size_t i = 0; i < args->count; i++) {
-        validate_typed_variadic_argument(args->data[i], builtin->params[0], token);
+        validate_typed_variadic_argument(args->data[i], (Type){.kind = builtin->params[0]}, token);
     }
 }
 
@@ -2047,8 +2050,8 @@ static void validate_variadic_arguments(Vector* args, const Builtin* builtin, To
 
     for (size_t i = 0; i < args->count; i++) {
         ASTNode* argument = args->data[i];
-        DataType type = get_node_data_type(argument);
-        bool valid = is_printable_type(type);
+        Type type = get_node_data_type(argument);
+        bool valid = is_printable_type(type.kind);
 
         if (!valid) {
             semantic_token_error(message, token);
@@ -2072,13 +2075,13 @@ static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token to
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = get_vector_at(&ast->function_call.args, i);
-        apply_literal_type(arg, builtin->params[i]);
+        apply_literal_type(arg, (Type){.kind = builtin->params[i]});
 
-        DataType argument_type = get_node_data_type(arg);
-        DataType parameter_type = builtin->params[i];
+        Type argument_type = get_node_data_type(arg);
+        Type parameter_type = {.kind = builtin->params[i]};
 
-        if (argument_type != parameter_type
-            && !can_implicitly_widen_type(argument_type, parameter_type)) {
+        if (!types_equal(argument_type, parameter_type)
+            && !can_implicitly_widen_type(argument_type.kind, parameter_type.kind)) {
             semantic_token_error("Invalid arguments to function ", token);
         }
     }
@@ -2106,18 +2109,18 @@ static bool is_numeric_literal_argument(ASTNode* argument)
     return integer || floating;
 }
 
-static DataType get_nonliteral_argument_type(ASTNode* argument)
+static Type get_nonliteral_argument_type(ASTNode* argument)
 {
     bool literal = is_numeric_literal_argument(argument);
 
     if (literal) {
-        return TypeUnknown;
+        return (Type){.kind = TypeUnknown};
     }
 
     return get_node_data_type(argument);
 }
 
-static bool variadic_argument_fits_type(ASTNode* argument, DataType type)
+static bool variadic_argument_fits_type(ASTNode* argument, Type type)
 {
     bool negative;
     ASTNode* integer = get_integer_literal(argument, &negative);
@@ -2132,15 +2135,15 @@ static bool variadic_argument_fits_type(ASTNode* argument, DataType type)
     ASTNode* floating = get_float_literal(argument);
 
     if (floating) {
-        bool numeric = is_float_type(type);
-        bool fits = type == TypeF64 || floating->float_literal.value <= FLT_MAX;
+        bool numeric = is_float_type(type.kind);
+        bool fits = type.kind == TypeF64 || floating->float_literal.value <= FLT_MAX;
 
         return numeric && fits;
     }
 
-    DataType argument_type = get_node_data_type(argument);
+    Type argument_type = get_node_data_type(argument);
 
-    return argument_type == type || can_implicitly_widen_type(argument_type, type);
+    return types_equal(argument_type, type) || can_implicitly_widen_type(argument_type.kind, type.kind);
 }
 
 static bool typed_variadic_call_matches(Vector* args, const Builtin* builtin)
@@ -2152,7 +2155,7 @@ static bool typed_variadic_call_matches(Vector* args, const Builtin* builtin)
     bool matches = true;
 
     for (size_t i = 0; i < args->count && matches; i++) {
-        matches = variadic_argument_fits_type(args->data[i], builtin->params[0]);
+        matches = variadic_argument_fits_type(args->data[i], (Type){.kind = builtin->params[0]});
     }
 
     return matches;
@@ -2161,13 +2164,13 @@ static bool typed_variadic_call_matches(Vector* args, const Builtin* builtin)
 static const Builtin* resolve_contextual_variadic_call(ASTNode* ast)
 {
     Vector* args = &ast->function_call.args;
-    DataType type = TypeUnknown;
+    Type type = (Type){.kind = TypeUnknown};
 
-    for (size_t i = 0; i < args->count && type == TypeUnknown; i++) {
+    for (size_t i = 0; i < args->count && type.kind == TypeUnknown; i++) {
         type = get_nonliteral_argument_type(args->data[i]);
     }
 
-    if (type == TypeUnknown) {
+    if (type.kind == TypeUnknown) {
         return NULL;
     }
 
@@ -2181,12 +2184,12 @@ static const Builtin* resolve_contextual_variadic_call(ASTNode* ast)
     return builtin;
 }
 
-static DataType get_builtin_argument_type(ASTNode* argument)
+static Type get_builtin_argument_type(ASTNode* argument)
 {
-    DataType type = get_node_data_type(argument);
+    Type type = get_node_data_type(argument);
 
-    if (type == TypeUnknown) {
-        return TypeU64;
+    if (type.kind == TypeUnknown) {
+        return (Type){.kind = TypeU64};
     }
 
     return type;
@@ -2201,14 +2204,14 @@ static const Builtin* resolve_builtin_call(ASTNode* ast)
     }
 
     size_t count = ast->function_call.args.count;
-    DataType* argument_types = NULL;
+    Type* argument_types = NULL;
 
-    if (count > SIZE_MAX / sizeof(DataType)) {
+    if (count > SIZE_MAX / sizeof(Type)) {
         out_of_memory_error();
     }
 
     if (count) {
-        argument_types = allocate_memory(count * sizeof(DataType));
+        argument_types = allocate_memory(count * sizeof(Type));
     }
 
     for (size_t i = 0; i < count; i++) {
@@ -2265,7 +2268,7 @@ static bool has_required_omitted_parameter(ASTNode* callee, size_t count, size_t
     return !first_omitted->parameter.default_value;
 }
 
-static void apply_argument_literal_type(ASTNode* argument, DataType type)
+static void apply_argument_literal_type(ASTNode* argument, Type type)
 {
     if (argument->type == ASTArray) {
         return;
@@ -2294,11 +2297,11 @@ static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token
         bool implicit_access = argument_type == RefNone;
         bool compatible_reference = value_parameter || implicit_access || argument_type == parameter_type
             || (argument_type == RefExclusive && parameter_type == RefShared);
-        DataType argument_value_type = get_node_data_type(arg);
-        DataType parameter_value_type = param->parameter.type_id;
-        bool compatible_value = argument_value_type == parameter_value_type
+        Type argument_value_type = get_node_data_type(arg);
+        Type parameter_value_type = param->parameter.type_id;
+        bool compatible_value = types_equal(argument_value_type, parameter_value_type)
             || (argument_type == RefNone && parameter_type == RefNone
-                && can_implicitly_widen_type(argument_value_type, parameter_value_type));
+                && can_implicitly_widen_type(argument_value_type.kind, parameter_value_type.kind));
 
         if (!compatible_value || !compatible_reference) {
             semantic_token_error("Invalid arguments to function ", token);
@@ -2316,10 +2319,10 @@ static void validate_global_binding_access(Analyzer* analyzer, ASTNode* origin, 
 
     validate_constant_binding(analyzer, origin, token);
 
-    DataType value_type = get_node_data_type(origin);
+    Type value_type = get_node_data_type(origin);
     bool moved = is_moved(origin);
 
-    if (is_array_type(value_type) && moved) {
+    if (is_array_type(value_type.kind) && moved) {
         semantic_error("Function accesses a moved array", token);
     }
 
@@ -2640,9 +2643,9 @@ static ReferenceType get_argument_reference_type(ASTNode* argument, ASTNode* par
     }
 
     ReferenceType parameter_type = get_reference_type(parameter);
-    DataType value_type = get_node_data_type(argument);
+    Type value_type = get_node_data_type(argument);
 
-    if (parameter_type == RefNone && is_array_type(value_type)) {
+    if (parameter_type == RefNone && is_array_type(value_type.kind)) {
         return RefExclusive;
     }
 
@@ -2763,25 +2766,25 @@ static void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 
 static void infer_conversion_literal(ASTNode* ast)
 {
-    DataType type = get_token_data_type(ast->function_call.token.type);
+    TypeKind kind = get_token_data_type(ast->function_call.token.type);
     size_t count = count_vector(&ast->function_call.args);
 
-    if ((!is_integer_type(type) && !is_float_type(type) && type != TypeChar) || count != 1) {
+    if ((!is_integer_type(kind) && !is_float_type(kind) && kind != TypeChar) || count != 1) {
         return;
     }
 
     ASTNode* expression = ast->function_call.args.data[0];
-    DataType source = get_node_data_type(expression);
+    Type source = get_node_data_type(expression);
 
-    if (source == TypeUnknown && expression->type == ASTInteger) {
-        apply_integer_literal_type(expression, TypeU64);
+    if (source.kind == TypeUnknown && expression->type == ASTInteger) {
+        apply_integer_literal_type(expression, (Type){.kind = TypeU64});
     }
 }
 
 static void analyze_type_conversion(ASTNode* ast)
 {
     Token token = ast->function_call.token;
-    DataType destination = get_token_data_type(token.type);
+    Type destination = {.kind = get_token_data_type(token.type)};
     size_t count = count_vector(&ast->function_call.args);
 
     if (count != 1) {
@@ -2789,8 +2792,8 @@ static void analyze_type_conversion(ASTNode* ast)
     }
 
     ASTNode* expression = ast->function_call.args.data[0];
-    DataType source = get_node_data_type(expression);
-    bool supported = can_explicitly_convert_type(source, destination);
+    Type source = get_node_data_type(expression);
+    bool supported = can_explicitly_convert_type(source.kind, destination.kind);
     ReferenceType reference = get_reference_type(expression);
 
     if (!supported) {
@@ -2819,13 +2822,13 @@ static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
         return;
     }
 
-    DataType parameter_type = parameter->parameter.type_id;
+    Type parameter_type = parameter->parameter.type_id;
 
     apply_declared_type(argument, parameter_type, RefNone);
     analyze_node(analyzer, argument);
 
     ReferenceType argument_reference = get_reference_type(argument);
-    bool owned_array = is_array_type(parameter_type) && parameter->parameter.reference_type == RefNone;
+    bool owned_array = is_array_type(parameter_type.kind) && parameter->parameter.reference_type == RefNone;
 
     if (owned_array && argument_reference != RefNone) {
         semantic_error("Cannot transfer array ownership through a reference", parameter->parameter.token);
@@ -2859,7 +2862,7 @@ static void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
     infer_conversion_literal(ast);
     analyze_call_arguments(analyzer, ast);
 
-    DataType called_type = get_token_data_type(ast->function_call.token.type);
+    TypeKind called_type = get_token_data_type(ast->function_call.token.type);
 
     if (is_integer_type(called_type) || is_float_type(called_type) || called_type == TypeChar) {
         analyze_type_conversion(ast);
@@ -2953,25 +2956,25 @@ static ASTNode* find_node_return(ASTNode* ast)
     }
 }
 
-static DataType get_function_return_value_type(Vector* statements)
+static Type get_function_return_value_type(Vector* statements)
 {
     ASTNode* result = find_function_return(statements);
 
     if (!result) {
-        return TypeVoid;
+        return (Type){.kind = TypeVoid};
     }
 
     return get_node_data_type(result->return_statement.expr);
 }
 
-static void validate_function_return_value_type(ASTNode* ast, DataType type)
+static void validate_function_return_value_type(ASTNode* ast, Type type)
 {
-    DataType return_type = ast->function_definition.return_type_id;
+    Type return_type = ast->function_definition.return_type_id;
 
     bool value_return = ast->function_definition.return_reference_type == RefNone;
 
-    if (return_type != type
-        && (!value_return || !can_implicitly_widen_type(type, return_type))) {
+    if (!types_equal(return_type, type)
+        && (!value_return || !can_implicitly_widen_type(type.kind, return_type.kind))) {
         semantic_token_error("Invalid return type for function ", ast->function_definition.token);
     }
 }
@@ -2984,13 +2987,13 @@ static void set_parameter_positions(ASTNode* ast)
     for (size_t i = 0; i < count; i++) {
         ASTNode* param = get_vector_at(&ast->function_definition.params, i);
         param->parameter.position = position;
-        position += get_reference_type(param) == RefNone ? get_type_slot_count(get_node_data_type(param)) : 1;
+        position += get_reference_type(param) == RefNone ? get_type_slot_count(get_node_data_type(param).kind) : 1;
     }
 }
 
 static void resolve_function_return_value_type(ASTNode* ast)
 {
-    DataType type = get_function_return_value_type(&ast->function_definition.body->compound.statements);
+    Type type = get_function_return_value_type(&ast->function_definition.body->compound.statements);
 
     if (ast->function_definition.has_explicit_return_type) {
         validate_function_return_value_type(ast, type);
@@ -3049,9 +3052,9 @@ static void record_function_array_move(ASTNode* function, OwnershipState* state)
 {
     ASTNode* symbol = state->symbol;
     Scope* scope = get_scope(symbol);
-    DataType type = get_node_data_type(symbol);
+    Type type = get_node_data_type(symbol);
 
-    if (!is_top_level_scope(scope) || !is_array_type(type)) {
+    if (!is_top_level_scope(scope) || !is_array_type(type.kind)) {
         return;
     }
 
@@ -3076,7 +3079,7 @@ static void record_function_array_moves(ASTNode* function, Vector* states)
 
 static void analyze_function(Analyzer* analyzer, ASTNode* ast)
 {
-    resolve_dimensions(analyzer, ast, &ast->function_definition.return_type_id);
+    resolve_dimensions(analyzer, &ast->function_definition.return_type_id);
 
     if (ast->function_definition.is_test && analyzer->current_scope != analyzer->top_level->compound.scope) {
         semantic_error("Test blocks are only allowed at file scope", ast->function_definition.token);
@@ -3181,8 +3184,8 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
 static void validate_assignment_type(ASTNode* ast, ASTNode* symbol)
 {
     ASTNode* expression = ast->assignment.expr;
-    DataType expression_type = get_node_data_type(expression);
-    DataType binding_type = get_node_data_type(symbol);
+    Type expression_type = get_node_data_type(expression);
+    Type binding_type = get_node_data_type(symbol);
     ReferenceType binding_reference_type = get_reference_type(symbol);
     ReferenceType expression_reference_type = get_reference_type(expression);
 
@@ -3190,8 +3193,8 @@ static void validate_assignment_type(ASTNode* ast, ASTNode* symbol)
         binding_reference_type = RefNone;
     }
 
-    bool compatible_value = binding_type == expression_type || (binding_reference_type == RefNone
-        && expression_reference_type == RefNone && can_implicitly_widen_type(expression_type, binding_type));
+    bool compatible_value = types_equal(binding_type, expression_type) || (binding_reference_type == RefNone
+        && expression_reference_type == RefNone && can_implicitly_widen_type(expression_type.kind, binding_type.kind));
 
     if (compatible_value && binding_reference_type == expression_reference_type) {
         return;
@@ -3237,33 +3240,33 @@ static void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
         release_reference_access(symbol);
     }
 
-    DataType destination_type = get_node_data_type(symbol);
+    Type destination_type = get_node_data_type(symbol);
 
     apply_literal_type(ast->assignment.expr, destination_type);
     analyze_node(analyzer, ast->assignment.expr);
     validate_assignment_type(ast, symbol);
     consume_array(ast->assignment.expr);
 
-    DataType binding_type = get_node_data_type(symbol);
+    Type binding_type = get_node_data_type(symbol);
 
-    if (is_array_type(binding_type) && ast->assignment.operator.type != TokenEqual) {
+    if (is_array_type(binding_type.kind) && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for array assignment", ast->assignment.operator);
     }
 
-    if (binding_type == TypeString && ast->assignment.operator.type != TokenEqual) {
+    if (binding_type.kind == TypeString && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for string assignment", ast->assignment.operator);
     }
 
-    if (binding_type == TypeChar && ast->assignment.operator.type != TokenEqual) {
+    if (binding_type.kind == TypeChar && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for char assignment", ast->assignment.operator);
     }
 
-    if (is_float_type(get_node_data_type(symbol))
+    if (is_float_type(get_node_data_type(symbol).kind)
         && !is_float_assignment_token(ast->assignment.operator.type)) {
         semantic_error("Invalid operands for assignment", ast->assignment.operator);
     }
 
-    if (ast->assignment.operator.type == TokenPowerEqual && get_node_data_type(symbol) != TypeI32) {
+    if (ast->assignment.operator.type == TokenPowerEqual && get_node_data_type(symbol).kind != TypeI32) {
         semantic_error("Invalid operands for assignment", ast->assignment.operator);
     }
 
@@ -3310,7 +3313,7 @@ static void initialize_variable_definition(Analyzer* analyzer, ASTNode* ast)
     ast->variable_definition.possibly_initialized = false;
 }
 
-static void apply_declared_type(ASTNode* expression, DataType type, ReferenceType reference_type)
+static void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
 {
     if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
         apply_declared_type(expression->prefix.expr, type, reference_type);
@@ -3318,7 +3321,7 @@ static void apply_declared_type(ASTNode* expression, DataType type, ReferenceTyp
         return;
     }
 
-    if (type == TypeUnknown) {
+    if (type.kind == TypeUnknown) {
         return;
     }
 
@@ -3335,7 +3338,7 @@ static void apply_declared_type(ASTNode* expression, DataType type, ReferenceTyp
     }
 }
 
-static bool variable_types_match(ASTNode* ast, DataType type, ReferenceType reference_type)
+static bool variable_types_match(ASTNode* ast, Type type, ReferenceType reference_type)
 {
     ReferenceType declared_reference_type = ast->variable_definition.reference_type;
 
@@ -3343,8 +3346,8 @@ static bool variable_types_match(ASTNode* ast, DataType type, ReferenceType refe
         return false;
     }
 
-    DataType declared_type = ast->variable_definition.type_id;
-    if (declared_type == type) {
+    Type declared_type = ast->variable_definition.type_id;
+    if (types_equal(declared_type, type)) {
         return true;
     }
 
@@ -3352,16 +3355,16 @@ static bool variable_types_match(ASTNode* ast, DataType type, ReferenceType refe
         return false;
     }
 
-    return can_implicitly_widen_type(type, declared_type);
+    return can_implicitly_widen_type(type.kind, declared_type.kind);
 }
 
-static void validate_variable_type_match(ASTNode* ast, DataType type, ReferenceType reference_type)
+static void validate_variable_type_match(ASTNode* ast, Type type, ReferenceType reference_type)
 {
     if (variable_types_match(ast, type, reference_type)) {
         return;
     }
 
-    DataType declared_type = ast->variable_definition.type_id;
+    Type declared_type = ast->variable_definition.type_id;
     ReferenceType declared_reference_type = ast->variable_definition.reference_type;
 
     if (declared_reference_type == RefNone && reference_type == RefNone) {
@@ -3373,20 +3376,20 @@ static void validate_variable_type_match(ASTNode* ast, DataType type, ReferenceT
 
 static void resolve_variable_type(ASTNode* ast, ASTNode* expression)
 {
-    DataType type = get_node_data_type(expression);
+    Type type = get_node_data_type(expression);
     ReferenceType reference_type = get_reference_type(expression);
 
-    if (ast->variable_definition.type_id != TypeUnknown) {
+    if (ast->variable_definition.type_id.kind != TypeUnknown) {
         validate_variable_type_match(ast, type, reference_type);
 
         return;
     }
 
-    if (type == TypeUnknown && expression->type == ASTFloat) {
+    if (type.kind == TypeUnknown && expression->type == ASTFloat) {
         float_literal_requires_type_error(expression->float_literal.token);
     }
 
-    if (type == TypeUnknown) {
+    if (type.kind == TypeUnknown) {
         integer_literal_requires_type_error(ast->variable_definition.token);
     }
 
@@ -3413,7 +3416,7 @@ static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast)
 
 static void validate_variable_type(ASTNode* ast)
 {
-    if (ast->variable_definition.type_id == TypeVoid) {
+    if (ast->variable_definition.type_id.kind == TypeVoid) {
         semantic_token_error("Invalid type for variable ", ast->variable_definition.token);
     }
 }
@@ -3444,7 +3447,7 @@ static void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
         redefinition_error("Variable", ast->variable_definition.token);
     }
 
-    resolve_dimensions(analyzer, ast, &ast->variable_definition.type_id);
+    resolve_dimensions(analyzer, &ast->variable_definition.type_id);
     initialize_variable_definition(analyzer, ast);
     analyze_variable_initializer(analyzer, ast);
     validate_variable_type(ast);
@@ -3529,9 +3532,9 @@ static void record_uninitialized_array_return(ASTNode* function, OwnershipState*
 {
     ASTNode* symbol = state->symbol;
     Scope* scope = get_scope(symbol);
-    DataType type = get_node_data_type(symbol);
+    Type type = get_node_data_type(symbol);
 
-    if (!is_top_level_scope(scope) || !is_array_type(type) || state->initialized) {
+    if (!is_top_level_scope(scope) || !is_array_type(type.kind) || state->initialized) {
         return;
     }
 
@@ -3582,11 +3585,11 @@ static void infer_negated_integer_literal_type(ASTNode* ast)
         return;
     }
 
-    if (literal->integer_literal.type_id != TypeUnknown) {
+    if (literal->integer_literal.type_id.kind != TypeUnknown) {
         return;
     }
 
-    apply_integer_literal_type(ast, TypeI64);
+    apply_integer_literal_type(ast, (Type){.kind = TypeI64});
 }
 
 static void analyze_constant_expression(Analyzer* analyzer, ASTNode* ast)
@@ -3601,7 +3604,7 @@ static void analyze_constant_expression(Analyzer* analyzer, ASTNode* ast)
     analyzer->constant_scope = previous;
     analyzer->constant_functions = previous_functions;
 
-    if (get_reference_type(ast->prefix.expr) != RefNone || get_node_data_type(ast) == TypeVoid) {
+    if (get_reference_type(ast->prefix.expr) != RefNone || get_node_data_type(ast).kind == TypeVoid) {
         semantic_error("Constant expression must produce a value", ast->prefix.operator);
     }
 }
@@ -3623,25 +3626,25 @@ static void analyze_prefix(Analyzer* analyzer, ASTNode* ast)
     infer_negated_integer_literal_type(ast);
     analyze_node(analyzer, ast->prefix.expr);
 
-    if (ast->prefix.operator.type == TokenKeywordNot && get_node_data_type(ast->prefix.expr) != TypeBool) {
+    if (ast->prefix.operator.type == TokenKeywordNot && get_node_data_type(ast->prefix.expr).kind != TypeBool) {
         semantic_error("Logical not requires a bool operand", ast->prefix.operator);
     }
 
-    DataType type = get_node_data_type(ast->prefix.expr);
+    Type type = get_node_data_type(ast->prefix.expr);
 
-    if (is_array_type(type)) {
+    if (is_array_type(type.kind)) {
         semantic_error("Invalid prefix operator for array operands", ast->prefix.operator);
     }
 
-    if (type == TypeString) {
+    if (type.kind == TypeString) {
         semantic_error("Invalid prefix operator for string operands", ast->prefix.operator);
     }
 
-    if (type == TypeChar) {
+    if (type.kind == TypeChar) {
         semantic_error("Invalid prefix operator for char operands", ast->prefix.operator);
     }
 
-    bool numeric = is_signed_integer_type(type) || is_float_type(type);
+    bool numeric = is_signed_integer_type(type.kind) || is_float_type(type.kind);
 
     if (ast->prefix.operator.type == TokenMinus && !numeric) {
         semantic_error("Negation requires a signed numeric operand", ast->prefix.operator);
@@ -3661,7 +3664,7 @@ static void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
     validate_variadic_arguments(&ast->builtin_call.args, ast->builtin_call.builtin, token);
 }
 
-static void apply_array_type(ASTNode* ast, DataType type)
+static void apply_array_type(ASTNode* ast, Type type)
 {
     ast->array.type_id = type;
 }
@@ -3670,50 +3673,56 @@ static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
 {
     analyze_node(analyzer, expression);
 
-    DataType type = get_node_data_type(expression);
+    Type type = get_node_data_type(expression);
     uint64_t value = 0;
     bool constant = evaluate_array_count(expression, &value);
 
-    if (!constant || !is_integer_type(type) || value > SIZE_MAX || (int64_t)value < 0) {
+    if (!constant || !is_integer_type(type.kind) || value > SIZE_MAX || (int64_t)value < 0) {
         fatal_error("Array count must be a nonnegative compile-time integer");
     }
 
     return (size_t)value;
 }
 
-static void resolve_dimensions(Analyzer* analyzer, ASTNode* ast, DataType* type)
+static void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
-    if (!ast->dimensions.count) {
+    if (type->kind != TypeArray || !type->array->dimensions) {
         return;
     }
 
+    const ArrayType* array_type = type->array;
+    Vector* dimensions = array_type->dimensions;
+    Type resolved_type = array_type->element_type;
     Vector counts;
 
     init_vector(&counts);
 
-    for (size_t i = 0; i < ast->dimensions.count; i++) {
-        size_t count = resolve_array_count(analyzer, ast->dimensions.data[i]);
+    for (size_t i = 0; i < dimensions->count; i++) {
+        size_t count = resolve_array_count(analyzer, dimensions->data[i]);
 
         push_vector_item(&counts, (void*)(uintptr_t)count);
     }
 
-    if (*type == TypeVoid || is_array_type(*type)) {
+    if (resolved_type.kind == TypeVoid || is_array_type(resolved_type.kind)) {
         fatal_error("Invalid array element type");
     }
 
     for (size_t i = counts.count; i > 0; i--) {
         size_t count = (size_t)(uintptr_t)counts.data[i - 1];
-        *type = get_array_type(*type, count);
+        resolved_type = get_array_type(&analyzer->array_types, resolved_type, count);
     }
 
     free_vector(&counts);
 
-    for (size_t i = 0; i < ast->dimensions.count; i++) {
-        free_ast_node(ast->dimensions.data[i]);
+    for (size_t i = 0; i < dimensions->count; i++) {
+        free_ast_node(dimensions->data[i]);
     }
 
-    free_vector(&ast->dimensions);
-    init_vector(&ast->dimensions);
+    free_vector(dimensions);
+    free_memory(dimensions);
+    free_memory((void*)array_type);
+
+    *type = resolved_type;
 }
 
 static void consume_array_variable(ASTNode* ast)
@@ -3732,10 +3741,10 @@ static void consume_array_variable(ASTNode* ast)
 
 static void consume_array(ASTNode* ast)
 {
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
     ReferenceType reference = get_reference_type(ast);
 
-    if (!is_array_type(type) || reference != RefNone) {
+    if (!is_array_type(type.kind) || reference != RefNone) {
         return;
     }
 
@@ -3748,20 +3757,20 @@ static void consume_array(ASTNode* ast)
     }
 }
 
-static void analyze_array_element(Analyzer* analyzer, ASTNode* element, DataType expected, Token token)
+static void analyze_array_element(Analyzer* analyzer, ASTNode* element, Type expected, Token token)
 {
     apply_literal_type(element, expected);
     analyze_node(analyzer, element);
 
-    DataType actual = get_node_data_type(element);
+    Type actual = get_node_data_type(element);
     ReferenceType reference = get_reference_type(element);
-    bool compatible = actual == expected || can_implicitly_widen_type(actual, expected);
+    bool compatible = types_equal(actual, expected) || can_implicitly_widen_type(actual.kind, expected.kind);
 
-    if (actual == TypeUnknown) {
+    if (actual.kind == TypeUnknown) {
         semantic_error("Array element requires an explicit type", token);
     }
 
-    if (reference != RefNone || (expected != TypeUnknown && !compatible) || actual == TypeVoid) {
+    if (reference != RefNone || (expected.kind != TypeUnknown && !compatible) || actual.kind == TypeVoid) {
         semantic_error("Array element type does not match", token);
     }
 
@@ -3783,9 +3792,9 @@ static bool array_has_nested_elements(Analyzer* analyzer, ASTNode* ast)
     if (element->type == ASTFunctionCall) {
         StringView id = get_string_view(element->function_call.id);
         ASTNode* symbol = find_symbol(analyzer, id);
-        DataType type = get_node_data_type(symbol);
+        Type type = get_node_data_type(symbol);
 
-        return is_array_type(type);
+        return is_array_type(type.kind);
     }
 
     if (element->type != ASTVariable) {
@@ -3794,23 +3803,23 @@ static bool array_has_nested_elements(Analyzer* analyzer, ASTNode* ast)
 
     StringView id = get_string_view(element->variable.id);
     ASTNode* symbol = find_symbol(analyzer, id);
-    DataType type = get_node_data_type(symbol);
+    Type type = get_node_data_type(symbol);
 
-    return is_array_type(type);
+    return is_array_type(type.kind);
 }
 
-static DataType get_array_initializer_type(Analyzer* analyzer, ASTNode* ast, size_t* count)
+static Type get_array_initializer_type(Analyzer* analyzer, ASTNode* ast, size_t* count)
 {
-    DataType declared = ast->array.type_id;
+    Type declared = ast->array.type_id;
 
-    if (!is_array_type(declared)) {
-        return TypeUnknown;
+    if (!is_array_type(declared.kind)) {
+        return (Type){.kind = TypeUnknown};
     }
 
-    const ArrayType* info = get_array_type_info(declared);
-    DataType type = info->element_type;
+    const ArrayType* info = declared.array;
+    Type type = info->element_type;
     bool nested = array_has_nested_elements(analyzer, ast);
-    ast->array.flat = is_array_type(type) && !nested;
+    ast->array.flat = is_array_type(type.kind) && !nested;
     *count = info->count;
 
     if (!ast->array.flat) {
@@ -3819,18 +3828,18 @@ static DataType get_array_initializer_type(Analyzer* analyzer, ASTNode* ast, siz
 
     type = get_array_leaf_type(declared);
     size_t slots = get_array_storage_slots(declared);
-    size_t leaf_slots = get_type_slot_count(type);
+    size_t leaf_slots = get_type_slot_count(type.kind);
     *count = slots / leaf_slots;
 
     return type;
 }
 
-static DataType analyze_array_elements(Analyzer* analyzer, ASTNode* ast, DataType expected)
+static Type analyze_array_elements(Analyzer* analyzer, ASTNode* ast, Type expected)
 {
     size_t count = ast->array.elements.count;
     size_t start = 0;
 
-    if (count && expected == TypeUnknown) {
+    if (count && expected.kind == TypeUnknown) {
         ASTNode* element = ast->array.elements.data[0];
 
         analyze_array_element(analyzer, element, expected, ast->array.token);
@@ -3850,16 +3859,16 @@ static void analyze_array(Analyzer* analyzer, ASTNode* ast)
 {
     size_t count = ast->array.elements.count;
     size_t expected_count = count;
-    DataType expected = get_array_initializer_type(analyzer, ast, &expected_count);
+    Type expected = get_array_initializer_type(analyzer, ast, &expected_count);
 
-    if (count != expected_count || (!count && expected == TypeUnknown)) {
+    if (count != expected_count || (!count && expected.kind == TypeUnknown)) {
         semantic_error("Array initializer count does not match its type", ast->array.token);
     }
 
     expected = analyze_array_elements(analyzer, ast, expected);
 
-    if (ast->array.type_id == TypeUnknown) {
-        ast->array.type_id = get_array_type(expected, count);
+    if (ast->array.type_id.kind == TypeUnknown) {
+        ast->array.type_id = get_array_type(&analyzer->array_types, expected, count);
     }
 }
 
@@ -3879,14 +3888,14 @@ static ASTNode* get_index_owner(ASTNode* ast)
 static void analyze_index(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_node(analyzer, ast->index.array);
-    apply_literal_type(ast->index.index, TypeUsize);
+    apply_literal_type(ast->index.index, (Type){.kind = TypeUsize});
     analyze_node(analyzer, ast->index.index);
 
-    DataType array_type = get_node_data_type(ast->index.array);
-    DataType index_type = get_node_data_type(ast->index.index);
-    bool compatible = can_implicitly_widen_integer(index_type, TypeUsize);
+    Type array_type = get_node_data_type(ast->index.array);
+    Type index_type = get_node_data_type(ast->index.index);
+    bool compatible = can_implicitly_widen_integer(index_type.kind, TypeUsize);
 
-    if (!is_array_type(array_type)) {
+    if (!is_array_type(array_type.kind)) {
         semantic_error("Indexing requires an array", ast->index.token);
     }
 
@@ -3894,7 +3903,7 @@ static void analyze_index(Analyzer* analyzer, ASTNode* ast)
         semantic_error("Array index requires usize", ast->index.token);
     }
 
-    const ArrayType* info = get_array_type_info(array_type);
+    const ArrayType* info = array_type.array;
     ast->index.type_id = info->element_type;
     uint64_t value = 0;
     bool constant = evaluate_array_count(ast->index.index, &value);
@@ -3991,6 +4000,8 @@ static void analyze_node(Analyzer* analyzer, ASTNode* ast)
 
 void init_analyzer(Analyzer* analyzer, ASTNode* ast)
 {
+    init_vector(&analyzer->array_types);
+
     analyzer->top_level = ast;
     analyzer->function = NULL;
     analyzer->current_scope = ast->compound.scope;
@@ -4161,6 +4172,7 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
 void rebuild_analyzer(Analyzer* analyzer, Vector* functions)
 {
     ASTNode* ast = analyzer->top_level;
+    Vector array_types = analyzer->array_types;
 
     init_vector(functions);
     clear_node_analysis(ast, functions);
@@ -4168,5 +4180,8 @@ void rebuild_analyzer(Analyzer* analyzer, Vector* functions)
     ast->compound.scope = create_scope(NULL);
 
     init_analyzer(analyzer, ast);
+
+    analyzer->array_types = array_types;
+
     analyze(analyzer, 0);
 }

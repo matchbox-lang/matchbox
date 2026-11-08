@@ -227,9 +227,9 @@ static void format_argument(Writer* writer, const Value* argument, const Argumen
     format_array_data(writer, format->array, data);
 }
 
-static ArgumentFormat get_scalar_argument_format(DataType type)
+static ArgumentFormat get_scalar_argument_format(TypeKind kind)
 {
-    switch (type) {
+    switch (kind) {
         case TypeI8:
             return (ArgumentFormat){.formatter = format_i8_argument, .capacity = 4};
         case TypeI16:
@@ -265,13 +265,13 @@ static ArgumentFormat get_scalar_argument_format(DataType type)
     }
 }
 
-ArgumentFormat compile_argument_format(ModuleObject* module, DataType type)
+ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
 {
-    if (!is_array_type(type)) {
-        return get_scalar_argument_format(type);
+    if (!is_array_type(type.kind)) {
+        return get_scalar_argument_format(type.kind);
     }
 
-    const ArrayType* info = get_array_type_info(type);
+    const ArrayType* info = type.array;
     ArrayFormat* format = ALLOCATE_OBJECT(ArrayFormat, ObjArrayFormat);
     format->count = info->count;
     format->stride = get_array_storage_slots(info->element_type);
@@ -283,13 +283,13 @@ ArgumentFormat compile_argument_format(ModuleObject* module, DataType type)
     return (ArgumentFormat){.array = format};
 }
 
-static bool matches_array_format(const ArrayFormat* format, DataType type)
+static bool matches_array_format(const ArrayFormat* format, Type type)
 {
     if (!format) {
         return false;
     }
 
-    const ArrayType* info = get_array_type_info(type);
+    const ArrayType* info = type.array;
     size_t stride = get_array_storage_slots(info->element_type);
 
     if (format->count != info->count || format->stride != stride) {
@@ -299,13 +299,13 @@ static bool matches_array_format(const ArrayFormat* format, DataType type)
     return matches_argument_format(&format->element, info->element_type);
 }
 
-bool matches_argument_format(const ArgumentFormat* format, DataType type)
+bool matches_argument_format(const ArgumentFormat* format, Type type)
 {
-    if (is_array_type(type)) {
+    if (is_array_type(type.kind)) {
         return matches_array_format(format->array, type);
     }
 
-    ArgumentFormat scalar = get_scalar_argument_format(type);
+    ArgumentFormat scalar = get_scalar_argument_format(type.kind);
 
     return !format->array && format->formatter == scalar.formatter;
 }

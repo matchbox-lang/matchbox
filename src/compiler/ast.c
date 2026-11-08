@@ -1,5 +1,6 @@
 #include "compiler/ast.h"
 #include "builtin/builtin.h"
+#include "common/array_type.h"
 #include "common/memory.h"
 #include "common/util.h"
 #include "common/vector.h"
@@ -9,13 +10,13 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+static void free_type_dimensions(Type type);
+
 ASTNode* create_ast_node(ASTNodeType type)
 {
     ASTNode* ast = allocate_zeroed_memory(1, sizeof(ASTNode));
 
     ast->type = type;
-
-    init_vector(&ast->dimensions);
 
     switch (type) {
         case ASTArray:
@@ -84,7 +85,7 @@ ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token
     ast->binary.left_expr = left_expr;
     ast->binary.operator = token;
     ast->binary.right_expr = right_expr;
-    ast->binary.type_id = TypeUnknown;
+    ast->binary.type_id = (Type){.kind = TypeUnknown};
 
     return ast;
 }
@@ -131,14 +132,14 @@ ASTNode* create_conditional_node(Token token, ASTNode* condition, ASTNode* then_
     ast->conditional.condition = condition;
     ast->conditional.then_branch = then_branch;
     ast->conditional.else_branch = else_branch;
-    ast->conditional.type_id = TypeVoid;
+    ast->conditional.type_id = (Type){.kind = TypeVoid};
     ast->conditional.reference_type = RefNone;
     ast->conditional.expression = true;
 
     return ast;
 }
 
-ASTNode* create_conversion_node(Token token, ASTNode* expr, DataType type_id)
+ASTNode* create_conversion_node(Token token, ASTNode* expr, Type type_id)
 {
     ASTNode* ast = create_ast_node(ASTConversion);
     ast->conversion.expr = expr;
@@ -148,7 +149,7 @@ ASTNode* create_conversion_node(Token token, ASTNode* expr, DataType type_id)
     return ast;
 }
 
-ASTNode* create_float_node(Token token, double value, DataType type_id)
+ASTNode* create_float_node(Token token, double value, Type type_id)
 {
     ASTNode* ast = create_ast_node(ASTFloat);
     ast->float_literal.value = value;
@@ -175,7 +176,7 @@ ASTNode* create_function_definition_node(Token token, StringObject* id)
     ast->function_definition.scope = NULL;
     ast->function_definition.id = id;
     ast->function_definition.token = token;
-    ast->function_definition.return_type_id = TypeI32;
+    ast->function_definition.return_type_id = (Type){.kind = TypeI32};
     ast->function_definition.return_reference_type = RefNone;
     ast->function_definition.return_reference_origin = NULL;
     ast->function_definition.has_explicit_return_type = false;
@@ -184,7 +185,7 @@ ASTNode* create_function_definition_node(Token token, StringObject* id)
     return ast;
 }
 
-ASTNode* create_integer_node(Token token, uint64_t value, DataType type_id)
+ASTNode* create_integer_node(Token token, uint64_t value, Type type_id)
 {
     ASTNode* ast = create_ast_node(ASTInteger);
     ast->integer_literal.value = value;
@@ -198,7 +199,7 @@ ASTNode* create_match_node(Token token)
 {
     ASTNode* ast = create_ast_node(ASTMatch);
     ast->match.token = token;
-    ast->match.type_id = TypeVoid;
+    ast->match.type_id = (Type){.kind = TypeVoid};
     ast->match.reference_type = RefNone;
     ast->match.expression = true;
 
@@ -211,7 +212,7 @@ ASTNode* create_parameter_node(Token token, StringObject* id)
     ast->parameter.scope = NULL;
     ast->parameter.id = id;
     ast->parameter.token = token;
-    ast->parameter.type_id = TypeI32;
+    ast->parameter.type_id = (Type){.kind = TypeI32};
     ast->parameter.reference_type = RefNone;
 
     return ast;
@@ -251,7 +252,7 @@ ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fix
     ast->variable_definition.id = id;
     ast->variable_definition.token = token;
     ast->variable_definition.fixed = fixed;
-    ast->variable_definition.type_id = TypeUnknown;
+    ast->variable_definition.type_id = (Type){.kind = TypeUnknown};
     ast->variable_definition.reference_type = RefNone;
     ast->variable_definition.position = 0;
     ast->variable_definition.expr = NULL;
@@ -289,6 +290,21 @@ static void free_ast_node_vector(Vector* nodes)
     }
 
     free_vector(nodes);
+}
+
+static void free_type_dimensions(Type type)
+{
+    if (type.kind != TypeArray || !type.array->dimensions) {
+        return;
+    }
+
+    const ArrayType* array_type = type.array;
+    Vector* dimensions = array_type->dimensions;
+
+    free_type_dimensions(array_type->element_type);
+    free_ast_node_vector(dimensions);
+    free_memory(dimensions);
+    free_memory((void*)array_type);
 }
 
 static void free_match_arms(Vector* arms)
@@ -353,6 +369,7 @@ void free_ast_node(ASTNode* ast)
             free_vector(&ast->function_call.reference_origins);
             break;
         case ASTFunctionDefinition:
+            free_type_dimensions(ast->function_definition.return_type_id);
             free_string_object(ast->function_definition.id);
             free_ast_node_vector(&ast->function_definition.params);
             free_vector(&ast->function_definition.array_moves);
@@ -367,6 +384,7 @@ void free_ast_node(ASTNode* ast)
             free_vector(&ast->match.reference_origins);
             break;
         case ASTParameter:
+            free_type_dimensions(ast->parameter.type_id);
             free_ast_node(ast->parameter.default_value);
             free_string_object(ast->parameter.id);
             free_vector(&ast->parameter.reference_origins);
@@ -386,6 +404,7 @@ void free_ast_node(ASTNode* ast)
             free_string_object(ast->string_literal.value);
             break;
         case ASTVariableDefinition:
+            free_type_dimensions(ast->variable_definition.type_id);
             free_string_object(ast->variable_definition.id);
             free_ast_node(ast->variable_definition.expr);
             free_vector(&ast->variable_definition.reference_origins);
@@ -397,7 +416,6 @@ void free_ast_node(ASTNode* ast)
             break;
     }
 
-    free_ast_node_vector(&ast->dimensions);
     free_memory(ast);
 }
 
@@ -427,10 +445,10 @@ Scope* get_scope(const ASTNode* ast)
     }
 }
 
-DataType get_node_data_type(const ASTNode* ast)
+Type get_node_data_type(const ASTNode* ast)
 {
     if (!ast) {
-        return TypeVoid;
+        return (Type){.kind = TypeVoid};
     }
 
     switch (ast->type) {
@@ -445,11 +463,11 @@ DataType get_node_data_type(const ASTNode* ast)
         case ASTConditional:
             return ast->conditional.type_id;
         case ASTBoolean:
-            return TypeBool;
+            return (Type){.kind = TypeBool};
         case ASTBuiltinCall:
-            return ast->builtin_call.builtin->return_type_id;
+            return (Type){.kind = ast->builtin_call.builtin->return_type_id};
         case ASTCharacter:
-            return TypeChar;
+            return (Type){.kind = TypeChar};
         case ASTFloat:
             return ast->float_literal.type_id;
         case ASTFunctionCall:
@@ -469,9 +487,9 @@ DataType get_node_data_type(const ASTNode* ast)
         case ASTMatch:
             return ast->match.type_id;
         case ASTString:
-            return TypeString;
+            return (Type){.kind = TypeString};
         default:
-            return TypeVoid;
+            return (Type){.kind = TypeVoid};
     }
 }
 

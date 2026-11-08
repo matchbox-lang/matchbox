@@ -3,6 +3,6 @@
 
 #include "compiler/ast.h"
 
-ASTNode* resolve_builtin_constant(DataType type, Token name);
+ASTNode* resolve_builtin_constant(TypeKind kind, Token name);
 
 #endif

@@ -7,7 +7,7 @@
 
 typedef struct BuiltinConstant
 {
-    DataType type;
+    TypeKind kind;
     const char* name;
     ConstantValue value;
 } BuiltinConstant;
@@ -51,19 +51,20 @@ static const BuiltinConstant builtin_constants[] = {
     {TypeChar,      "MAX",              {.integer = 0x10FFFF}}
 };
 
-static bool matches_builtin_constant(const BuiltinConstant* constant, DataType type, Token name)
+static bool matches_builtin_constant(const BuiltinConstant* constant, TypeKind kind, Token name)
 {
     size_t length = strlen(constant->name);
 
-    return constant->type == type && length == name.length && memcmp(constant->name, name.chars, length) == 0;
+    return constant->kind == kind && length == name.length
+        && memcmp(constant->name, name.chars, length) == 0;
 }
 
-ASTNode* resolve_builtin_constant(DataType type, Token name)
+ASTNode* resolve_builtin_constant(TypeKind kind, Token name)
 {
     size_t count = sizeof(builtin_constants) / sizeof(*builtin_constants);
     size_t index = 0;
 
-    while (index < count && !matches_builtin_constant(&builtin_constants[index], type, name)) {
+    while (index < count && !matches_builtin_constant(&builtin_constants[index], kind, name)) {
         index++;
     }
 
@@ -71,7 +72,8 @@ ASTNode* resolve_builtin_constant(DataType type, Token name)
         return NULL;
     }
 
-    ASTNode* literal = create_constant_node(builtin_constants[index].value, type, name);
+    Type literal_type = {.kind = kind};
+    ASTNode* literal = create_constant_node(builtin_constants[index].value, literal_type, name);
 
-    return create_conversion_node(name, literal, type);
+    return create_conversion_node(name, literal, literal_type);
 }

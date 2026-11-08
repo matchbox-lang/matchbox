@@ -62,7 +62,7 @@ static size_t concatenation_literal_capacity(const ASTNode* ast)
 
 static bool fold_concatenation(ASTNode* ast)
 {
-    if (ast->binary.type_id != TypeString || ast->binary.operator.type != TokenPlus) {
+    if (ast->binary.type_id.kind != TypeString || ast->binary.operator.type != TokenPlus) {
         return false;
     }
 
@@ -104,15 +104,15 @@ static void fold_binary(ASTNode* ast)
     replace_with_expression(ast, replacement);
 }
 
-static bool is_literal_of_type(ASTNode* ast, DataType type)
+static bool is_literal_of_type(ASTNode* ast, Type type)
 {
     if (!is_literal(ast)) {
         return false;
     }
 
-    DataType literal_type = get_node_data_type(ast);
+    Type literal_type = get_node_data_type(ast);
 
-    return literal_type == type;
+    return types_equal(literal_type, type);
 }
 
 static void set_literal_token(ASTNode* ast, Token token)
@@ -169,7 +169,7 @@ static void propagate_literal_let(ASTNode* ast)
     }
 
     ASTNode* initializer = symbol->variable_definition.expr;
-    DataType type = symbol->variable_definition.type_id;
+    Type type = symbol->variable_definition.type_id;
 
     if (!initializer) {
         return;
@@ -200,7 +200,7 @@ static void fold_prefix(ASTNode* ast)
         return;
     }
 
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
     ASTNode* replacement = create_constant_node(value, type, ast->prefix.operator);
 
     free_ast_node(ast->prefix.expr);
@@ -281,9 +281,9 @@ static void fold_conditional(ASTNode* ast)
         return;
     }
 
-    DataType type = get_node_data_type(result);
+    Type type = get_node_data_type(result);
 
-    if (type != ast->conditional.type_id) {
+    if (!types_equal(type, ast->conditional.type_id)) {
         return;
     }
 
@@ -371,7 +371,9 @@ static void optimize_builtin_call(ASTNode* ast)
 
     ASTNode* expression = ast->builtin_call.args.data[0];
 
-    if (get_node_data_type(expression) != builtin->return_type_id || get_reference_type(expression) != RefNone) {
+    Type expression_type = get_node_data_type(expression);
+
+    if (expression_type.kind != builtin->return_type_id || get_reference_type(expression) != RefNone) {
         return;
     }
 
@@ -404,7 +406,8 @@ static void optimize_conversion(ASTNode* ast)
     ASTNode* expression = ast->conversion.expr;
     bool literal = expression->type == ASTInteger || expression->type == ASTFloat
         || expression->type == ASTCharacter;
-    bool identity = get_node_data_type(expression) == ast->conversion.type_id;
+    Type expression_type = get_node_data_type(expression);
+    bool identity = types_equal(expression_type, ast->conversion.type_id);
 
     if (!literal && !identity) {
         return;

@@ -3,7 +3,7 @@
 #include "builtin/math.h"
 #include "builtin/string.h"
 #include "builtin/system.h"
-#include "common/data_type.h"
+#include "common/type.h"
 #include <string.h>
 
 static const Builtin builtins[BUILTINS_MAX] = {
@@ -115,10 +115,10 @@ static const Builtin builtins[BUILTINS_MAX] = {
     {"panic",       builtin_panic,          1,  {TypeString},                           TypeVoid,   false}
 };
 
-static bool builtin_argument_matches(const Builtin* builtin, const DataType* argument_types, size_t position)
+static bool builtin_argument_matches(const Builtin* builtin, const Type* argument_types, size_t position)
 {
-    DataType argument_type = argument_types[position];
-    DataType parameter_type = builtin->params[position];
+    TypeKind argument_type = argument_types[position].kind;
+    TypeKind parameter_type = builtin->params[position];
 
     return argument_type == TypeUnknown
         || argument_type == parameter_type
@@ -126,7 +126,7 @@ static bool builtin_argument_matches(const Builtin* builtin, const DataType* arg
 }
 
 static bool typed_variadic_matches(
-    const Builtin* builtin, const DataType* argument_types, size_t argument_count, bool exact)
+    const Builtin* builtin, const Type* argument_types, size_t argument_count, bool exact)
 {
     if (!argument_count || !argument_types) {
         return false;
@@ -135,15 +135,16 @@ static bool typed_variadic_matches(
     bool matches = true;
 
     for (size_t i = 0; i < argument_count && matches; i++) {
-        DataType argument_type = argument_types[i];
-        DataType parameter_type = builtin->params[0];
-        matches = argument_type == parameter_type || (!exact && can_implicitly_widen_type(argument_type, parameter_type));
+        TypeKind argument_type = argument_types[i].kind;
+        TypeKind parameter_type = builtin->params[0];
+        matches = argument_type == parameter_type
+            || (!exact && can_implicitly_widen_type(argument_type, parameter_type));
     }
 
     return matches;
 }
 
-static bool builtin_matches(const Builtin* builtin, const DataType* argument_types, size_t argument_count)
+static bool builtin_matches(const Builtin* builtin, const Type* argument_types, size_t argument_count)
 {
     if (builtin->param_count == BUILTIN_VARIADIC) {
         return true;
@@ -167,14 +168,14 @@ static bool builtin_matches(const Builtin* builtin, const DataType* argument_typ
 }
 
 static bool builtin_call_matches(
-    const Builtin* builtin, const char* name, const DataType* argument_types, size_t argument_count)
+    const Builtin* builtin, const char* name, const Type* argument_types, size_t argument_count)
 {
     return strcmp(name, builtin->name) == 0
         && builtin_matches(builtin, argument_types, argument_count);
 }
 
 static const Builtin* match_exact_typed_variadic_builtin(
-    const Builtin* builtin, const DataType* argument_types, size_t argument_count)
+    const Builtin* builtin, const Type* argument_types, size_t argument_count)
 {
     bool matches = typed_variadic_matches(builtin, argument_types, argument_count, true);
 
@@ -186,7 +187,7 @@ static const Builtin* match_exact_typed_variadic_builtin(
 }
 
 static const Builtin* match_exact_builtin(
-    const Builtin* builtin, const char* name, const DataType* argument_types, size_t argument_count)
+    const Builtin* builtin, const char* name, const Type* argument_types, size_t argument_count)
 {
     if (strcmp(name, builtin->name) != 0) {
         return NULL;
@@ -203,7 +204,7 @@ static const Builtin* match_exact_builtin(
     bool matches = true;
 
     for (size_t i = 0; i < argument_count && matches; i++) {
-        matches = argument_types[i] == builtin->params[i];
+        matches = argument_types[i].kind == builtin->params[i];
     }
 
     if (!matches) {
@@ -213,7 +214,7 @@ static const Builtin* match_exact_builtin(
     return builtin;
 }
 
-static const Builtin* resolve_exact_builtin(const char* name, const DataType* argument_types, size_t argument_count)
+static const Builtin* resolve_exact_builtin(const char* name, const Type* argument_types, size_t argument_count)
 {
     const Builtin* exact = NULL;
 
@@ -224,7 +225,7 @@ static const Builtin* resolve_exact_builtin(const char* name, const DataType* ar
     return exact;
 }
 
-const Builtin* resolve_builtin(const char* name, const DataType* argument_types, size_t argument_count)
+const Builtin* resolve_builtin(const char* name, const Type* argument_types, size_t argument_count)
 {
     const Builtin* exact = resolve_exact_builtin(name, argument_types, argument_count);
 

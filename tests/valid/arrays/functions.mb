@@ -14,3 +14,8 @@ func make() -> u8[2] {
 }
 let made = make()
 assert(made[1] == 20)
+func make_matrix() {
+    return [[1, 2], [3, 4]]
+}
+let matrix = make_matrix()
+assert(matrix[1][1] == 4)

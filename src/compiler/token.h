@@ -1,7 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include "common/data_type.h"
+#include "common/type.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -152,7 +152,7 @@ const char* get_token_type_name(TokenType type);
 bool is_float_assignment_token(TokenType type);
 bool is_assignment_token(TokenType type);
 bool is_type_token(TokenType type);
-DataType get_token_data_type(TokenType type);
+TypeKind get_token_data_type(TokenType type);
 bool is_character_comparison_token(TokenType type);
 bool is_comparison_token(TokenType type);
 bool is_equality_token(TokenType type);

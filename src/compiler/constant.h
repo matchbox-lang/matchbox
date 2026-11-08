@@ -11,6 +11,6 @@ typedef struct ConstantValue
 
 bool evaluate_array_count(const ASTNode* ast, uint64_t* value);
 bool evaluate_constant(const ASTNode* ast, ConstantValue* value);
-ASTNode* create_constant_node(ConstantValue value, DataType type, Token token);
+ASTNode* create_constant_node(ConstantValue value, Type type, Token token);
 
 #endif

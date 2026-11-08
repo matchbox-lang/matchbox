@@ -1,20 +1,20 @@
-#include "common/data_type.h"
+#include "common/type.h"
 #include "common/array_type.h"
 #include <float.h>
 #include <limits.h>
 
-static bool accepts_numeric_type(DataType source, DataType destination);
-static bool accepts_both_numeric_types(DataType left, DataType right, DataType destination);
+static bool accepts_numeric_type(TypeKind source, TypeKind destination);
+static bool accepts_both_numeric_types(TypeKind left, TypeKind right, TypeKind destination);
 
-const char* get_data_type_name(DataType type)
+const char* get_data_type_name(Type type)
 {
-    if (is_array_type(type)) {
-        const ArrayType* info = get_array_type_info(type);
+    if (is_array_type(type.kind)) {
+        const ArrayType* info = type.array;
 
         return info->name;
     }
 
-    switch (type) {
+    switch (type.kind) {
         case TypeI8:       return "i8";
         case TypeI16:      return "i16";
         case TypeI32:      return "i32";
@@ -36,19 +36,19 @@ const char* get_data_type_name(DataType type)
     }
 }
 
-bool is_float_type(DataType type)
+bool is_float_type(TypeKind kind)
 {
-    return type == TypeF32 || type == TypeF64;
+    return kind == TypeF32 || kind == TypeF64;
 }
 
-bool is_integer_type(DataType type)
+bool is_integer_type(TypeKind kind)
 {
-    return get_integer_type_size(type) != 0;
+    return get_integer_type_size(kind) != 0;
 }
 
-bool is_signed_integer_type(DataType type)
+bool is_signed_integer_type(TypeKind kind)
 {
-    switch (type) {
+    switch (kind) {
         case TypeI8:
         case TypeI16:
         case TypeI32:
@@ -60,9 +60,9 @@ bool is_signed_integer_type(DataType type)
     }
 }
 
-size_t get_integer_type_size(DataType type)
+size_t get_integer_type_size(TypeKind kind)
 {
-    switch (type) {
+    switch (kind) {
         case TypeI8:
         case TypeU8:
             return 1;
@@ -83,18 +83,18 @@ size_t get_integer_type_size(DataType type)
     }
 }
 
-size_t get_type_slot_count(DataType type)
+size_t get_type_slot_count(TypeKind kind)
 {
-    return type == TypeI64 || type == TypeU64 || type == TypeF64 ? 2 : 1;
+    return kind == TypeI64 || kind == TypeU64 || kind == TypeF64 ? 2 : 1;
 }
 
-bool is_printable_type(DataType type)
+bool is_printable_type(TypeKind kind)
 {
-    return is_integer_type(type) || is_float_type(type) || type == TypeBool || type == TypeChar
-        || type == TypeString || is_array_type(type);
+    return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool || kind == TypeChar
+        || kind == TypeString || is_array_type(kind);
 }
 
-bool can_implicitly_widen_integer(DataType source, DataType destination)
+bool can_implicitly_widen_integer(TypeKind source, TypeKind destination)
 {
     if (!is_integer_type(source) || !is_integer_type(destination)) {
         return false;
@@ -111,12 +111,12 @@ bool can_implicitly_widen_integer(DataType source, DataType destination)
     return source_size < destination_size || (source_size == destination_size && same_sign);
 }
 
-bool can_implicitly_widen_float(DataType source, DataType destination)
+bool can_implicitly_widen_float(TypeKind source, TypeKind destination)
 {
     return source == TypeF32 && destination == TypeF64;
 }
 
-bool can_implicitly_convert_integer_to_float(DataType source, DataType destination)
+bool can_implicitly_convert_integer_to_float(TypeKind source, TypeKind destination)
 {
     if (!is_integer_type(source)) {
         return false;
@@ -137,7 +137,7 @@ bool can_implicitly_convert_integer_to_float(DataType source, DataType destinati
     return bits - signed_type <= precision;
 }
 
-bool can_implicitly_widen_type(DataType source, DataType destination)
+bool can_implicitly_widen_type(TypeKind source, TypeKind destination)
 {
     if (can_implicitly_widen_integer(source, destination)) {
         return true;
@@ -150,7 +150,7 @@ bool can_implicitly_widen_type(DataType source, DataType destination)
     return can_implicitly_widen_float(source, destination);
 }
 
-bool can_explicitly_convert_type(DataType source, DataType destination)
+bool can_explicitly_convert_type(TypeKind source, TypeKind destination)
 {
     bool source_numeric = is_integer_type(source) || is_float_type(source);
     bool destination_numeric = is_integer_type(destination) || is_float_type(destination);
@@ -170,12 +170,12 @@ bool can_explicitly_convert_type(DataType source, DataType destination)
     return is_integer_type(source) && destination == TypeChar;
 }
 
-static bool accepts_numeric_type(DataType source, DataType destination)
+static bool accepts_numeric_type(TypeKind source, TypeKind destination)
 {
     return source == destination || can_implicitly_widen_type(source, destination);
 }
 
-static bool accepts_both_numeric_types(DataType left, DataType right, DataType destination)
+static bool accepts_both_numeric_types(TypeKind left, TypeKind right, TypeKind destination)
 {
     bool accepts_left = accepts_numeric_type(left, destination);
     bool accepts_right = accepts_numeric_type(right, destination);
@@ -183,7 +183,7 @@ static bool accepts_both_numeric_types(DataType left, DataType right, DataType d
     return accepts_left && accepts_right;
 }
 
-DataType get_common_numeric_type(DataType left, DataType right)
+TypeKind get_common_numeric_type(TypeKind left, TypeKind right)
 {
     bool left_numeric = is_integer_type(left) || is_float_type(left);
     bool right_numeric = is_integer_type(right) || is_float_type(right);
@@ -200,7 +200,7 @@ DataType get_common_numeric_type(DataType left, DataType right)
         return left;
     }
 
-    static const DataType candidates[] = {
+    static const TypeKind candidates[] = {
         TypeI8, TypeI16, TypeI32, TypeI64, TypeU8, TypeU16, TypeU32, TypeU64, TypeF32, TypeF64
     };
     

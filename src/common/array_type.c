@@ -5,68 +5,74 @@
 #include <stdio.h>
 #include <string.h>
 
-static ArrayType* find_array_type(ArrayType* info, DataType element_type, size_t count);
-static ArrayType* create_array_type(DataType element_type, size_t count);
+static ArrayType* find_array_type(const Vector* array_types, Type element_type, size_t count);
+static bool matches_array_type(const ArrayType* info, Type element_type, size_t count);
+static ArrayType* create_array_type(Type element_type, size_t count);
 static void format_array_type_name(ArrayType* info, const char* element_name, size_t length);
 
-bool is_array_type(DataType type)
+bool is_array_type(TypeKind kind)
 {
-    return type > TypeArray;
+    return kind == TypeArray;
 }
 
-const ArrayType* get_array_type_info(DataType type)
+size_t get_array_storage_slots(Type type)
 {
-    return (const ArrayType*)type;
-}
-
-size_t get_array_storage_slots(DataType type)
-{
-    if (!is_array_type(type)) {
-        return get_type_slot_count(type);
+    if (!is_array_type(type.kind)) {
+        return get_type_slot_count(type.kind);
     }
 
-    const ArrayType* info = get_array_type_info(type);
+    const ArrayType* info = type.array;
 
     return info->slots;
 }
 
-DataType get_array_leaf_type(DataType type)
+Type get_array_leaf_type(Type type)
 {
-    if (!is_array_type(type)) {
+    if (!is_array_type(type.kind)) {
         return type;
     }
 
-    const ArrayType* info = get_array_type_info(type);
+    const ArrayType* info = type.array;
 
     return get_array_leaf_type(info->element_type);
 }
 
-DataType get_array_type(DataType element_type, size_t count)
+Type get_array_type(Vector* array_types, Type element_type, size_t count)
 {
-    void** registry = get_array_type_registry();
-    ArrayType* info = find_array_type(*registry, element_type, count);
+    ArrayType* info = find_array_type(array_types, element_type, count);
 
     if (info) {
-        return (DataType)info;
+        return (Type){.kind = TypeArray, .array = info};
     }
 
     info = create_array_type(element_type, count);
-    info->next = *registry;
-    *registry = info;
 
-    return (DataType)info;
+    push_vector_item(array_types, info);
+
+    return (Type){.kind = TypeArray, .array = info};
 }
 
-static ArrayType* find_array_type(ArrayType* info, DataType element_type, size_t count)
+static ArrayType* find_array_type(const Vector* array_types, Type element_type, size_t count)
 {
-    while (info && (info->element_type != element_type || info->count != count)) {
-        info = info->next;
+    size_t index = 0;
+
+    while (index < array_types->count && !matches_array_type(array_types->data[index], element_type, count)) {
+        index++;
     }
 
-    return info;
+    if (index == array_types->count) {
+        return NULL;
+    }
+
+    return array_types->data[index];
 }
 
-static ArrayType* create_array_type(DataType element_type, size_t count)
+static bool matches_array_type(const ArrayType* info, Type element_type, size_t count)
+{
+    return info->count == count && types_equal(info->element_type, element_type);
+}
+
+static ArrayType* create_array_type(Type element_type, size_t count)
 {
     size_t element_slots = get_array_storage_slots(element_type);
 
@@ -78,6 +84,7 @@ static ArrayType* create_array_type(DataType element_type, size_t count)
     size_t length = strlen(element_name) + 32;
     ArrayType* info = allocate_memory(sizeof(ArrayType) + length);
     info->element_type = element_type;
+    info->dimensions = NULL;
     info->count = count;
     info->slots = count * element_slots;
 
@@ -88,7 +95,7 @@ static ArrayType* create_array_type(DataType element_type, size_t count)
 
 static void format_array_type_name(ArrayType* info, const char* element_name, size_t length)
 {
-    if (!is_array_type(info->element_type)) {
+    if (!is_array_type(info->element_type.kind)) {
         snprintf(info->name, length, "%s[%" PRIu64 "]", element_name, (uint64_t)info->count);
 
         return;

@@ -27,3 +27,8 @@ let selected = match condition {
     case false: d
 }
 assert(selected[0] == 7)
+let matched: u8[2][2] = match condition {
+    case true: [[1, 2], [3, 4]]
+    case false: [[5, 6], [7, 8]]
+}
+assert(matched[1][1] == 4)

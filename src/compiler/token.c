@@ -177,7 +177,7 @@ bool is_assignment_token(TokenType type)
     }
 }
 
-DataType get_token_data_type(TokenType type)
+TypeKind get_token_data_type(TokenType type)
 {
     switch (type) {
         case TokenKeywordI8:        return TypeI8;
@@ -203,7 +203,7 @@ DataType get_token_data_type(TokenType type)
 
 bool is_type_token(TokenType type)
 {
-    DataType data_type = get_token_data_type(type);
+    TypeKind data_type = get_token_data_type(type);
 
     return data_type != TypeUnknown;
 }

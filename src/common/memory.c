@@ -17,17 +17,6 @@ union Allocation
 
 static _Thread_local MemoryGroup* current_group;
 
-void** get_array_type_registry(void)
-{
-    static _Thread_local void* fallback_types;
-
-    if (!current_group) {
-        return &fallback_types;
-    }
-
-    return &current_group->array_types;
-}
-
 MemoryGroup* use_memory_group(MemoryGroup* group)
 {
     MemoryGroup* previous = current_group;
@@ -149,8 +138,6 @@ void free_memory(void* pointer)
 
 void free_memory_group(MemoryGroup* group)
 {
-    group->array_types = NULL;
-
     while (group->allocations) {
         void* pointer = group->allocations + 1;
 

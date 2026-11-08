@@ -1,0 +1,8 @@
+var condition = true
+let first = [1, 2]
+let second = [3, 4, 5]
+let values = if condition {
+    first
+} else {
+    second
+}

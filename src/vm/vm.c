@@ -63,8 +63,8 @@ static void run(VM* vm)
         dispatch:
         switch (opcode) {
             case OpNewArray: {
-                Value size_value = vm->module->constants.data[OPERAND_BC(inst)];
-                size_t slots = AS_UNSIGNED(size_value);
+                uint16_t position = OPERAND_BC(inst);
+                size_t slots = AS_UNSIGNED(vm->module->constants.data[position]);
                 ArrayObject* array = create_array_object(slots);
 
                 vm->fp[a] = POINTER_VALUE(array->data);

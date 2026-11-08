@@ -1,6 +1,8 @@
 var condition = true
 let arr: i32[2]
+
 if condition {
     arr = [1, 2]
 }
+
 print(arr[0])

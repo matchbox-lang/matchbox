@@ -1,14 +1,21 @@
 let a = [1, 2]
+
 func take() -> i32[2] {
     return a
 }
+
 assert(a[0] == 1)
+
 let b = take()
+
 assert(b[0] == 1)
+
 let c = [3, 4]
+
 func take_c() -> i32[2] {
     return c
 }
+
 func select(condition: bool) -> i32[2] {
     return if condition {
         take_c()
@@ -16,5 +23,7 @@ func select(condition: bool) -> i32[2] {
         take_c()
     }
 }
+
 let d = select(true)
+
 assert(d[1] == 4)

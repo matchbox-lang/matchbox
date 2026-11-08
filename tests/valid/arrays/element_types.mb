@@ -1,16 +1,24 @@
 let wide: i64[2] = [5000000000, -6000000000]
 wide[1] = 7000000000
+
 assert(wide[0] == 5000000000 and wide[1] == 7000000000)
+
 let floats: f64[2] = [1.5, 2.5]
 floats[0] = 3.5
+
 assert(floats[0] == 3.5 and floats[1] == 2.5)
+
 let text: string[2]
 text = ["", ""]
 text[0] = "hi"
+
 let flags = [true, false]
 let chars = ['a', 'b']
+
 assert(flags[0] and chars[1] == 'b')
 print(wide, floats, text, flags, chars)
 print($"Array: {wide}")
+
 let inferred = [1.0, 2.0]
+
 assert(inferred[1] == 2.0)

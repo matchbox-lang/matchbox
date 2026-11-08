@@ -1,21 +1,30 @@
 func read(values: &i32[2]) -> i32 {
     return values[1]
 }
+
 func mutate(values: ^i32[2]) {
     values[0] = 7
 }
+
 let numbers = [1, 2]
 let read_back = read(&numbers)
+
 assert(read_back == 2)
 mutate(^numbers)
 assert(numbers[0] == 7)
+
 func make() -> u8[2] {
     return [10, 20]
 }
+
 let made = make()
+
 assert(made[1] == 20)
+
 func make_matrix() {
     return [[1, 2], [3, 4]]
 }
+
 let matrix = make_matrix()
+
 assert(matrix[1][1] == 4)

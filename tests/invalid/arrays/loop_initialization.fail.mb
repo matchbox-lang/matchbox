@@ -1,5 +1,6 @@
 var condition = true
 let arr: i32[2]
+
 while condition {
     arr = [1, 2]
     condition = false

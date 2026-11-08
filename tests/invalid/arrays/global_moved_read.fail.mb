@@ -1,7 +1,10 @@
 let a = [1, 2]
+
 func read() -> i32 {
     return a[0]
 }
+
 let b = a
 let value = read()
+
 print(value)

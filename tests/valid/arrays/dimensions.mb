@@ -3,16 +3,25 @@ let cols = 3
 let matrix: i32[rows][cols] = [1, 2, 3, 4, 5, 6]
 let nested: i32[2][3] = [[1, 2, 3], [4, 5, 6]]
 matrix[1][2] = 9
+
 assert(matrix[0][2] == 3 and matrix[1][2] == 9)
 assert(nested[1][2] == 6)
+
 let values: i32[2 * cols] = [1, 2, 3, 4, 5, 6]
+
 assert(values[5] == 6)
+
 let cube: i32[1][2][2] = [1, 2, 3, 4]
+
 assert(cube[0][1][1] == 4)
 print(matrix, nested, cube)
+
 let width: usize = 2
 let sized: i32[width * 2] = [1, 2, 3, 4]
+
 assert(sized[3] == 4)
+
 const COUNT = 2
 let constant: i32[COUNT] = [10, 20]
+
 assert(constant[1] == 20)

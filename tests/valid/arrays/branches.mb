@@ -1,34 +1,47 @@
 let a = [1, 2]
 let b = [3, 4]
 var condition = true
+
 let chosen = if condition {
     a
 } else {
     b
 }
+
 chosen[0] = 10
+
 assert(chosen[0] == 10)
+
 let values: u8[2] = if condition {
     [1, 2]
 } else {
     [3, 4]
 }
+
 assert(values[1] == 2)
+
 let c = [5, 6]
+
 let same = if condition {
     c
 } else {
     c
 }
+
 assert(same[1] == 6)
+
 let d = [7, 8]
+
 let selected = match condition {
     case true: d
     case false: d
 }
+
 assert(selected[0] == 7)
+
 let matched: u8[2][2] = match condition {
     case true: [[1, 2], [3, 4]]
     case false: [[5, 6], [7, 8]]
 }
+
 assert(matched[1][1] == 4)

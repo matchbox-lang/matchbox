@@ -1,4 +1,6 @@
 func take(a: i32[2]) {}
+
 let a = [1, 2]
+
 take(a)
 print(a)

@@ -2,14 +2,19 @@ let unused: i32[3]
 let arr: i32[3]
 arr = [0, 0, 0]
 arr[0] = 10
+
 assert(arr[0] == 10 and arr[1] == 0)
+
 let source = [1, 2]
 let moved: i32[2]
 moved = source
 moved[1] = 9
+
 assert(moved[1] == 9)
+
 var mutable: i32[2]
 mutable = [3, 4]
 mutable = [5, 6]
+
 assert(mutable[0] == 5)
 print(arr)

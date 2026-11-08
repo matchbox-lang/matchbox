@@ -217,3 +217,16 @@ TypeKind get_common_numeric_type(TypeKind left, TypeKind right)
 
     return candidates[index];
 }
+
+bool types_equal(Type left, Type right)
+{
+    if (left.kind != right.kind) {
+        return false;
+    }
+
+    if (left.kind == TypeArray) {
+        return left.array == right.array;
+    }
+
+    return true;
+}

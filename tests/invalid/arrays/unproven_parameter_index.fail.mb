@@ -1,0 +1,3 @@
+func read(values: &i32[2], index: usize) -> i32 {
+    return values[index]
+}

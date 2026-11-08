@@ -1,6 +1,9 @@
 #include "vm/opcode.h"
 
 static const OpcodeFlag opcode_flags[OpCount] = {
+    [OpNewArray] = OpFlagWritesA,
+    [OpLde] = OpFlagWritesA,
+    [OpLde64] = OpFlagWritesA,
     [OpMov] = OpFlagWritesA,
     [OpLdi] = OpFlagWritesA,
     [OpLdc] = OpFlagWritesA,
@@ -169,6 +172,11 @@ static const OpcodeFlag opcode_flags[OpCount] = {
 };
 
 static const OpcodeRegisterFlag OpcodeRegisterFlags[OpCount] = {
+    [OpNewArray] = OpRegisterA,
+    [OpLde] = OpRegisterA | OpRegisterB | OpRegisterC,
+    [OpSte] = OpRegisterA | OpRegisterB | OpRegisterC,
+    [OpLde64] = OpRegisterA | OpRegisterB | OpRegisterC,
+    [OpSte64] = OpRegisterA | OpRegisterB | OpRegisterC,
     [OpMov] = OpRegisterA | OpRegisterB,
     [OpLdi] = OpRegisterA,
     [OpLdc] = OpRegisterA,

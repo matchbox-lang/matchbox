@@ -1,4 +1,5 @@
 #include "common/data_type.h"
+#include "common/array_type.h"
 #include <float.h>
 #include <limits.h>
 
@@ -7,6 +8,12 @@ static bool accepts_both_numeric_types(DataType left, DataType right, DataType d
 
 const char* get_data_type_name(DataType type)
 {
+    if (is_array_type(type)) {
+        const ArrayType* info = get_array_type_info(type);
+
+        return info->name;
+    }
+
     switch (type) {
         case TypeI8:       return "i8";
         case TypeI16:      return "i16";
@@ -83,7 +90,8 @@ size_t get_type_slot_count(DataType type)
 
 bool is_printable_type(DataType type)
 {
-    return is_integer_type(type) || is_float_type(type) || type == TypeBool || type == TypeChar || type == TypeString;
+    return is_integer_type(type) || is_float_type(type) || type == TypeBool || type == TypeChar
+        || type == TypeString || is_array_type(type);
 }
 
 bool can_implicitly_widen_integer(DataType source, DataType destination)

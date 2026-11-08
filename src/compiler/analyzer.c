@@ -1,4 +1,5 @@
 #include "compiler/analyzer.h"
+#include "common/array_type.h"
 #include "builtin/builtin.h"
 #include "builtin/io.h"
 #include "common/errors.h"
@@ -7,6 +8,7 @@
 #include "common/util.h"
 #include "common/vector.h"
 #include "compiler/diagnostics.h"
+#include "compiler/constant.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
 #include "compiler/validation.h"
@@ -22,6 +24,10 @@ typedef bool (*VisitId)(StringView id, void* context);
 static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context);
 static void clear_node_analysis(ASTNode* ast, Vector* functions);
 static void analyze_node(Analyzer* analyzer, ASTNode* ast);
+static void analyze_array(Analyzer* analyzer, ASTNode* ast);
+static void consume_array(ASTNode* ast);
+static void resolve_dimensions(Analyzer* analyzer, ASTNode* ast, DataType* type);
+static void apply_array_type(ASTNode* ast, DataType type);
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
 static void activate_reference_access(ASTNode* ast);
 static void transfer_exclusive_reference(ASTNode* expression);
@@ -48,6 +54,7 @@ typedef struct OwnershipState
     size_t shared_access_count;
     bool exclusive_access_active;
     bool initialized;
+    bool possibly_initialized;
     bool moved;
     bool reference_access_active;
 } OwnershipState;
@@ -281,6 +288,12 @@ static ASTNode* get_float_literal(ASTNode* expression)
 
 static void apply_literal_type(ASTNode* expression, DataType type)
 {
+    if (expression->type == ASTArray && is_array_type(type)) {
+        apply_array_type(expression, type);
+
+        return;
+    }
+
     if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
         apply_literal_type(expression->prefix.expr, type);
 
@@ -621,6 +634,13 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
     }
 
     switch (ast->type) {
+        case ASTArray:
+            return visit_node_list_uses(&ast->array.elements, visit, context);
+        case ASTIndex:
+        case ASTIndexAssignment:
+            return visit_node_uses(ast->index.array, visit, context)
+                || visit_node_uses(ast->index.index, visit, context)
+                || visit_node_uses(ast->index.value, visit, context);
         case ASTAssignment:
             return visit_assignment_uses(ast, visit, context);
         case ASTBinary:
@@ -872,13 +892,14 @@ static Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* b
     return previous_scope;
 }
 
-static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, DataType type)
+static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, DataType type, bool moves_result)
 {
     size_t count = count_vector(&branch->compound.statements);
 
-    if (count && is_integer_type(type)) {
+    if (count) {
         ASTNode* result = get_vector_at(&branch->compound.statements, count - 1);
-        apply_integer_literal_type(result, type);
+
+        apply_literal_type(result, type);
     }
 
     analyze_expression_nodes(analyzer, &branch->compound.statements);
@@ -890,6 +911,10 @@ static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Dat
     ASTNode* result = get_vector_at(&branch->compound.statements, count - 1);
     DataType result_type = get_node_data_type(result);
 
+    if (moves_result) {
+        consume_array(result);
+    }
+
     if (result_type == type || can_implicitly_widen_type(result_type, type)) {
         return type;
     }
@@ -897,16 +922,17 @@ static DataType analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Dat
     return result_type;
 }
 
-static DataType analyze_scoped_branch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, DataType type)
+static DataType analyze_scoped_branch(
+    Analyzer* analyzer, ASTNode* branch, ASTNode* binding, DataType type, bool moves_result)
 {
     Scope* previous_scope = enter_branch_scope(analyzer, branch, binding);
-    DataType result_type = analyze_branch_contents(analyzer, branch, type);
+    DataType result_type = analyze_branch_contents(analyzer, branch, type, moves_result);
     analyzer->current_scope = previous_scope;
 
     return result_type;
 }
 
-static DataType analyze_else_branch(Analyzer* analyzer, ASTNode* branch, DataType type)
+static DataType analyze_else_branch(Analyzer* analyzer, ASTNode* branch, DataType type, bool moves_result)
 {
     if (!branch) {
         return TypeVoid;
@@ -919,7 +945,7 @@ static DataType analyze_else_branch(Analyzer* analyzer, ASTNode* branch, DataTyp
         return get_node_data_type(branch);
     }
 
-    return analyze_scoped_branch(analyzer, branch, NULL, type);
+    return analyze_scoped_branch(analyzer, branch, NULL, type, moves_result);
 }
 
 static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
@@ -936,6 +962,8 @@ static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
     state->shared_access_count = *get_shared_access_count(symbol);
     state->exclusive_access_active = has_exclusive_access(symbol);
     state->initialized = is_initialized(symbol);
+    state->possibly_initialized = state->initialized
+        || (is_variable_definition(symbol) && symbol->variable_definition.possibly_initialized);
     state->moved = is_moved(symbol);
     state->reference_access_active = is_variable_definition(symbol) && symbol->variable_definition.reference_access_active;
 
@@ -994,6 +1022,7 @@ static void apply_ownership_state(OwnershipState* state)
     Vector* origins = get_reference_origins(symbol);
     copy_reference_origins(origins, &state->reference_origins);
     symbol->variable_definition.initialized = state->initialized;
+    symbol->variable_definition.possibly_initialized = state->possibly_initialized;
     symbol->variable_definition.reference_access_active = state->reference_access_active;
 }
 
@@ -1015,6 +1044,8 @@ static void update_ownership_states(Vector* states)
         state->shared_access_count = *get_shared_access_count(symbol);
         state->exclusive_access_active = has_exclusive_access(symbol);
         state->initialized = is_initialized(symbol);
+        state->possibly_initialized = state->initialized
+            || (is_variable_definition(symbol) && symbol->variable_definition.possibly_initialized);
         state->moved = is_moved(symbol);
         state->reference_access_active = is_variable_definition(symbol)
             && symbol->variable_definition.reference_access_active;
@@ -1095,11 +1126,12 @@ static void analyze_ownership_branch(
     Vector* states,
     ASTNode* branch,
     DataType expected_type,
-    DataType* type)
+    DataType* type,
+    bool moves_result)
 {
     apply_ownership_states(states);
     release_references_dead_on_branch(analyzer, states, branch, NULL);
-    *type = analyze_else_branch(analyzer, branch, expected_type);
+    *type = analyze_else_branch(analyzer, branch, expected_type, moves_result);
     update_ownership_states(states);
 }
 
@@ -1112,6 +1144,7 @@ static void merge_ownership_state(OwnershipState* then_state, OwnershipState* el
     merged.shared_access_count = MAX(then_state->shared_access_count, else_state->shared_access_count);
     merged.exclusive_access_active = then_state->exclusive_access_active || else_state->exclusive_access_active;
     merged.initialized = then_state->initialized && else_state->initialized;
+    merged.possibly_initialized = then_state->possibly_initialized || else_state->possibly_initialized;
     merged.moved = then_state->moved || else_state->moved;
     merged.reference_access_active = then_state->reference_access_active || else_state->reference_access_active;
 
@@ -1143,6 +1176,19 @@ static void validate_loop_reference_origins(OwnershipState* entry, Token token)
     }
 }
 
+static void validate_loop_initialization(OwnershipState* entry, Token token)
+{
+    ASTNode* symbol = entry->symbol;
+
+    if (!is_variable_definition(symbol) || !symbol->variable_definition.fixed || entry->possibly_initialized) {
+        return;
+    }
+
+    if (symbol->variable_definition.possibly_initialized) {
+        semantic_error("While loop cannot initialize a fixed outer binding across iterations", token);
+    }
+}
+
 static void validate_loop_ownership(Vector* entry_states, Token token)
 {
     size_t count = count_vector(entry_states);
@@ -1157,6 +1203,7 @@ static void validate_loop_ownership(Vector* entry_states, Token token)
         }
 
         validate_loop_reference_origins(entry, token);
+        validate_loop_initialization(entry, token);
     }
 }
 
@@ -1177,7 +1224,7 @@ static void analyze_while(Analyzer* analyzer, ASTNode* ast)
         semantic_error("While condition must have type bool", ast->while_statement.token);
     }
 
-    analyze_scoped_branch(analyzer, ast->while_statement.body, NULL, TypeVoid);
+    analyze_scoped_branch(analyzer, ast->while_statement.body, NULL, TypeVoid, false);
     validate_loop_ownership(&entry_states, ast->while_statement.token);
     update_ownership_states(&body_states);
 
@@ -1254,7 +1301,8 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     release_references_dead_on_branch(analyzer, &then_states, ast->conditional.then_branch, NULL);
 
     DataType type = ast->conditional.type_id;
-    DataType then_type = analyze_scoped_branch(analyzer, ast->conditional.then_branch, NULL, type);
+    DataType then_type = analyze_scoped_branch(
+        analyzer, ast->conditional.then_branch, NULL, type, ast->conditional.expression);
 
     update_ownership_states(&then_states);
 
@@ -1263,7 +1311,8 @@ static void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
 
     DataType else_type;
 
-    analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, &else_type);
+    analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, &else_type,
+        ast->conditional.expression);
     merge_ownership_states(&then_states, &else_states);
     free_ownership_states(&then_states);
     free_ownership_states(&else_states);
@@ -1499,7 +1548,7 @@ static void analyze_match_arm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, V
 
     analyze_match_guard(analyzer, arm, fallthrough_states);
 
-    DataType branch_type = analyze_branch_contents(analyzer, arm->branch, ast->match.type_id);
+    DataType branch_type = analyze_branch_contents(analyzer, arm->branch, ast->match.type_id, ast->match.expression);
     analyzer->current_scope = previous_scope;
 
     merge_match_result(ast, arm->branch, branch_type, result_type);
@@ -1671,6 +1720,10 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
     DataType left_type = get_node_data_type(ast->binary.left_expr);
     DataType right_type = get_node_data_type(ast->binary.right_expr);
     TokenType operator_type = ast->binary.operator.type;
+
+    if (is_array_type(left_type) || is_array_type(right_type)) {
+        semantic_error("Binary operators are not supported for arrays", ast->binary.operator);
+    }
 
     bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
 
@@ -1936,6 +1989,8 @@ static void analyze_parameter_default(Analyzer* analyzer, ASTNode* ast)
 
 static void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 {
+    resolve_dimensions(analyzer, ast, &ast->parameter.type_id);
+
     StringView id = get_string_view(ast->parameter.id);
 
     if (get_local_symbol(analyzer->current_scope, id)) {
@@ -2210,6 +2265,15 @@ static bool has_required_omitted_parameter(ASTNode* callee, size_t count, size_t
     return !first_omitted->parameter.default_value;
 }
 
+static void apply_argument_literal_type(ASTNode* argument, DataType type)
+{
+    if (argument->type == ASTArray) {
+        return;
+    }
+
+    apply_literal_type(argument, type);
+}
+
 static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = count_vector(&caller->function_call.args);
@@ -2222,7 +2286,7 @@ static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = get_vector_at(&caller->function_call.args, i);
         ASTNode* param = get_vector_at(&callee->function_definition.params, i);
-        apply_literal_type(arg, param->parameter.type_id);
+        apply_argument_literal_type(arg, param->parameter.type_id);
 
         ReferenceType argument_type = get_reference_type(arg);
         ReferenceType parameter_type = get_reference_type(param);
@@ -2251,6 +2315,13 @@ static void validate_global_binding_access(Analyzer* analyzer, ASTNode* origin, 
     }
 
     validate_constant_binding(analyzer, origin, token);
+
+    DataType value_type = get_node_data_type(origin);
+    bool moved = is_moved(origin);
+
+    if (is_array_type(value_type) && moved) {
+        semantic_error("Function accesses a moved array", token);
+    }
 
     if (type == RefShared && has_exclusive_access(origin)) {
         binding_access_error("Function requires shared access to binding ", token, " while exclusive access is active");
@@ -2321,20 +2392,98 @@ static void validate_global_access_in_nodes(Analyzer* analyzer, Vector* nodes)
     }
 }
 
-static void validate_function_global_access(Analyzer* analyzer, ASTNode* function)
+static void validate_function_array_moves(Analyzer* analyzer, ASTNode* function)
+{
+    Vector* moves = &function->function_definition.array_moves;
+
+    for (size_t i = 0; i < moves->count; i++) {
+        validate_global_binding_access(analyzer, moves->data[i], RefExclusive, function->function_definition.token);
+    }
+}
+
+static void apply_function_array_moves(ASTNode* function)
+{
+    Vector* moves = &function->function_definition.array_moves;
+
+    for (size_t i = 0; i < moves->count; i++) {
+        set_moved(moves->data[i]);
+    }
+}
+
+static bool contains_array_binding(const Vector* bindings, const ASTNode* symbol)
+{
+    size_t position = 0;
+
+    while (position < bindings->count && bindings->data[position] != symbol) {
+        position++;
+    }
+
+    return position < bindings->count;
+}
+
+static void validate_function_array_initialization(ASTNode* function, ASTNode* symbol, bool recursive)
+{
+    bool initialized = symbol->variable_definition.possibly_initialized;
+
+    if (symbol->variable_definition.fixed && (recursive || initialized)) {
+        semantic_error("Function may reinitialize a fixed array binding", function->function_definition.token);
+    }
+}
+
+static void validate_function_array_initializations(ASTNode* function, bool recursive)
+{
+    Vector* bindings = &function->function_definition.array_possible_initializations;
+
+    for (size_t i = 0; i < bindings->count; i++) {
+        validate_function_array_initialization(function, bindings->data[i], recursive);
+    }
+}
+
+static void apply_function_possible_initializations(ASTNode* function)
+{
+    Vector* bindings = &function->function_definition.array_possible_initializations;
+
+    for (size_t i = 0; i < bindings->count; i++) {
+        ASTNode* symbol = bindings->data[i];
+        symbol->variable_definition.possibly_initialized = true;
+    }
+}
+
+static void apply_function_array_initializations(ASTNode* function)
+{
+    Vector* bindings = &function->function_definition.array_initializations;
+
+    apply_function_possible_initializations(function);
+
+    for (size_t i = 0; i < bindings->count; i++) {
+        initialize_variable(bindings->data[i]);
+    }
+}
+
+static void validate_function_global_access(Analyzer* analyzer, ASTNode* function, bool moves_arrays)
 {
     if (analyzer->constant_scope && function_in_path(analyzer->constant_functions, function)) {
         semantic_token_error("Cannot evaluate incomplete function ", function->function_definition.token);
     }
 
-    if (function_in_path(analyzer->function_path, function)) {
+    bool recursive = function_in_path(analyzer->function_path, function);
+
+    validate_function_array_initializations(function, recursive);
+
+    if (recursive) {
         return;
     }
 
     FunctionPath path = {function, analyzer->function_path};
     analyzer->function_path = &path;
 
+    validate_function_array_moves(analyzer, function);
     validate_global_access_in_nodes(analyzer, &function->function_definition.body->compound.statements);
+
+    if (moves_arrays) {
+        apply_function_array_moves(function);
+        apply_function_array_initializations(function);
+    }
 
     analyzer->function_path = path.previous;
 }
@@ -2395,9 +2544,40 @@ static void validate_prefix_global_access(Analyzer* analyzer, ASTNode* ast)
     validate_node_global_access(analyzer, ast->prefix.expr);
 }
 
+static void validate_index_global_access(Analyzer* analyzer, ASTNode* ast)
+{
+    validate_node_global_access(analyzer, ast->index.array);
+    validate_node_global_access(analyzer, ast->index.index);
+
+    if (ast->type != ASTIndexAssignment) {
+        return;
+    }
+
+    ASTNode* owner = ast->index.array;
+
+    while (owner->type == ASTIndex) {
+        owner = owner->index.array;
+    }
+
+    if (owner->type == ASTVariable) {
+        ASTNode* origin = get_reference_origin_or_self(owner->variable.symbol);
+
+        validate_global_binding_access(analyzer, origin, RefExclusive, ast->index.token);
+    }
+
+    validate_node_global_access(analyzer, ast->index.value);
+}
+
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTArray:
+            validate_global_access_in_nodes(analyzer, &ast->array.elements);
+            break;
+        case ASTIndex:
+        case ASTIndexAssignment:
+            validate_index_global_access(analyzer, ast);
+            break;
         case ASTAssignment: {
             ASTNode* origin = get_reference_origin_or_self(ast->assignment.symbol);
             validate_global_binding_access(analyzer, origin, RefExclusive, ast->assignment.token);
@@ -2430,7 +2610,7 @@ static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
         case ASTFunctionCall:
             validate_call_argument_access(analyzer, ast, ast->function_call.symbol, ast->function_call.token);
             validate_global_access_in_nodes(analyzer, &ast->function_call.args);
-            validate_function_global_access(analyzer, ast->function_call.symbol);
+            validate_function_global_access(analyzer, ast->function_call.symbol, false);
             break;
         case ASTPrefix:
             validate_prefix_global_access(analyzer, ast);
@@ -2459,7 +2639,14 @@ static ReferenceType get_argument_reference_type(ASTNode* argument, ASTNode* par
         return type;
     }
 
-    return get_reference_type(parameter);
+    ReferenceType parameter_type = get_reference_type(parameter);
+    DataType value_type = get_node_data_type(argument);
+
+    if (parameter_type == RefNone && is_array_type(value_type)) {
+        return RefExclusive;
+    }
+
+    return parameter_type;
 }
 
 static ASTNode* get_argument_reference_origin(ASTNode* argument)
@@ -2624,10 +2811,53 @@ static void analyze_type_conversion(ASTNode* ast)
     ast->conversion.type_id = destination;
 }
 
+static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode* parameter)
+{
+    if (!parameter) {
+        analyze_node(analyzer, argument);
+
+        return;
+    }
+
+    DataType parameter_type = parameter->parameter.type_id;
+
+    apply_declared_type(argument, parameter_type, RefNone);
+    analyze_node(analyzer, argument);
+
+    ReferenceType argument_reference = get_reference_type(argument);
+    bool owned_array = is_array_type(parameter_type) && parameter->parameter.reference_type == RefNone;
+
+    if (owned_array && argument_reference != RefNone) {
+        semantic_error("Cannot transfer array ownership through a reference", parameter->parameter.token);
+    }
+
+    if (parameter->parameter.reference_type == RefNone) {
+        consume_array(argument);
+    }
+}
+
+static void analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
+{
+    StringView id = get_string_view(ast->function_call.id);
+    ASTNode* symbol = find_symbol(analyzer, id);
+
+    if (!symbol || symbol->type != ASTFunctionDefinition) {
+        analyze_expression_nodes(analyzer, &ast->function_call.args);
+
+        return;
+    }
+
+    for (size_t i = 0; i < ast->function_call.args.count; i++) {
+        ASTNode* parameter = get_vector_at(&symbol->function_definition.params, i);
+
+        analyze_call_argument(analyzer, ast->function_call.args.data[i], parameter);
+    }
+}
+
 static void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
 {
     infer_conversion_literal(ast);
-    analyze_expression_nodes(analyzer, &ast->function_call.args);
+    analyze_call_arguments(analyzer, ast);
 
     DataType called_type = get_token_data_type(ast->function_call.token.type);
 
@@ -2654,7 +2884,7 @@ static void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
     validate_function_call(ast, symbol, ast->function_call.token);
     validate_call_argument_access(analyzer, ast, symbol, ast->function_call.token);
     validate_argument_accesses(ast, symbol);
-    validate_function_global_access(analyzer, symbol);
+    validate_function_global_access(analyzer, symbol, true);
     set_call_reference_origins(ast, symbol);
 }
 
@@ -2795,8 +3025,59 @@ static void analyze_parameters(Analyzer* analyzer, Vector* parameters)
     }
 }
 
+static void record_function_array_initialization(ASTNode* function, OwnershipState* state)
+{
+    ASTNode* symbol = state->symbol;
+    bool initialized = is_initialized(symbol);
+    bool possible = symbol->variable_definition.possibly_initialized;
+    bool uninitialized_return = contains_array_binding(
+        &function->function_definition.array_uninitialized_returns, symbol);
+
+    if (!state->initialized && initialized && !uninitialized_return) {
+        push_vector_item(&function->function_definition.array_initializations, symbol);
+    }
+
+    if (!state->possibly_initialized && possible) {
+        push_vector_item(&function->function_definition.array_possible_initializations, symbol);
+    }
+
+    symbol->variable_definition.initialized = state->initialized;
+    symbol->variable_definition.possibly_initialized = state->possibly_initialized;
+}
+
+static void record_function_array_move(ASTNode* function, OwnershipState* state)
+{
+    ASTNode* symbol = state->symbol;
+    Scope* scope = get_scope(symbol);
+    DataType type = get_node_data_type(symbol);
+
+    if (!is_top_level_scope(scope) || !is_array_type(type)) {
+        return;
+    }
+
+    bool moved = is_moved(symbol);
+
+    if (moved && !state->moved) {
+        push_vector_item(&function->function_definition.array_moves, symbol);
+    }
+
+    set_moved_state(symbol, state->moved);
+    record_function_array_initialization(function, state);
+}
+
+static void record_function_array_moves(ASTNode* function, Vector* states)
+{
+    for (size_t i = 0; i < states->count; i++) {
+        record_function_array_move(function, states->data[i]);
+    }
+
+    free_ownership_states(states);
+}
+
 static void analyze_function(Analyzer* analyzer, ASTNode* ast)
 {
+    resolve_dimensions(analyzer, ast, &ast->function_definition.return_type_id);
+
     if (ast->function_definition.is_test && analyzer->current_scope != analyzer->top_level->compound.scope) {
         semantic_error("Test blocks are only allowed at file scope", ast->function_definition.token);
     }
@@ -2806,6 +3087,10 @@ static void analyze_function(Analyzer* analyzer, ASTNode* ast)
     if (get_local_symbol(analyzer->current_scope, id)) {
         redefinition_error("Function", ast->function_definition.token);
     }
+
+    Vector array_states;
+
+    capture_ownership_state(&array_states, analyzer->current_scope);
 
     Scope* parent = analyzer->current_scope;
     ASTNode* previous_function = analyzer->function;
@@ -2836,6 +3121,7 @@ static void analyze_function(Analyzer* analyzer, ASTNode* ast)
     analyzer->loop_path = previous_loop;
 
     resolve_function_return_value_type(ast);
+    record_function_array_moves(ast, &array_states);
 }
 
 static ASTNode* find_assignment_symbol(Analyzer* analyzer, ASTNode* ast)
@@ -2887,7 +3173,7 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
     }
 
     if (get_reference_type(symbol) == RefNone && is_variable_definition(symbol)
-        && symbol->variable_definition.fixed && is_initialized(symbol)) {
+        && symbol->variable_definition.fixed && symbol->variable_definition.possibly_initialized) {
         semantic_token_error("Cannot reassign fixed binding ", token);
     }
 }
@@ -2951,11 +3237,18 @@ static void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
         release_reference_access(symbol);
     }
 
-    apply_literal_type(ast->assignment.expr, get_node_data_type(symbol));
+    DataType destination_type = get_node_data_type(symbol);
+
+    apply_literal_type(ast->assignment.expr, destination_type);
     analyze_node(analyzer, ast->assignment.expr);
     validate_assignment_type(ast, symbol);
+    consume_array(ast->assignment.expr);
 
     DataType binding_type = get_node_data_type(symbol);
+
+    if (is_array_type(binding_type) && ast->assignment.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for array assignment", ast->assignment.operator);
+    }
 
     if (binding_type == TypeString && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for string assignment", ast->assignment.operator);
@@ -3014,6 +3307,7 @@ static void initialize_variable_definition(Analyzer* analyzer, ASTNode* ast)
     ast->variable_definition.scope = analyzer->current_scope;
     ast->variable_definition.position = get_next_local_position(analyzer->current_scope);
     ast->variable_definition.initialized = false;
+    ast->variable_definition.possibly_initialized = false;
 }
 
 static void apply_declared_type(ASTNode* expression, DataType type, ReferenceType reference_type)
@@ -3111,6 +3405,7 @@ static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast)
     apply_declared_type(expression, ast->variable_definition.type_id, ast->variable_definition.reference_type);
     analyze_node(analyzer, expression);
     resolve_variable_type(ast, expression);
+    consume_array(expression);
 
     set_reference_origins_from_expression(ast, expression);
     initialize_variable(ast);
@@ -3149,6 +3444,7 @@ static void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
         redefinition_error("Variable", ast->variable_definition.token);
     }
 
+    resolve_dimensions(analyzer, ast, &ast->variable_definition.type_id);
     initialize_variable_definition(analyzer, ast);
     analyze_variable_initializer(analyzer, ast);
     validate_variable_type(ast);
@@ -3229,6 +3525,32 @@ static void track_return_reference_origin(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
+static void record_uninitialized_array_return(ASTNode* function, OwnershipState* state)
+{
+    ASTNode* symbol = state->symbol;
+    Scope* scope = get_scope(symbol);
+    DataType type = get_node_data_type(symbol);
+
+    if (!is_top_level_scope(scope) || !is_array_type(type) || state->initialized) {
+        return;
+    }
+
+    push_vector_item(&function->function_definition.array_uninitialized_returns, symbol);
+}
+
+static void record_array_return_initializations(Analyzer* analyzer)
+{
+    Vector states;
+
+    capture_ownership_state(&states, analyzer->current_scope);
+
+    for (size_t i = 0; i < states.count; i++) {
+        record_uninitialized_array_return(analyzer->function, states.data[i]);
+    }
+
+    free_ownership_states(&states);
+}
+
 static void analyze_return(Analyzer* analyzer, ASTNode* ast)
 {
     validate_return_scope(analyzer, ast);
@@ -3236,10 +3558,13 @@ static void analyze_return(Analyzer* analyzer, ASTNode* ast)
     ASTNode* function = analyzer->function;
 
     if (function->function_definition.has_explicit_return_type) {
-        apply_literal_type(ast->return_statement.expr, function->function_definition.return_type_id);
+        apply_declared_type(ast->return_statement.expr, function->function_definition.return_type_id,
+            function->function_definition.return_reference_type);
     }
 
     analyze_node(analyzer, ast->return_statement.expr);
+    consume_array(ast->return_statement.expr);
+    record_array_return_initializations(analyzer);
 
     if (validate_return_reference_type(analyzer, ast) == RefNone) {
         return;
@@ -3304,6 +3629,10 @@ static void analyze_prefix(Analyzer* analyzer, ASTNode* ast)
 
     DataType type = get_node_data_type(ast->prefix.expr);
 
+    if (is_array_type(type)) {
+        semantic_error("Invalid prefix operator for array operands", ast->prefix.operator);
+    }
+
     if (type == TypeString) {
         semantic_error("Invalid prefix operator for string operands", ast->prefix.operator);
     }
@@ -3332,9 +3661,287 @@ static void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
     validate_variadic_arguments(&ast->builtin_call.args, ast->builtin_call.builtin, token);
 }
 
+static void apply_array_type(ASTNode* ast, DataType type)
+{
+    ast->array.type_id = type;
+}
+
+static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
+{
+    analyze_node(analyzer, expression);
+
+    DataType type = get_node_data_type(expression);
+    uint64_t value = 0;
+    bool constant = evaluate_array_count(expression, &value);
+
+    if (!constant || !is_integer_type(type) || value > SIZE_MAX || (int64_t)value < 0) {
+        fatal_error("Array count must be a nonnegative compile-time integer");
+    }
+
+    return (size_t)value;
+}
+
+static void resolve_dimensions(Analyzer* analyzer, ASTNode* ast, DataType* type)
+{
+    if (!ast->dimensions.count) {
+        return;
+    }
+
+    Vector counts;
+
+    init_vector(&counts);
+
+    for (size_t i = 0; i < ast->dimensions.count; i++) {
+        size_t count = resolve_array_count(analyzer, ast->dimensions.data[i]);
+
+        push_vector_item(&counts, (void*)(uintptr_t)count);
+    }
+
+    if (*type == TypeVoid || is_array_type(*type)) {
+        fatal_error("Invalid array element type");
+    }
+
+    for (size_t i = counts.count; i > 0; i--) {
+        size_t count = (size_t)(uintptr_t)counts.data[i - 1];
+        *type = get_array_type(*type, count);
+    }
+
+    free_vector(&counts);
+
+    for (size_t i = 0; i < ast->dimensions.count; i++) {
+        free_ast_node(ast->dimensions.data[i]);
+    }
+
+    free_vector(&ast->dimensions);
+    init_vector(&ast->dimensions);
+}
+
+static void consume_array_variable(ASTNode* ast)
+{
+    ASTNode* symbol = ast->variable.symbol;
+    bool moved = is_moved(symbol);
+    bool exclusive = has_exclusive_access(symbol);
+    size_t shared = *get_shared_access_count(symbol);
+
+    if (moved || exclusive || shared) {
+        semantic_error("Cannot move an unavailable array", ast->variable.token);
+    }
+
+    set_moved(symbol);
+}
+
+static void consume_array(ASTNode* ast)
+{
+    DataType type = get_node_data_type(ast);
+    ReferenceType reference = get_reference_type(ast);
+
+    if (!is_array_type(type) || reference != RefNone) {
+        return;
+    }
+
+    if (ast->type == ASTIndex) {
+        semantic_error("Cannot move an array element out of its owner", ast->index.token);
+    }
+
+    if (ast->type == ASTVariable) {
+        consume_array_variable(ast);
+    }
+}
+
+static void analyze_array_element(Analyzer* analyzer, ASTNode* element, DataType expected, Token token)
+{
+    apply_literal_type(element, expected);
+    analyze_node(analyzer, element);
+
+    DataType actual = get_node_data_type(element);
+    ReferenceType reference = get_reference_type(element);
+    bool compatible = actual == expected || can_implicitly_widen_type(actual, expected);
+
+    if (actual == TypeUnknown) {
+        semantic_error("Array element requires an explicit type", token);
+    }
+
+    if (reference != RefNone || (expected != TypeUnknown && !compatible) || actual == TypeVoid) {
+        semantic_error("Array element type does not match", token);
+    }
+
+    consume_array(element);
+}
+
+static bool array_has_nested_elements(Analyzer* analyzer, ASTNode* ast)
+{
+    if (!ast->array.elements.count) {
+        return false;
+    }
+
+    ASTNode* element = ast->array.elements.data[0];
+
+    if (element->type == ASTArray) {
+        return true;
+    }
+
+    if (element->type == ASTFunctionCall) {
+        StringView id = get_string_view(element->function_call.id);
+        ASTNode* symbol = find_symbol(analyzer, id);
+        DataType type = get_node_data_type(symbol);
+
+        return is_array_type(type);
+    }
+
+    if (element->type != ASTVariable) {
+        return false;
+    }
+
+    StringView id = get_string_view(element->variable.id);
+    ASTNode* symbol = find_symbol(analyzer, id);
+    DataType type = get_node_data_type(symbol);
+
+    return is_array_type(type);
+}
+
+static DataType get_array_initializer_type(Analyzer* analyzer, ASTNode* ast, size_t* count)
+{
+    DataType declared = ast->array.type_id;
+
+    if (!is_array_type(declared)) {
+        return TypeUnknown;
+    }
+
+    const ArrayType* info = get_array_type_info(declared);
+    DataType type = info->element_type;
+    bool nested = array_has_nested_elements(analyzer, ast);
+    ast->array.flat = is_array_type(type) && !nested;
+    *count = info->count;
+
+    if (!ast->array.flat) {
+        return type;
+    }
+
+    type = get_array_leaf_type(declared);
+    size_t slots = get_array_storage_slots(declared);
+    size_t leaf_slots = get_type_slot_count(type);
+    *count = slots / leaf_slots;
+
+    return type;
+}
+
+static DataType analyze_array_elements(Analyzer* analyzer, ASTNode* ast, DataType expected)
+{
+    size_t count = ast->array.elements.count;
+    size_t start = 0;
+
+    if (count && expected == TypeUnknown) {
+        ASTNode* element = ast->array.elements.data[0];
+
+        analyze_array_element(analyzer, element, expected, ast->array.token);
+
+        expected = get_node_data_type(element);
+        start = 1;
+    }
+
+    for (size_t i = start; i < count; i++) {
+        analyze_array_element(analyzer, ast->array.elements.data[i], expected, ast->array.token);
+    }
+
+    return expected;
+}
+
+static void analyze_array(Analyzer* analyzer, ASTNode* ast)
+{
+    size_t count = ast->array.elements.count;
+    size_t expected_count = count;
+    DataType expected = get_array_initializer_type(analyzer, ast, &expected_count);
+
+    if (count != expected_count || (!count && expected == TypeUnknown)) {
+        semantic_error("Array initializer count does not match its type", ast->array.token);
+    }
+
+    expected = analyze_array_elements(analyzer, ast, expected);
+
+    if (ast->array.type_id == TypeUnknown) {
+        ast->array.type_id = get_array_type(expected, count);
+    }
+}
+
+static ASTNode* get_index_owner(ASTNode* ast)
+{
+    if (ast->type == ASTIndex) {
+        return get_index_owner(ast->index.array);
+    }
+
+    if (ast->type == ASTVariable) {
+        return ast->variable.symbol;
+    }
+
+    return NULL;
+}
+
+static void analyze_index(Analyzer* analyzer, ASTNode* ast)
+{
+    analyze_node(analyzer, ast->index.array);
+    apply_literal_type(ast->index.index, TypeUsize);
+    analyze_node(analyzer, ast->index.index);
+
+    DataType array_type = get_node_data_type(ast->index.array);
+    DataType index_type = get_node_data_type(ast->index.index);
+    bool compatible = can_implicitly_widen_integer(index_type, TypeUsize);
+
+    if (!is_array_type(array_type)) {
+        semantic_error("Indexing requires an array", ast->index.token);
+    }
+
+    if (!compatible || get_reference_type(ast->index.index) != RefNone) {
+        semantic_error("Array index requires usize", ast->index.token);
+    }
+
+    const ArrayType* info = get_array_type_info(array_type);
+    ast->index.type_id = info->element_type;
+    uint64_t value = 0;
+    bool constant = evaluate_array_count(ast->index.index, &value);
+
+    if (!constant) {
+        semantic_error("Array index must be proven at compile time", ast->index.token);
+    }
+
+    if (value >= info->count) {
+        semantic_error("Array index is out of bounds", ast->index.token);
+    }
+
+    ast->index.position = (size_t)value;
+}
+
+static void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast)
+{
+    analyze_index(analyzer, ast);
+
+    ASTNode* owner = get_index_owner(ast->index.array);
+    ReferenceType reference = get_reference_type(owner);
+    bool constant = owner && is_variable_definition(owner) && owner->variable_definition.constant;
+    bool borrowed = owner && reference == RefNone && *get_shared_access_count(owner);
+
+    if (!owner || reference == RefShared || constant || borrowed) {
+        semantic_error("Cannot mutate this array", ast->index.token);
+    }
+
+    if (ast->index.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for array element assignment", ast->index.operator);
+    }
+
+    analyze_array_element(analyzer, ast->index.value, ast->index.type_id, ast->index.token);
+}
+
 static void analyze_node(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTArray:
+            analyze_array(analyzer, ast);
+            break;
+        case ASTIndex:
+            analyze_index(analyzer, ast);
+            break;
+        case ASTIndexAssignment:
+            analyze_index_assignment(analyzer, ast);
+            break;
         case ASTAssignment:
             analyze_assignment(analyzer, ast);
             break;
@@ -3416,6 +4023,7 @@ static void clear_variable_analysis(ASTNode* ast, Vector* functions)
 {
     ast->variable_definition.scope = NULL;
     ast->variable_definition.initialized = false;
+    ast->variable_definition.possibly_initialized = false;
     ast->variable_definition.moved = false;
     ast->variable_definition.shared_access_count = 0;
     ast->variable_definition.exclusive_access_active = false;
@@ -3431,6 +4039,11 @@ static void clear_variable_analysis(ASTNode* ast, Vector* functions)
 
 static void clear_function_analysis(ASTNode* ast, Vector* functions)
 {
+    ast->function_definition.array_moves.count = 0;
+    ast->function_definition.array_initializations.count = 0;
+    ast->function_definition.array_possible_initializations.count = 0;
+    ast->function_definition.array_uninitialized_returns.count = 0;
+
     ast->function_definition.scope = NULL;
     ast->function_definition.return_reference_origin = NULL;
     ast->function_definition.call_count = 0;
@@ -3466,6 +4079,15 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
     }
 
     switch (ast->type) {
+        case ASTArray:
+            clear_analysis_vector(&ast->array.elements, functions);
+            break;
+        case ASTIndex:
+        case ASTIndexAssignment:
+            clear_node_analysis(ast->index.array, functions);
+            clear_node_analysis(ast->index.index, functions);
+            clear_node_analysis(ast->index.value, functions);
+            break;
         case ASTCompound:
             free_scope(ast->compound.scope);
             ast->compound.scope = NULL;

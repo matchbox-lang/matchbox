@@ -3,8 +3,11 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
-typedef enum DataType
+typedef uintptr_t DataType;
+
+typedef enum PrimitiveType
 {
     TypeUnknown,
     TypeI8,
@@ -22,8 +25,9 @@ typedef enum DataType
     TypeChar,
     TypeString,
     TypeBool,
-    TypeVoid
-} DataType;
+    TypeVoid,
+    TypeArray
+} PrimitiveType;
 
 const char* get_data_type_name(DataType type);
 bool is_integer_type(DataType type);

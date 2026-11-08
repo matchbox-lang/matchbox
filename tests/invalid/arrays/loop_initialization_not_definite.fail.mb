@@ -1,0 +1,6 @@
+var condition = false
+var arr: i32[2]
+while condition {
+    arr = [1, 2]
+}
+print(arr[0])

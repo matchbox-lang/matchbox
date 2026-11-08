@@ -433,6 +433,19 @@ static void optimize_prefix(ASTNode* ast)
 static void optimize_node(ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTArray:
+            optimize_nodes(&ast->array.elements);
+            break;
+        case ASTIndex:
+        case ASTIndexAssignment:
+            optimize_node(ast->index.array);
+            optimize_node(ast->index.index);
+
+            if (ast->index.value) {
+                optimize_node(ast->index.value);
+            }
+
+            break;
         case ASTAssignment:
             optimize_node(ast->assignment.expr);
             break;
@@ -633,6 +646,15 @@ static void mark_called_functions(ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTArray:
+            mark_called_functions_in_vector(&ast->array.elements);
+            break;
+        case ASTIndex:
+        case ASTIndexAssignment:
+            mark_called_functions(ast->index.array);
+            mark_called_functions(ast->index.index);
+            mark_called_functions(ast->index.value);
+            break;
         case ASTAssignment:
             mark_called_functions(ast->assignment.expr);
             break;

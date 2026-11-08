@@ -1,0 +1,17 @@
+func make() -> i32[2][2] {
+    let arr: i32[2][2]
+    arr = [1, 2, 3, 4]
+    arr[1][1] = 10
+    return arr
+}
+let made = make()
+assert(made[1][1] == 10)
+let global: i32[2]
+func initialize() -> i32 {
+    global = [7, 8]
+    global[1] = 9
+    return 0
+}
+let status = initialize()
+assert(status == 0)
+assert(global[0] == 7 and global[1] == 9)

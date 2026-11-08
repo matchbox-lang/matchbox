@@ -1,0 +1,16 @@
+func last(values: &i64[2]) -> i64 {
+    return values[1]
+}
+let matrix: i64[2][2] = [[5000000000, 6000000000], [7000000000, 8000000000]]
+let value = last(matrix[1])
+assert(value == 8000000000)
+let row: i64[2] = [9000000000, 10000000000]
+matrix[1] = row
+assert(matrix[1][1] == 10000000000)
+print(matrix[1])
+let cube: i32[2][2][2] = [1, 2, 3, 4, 5, 6, 7, 8]
+cube[1][0][1] = 20
+assert(cube[1][1][1] == 8)
+print(cube[1])
+let empty: i32[2][0] = [[], []]
+print(empty[1])

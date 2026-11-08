@@ -1,0 +1,3 @@
+let a = [10, 20]
+let k: i32 = 1
+print(a[k])

@@ -41,6 +41,8 @@ static bool uses_register_pairs(Opcode opcode)
         case OpLdg64Call:
         case OpStg64:
         case OpLdr64:
+        case OpLde64:
+        case OpSte64:
         case OpStr64:
         case OpF32ToF64:
         case OpF64ToF32:
@@ -197,7 +199,7 @@ static bool invalidates_constants(Opcode opcode)
     bool end = ends_block(opcode);
 
     return end || opcode == OpCall || opcode == OpStgCall || opcode == OpStg || opcode == OpStg64
-        || opcode == OpStr || opcode == OpStr64
+        || opcode == OpStr || opcode == OpStr64 || opcode == OpSte || opcode == OpSte64
         || opcode == OpRefl || opcode == OpRefg || opcode == OpWide;
 }
 

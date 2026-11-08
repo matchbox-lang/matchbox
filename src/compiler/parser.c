@@ -30,6 +30,7 @@ typedef struct StringReader
 } StringReader;
 
 static ASTNode* parse_expression(Parser* parser);
+static ASTNode* parse_postfix(Parser* parser);
 static ASTNode* parse_identifier(Parser* parser);
 static ASTNode* parse_function_call(Parser* parser);
 static ASTNode* parse_prefix(Parser* parser);
@@ -449,9 +450,65 @@ static ASTNode* parse_type_expression(Parser* parser)
     return ast;
 }
 
+static ASTNode* parse_array_element(Parser* parser, ASTNode* ast)
+{
+    ASTNode* element = parse_expression(parser);
+
+    if (!element) {
+        return NULL;
+    }
+
+    push_vector_item(&ast->array.elements, element);
+
+    if (parser->current_token.type == TokenComma) {
+        consume(parser, TokenComma);
+
+        return ast;
+    }
+
+    if (parser->current_token.type != TokenRsquare && !is_end_of_file(parser)) {
+        expected_token_error(TokenComma, parser->current_token);
+    }
+
+    return ast;
+}
+
+static bool parse_array_elements(Parser* parser, ASTNode* ast)
+{
+    ASTNode* result = ast;
+
+    while (result && parser->current_token.type != TokenRsquare && !is_end_of_file(parser)) {
+        result = parse_array_element(parser, ast);
+    }
+
+    return result && !is_end_of_file(parser);
+}
+
+static ASTNode* parse_array(Parser* parser)
+{
+    ASTNode* ast = create_ast_node(ASTArray);
+    ast->array.token = parser->current_token;
+
+    consume(parser, TokenLsquare);
+
+    bool complete = parse_array_elements(parser, ast);
+
+    if (!complete) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    consume(parser, TokenRsquare);
+
+    return ast;
+}
+
 static ASTNode* parse_primary(Parser* parser)
 {
     switch (parser->current_token.type) {
+        case TokenLsquare:
+            return parse_array(parser);
         case TokenKeywordTrue:
         case TokenKeywordFalse:
             return parse_boolean_literal_node(parser, parser->current_token);
@@ -802,6 +859,76 @@ static ASTNode* parse_match(Parser* parser, bool expression)
     return ast;
 }
 
+static ASTNode* parse_index(Parser* parser, ASTNode* array)
+{
+    ASTNode* ast = create_ast_node(ASTIndex);
+    ast->index.array = array;
+    ast->index.token = parser->current_token;
+
+    consume(parser, TokenLsquare);
+
+    ast->index.index = parse_expression(parser);
+
+    if (!ast->index.index || is_end_of_file(parser)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    consume(parser, TokenRsquare);
+
+    return ast;
+}
+
+static ASTNode* parse_postfix(Parser* parser)
+{
+    ASTNode* ast = parse_primary(parser);
+
+    while (ast && parser->current_token.type == TokenLsquare) {
+        ast = parse_index(parser, ast);
+    }
+
+    if (!ast || ast->type != ASTIndex || !is_assignment_token(parser->current_token.type)) {
+        return ast;
+    }
+
+    ast->type = ASTIndexAssignment;
+    ast->index.operator = parser->current_token;
+
+    consume(parser, parser->current_token.type);
+
+    ast->index.value = parse_expression(parser);
+
+    if (!ast->index.value) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
+}
+
+static void parse_dimension(Parser* parser, ASTNode* ast)
+{
+    consume(parser, TokenLsquare);
+
+    ASTNode* count = parse_expression(parser);
+
+    if (!count) {
+        expected_expression_error(parser->current_token);
+    }
+
+    push_vector_item(&ast->dimensions, count);
+    consume(parser, TokenRsquare);
+}
+
+static void parse_dimensions(Parser* parser, ASTNode* ast)
+{
+    while (parser->current_token.type == TokenLsquare) {
+        parse_dimension(parser, ast);
+    }
+}
+
 static ASTNode* parse_prefix_operand(Parser* parser)
 {
     if (is_prefix_token(parser->current_token.type)) {
@@ -809,7 +936,7 @@ static ASTNode* parse_prefix_operand(Parser* parser)
     }
 
     Token token = parser->current_token;
-    ASTNode* expr = parse_primary(parser);
+    ASTNode* expr = parse_postfix(parser);
 
     if (!expr) {
         return NULL;
@@ -825,7 +952,7 @@ static ASTNode* parse_prefix_operand(Parser* parser)
 static ASTNode* parse_prefix(Parser* parser)
 {
     if (!is_prefix_token(parser->current_token.type)) {
-        return parse_primary(parser);
+        return parse_postfix(parser);
     }
 
     Token token = parser->current_token;
@@ -1103,6 +1230,7 @@ static ASTNode* parse_parameter(Parser* parser)
         ast->parameter.type_id = get_token_data_type(parser->current_token.type);
 
         consume_type(parser);
+        parse_dimensions(parser, ast);
     }
 
     if (!parse_parameter_default(parser, ast)) {
@@ -1186,6 +1314,7 @@ static void parse_function_return_type(Parser* parser, ASTNode* ast)
     ast->function_definition.return_type_id = get_token_data_type(parser->current_token.type);
 
     consume_type(parser);
+    parse_dimensions(parser, ast);
 
     ast->function_definition.has_explicit_return_type = true;
 }
@@ -1392,6 +1521,7 @@ static void parse_variable_type(Parser* parser, ASTNode* ast)
         ast->variable_definition.type_id = get_token_data_type(parser->current_token.type);
 
         consume_type(parser);
+        parse_dimensions(parser, ast);
 
         return;
     }
@@ -1449,7 +1579,10 @@ static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword
 {
     parse_variable_type(parser, ast);
 
-    if (ast->variable_definition.fixed && parser->current_token.type != TokenEqual) {
+    bool requires_initializer = ast->variable_definition.fixed
+        && (ast->variable_definition.constant || !ast->dimensions.count);
+
+    if (requires_initializer && parser->current_token.type != TokenEqual) {
         expected_token_error(TokenEqual, parser->current_token);
     }
 

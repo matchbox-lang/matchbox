@@ -1,0 +1,6 @@
+let a = [1, 2]
+var condition = true
+if condition {
+    let b = a
+}
+print(a)

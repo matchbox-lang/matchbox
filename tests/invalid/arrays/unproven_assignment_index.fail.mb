@@ -1,0 +1,3 @@
+let values = [10, 20]
+var index: usize = 1
+values[index] = 30

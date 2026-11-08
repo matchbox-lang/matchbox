@@ -2,7 +2,6 @@
 #include "common/memory.h"
 #include "runtime/function_object.h"
 #include "runtime/object.h"
-#include "runtime/string_object.h"
 #include "runtime/value.h"
 #include <stdlib.h>
 
@@ -39,9 +38,9 @@ static void free_module_objects(ModuleObject* module)
     size_t object_count = count_vector(&module->objects);
 
     for (size_t i = 0; i < object_count; i++) {
-        StringObject* string = get_vector_at(&module->objects, i);
+        Object* object = get_vector_at(&module->objects, i);
 
-        free_string_object(string);
+        free_memory(object);
     }
 
     free_vector(&module->objects);

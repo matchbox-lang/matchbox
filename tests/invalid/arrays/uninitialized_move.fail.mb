@@ -1,0 +1,2 @@
+let arr: i32[2]
+let moved = arr

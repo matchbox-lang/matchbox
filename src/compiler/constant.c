@@ -6,6 +6,7 @@
 #include <math.h>
 
 static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
+static uint64_t shift_count_right(uint64_t value, uint64_t shift, DataType type);
 
 static _Noreturn void invalid_constant_conversion_error(Token token, DataType destination)
 {
@@ -477,4 +478,181 @@ bool evaluate_constant(const ASTNode* ast, ConstantValue* value)
         default:
             return false;
     }
+}
+
+static bool evaluate_count_variable(const ASTNode* ast, uint64_t* value)
+{
+    const ASTNode* symbol = ast->variable.symbol;
+
+    if (!symbol || symbol->type != ASTVariableDefinition) {
+        return false;
+    }
+
+    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+        || symbol->variable_definition.reference_type != RefNone) {
+        return false;
+    }
+
+    return evaluate_array_count(symbol->variable_definition.expr, value);
+}
+
+static bool divide_count_values(uint64_t left, uint64_t right, DataType type, bool remainder, uint64_t* value)
+{
+    if (!right) {
+        return false;
+    }
+
+    if (!is_signed_integer_type(type)) {
+        *value = remainder ? left % right : left / right;
+
+        return true;
+    }
+
+    int64_t signed_left = (int64_t)left;
+    int64_t signed_right = (int64_t)right;
+
+    if (signed_left == INT64_MIN && signed_right == -1) {
+        *value = remainder ? 0 : left;
+
+        return true;
+    }
+
+    *value = remainder ? signed_left % signed_right : signed_left / signed_right;
+
+    return true;
+}
+
+static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
+{
+    uint64_t left = 0;
+    uint64_t right = 0;
+    bool left_constant = evaluate_array_count(ast->binary.left_expr, &left);
+    bool right_constant = evaluate_array_count(ast->binary.right_expr, &right);
+
+    if (!left_constant || !right_constant) {
+        return false;
+    }
+
+    DataType type = ast->binary.operand_type;
+    size_t bits = get_integer_type_size(type) * CHAR_BIT;
+
+    switch (ast->binary.operator.type) {
+        case TokenPlus:
+            *value = left + right;
+            break;
+        case TokenMinus:
+            *value = left - right;
+            break;
+        case TokenStar:
+            *value = left * right;
+            break;
+        case TokenSlash:
+            return divide_count_values(left, right, type, false, value);
+        case TokenPercent:
+            return divide_count_values(left, right, type, true, value);
+        case TokenAmpersand:
+            *value = left & right;
+            break;
+        case TokenPipe:
+            *value = left | right;
+            break;
+        case TokenCircumflex:
+            *value = left ^ right;
+            break;
+        case TokenLshift:
+            *value = left << (right % bits);
+            break;
+        case TokenRshift:
+            *value = shift_count_right(left, right % bits, type);
+            break;
+        default:
+            return false;
+    }
+
+    return true;
+}
+
+static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
+{
+    bool evaluated = evaluate_array_count(ast->prefix.expr, value);
+
+    if (!evaluated) {
+        return false;
+    }
+
+    switch (ast->prefix.operator.type) {
+        case TokenMinus:
+            *value = 0 - *value;
+            return true;
+        case TokenTilde:
+            *value = ~*value;
+            return true;
+        case TokenKeywordConst:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static uint64_t shift_count_right(uint64_t value, uint64_t shift, DataType type)
+{
+    if (is_signed_integer_type(type)) {
+        return (uint64_t)((int64_t)value >> shift);
+    }
+
+    return value >> shift;
+}
+
+static bool evaluate_count_conversion(const ASTNode* ast, uint64_t* value)
+{
+    ConstantValue constant = {0};
+    bool evaluated = evaluate_constant(ast, &constant);
+
+    if (evaluated) {
+        *value = constant.integer;
+
+        return true;
+    }
+
+    return evaluate_array_count(ast->conversion.expr, value);
+}
+
+static bool evaluate_count_expression(const ASTNode* ast, uint64_t* value)
+{
+    if (ast->type == ASTVariable) {
+        return evaluate_count_variable(ast, value);
+    }
+
+    if (ast->type == ASTBinary) {
+        return evaluate_count_binary(ast, value);
+    }
+
+    if (ast->type == ASTConversion) {
+        return evaluate_count_conversion(ast, value);
+    }
+
+    if (ast->type == ASTPrefix) {
+        return evaluate_count_prefix(ast, value);
+    }
+
+    ConstantValue constant = {0};
+    bool evaluated = evaluate_constant(ast, &constant);
+    *value = constant.integer;
+
+    return evaluated;
+}
+
+bool evaluate_array_count(const ASTNode* ast, uint64_t* value)
+{
+    DataType type = get_node_data_type(ast);
+    ReferenceType reference = get_reference_type(ast);
+
+    if (!is_integer_type(type) || reference != RefNone) {
+        return false;
+    }
+
+    bool evaluated = evaluate_count_expression(ast, value);
+    *value = normalize_integer_constant(*value, type);
+
+    return evaluated;
 }

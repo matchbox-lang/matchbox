@@ -301,6 +301,13 @@ typedef enum Opcode
     // Wide prefix
     OpWide,
 
+    // Arrays
+    OpNewArray,
+    OpLde,
+    OpSte,
+    OpLde64,
+    OpSte64,
+
     OpCount
 } Opcode;
 

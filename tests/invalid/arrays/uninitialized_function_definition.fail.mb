@@ -1,0 +1,5 @@
+let arr: i32[2]
+func initialize() {
+    arr = [1, 2]
+}
+print(arr[0])

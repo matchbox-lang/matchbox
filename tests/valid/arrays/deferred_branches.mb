@@ -1,0 +1,15 @@
+var condition = true
+let arr: i32[2]
+if condition {
+    arr = [1, 2]
+} else {
+    arr = [3, 4]
+}
+arr[1] = 10
+assert(arr[0] == 1 and arr[1] == 10)
+let matched: i32[1]
+match condition {
+    case true: matched = [5]
+    case false: matched = [6]
+}
+assert(matched[0] == 5)

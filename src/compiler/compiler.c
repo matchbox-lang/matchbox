@@ -1,4 +1,5 @@
 #include "compiler/compiler.h"
+#include "common/array_type.h"
 #include "builtin/builtin.h"
 #include "common/errors.h"
 #include "common/memory.h"
@@ -88,6 +89,10 @@ static bool get_literal_match_value(ASTNode* ast, uint64_t* value);
 static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
 static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
+static Operand compile_array(Compiler* compiler, ASTNode* ast);
+static Operand compile_array_new(Compiler* compiler, DataType type);
+static Operand compile_index(Compiler* compiler, ASTNode* ast);
+static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
 
 static _Noreturn void branch_offset_overflow_error(void)
 {
@@ -2271,25 +2276,25 @@ static bool matches_builtin_arguments(const FunctionObject* function, const Buil
     for (size_t i = 0; i < args->count && matches; i++) {
         ASTNode* argument = args->data[i];
         DataType type = get_node_data_type(argument);
-        ArgumentFormat format = get_argument_format(type);
-        matches = format.formatter == function->argument_formats[i].formatter;
+        matches = matches_argument_format(&function->argument_formats[i], type);
     }
 
     return matches;
 }
 
-static void set_builtin_argument_format(FunctionObject* function, DataType type, size_t index)
+static void set_builtin_argument_format(
+    Compiler* compiler, FunctionObject* function, DataType type, size_t index)
 {
     if (!function->argument_formats) {
         return;
     }
 
-    ArgumentFormat format = get_argument_format(type);
+    ArgumentFormat format = compile_argument_format(compiler->module, type);
     format.slot = function->param_count;
     function->argument_formats[index] = format;
 }
 
-static FunctionObject* create_variadic_builtin_function(const Builtin* builtin, const Vector* args)
+static FunctionObject* create_variadic_builtin_function(Compiler* compiler, const Builtin* builtin, const Vector* args)
 {
     FunctionObject* function = create_builtin_function_object(builtin);
     size_t count = args->count;
@@ -2308,7 +2313,7 @@ static FunctionObject* create_variadic_builtin_function(const Builtin* builtin, 
         ASTNode* argument = args->data[i];
         DataType type = get_builtin_argument_type(builtin, argument);
 
-        set_builtin_argument_format(function, type, i);
+        set_builtin_argument_format(compiler, function, type, i);
 
         function->param_count += get_type_slot_count(type);
     }
@@ -2336,7 +2341,7 @@ static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* bui
     }
 
     uint16_t position = make_function_position(count);
-    FunctionObject* function = create_variadic_builtin_function(builtin, args);
+    FunctionObject* function = create_variadic_builtin_function(compiler, builtin, args);
 
     push_vector_item(&compiler->module->functions, function);
     push_vector_item(&compiler->function_references, NULL);
@@ -3528,6 +3533,201 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
     }
 }
 
+static Operand compile_array_new(Compiler* compiler, DataType type)
+{
+    size_t slots = get_array_storage_slots(type);
+    Value value = UNSIGNED_VALUE(slots);
+    size_t position = make_constant(compiler, value);
+    int reg = allocate_register(compiler);
+
+    emit_global_instruction(compiler, OpNewArray, reg, position);
+
+    return make_operand(reg, true);
+}
+
+static Operand compile_array_index_value(Compiler* compiler, size_t value)
+{
+    ASTNode literal = {.type = ASTInteger};
+    literal.integer_literal.value = value;
+    literal.integer_literal.type_id = TypeUsize;
+
+    return compile_number(compiler, &literal);
+}
+
+static void reserve_pointer_padding(Compiler* compiler)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        allocate_register(compiler);
+    }
+}
+
+static void release_pointer_padding(Compiler* compiler)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        release_register(compiler);
+    }
+}
+
+static Opcode get_pointer_add_opcode(void)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        return OpAddI64;
+    }
+
+    return OpAddI32;
+}
+
+static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
+{
+    if (!offset) {
+        return buffer;
+    }
+
+    buffer = materialize_operand(compiler, buffer);
+
+    reserve_pointer_padding(compiler);
+
+    size_t byte_offset = offset * sizeof(Value);
+    Operand index = compile_array_index_value(compiler, byte_offset);
+    Opcode opcode = get_pointer_add_opcode();
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, buffer.reg, buffer.reg, index.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, index);
+    release_pointer_padding(compiler);
+
+    return buffer;
+}
+
+static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
+    size_t position, size_t slots)
+{
+    Operand source_index = compile_array_index_value(compiler, position);
+    int destination = allocate_registers(compiler, slots);
+    Opcode load = slots == 2 ? OpLde64 : OpLde;
+    Opcode store = slots == 2 ? OpSte64 : OpSte;
+
+    emit_instruction(compiler, load, destination, source.reg, source_index.reg);
+
+    Operand destination_index = compile_array_index_value(compiler, offset + position);
+    Operand value = {destination, true, slots};
+
+    emit_instruction(compiler, store, value.reg, buffer.reg, destination_index.reg);
+    release_operand(compiler, destination_index);
+    release_operand(compiler, value);
+    release_operand(compiler, source_index);
+}
+
+static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, DataType type)
+{
+    if (!is_array_type(type)) {
+        Opcode opcode = value.slots == 2 ? OpSte64 : OpSte;
+        Operand index = compile_array_index_value(compiler, offset);
+
+        emit_instruction(compiler, opcode, value.reg, buffer.reg, index.reg);
+        release_operand(compiler, index);
+
+        return;
+    }
+
+    DataType leaf = get_array_leaf_type(type);
+    size_t slots = get_type_slot_count(leaf);
+    size_t total_slots = get_array_storage_slots(type);
+
+    for (size_t position = 0; position < total_slots; position += slots) {
+        copy_array_element(compiler, buffer, value, offset, position, slots);
+    }
+}
+
+static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand array, size_t position)
+{
+    const ArrayType* info = get_array_type_info(ast->array.type_id);
+    DataType type = info->element_type;
+
+    if (ast->array.flat) {
+        type = get_array_leaf_type(ast->array.type_id);
+    }
+
+    size_t stride = get_array_storage_slots(type);
+    size_t offset = position * stride;
+    ASTNode* element = ast->array.elements.data[position];
+    Operand value = compile_converted_expression(compiler, element, type, false);
+
+    store_array_value(compiler, array, value, offset, type);
+    release_operand(compiler, value);
+}
+
+static Operand compile_array(Compiler* compiler, ASTNode* ast)
+{
+    Operand array = compile_array_new(compiler, ast->array.type_id);
+
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        compile_array_element(compiler, ast, array, i);
+    }
+
+    return array;
+}
+
+static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
+{
+    ASTNode* base = ast;
+    *offset = 0;
+
+    while (base->type == ASTIndex || base->type == ASTIndexAssignment) {
+        DataType type = get_node_data_type(base->index.array);
+        const ArrayType* info = get_array_type_info(type);
+        size_t stride = get_array_storage_slots(info->element_type);
+        *offset += base->index.position * stride;
+        base = base->index.array;
+    }
+
+    return base;
+}
+
+static Operand compile_index_address(Compiler* compiler, ASTNode* ast)
+{
+    size_t offset;
+    ASTNode* base = get_index_base(ast, &offset);
+    Operand buffer = compile_expression(compiler, base, false);
+
+    return offset_buffer(compiler, buffer, offset);
+}
+
+static Operand compile_index(Compiler* compiler, ASTNode* ast)
+{
+    if (is_array_type(ast->index.type_id)) {
+        return compile_index_address(compiler, ast);
+    }
+
+    size_t slots = get_type_slot_count(ast->index.type_id);
+    int destination = allocate_registers(compiler, slots);
+    size_t offset;
+    ASTNode* base = get_index_base(ast, &offset);
+    Operand buffer = compile_expression(compiler, base, false);
+    Operand index = compile_array_index_value(compiler, offset);
+    Opcode opcode = slots == 2 ? OpLde64 : OpLde;
+
+    emit_instruction(compiler, opcode, destination, buffer.reg, index.reg);
+    release_operand(compiler, index);
+    release_operand(compiler, buffer);
+
+    return (Operand){destination, true, slots};
+}
+
+static void compile_index_assignment(Compiler* compiler, ASTNode* ast)
+{
+    size_t offset;
+    ASTNode* base = get_index_base(ast, &offset);
+    Operand buffer = compile_expression(compiler, base, false);
+    buffer = materialize_operand(compiler, buffer);
+    Operand value = compile_converted_expression(compiler, ast->index.value, ast->index.type_id, false);
+
+    store_array_value(compiler, buffer, value, offset, ast->index.type_id);
+    release_operand(compiler, value);
+    release_operand(compiler, buffer);
+}
+
 static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard)
 {
     if (discard && compile_discarded_expression(compiler, ast)) {
@@ -3537,6 +3737,12 @@ static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard
     Operand result;
 
     switch (ast->type) {
+        case ASTArray:
+            result = compile_array(compiler, ast);
+            break;
+        case ASTIndex:
+            result = compile_index(compiler, ast);
+            break;
         case ASTBinary:
             result = compile_binary(compiler, ast);
             break;
@@ -3590,6 +3796,9 @@ static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard
 static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
 {
     switch (ast->type) {
+        case ASTIndexAssignment:
+            compile_index_assignment(compiler, ast);
+            return no_operand();
         case ASTAssignment:
             compile_assignment(compiler, ast);
             return no_operand();
@@ -3602,7 +3811,6 @@ static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
             return no_operand();
         case ASTWhile:
             compile_while(compiler, ast);
-
             return no_operand();
         case ASTReturn:
             compile_return_statement(compiler, ast);

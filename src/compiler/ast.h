@@ -30,6 +30,9 @@ typedef enum ReferenceType
 
 typedef enum ASTNodeType
 {
+    ASTArray,
+    ASTIndex,
+    ASTIndexAssignment,
     ASTAssignment,
     ASTBinary,
     ASTBuiltinCall,
@@ -56,8 +59,26 @@ typedef enum ASTNodeType
 typedef struct ASTNode
 {
     ASTNodeType type;
+    Vector dimensions;
 
     union {
+        struct {
+            Token token;
+            Vector elements;
+            DataType type_id;
+            bool flat;
+        } array;
+
+        struct {
+            Token token;
+            ASTNode* array;
+            ASTNode* index;
+            ASTNode* value;
+            Token operator;
+            DataType type_id;
+            size_t position;
+        } index;
+
         struct {
             ASTNode* expr;
             Token token;
@@ -139,6 +160,10 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             Vector params;
+            Vector array_moves;
+            Vector array_initializations;
+            Vector array_possible_initializations;
+            Vector array_uninitialized_returns;
             bool is_test;
             bool is_test_skipped;
             Token test_name;
@@ -212,6 +237,7 @@ typedef struct ASTNode
             bool fixed;
             bool constant;
             bool initialized;
+            bool possibly_initialized;
             DataType type_id;
             ReferenceType reference_type;
             Vector reference_origins;

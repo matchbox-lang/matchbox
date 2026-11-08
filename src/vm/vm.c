@@ -1,6 +1,7 @@
 #include "vm/vm.h"
 #include "common/errors.h"
 #include "runtime/function_object.h"
+#include "runtime/array_object.h"
 #include "vm/opcode.h"
 #include <math.h>
 #include <stdio.h>
@@ -61,6 +62,43 @@ static void run(VM* vm)
 
         dispatch:
         switch (opcode) {
+            case OpNewArray: {
+                Value size_value = vm->module->constants.data[OPERAND_BC(inst)];
+                size_t slots = AS_UNSIGNED(size_value);
+                ArrayObject* array = create_array_object(slots);
+
+                vm->fp[a] = POINTER_VALUE(array->data);
+                push_vector_item(&vm->module->objects, array);
+                break;
+            }
+            case OpLde: {
+                const Value* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                vm->fp[a] = buffer[offset];
+                break;
+            }
+            case OpSte: {
+                Value* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+                
+                buffer[offset] = vm->fp[a];
+                break;
+            }
+            case OpLde64: {
+                const Value* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(vm->fp + a, buffer + offset, sizeof(uint64_t));
+                break;
+            }
+            case OpSte64: {
+                Value* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint64_t));
+                break;
+            }
             case OpHlt:
                 return;
             case OpNop:

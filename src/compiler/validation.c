@@ -120,6 +120,15 @@ static void validate_node(const ASTNode* ast, bool check_zero)
     }
 
     switch (ast->type) {
+        case ASTArray:
+            validate_nodes(&ast->array.elements, 0, check_zero);
+            break;
+        case ASTIndex:
+        case ASTIndexAssignment:
+            validate_node(ast->index.array, check_zero);
+            validate_node(ast->index.index, check_zero);
+            validate_node(ast->index.value, check_zero);
+            break;
         case ASTAssignment:
             validate_assignment(ast, check_zero);
             break;

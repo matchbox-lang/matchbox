@@ -1,0 +1,16 @@
+let a = [1, 2, 3]
+let b = a
+b[0] = 10
+assert(b[0] == 10)
+var c: i32[3]
+c = b
+c[1] = 20
+assert(c[0] == 10 and c[1] == 20)
+func take(values: i32[3]) -> i32[3] {
+    values[2] = 30
+    return values
+}
+let d = take(c)
+assert(d[2] == 30)
+let e = take([4, 5, 6])
+assert(e[0] == 4 and e[2] == 30)

@@ -1,0 +1,7 @@
+func take(values: i32[2]) {
+    values[0] = 7
+}
+let a = [1, 2]
+let r = &a
+take(r)
+print(r)

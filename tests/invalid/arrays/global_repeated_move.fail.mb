@@ -1,0 +1,6 @@
+let a = [1, 2]
+func take() -> i32[2] {
+    return a
+}
+let b = take()
+let c = take()

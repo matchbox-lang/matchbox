@@ -1,0 +1,10 @@
+let arr: i32[2]
+func initialize(condition: bool) -> i32 {
+    if condition {
+        return 0
+    }
+    arr = [1, 2]
+    return 1
+}
+let status = initialize(true)
+print(arr[0])

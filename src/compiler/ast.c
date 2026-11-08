@@ -15,7 +15,12 @@ ASTNode* create_ast_node(ASTNodeType type)
 
     ast->type = type;
 
+    init_vector(&ast->dimensions);
+
     switch (type) {
+        case ASTArray:
+            init_vector(&ast->array.elements);
+            break;
         case ASTBuiltinCall:
             init_vector(&ast->builtin_call.args);
             break;
@@ -31,6 +36,10 @@ ASTNode* create_ast_node(ASTNodeType type)
             break;
         case ASTFunctionDefinition:
             init_vector(&ast->function_definition.params);
+            init_vector(&ast->function_definition.array_moves);
+            init_vector(&ast->function_definition.array_initializations);
+            init_vector(&ast->function_definition.array_possible_initializations);
+            init_vector(&ast->function_definition.array_uninitialized_returns);
             break;
         case ASTMatch:
             init_vector(&ast->match.arms);
@@ -306,6 +315,15 @@ void free_ast_node(ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTArray:
+            free_ast_node_vector(&ast->array.elements);
+            break;
+        case ASTIndex:
+        case ASTIndexAssignment:
+            free_ast_node(ast->index.array);
+            free_ast_node(ast->index.index);
+            free_ast_node(ast->index.value);
+            break;
         case ASTConversion:
             free_ast_node(ast->conversion.expr);
             break;
@@ -337,6 +355,10 @@ void free_ast_node(ASTNode* ast)
         case ASTFunctionDefinition:
             free_string_object(ast->function_definition.id);
             free_ast_node_vector(&ast->function_definition.params);
+            free_vector(&ast->function_definition.array_moves);
+            free_vector(&ast->function_definition.array_initializations);
+            free_vector(&ast->function_definition.array_possible_initializations);
+            free_vector(&ast->function_definition.array_uninitialized_returns);
             free_ast_node(ast->function_definition.body);
             break;
         case ASTMatch:
@@ -375,6 +397,7 @@ void free_ast_node(ASTNode* ast)
             break;
     }
 
+    free_ast_node_vector(&ast->dimensions);
     free_memory(ast);
 }
 
@@ -411,6 +434,10 @@ DataType get_node_data_type(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTArray:
+            return ast->array.type_id;
+        case ASTIndex:
+            return ast->index.type_id;
         case ASTConversion:
             return ast->conversion.type_id;
         case ASTBinary:
@@ -540,6 +567,8 @@ bool is_expression_statement(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTArray:
+        case ASTIndex:
         case ASTBinary:
         case ASTBoolean:
         case ASTBuiltinCall:
@@ -610,6 +639,8 @@ bool is_prefix_operand(const ASTNode* ast)
 
     switch (ast->type) {
         case ASTAssignment:
+        case ASTArray:
+        case ASTIndex:
         case ASTBinary:
         case ASTBoolean:
         case ASTBuiltinCall:
@@ -665,5 +696,6 @@ void initialize_variable(ASTNode* ast)
 {
     if (is_variable_definition(ast)) {
         ast->variable_definition.initialized = true;
+        ast->variable_definition.possibly_initialized = true;
     }
 }

@@ -1,0 +1,4 @@
+let source = [1, 2]
+let arr: i32[2]
+arr = source
+print(source[0])

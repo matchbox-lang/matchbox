@@ -1,0 +1,14 @@
+let values = [1, 2, 3]
+let shorter = [4, 5]
+let matrix: i32[2][2] = [6, 7, 8, 9]
+let floating: f64[2] = [1.5, 2.5]
+let empty: i32[0] = []
+print(values)
+print(shorter)
+print(matrix)
+print(matrix[1])
+print(floating)
+print(empty)
+print($"Matrix: {matrix}")
+let text = string(values)
+print(text)

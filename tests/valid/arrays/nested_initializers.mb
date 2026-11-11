@@ -11,7 +11,12 @@ let matrix = [[next_value(), next_value()], [next_value(), next_value()]]
 assert(calls == 4 and matrix[0][0] == 1 and matrix[0][1] == 2)
 assert(matrix[1][0] == 3 and matrix[1][1] == 4)
 
-let filled = [u16[2](next_value()), u16[2](next_value())]
+let first_value = next_value()
+let second_value = next_value()
+let first_fill = u16(first_value)
+let second_fill = u16(second_value)
+
+let filled = [u16[2](first_fill), u16[2](second_fill)]
 let cube: i64[2][1][2] = [[[5000000000, 6000000000]], [[7000000000, 8000000000]]]
 
 assert(calls == 6 and filled[0][1] == 5 and filled[1][0] == 6 and filled[1][1] == 6)

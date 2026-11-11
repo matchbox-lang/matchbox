@@ -3936,28 +3936,7 @@ static void analyze_array_fill(Analyzer* analyzer, ASTNode* ast)
 
     Type leaf = get_array_leaf_type(ast->array.type_id);
 
-    if (leaf.kind == TypeBool || leaf.kind == TypeString) {
-        analyze_array_element(analyzer, ast->array.elements.data[0], leaf, token);
-
-        return;
-    }
-
-    ASTNode* expression = ast->array.elements.data[0];
-    Type source = get_node_data_type(expression);
-    bool converted = expression->type == ASTConversion && types_equal(source, leaf);
-
-    if (converted) {
-        analyze_node(analyzer, expression);
-
-        return;
-    }
-
-    ASTNode* conversion = create_function_call_node(token);
-
-    push_vector_item(&conversion->function_call.args, expression);
-    analyze_function_call(analyzer, conversion);
-
-    ast->array.elements.data[0] = conversion;
+    analyze_array_element(analyzer, ast->array.elements.data[0], leaf, token);
 }
 
 static void analyze_array(Analyzer* analyzer, ASTNode* ast)

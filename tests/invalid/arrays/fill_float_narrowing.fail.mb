@@ -1,0 +1,2 @@
+let value: f64 = 1.5
+let values = f32[3](value)

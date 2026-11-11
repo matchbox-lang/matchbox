@@ -1,0 +1,2 @@
+let value: i32 = 25
+let values = f32[3](value)

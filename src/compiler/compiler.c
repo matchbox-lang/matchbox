@@ -3632,34 +3632,68 @@ static Opcode get_array_store_opcode(Type type)
     }
 }
 
+static Opcode get_array_immediate_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpLde8:
+            return OpLdei8;
+        case OpSte8:
+            return OpStei8;
+        case OpLde16:
+            return OpLdei16;
+        case OpSte16:
+            return OpStei16;
+        case OpLde32:
+            return OpLdei32;
+        case OpSte32:
+            return OpStei32;
+        case OpLde64:
+            return OpLdei64;
+        case OpSte64:
+            return OpStei64;
+        default:
+            return opcode;
+    }
+}
+
+static void emit_array_access(Compiler* compiler, Opcode opcode, int value, int buffer, size_t offset)
+{
+    if (offset <= UINT8_MAX) {
+        Opcode immediate = get_array_immediate_opcode(opcode);
+
+        emit_instruction(compiler, immediate, value, buffer, offset);
+
+        return;
+    }
+
+    Operand index = compile_array_index_value(compiler, offset);
+
+    emit_instruction(compiler, opcode, value, buffer, index.reg);
+    release_operand(compiler, index);
+}
+
 static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
     size_t position, Type type)
 {
-    Operand source_index = compile_array_index_value(compiler, position);
     size_t slots = get_type_slot_count(type.kind);
     int destination = allocate_registers(compiler, slots);
     Opcode load = get_array_load_opcode(type);
     Opcode store = get_array_store_opcode(type);
 
-    emit_instruction(compiler, load, destination, source.reg, source_index.reg);
+    emit_array_access(compiler, load, destination, source.reg, position);
+    emit_array_access(compiler, store, destination, buffer.reg, offset + position);
 
-    Operand destination_index = compile_array_index_value(compiler, offset + position);
     Operand value = {destination, true, slots};
 
-    emit_instruction(compiler, store, value.reg, buffer.reg, destination_index.reg);
-    release_operand(compiler, destination_index);
     release_operand(compiler, value);
-    release_operand(compiler, source_index);
 }
 
 static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
 {
     if (!is_array_type(type.kind)) {
         Opcode opcode = get_array_store_opcode(type);
-        Operand index = compile_array_index_value(compiler, offset);
 
-        emit_instruction(compiler, opcode, value.reg, buffer.reg, index.reg);
-        release_operand(compiler, index);
+        emit_array_access(compiler, opcode, value.reg, buffer.reg, offset);
 
         return;
     }
@@ -3802,11 +3836,9 @@ static Operand compile_index(Compiler* compiler, ASTNode* ast)
     size_t offset;
     ASTNode* base = get_index_base(ast, &offset);
     Operand buffer = compile_expression(compiler, base, false);
-    Operand index = compile_array_index_value(compiler, offset);
     Opcode opcode = get_array_load_opcode(ast->index.type_id);
 
-    emit_instruction(compiler, opcode, destination, buffer.reg, index.reg);
-    release_operand(compiler, index);
+    emit_array_access(compiler, opcode, destination, buffer.reg, offset);
     release_operand(compiler, buffer);
 
     Operand result = {destination, true, slots};

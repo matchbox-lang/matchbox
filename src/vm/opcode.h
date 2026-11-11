@@ -305,12 +305,20 @@ typedef enum Opcode
     OpNewArray,
     OpLde8,
     OpSte8,
+    OpLdei8,
+    OpStei8,
     OpLde16,
     OpSte16,
+    OpLdei16,
+    OpStei16,
     OpLde32,
     OpSte32,
+    OpLdei32,
+    OpStei32,
     OpLde64,
     OpSte64,
+    OpLdei64,
+    OpStei64,
 
     OpCount
 } Opcode;

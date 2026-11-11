@@ -7,9 +7,9 @@ typedef struct ArrayObject
 {
     Object object;
     size_t count;
-    Value data[];
+    uint8_t data[];
 } ArrayObject;
 
-ArrayObject* create_array_object(size_t slots);
+ArrayObject* create_array_object(size_t size);
 
 #endif

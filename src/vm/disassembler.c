@@ -192,8 +192,12 @@ static void print_instruction(uint8_t c)
         case OpRefg:        print_opcode_register_uint16("REFG"); break;
         case OpLdr:         print_opcode_registers2("LDR"); break;
         case OpNewArray:    print_opcode_register_uint16("NEW_ARRAY"); break;
-        case OpLde:         print_opcode_registers3("LDE"); break;
-        case OpSte:         print_opcode_registers3("STE"); break;
+        case OpLde8:        print_opcode_registers3("LDE_8"); break;
+        case OpSte8:        print_opcode_registers3("STE_8"); break;
+        case OpLde16:       print_opcode_registers3("LDE_16"); break;
+        case OpSte16:       print_opcode_registers3("STE_16"); break;
+        case OpLde32:       print_opcode_registers3("LDE_32"); break;
+        case OpSte32:       print_opcode_registers3("STE_32"); break;
         case OpLde64:       print_opcode_registers3("LDE_64"); break;
         case OpSte64:       print_opcode_registers3("STE_64"); break;
         case OpStr:         print_opcode_registers2("STR"); break;

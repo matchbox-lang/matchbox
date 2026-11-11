@@ -5,6 +5,7 @@
 #include "runtime/concatenation.h"
 #include "runtime/module_object.h"
 #include <stdint.h>
+#include <string.h>
 
 typedef struct FormattedArguments
 {
@@ -13,7 +14,7 @@ typedef struct FormattedArguments
     size_t count;
 } FormattedArguments;
 
-static void format_array_data(Writer* writer, const ArrayFormat* format, const Value* data);
+static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data);
 static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format);
 
 void format_arguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count)
@@ -188,27 +189,30 @@ void format_string_argument(Writer* writer, const Value* argument)
     format_string(writer, value);
 }
 
-static void format_array_item(Writer* writer, const ArgumentFormat* format, const Value* data, size_t index)
+static void format_array_item(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t index)
 {
     if (index) {
         write_bytes(writer, ", ", 2);
     }
 
-    if (format->array) {
-        format_array_data(writer, format->array, data);
+    if (format->element.array) {
+        format_array_data(writer, format->element.array, data);
 
         return;
     }
 
-    format->formatter(writer, data);
+    Value argument[2] = {0};
+
+    memcpy(argument, data, format->stride);
+    format->element.formatter(writer, argument);
 }
 
-static void format_array_data(Writer* writer, const ArrayFormat* format, const Value* data)
+static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data)
 {
     write_bytes(writer, "[", 1);
 
     for (size_t i = 0; i < format->count; i++) {
-        format_array_item(writer, &format->element, data + i * format->stride, i);
+        format_array_item(writer, format, data + i * format->stride, i);
     }
 
     write_bytes(writer, "]", 1);
@@ -222,7 +226,7 @@ static void format_argument(Writer* writer, const Value* argument, const Argumen
         return;
     }
 
-    const Value* data = AS_POINTER(argument[0]);
+    const uint8_t* data = AS_POINTER(argument[0]);
 
     format_array_data(writer, format->array, data);
 }
@@ -274,7 +278,7 @@ ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
     const ArrayType* info = type.array;
     ArrayFormat* format = ALLOCATE_OBJECT(ArrayFormat, ObjArrayFormat);
     format->count = info->count;
-    format->stride = get_array_storage_slots(info->element_type);
+    format->stride = get_array_storage_size(info->element_type);
 
     push_vector_item(&module->objects, format);
 
@@ -290,7 +294,7 @@ static bool matches_array_format(const ArrayFormat* format, Type type)
     }
 
     const ArrayType* info = type.array;
-    size_t stride = get_array_storage_slots(info->element_type);
+    size_t stride = get_array_storage_size(info->element_type);
 
     if (format->count != info->count || format->stride != stride) {
         return false;

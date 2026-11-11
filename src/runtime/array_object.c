@@ -1,15 +1,16 @@
 #include "runtime/array_object.h"
 #include "common/errors.h"
 
-ArrayObject* create_array_object(size_t slots)
+ArrayObject* create_array_object(size_t size)
 {
-    if (slots > (SIZE_MAX - sizeof(ArrayObject)) / sizeof(Value)) {
+    if (size > SIZE_MAX - sizeof(ArrayObject)) {
         out_of_memory_error();
     }
 
-    size_t bytes = sizeof(ArrayObject) + slots * sizeof(Value);
+    size_t bytes = sizeof(ArrayObject) + size;
     ArrayObject* array = (ArrayObject*)allocate_object(bytes, ObjArray);
-    array->count = slots;
+
+    array->count = size;
 
     return array;
 }

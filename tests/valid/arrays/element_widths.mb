@@ -1,0 +1,31 @@
+let bytes: i8[3] = [-128, 0, 127]
+let words: i16[3] = [-32768, 0, 32767]
+
+bytes[1] = -1
+words[1] = -2
+
+let widened_byte: i64 = bytes[0]
+let widened_word: i32 = words[1]
+
+assert(bytes[0] == -128 and bytes[1] == -1 and bytes[2] == 127)
+assert(words[0] == -32768 and words[1] == -2 and words[2] == 32767)
+assert(widened_byte == -128 and widened_word == -2)
+print(string(bytes))
+print(string(words))
+
+let unsigned_bytes: u8[2] = [0, 255]
+let unsigned_words: u16[2] = [0, 65535]
+
+unsigned_bytes[0] = 254
+unsigned_words[0] = 65534
+
+assert(unsigned_bytes[0] == 254 and unsigned_bytes[1] == 255)
+assert(unsigned_words[0] == 65534 and unsigned_words[1] == 65535)
+print(string(unsigned_bytes))
+print(string(unsigned_words))
+
+let singles: f32[2] = [1.25, -2.5]
+singles[0] = -3.75
+
+assert(singles[0] == -3.75 and singles[1] == -2.5)
+print(string(singles))

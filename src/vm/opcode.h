@@ -303,8 +303,12 @@ typedef enum Opcode
 
     // Arrays
     OpNewArray,
-    OpLde,
-    OpSte,
+    OpLde8,
+    OpSte8,
+    OpLde16,
+    OpSte16,
+    OpLde32,
+    OpSte32,
     OpLde64,
     OpSte64,
 

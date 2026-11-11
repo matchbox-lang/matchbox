@@ -1,0 +1,10 @@
+let packed: i8[2][3] = [-128, 2, 3, 4, 5, 127]
+let replacement: i8[3] = [-1, -2, -3]
+
+packed[1] = replacement
+packed[0][1] = -4
+
+assert(packed[0][0] == -128 and packed[0][2] == 3)
+assert(packed[1][0] == -1 and packed[1][2] == -3)
+print(string(packed))
+print(string(packed[1]))

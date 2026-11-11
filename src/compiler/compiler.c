@@ -3535,8 +3535,8 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 
 static Operand compile_array_new(Compiler* compiler, Type type)
 {
-    size_t slots = get_array_storage_slots(type);
-    Value value = UNSIGNED_VALUE(slots);
+    size_t size = get_array_storage_size(type);
+    Value value = UNSIGNED_VALUE(size);
     size_t position = make_constant(compiler, value);
     int reg = allocate_register(compiler);
 
@@ -3587,8 +3587,7 @@ static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
 
     reserve_pointer_padding(compiler);
 
-    size_t byte_offset = offset * sizeof(Value);
-    Operand index = compile_array_index_value(compiler, byte_offset);
+    Operand index = compile_array_index_value(compiler, offset);
     Opcode opcode = get_pointer_add_opcode();
 
     reserve_pointer_padding(compiler);
@@ -3600,13 +3599,46 @@ static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
     return buffer;
 }
 
+static Opcode get_array_load_opcode(Type type)
+{
+    size_t size = get_array_storage_size(type);
+
+    switch (size) {
+        case 1:
+            return OpLde8;
+        case 2:
+            return OpLde16;
+        case 4:
+            return OpLde32;
+        default:
+            return OpLde64;
+    }
+}
+
+static Opcode get_array_store_opcode(Type type)
+{
+    size_t size = get_array_storage_size(type);
+
+    switch (size) {
+        case 1:
+            return OpSte8;
+        case 2:
+            return OpSte16;
+        case 4:
+            return OpSte32;
+        default:
+            return OpSte64;
+    }
+}
+
 static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
-    size_t position, size_t slots)
+    size_t position, Type type)
 {
     Operand source_index = compile_array_index_value(compiler, position);
+    size_t slots = get_type_slot_count(type.kind);
     int destination = allocate_registers(compiler, slots);
-    Opcode load = slots == 2 ? OpLde64 : OpLde;
-    Opcode store = slots == 2 ? OpSte64 : OpSte;
+    Opcode load = get_array_load_opcode(type);
+    Opcode store = get_array_store_opcode(type);
 
     emit_instruction(compiler, load, destination, source.reg, source_index.reg);
 
@@ -3622,7 +3654,7 @@ static void copy_array_element(Compiler* compiler, Operand buffer, Operand sourc
 static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
 {
     if (!is_array_type(type.kind)) {
-        Opcode opcode = value.slots == 2 ? OpSte64 : OpSte;
+        Opcode opcode = get_array_store_opcode(type);
         Operand index = compile_array_index_value(compiler, offset);
 
         emit_instruction(compiler, opcode, value.reg, buffer.reg, index.reg);
@@ -3632,11 +3664,11 @@ static void store_array_value(Compiler* compiler, Operand buffer, Operand value,
     }
 
     Type leaf = get_array_leaf_type(type);
-    size_t slots = get_type_slot_count(leaf.kind);
-    size_t total_slots = get_array_storage_slots(type);
+    size_t size = get_array_storage_size(leaf);
+    size_t total_size = get_array_storage_size(type);
 
-    for (size_t position = 0; position < total_slots; position += slots) {
-        copy_array_element(compiler, buffer, value, offset, position, slots);
+    for (size_t position = 0; position < total_size; position += size) {
+        copy_array_element(compiler, buffer, value, offset, position, leaf);
     }
 }
 
@@ -3649,7 +3681,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
         type = get_array_leaf_type(ast->array.type_id);
     }
 
-    size_t stride = get_array_storage_slots(type);
+    size_t stride = get_array_storage_size(type);
     size_t offset = position * stride;
     ASTNode* element = ast->array.elements.data[position];
     Operand value = compile_converted_expression(compiler, element, type, false);
@@ -3677,7 +3709,7 @@ static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
     while (base->type == ASTIndex || base->type == ASTIndexAssignment) {
         Type type = get_node_data_type(base->index.array);
         const ArrayType* info = type.array;
-        size_t stride = get_array_storage_slots(info->element_type);
+        size_t stride = get_array_storage_size(info->element_type);
         *offset += base->index.position * stride;
         base = base->index.array;
     }
@@ -3706,13 +3738,15 @@ static Operand compile_index(Compiler* compiler, ASTNode* ast)
     ASTNode* base = get_index_base(ast, &offset);
     Operand buffer = compile_expression(compiler, base, false);
     Operand index = compile_array_index_value(compiler, offset);
-    Opcode opcode = slots == 2 ? OpLde64 : OpLde;
+    Opcode opcode = get_array_load_opcode(ast->index.type_id);
 
     emit_instruction(compiler, opcode, destination, buffer.reg, index.reg);
     release_operand(compiler, index);
     release_operand(compiler, buffer);
 
-    return (Operand){destination, true, slots};
+    Operand result = {destination, true, slots};
+
+    return normalize_integer_operand(compiler, result, ast->index.type_id);
 }
 
 static void compile_index_assignment(Compiler* compiler, ASTNode* ast)

@@ -15,15 +15,27 @@ bool is_array_type(TypeKind kind)
     return kind == TypeArray;
 }
 
-size_t get_array_storage_slots(Type type)
+size_t get_array_storage_size(Type type)
 {
     if (!is_array_type(type.kind)) {
-        return get_type_slot_count(type.kind);
+        switch (type.kind) {
+            case TypeBool:
+                return sizeof(uint8_t);
+            case TypeChar:
+            case TypeF32:
+                return sizeof(uint32_t);
+            case TypeF64:
+                return sizeof(uint64_t);
+            case TypeString:
+                return sizeof(void*);
+            default:
+                return get_integer_type_size(type.kind);
+        }
     }
 
     const ArrayType* info = type.array;
 
-    return info->slots;
+    return info->size;
 }
 
 Type get_array_leaf_type(Type type)
@@ -74,9 +86,9 @@ static bool matches_array_type(const ArrayType* info, Type element_type, size_t 
 
 static ArrayType* create_array_type(Type element_type, size_t count)
 {
-    size_t element_slots = get_array_storage_slots(element_type);
+    size_t element_size = get_array_storage_size(element_type);
 
-    if (element_slots && count > (SIZE_MAX - 128) / sizeof(void*) / element_slots) {
+    if (element_size && count > (SIZE_MAX - 128) / element_size) {
         fatal_error("Array size exceeds supported storage");
     }
 
@@ -86,7 +98,7 @@ static ArrayType* create_array_type(Type element_type, size_t count)
     info->element_type = element_type;
     info->dimensions = NULL;
     info->count = count;
-    info->slots = count * element_slots;
+    info->size = count * element_size;
 
     format_array_type_name(info, element_name, length);
 

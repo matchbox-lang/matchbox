@@ -199,7 +199,8 @@ static bool invalidates_constants(Opcode opcode)
     bool end = ends_block(opcode);
 
     return end || opcode == OpCall || opcode == OpStgCall || opcode == OpStg || opcode == OpStg64
-        || opcode == OpStr || opcode == OpStr64 || opcode == OpSte || opcode == OpSte64
+        || opcode == OpStr || opcode == OpStr64 || opcode == OpSte8 || opcode == OpSte16
+        || opcode == OpSte32 || opcode == OpSte64
         || opcode == OpRefl || opcode == OpRefg || opcode == OpWide;
 }
 

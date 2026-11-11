@@ -3827,9 +3827,9 @@ static Type get_array_initializer_type(Analyzer* analyzer, ASTNode* ast, size_t*
     }
 
     type = get_array_leaf_type(declared);
-    size_t slots = get_array_storage_slots(declared);
-    size_t leaf_slots = get_type_slot_count(type.kind);
-    *count = slots / leaf_slots;
+    size_t size = get_array_storage_size(declared);
+    size_t leaf_size = get_array_storage_size(type);
+    *count = size / leaf_size;
 
     return type;
 }

@@ -27,7 +27,8 @@ static void analyze_node(Analyzer* analyzer, ASTNode* ast);
 static void analyze_array(Analyzer* analyzer, ASTNode* ast);
 static void consume_array(ASTNode* ast);
 static void resolve_dimensions(Analyzer* analyzer, Type* type);
-static void infer_variable_array_count(ASTNode* ast);
+static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast);
+static size_t infer_initializer_array_count(Analyzer* analyzer, ASTNode* ast, bool* analyzed);
 static void apply_array_type(ASTNode* ast, Type type);
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
 static void activate_reference_access(ASTNode* ast);
@@ -3398,7 +3399,7 @@ static void resolve_variable_type(ASTNode* ast, ASTNode* expression)
     ast->variable_definition.reference_type = reference_type;
 }
 
-static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast)
+static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast, bool analyzed)
 {
     ASTNode* expression = ast->variable_definition.expr;
 
@@ -3406,8 +3407,11 @@ static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    apply_declared_type(expression, ast->variable_definition.type_id, ast->variable_definition.reference_type);
-    analyze_node(analyzer, expression);
+    if (!analyzed) {
+        apply_declared_type(expression, ast->variable_definition.type_id, ast->variable_definition.reference_type);
+        analyze_node(analyzer, expression);
+    }
+
     resolve_variable_type(ast, expression);
     consume_array(expression);
 
@@ -3448,10 +3452,12 @@ static void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
         redefinition_error("Variable", ast->variable_definition.token);
     }
 
-    infer_variable_array_count(ast);
-    resolve_dimensions(analyzer, &ast->variable_definition.type_id);
     initialize_variable_definition(analyzer, ast);
-    analyze_variable_initializer(analyzer, ast);
+
+    bool analyzed = infer_variable_array_count(analyzer, ast);
+
+    resolve_dimensions(analyzer, &ast->variable_definition.type_id);
+    analyze_variable_initializer(analyzer, ast, analyzed);
     validate_variable_type(ast);
     set_local_variable_symbol(analyzer->current_scope, id, ast);
     track_variable_reference(ast);
@@ -3671,38 +3677,63 @@ static void apply_array_type(ASTNode* ast, Type type)
     ast->array.type_id = type;
 }
 
-static void infer_variable_array_count(ASTNode* ast)
+static size_t infer_initializer_array_count(Analyzer* analyzer, ASTNode* ast, bool* analyzed)
+{
+    ASTNode* initializer = ast->variable_definition.expr;
+    Token token = ast->variable_definition.token;
+
+    if (!initializer || is_none(initializer)) {
+        semantic_error("Cannot infer array length without an initializer", token);
+    }
+
+    if (initializer->type == ASTArray && !initializer->array.elements.count) {
+        semantic_error("Cannot infer array length from empty array initializer", token);
+    }
+
+    if (initializer->type == ASTArray) {
+        return initializer->array.elements.count;
+    }
+
+    analyze_node(analyzer, initializer);
+
+    *analyzed = true;
+    Type type = get_node_data_type(initializer);
+
+    if (type.kind != TypeArray) {
+        semantic_error("Cannot infer array length from a non-array initializer", token);
+    }
+
+    return type.array->count;
+}
+
+static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast)
 {
     Type type = ast->variable_definition.type_id;
 
     if (type.kind != TypeArray || !type.array->dimensions) {
-        return;
+        return false;
     }
 
     Vector* dimensions = type.array->dimensions;
 
     if (dimensions->count != 1 || dimensions->data[0]) {
-        return;
+        return false;
     }
 
-    ASTNode* initializer = ast->variable_definition.expr;
-
-    if (!initializer || initializer->type != ASTArray || !initializer->array.elements.count) {
-        semantic_error("Cannot infer array length from empty array literal",
-            ast->variable_definition.token);
-    }
-
-    Token token = initializer->array.token;
-    size_t count = initializer->array.elements.count;
+    bool analyzed = false;
+    size_t count = infer_initializer_array_count(analyzer, ast, &analyzed);
+    Token token = ast->variable_definition.token;
     Type count_type = {.kind = TypeUsize};
 
     dimensions->data[0] = create_integer_node(token, count, count_type);
+
+    return analyzed;
 }
 
 static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
 {
     if (!expression) {
-        fatal_error("Array count must be explicit outside a one-dimensional array literal declaration");
+        fatal_error("Array count must be explicit outside a one-dimensional array declaration");
     }
 
     analyze_node(analyzer, expression);

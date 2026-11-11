@@ -2325,7 +2325,7 @@ static void validate_global_binding_access(Analyzer* analyzer, ASTNode* origin, 
     bool moved = is_moved(origin);
 
     if (is_array_type(value_type.kind) && moved) {
-        semantic_error("Function accesses a moved array", token);
+        semantic_error("Function cannot access a moved array", token);
     }
 
     if (type == RefShared && has_exclusive_access(origin)) {

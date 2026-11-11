@@ -1,0 +1,3 @@
+let empty_chars: char[0] = []
+
+print(empty_chars)

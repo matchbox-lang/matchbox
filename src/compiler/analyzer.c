@@ -27,6 +27,7 @@ static void analyze_node(Analyzer* analyzer, ASTNode* ast);
 static void analyze_array(Analyzer* analyzer, ASTNode* ast);
 static void consume_array(ASTNode* ast);
 static void resolve_dimensions(Analyzer* analyzer, Type* type);
+static void infer_variable_array_count(ASTNode* ast);
 static void apply_array_type(ASTNode* ast, Type type);
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
 static void activate_reference_access(ASTNode* ast);
@@ -3447,6 +3448,7 @@ static void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
         redefinition_error("Variable", ast->variable_definition.token);
     }
 
+    infer_variable_array_count(ast);
     resolve_dimensions(analyzer, &ast->variable_definition.type_id);
     initialize_variable_definition(analyzer, ast);
     analyze_variable_initializer(analyzer, ast);
@@ -3669,8 +3671,40 @@ static void apply_array_type(ASTNode* ast, Type type)
     ast->array.type_id = type;
 }
 
+static void infer_variable_array_count(ASTNode* ast)
+{
+    Type type = ast->variable_definition.type_id;
+
+    if (type.kind != TypeArray || !type.array->dimensions) {
+        return;
+    }
+
+    Vector* dimensions = type.array->dimensions;
+
+    if (dimensions->count != 1 || dimensions->data[0]) {
+        return;
+    }
+
+    ASTNode* initializer = ast->variable_definition.expr;
+
+    if (!initializer || initializer->type != ASTArray || !initializer->array.elements.count) {
+        semantic_error("Cannot infer array length from empty array literal",
+            ast->variable_definition.token);
+    }
+
+    Token token = initializer->array.token;
+    size_t count = initializer->array.elements.count;
+    Type count_type = {.kind = TypeUsize};
+
+    dimensions->data[0] = create_integer_node(token, count, count_type);
+}
+
 static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
 {
+    if (!expression) {
+        fatal_error("Array count must be explicit outside a one-dimensional array literal declaration");
+    }
+
     analyze_node(analyzer, expression);
 
     Type type = get_node_data_type(expression);

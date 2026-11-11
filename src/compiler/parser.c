@@ -913,6 +913,13 @@ static void parse_dimension(Parser* parser, Vector* dimensions)
 {
     consume(parser, TokenLsquare);
 
+    if (parser->current_token.type == TokenRsquare) {
+        push_vector_item(dimensions, NULL);
+        consume(parser, TokenRsquare);
+
+        return;
+    }
+
     ASTNode* count = parse_expression(parser);
 
     if (!count) {

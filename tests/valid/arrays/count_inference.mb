@@ -1,0 +1,15 @@
+let inferred: i32[] = [1, 2, 3]
+let expected: &i32[3] = &inferred
+let narrow: i8[] = [1, 2, 3]
+
+assert(expected[2] == 3 and narrow[1] == 2)
+
+func inferred_local() -> i32[3] {
+    let values: i32[] = [4, 5, 6]
+
+    return values
+}
+
+let local_values = inferred_local()
+
+assert(local_values[2] == 6)

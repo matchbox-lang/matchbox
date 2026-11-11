@@ -20,6 +20,6 @@
 @match i
     @case 10
         i is equal to 10
-    @default
+    @case _
         i is not 10
 @end

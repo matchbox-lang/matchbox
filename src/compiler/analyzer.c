@@ -3674,6 +3674,10 @@ static void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
 
 static void apply_array_type(ASTNode* ast, Type type)
 {
+    if (ast->array.fill) {
+        return;
+    }
+
     ast->array.type_id = type;
 }
 
@@ -3690,7 +3694,7 @@ static size_t infer_initializer_array_count(Analyzer* analyzer, ASTNode* ast, bo
         semantic_error("Cannot infer array length from empty array initializer", token);
     }
 
-    if (initializer->type == ASTArray) {
+    if (initializer->type == ASTArray && !initializer->array.fill) {
         return initializer->array.elements.count;
     }
 
@@ -3920,8 +3924,50 @@ static Type analyze_array_elements(Analyzer* analyzer, ASTNode* ast, Type expect
     return expected;
 }
 
+static void analyze_array_fill(Analyzer* analyzer, ASTNode* ast)
+{
+    Token token = ast->array.token;
+
+    resolve_dimensions(analyzer, &ast->array.type_id);
+
+    if (ast->array.elements.count != 1) {
+        semantic_error("Array initializer requires exactly one argument", token);
+    }
+
+    Type leaf = get_array_leaf_type(ast->array.type_id);
+
+    if (leaf.kind == TypeBool || leaf.kind == TypeString) {
+        analyze_array_element(analyzer, ast->array.elements.data[0], leaf, token);
+
+        return;
+    }
+
+    ASTNode* expression = ast->array.elements.data[0];
+    Type source = get_node_data_type(expression);
+    bool converted = expression->type == ASTConversion && types_equal(source, leaf);
+
+    if (converted) {
+        analyze_node(analyzer, expression);
+
+        return;
+    }
+
+    ASTNode* conversion = create_function_call_node(token);
+
+    push_vector_item(&conversion->function_call.args, expression);
+    analyze_function_call(analyzer, conversion);
+
+    ast->array.elements.data[0] = conversion;
+}
+
 static void analyze_array(Analyzer* analyzer, ASTNode* ast)
 {
+    if (ast->array.fill) {
+        analyze_array_fill(analyzer, ast);
+
+        return;
+    }
+
     size_t count = ast->array.elements.count;
     size_t expected_count = count;
     Type expected = get_array_initializer_type(analyzer, ast, &expected_count);

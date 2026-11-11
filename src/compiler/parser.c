@@ -39,6 +39,8 @@ static bool parse_blocklevel_statements(Parser* parser, Vector* nodes);
 static ASTNode* parse_conditional(Parser* parser, bool expression);
 static ASTNode* parse_match(Parser* parser, bool expression);
 static ASTNode* parse_statement(Parser* parser);
+static void parse_dimensions(Parser* parser, Type* type);
+static bool parse_argument_list(Parser* parser, Vector* args);
 
 static _Noreturn void expected_expression_error(Token token)
 {
@@ -421,12 +423,36 @@ static ASTNode* parse_string_literal(Parser* parser)
     return ast;
 }
 
+static ASTNode* parse_array_initializer(Parser* parser, Token token, TypeKind kind)
+{
+    ASTNode* ast = create_ast_node(ASTArray);
+    ast->array.token = token;
+    ast->array.type_id = (Type){.kind = kind};
+    ast->array.fill = true;
+
+    parse_dimensions(parser, &ast->array.type_id);
+
+    bool complete = parse_argument_list(parser, &ast->array.elements);
+
+    if (!complete) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
+}
+
 static ASTNode* parse_type_expression(Parser* parser)
 {
     Token type_token = parser->current_token;
     TypeKind kind = get_token_data_type(type_token.type);
 
     consume(parser, type_token.type);
+
+    if (parser->current_token.type == TokenLsquare) {
+        return parse_array_initializer(parser, type_token, kind);
+    }
 
     if (parser->current_token.type != TokenDot) {
         return parse_function_call(parser);

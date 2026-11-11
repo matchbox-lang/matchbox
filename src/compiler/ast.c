@@ -332,6 +332,7 @@ void free_ast_node(ASTNode* ast)
 
     switch (ast->type) {
         case ASTArray:
+            free_type_dimensions(ast->array.type_id);
             free_ast_node_vector(&ast->array.elements);
             break;
         case ASTIndex:

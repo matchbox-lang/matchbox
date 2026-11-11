@@ -1,0 +1,12 @@
+let wide = i64[2](-6000000000)
+let unsigned = u64[2](18446744073709551615)
+let floats = f64[2](-1.5)
+let flags = bool[2](true)
+let text = string[2]("hello")
+let chars = char[2](120)
+
+assert(wide[1] == -6000000000)
+assert(unsigned[1] == 18446744073709551615)
+assert(floats[1] == -1.5 and flags[1])
+assert(chars[1] == 'x')
+print(text)

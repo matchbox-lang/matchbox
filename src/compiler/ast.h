@@ -66,6 +66,7 @@ typedef struct ASTNode
             Vector elements;
             Type type_id;
             bool flat;
+            bool fill;
         } array;
 
         struct {

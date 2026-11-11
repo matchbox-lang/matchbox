@@ -1,0 +1,18 @@
+let a = f32[3](10.0)
+let b = i8[2][3](0)
+let c: i32[] = i32[3](0)
+let x = char[3]('x')
+b[1][2] = 7
+
+assert(a[0] == 10.0 and a[2] == 10.0)
+assert(b[0][2] == 0 and b[1][2] == 7)
+assert(c[2] == 0 and x[0] == 'x' and x[2] == 'x')
+
+let rows = [i32[2](4), i32[2](5)]
+let cube = u16[2][2][2](65535)
+let narrowed = i8[2](257)
+let converted = f64[2](42)
+
+assert(rows[1][1] == 5 and cube[1][1][1] == 65535)
+assert(narrowed[1] == 1 and converted[1] == 42.0)
+print(a, b, c, x)

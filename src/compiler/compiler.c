@@ -91,6 +91,7 @@ static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 static Operand compile_array(Compiler* compiler, ASTNode* ast);
 static Operand compile_array_new(Compiler* compiler, Type type);
+static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
 static Operand compile_index(Compiler* compiler, ASTNode* ast);
 static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
 
@@ -3672,7 +3673,7 @@ static void store_array_value(Compiler* compiler, Operand buffer, Operand value,
     }
 }
 
-static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand array, size_t position)
+static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand array, size_t position, size_t offset)
 {
     const ArrayType* info = ast->array.type_id.array;
     Type type = info->element_type;
@@ -3682,21 +3683,85 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
     }
 
     size_t stride = get_array_storage_size(type);
-    size_t offset = position * stride;
+    offset += position * stride;
     ASTNode* element = ast->array.elements.data[position];
+
+    if (element->type == ASTArray) {
+        compile_array_into(compiler, element, array, offset);
+
+        return;
+    }
+
     Operand value = compile_converted_expression(compiler, element, type, false);
 
     store_array_value(compiler, array, value, offset, type);
     release_operand(compiler, value);
 }
 
+static void compile_array_fill_loop(Compiler* compiler, Operand array, Operand value, Type type, size_t offset,
+    size_t size)
+{
+    size_t stride = get_array_storage_size(type);
+    Operand index = compile_array_index_value(compiler, offset);
+    Operand end = compile_array_index_value(compiler, offset + size);
+    Operand step = compile_array_index_value(compiler, stride);
+    int condition = allocate_register(compiler);
+    Opcode compare = OpCmpU32;
+    Opcode add = get_pointer_add_opcode();
+    Opcode store = get_array_store_opcode(type);
+
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        compare = OpCmpU64;
+    }
+
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    emit_instruction(compiler, compare, condition, index.reg, end.reg);
+
+    size_t exit_jump = emit_jump(compiler, OpBz, condition);
+
+    emit_instruction(compiler, store, value.reg, array.reg, index.reg);
+    emit_instruction(compiler, add, index.reg, index.reg, step.reg);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
+    release_register(compiler);
+    release_operand(compiler, step);
+    release_operand(compiler, end);
+    release_operand(compiler, index);
+}
+
+static void compile_array_fill_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset)
+{
+    Type type = ast->array.type_id;
+    Type leaf = get_array_leaf_type(type);
+    ASTNode* expression = ast->array.elements.data[0];
+    Operand value = compile_converted_expression(compiler, expression, leaf, false);
+    size_t size = get_array_storage_size(type);
+
+    compile_array_fill_loop(compiler, array, value, leaf, offset, size);
+    release_operand(compiler, value);
+}
+
+static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset)
+{
+    if (ast->array.fill) {
+        compile_array_fill_into(compiler, ast, array, offset);
+
+        return;
+    }
+
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        compile_array_element(compiler, ast, array, i, offset);
+    }
+}
+
 static Operand compile_array(Compiler* compiler, ASTNode* ast)
 {
     Operand array = compile_array_new(compiler, ast->array.type_id);
 
-    for (size_t i = 0; i < ast->array.elements.count; i++) {
-        compile_array_element(compiler, ast, array, i);
-    }
+    compile_array_into(compiler, ast, array, 0);
 
     return array;
 }

@@ -1,0 +1,24 @@
+var calls = 0
+
+func next_value() -> i32 {
+    calls += 1
+
+    return calls
+}
+
+let matrix = i32[2][3](next_value())
+let empty = i32[0](next_value())
+let empty_rows = i32[2][0](next_value())
+
+assert(calls == 3 and matrix[0][0] == 1 and matrix[1][2] == 1)
+print(empty, empty_rows)
+
+func make(value: i32) -> i32[3] {
+    return i32[3](value)
+}
+
+let result = make(7)
+let count: usize = 100000
+let large = u8[count](255)
+
+assert(result[2] == 7 and large[99999] == 255)

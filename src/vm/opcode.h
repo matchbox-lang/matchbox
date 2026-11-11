@@ -67,6 +67,25 @@ typedef enum Opcode
     OpLdr64,
     OpStr64,
 
+    // Arrays management
+    OpNewArray,
+    OpLde8,
+    OpLdei8,
+    OpSte8,
+    OpStei8,
+    OpLde16,
+    OpLdei16,
+    OpSte16,
+    OpStei16,
+    OpLde32,
+    OpLdei32,
+    OpSte32,
+    OpStei32,
+    OpLde64,
+    OpLdei64,
+    OpSte64,
+    OpStei64,
+
     // Integer extension
     OpSextI32,
     OpZextI32,
@@ -300,25 +319,6 @@ typedef enum Opcode
 
     // Wide prefix
     OpWide,
-
-    // Arrays
-    OpNewArray,
-    OpLde8,
-    OpSte8,
-    OpLdei8,
-    OpStei8,
-    OpLde16,
-    OpSte16,
-    OpLdei16,
-    OpStei16,
-    OpLde32,
-    OpSte32,
-    OpLdei32,
-    OpStei32,
-    OpLde64,
-    OpSte64,
-    OpLdei64,
-    OpStei64,
 
     OpCount
 } Opcode;

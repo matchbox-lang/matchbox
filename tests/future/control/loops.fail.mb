@@ -11,7 +11,7 @@ for value in values {
     print("values is empty")
 }
 
-for value in values if @ > 1 {
+for i, value in values if i > 1 {
     print(value)
 }
 

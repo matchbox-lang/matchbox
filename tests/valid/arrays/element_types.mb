@@ -22,3 +22,11 @@ print($"Array: {wide}")
 let inferred = [1.0, 2.0]
 
 assert(inferred[1] == 2.0)
+
+let text_copy = copy(text)
+let float_copy = copy(floats)
+text[0] = "changed"
+floats[0] = 4.5
+
+print(text_copy)
+assert(float_copy[0] == 3.5 and float_copy[1] == 2.5)

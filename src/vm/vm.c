@@ -1,7 +1,6 @@
 #include "vm/vm.h"
 #include "common/errors.h"
 #include "runtime/function_object.h"
-#include "runtime/array_object.h"
 #include "vm/opcode.h"
 #include <math.h>
 #include <stdio.h>
@@ -220,25 +219,6 @@ static void run(VM* vm)
                 size_t offset = c;
 
                 memcpy(buffer + offset, vm->fp + a, sizeof(uint64_t));
-                break;
-            }
-            case OpNewArray: {
-                uint16_t position = OPERAND_BC(inst);
-                size_t size = AS_UNSIGNED(vm->module->constants.data[position]);
-                ArrayObject* array = create_array_object(size);
-
-                vm->fp[a] = POINTER_VALUE(array->data);
-                push_vector_item(&vm->module->objects, array);
-                break;
-            }
-            case OpDupArray: {
-                const uint8_t* source = AS_POINTER(vm->fp[b]);
-                size_t size = AS_UNSIGNED(vm->fp[c]);
-                ArrayObject* array = create_array_object(size);
-
-                memcpy(array->data, source, size);
-                vm->fp[a] = POINTER_VALUE(array->data);
-                push_vector_item(&vm->module->objects, array);
                 break;
             }
             case OpSextI32: {

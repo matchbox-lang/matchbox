@@ -1,6 +1,7 @@
 #include "builtin/builtin.h"
 #include "builtin/io.h"
 #include "builtin/math.h"
+#include "builtin/memory.h"
 #include "builtin/string.h"
 #include "builtin/system.h"
 #include "common/type.h"
@@ -102,6 +103,9 @@ static const Builtin builtins[BUILTINS_MAX] = {
     {"tan",         builtin_tan_f64,        1,  {TypeF64},                              TypeF64,    true},
     {"tanh",        builtin_tanh_f32,       1,  {TypeF32},                              TypeF32,    true},
     {"tanh",        builtin_tanh_f64,       1,  {TypeF64},                              TypeF64,    true},
+
+    // Memory
+    {"copy",        builtin_copy_array,     1,  {TypeArray},                            TypeArray,  true},
 
     // String
     {"string",      builtin_string,        -1,  {TypeUnknown},                          TypeString, true},

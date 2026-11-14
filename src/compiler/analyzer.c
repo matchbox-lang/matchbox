@@ -2075,6 +2075,10 @@ static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token to
         semantic_token_error("Invalid arguments to function ", token);
     }
 
+    if (builtin->return_type_id == TypeArray) {
+        return;
+    }
+
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = get_vector_at(&ast->function_call.args, i);
         apply_literal_type(arg, (Type){.kind = builtin->params[i]});

@@ -91,10 +91,6 @@ typedef enum Opcode
     OpStm64,
     OpStmi64,
 
-    // Array allocation
-    OpNewArray,
-    OpDupArray,
-
     // Integer extension
     OpSextI32,
     OpZextI32,

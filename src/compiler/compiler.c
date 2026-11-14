@@ -1,6 +1,7 @@
 #include "compiler/compiler.h"
 #include "common/array_type.h"
 #include "builtin/builtin.h"
+#include "builtin/memory.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/util.h"
@@ -2465,9 +2466,35 @@ static Operand compile_typed_variadic_call(Compiler* compiler, ASTNode* ast, Fun
     return result;
 }
 
+static Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    ASTNode byte_count = {.type = ASTInteger};
+    byte_count.integer_literal.type_id = (Type){.kind = TypeUsize};
+    byte_count.integer_literal.value = get_array_storage_size(type);
+
+    Builtin builtin = *ast->builtin_call.builtin;
+    builtin.param_count = 2;
+    builtin.params[1] = TypeUsize;
+
+    void* items[] = {argument, &byte_count};
+    Vector args = {.data = items, .capacity = 2, .count = 2};
+    uint16_t position = get_builtin_call_position(compiler, &builtin, &args);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+
+    return compile_call(compiler, function, position, &args, NULL, discard);
+}
+
 static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
 {
     const Builtin* builtin = ast->builtin_call.builtin;
+
+    if (builtin->entry == builtin_copy_array) {
+        return compile_array_copy(compiler, ast, discard);
+    }
+
     uint16_t position = get_builtin_call_position(compiler, builtin, &ast->builtin_call.args);
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
@@ -3538,14 +3565,25 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 
 static Operand compile_array_new(Compiler* compiler, Type type)
 {
-    size_t size = get_array_storage_size(type);
-    Value value = UNSIGNED_VALUE(size);
-    size_t position = make_constant(compiler, value);
-    int reg = allocate_register(compiler);
+    static const Builtin builtin = {
+        .name = "create_array",
+        .entry = builtin_create_array,
+        .param_count = 1,
+        .params = {TypeUsize},
+        .return_type_id = TypeArray,
+        .constant_evaluable = true
+    };
 
-    emit_global_instruction(compiler, OpNewArray, reg, position);
+    ASTNode byte_count = {.type = ASTInteger};
+    byte_count.integer_literal.type_id = (Type){.kind = TypeUsize};
+    byte_count.integer_literal.value = get_array_storage_size(type);
 
-    return make_operand(reg, true);
+    void* items[] = {&byte_count};
+    Vector args = {.data = items, .capacity = 1, .count = 1};
+    uint16_t position = get_builtin_function_position(compiler, &builtin);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+
+    return compile_call(compiler, function, position, &args, NULL, false);
 }
 
 static Operand compile_array_index_value(Compiler* compiler, size_t value)

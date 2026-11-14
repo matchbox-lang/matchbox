@@ -22,3 +22,15 @@ print(cube[1])
 let empty: i32[2][0] = [[], []]
 
 print(empty[1])
+
+let matrix_copy = copy(matrix)
+let row_copy = copy(matrix[1])
+
+matrix[1][0] = 11
+matrix_copy[0][0] = 12
+row_copy[1] = 13
+
+assert(matrix_copy[1][0] == 9000000000)
+assert(matrix[0][0] == 5000000000)
+assert(matrix[1][1] == 10000000000)
+assert(row_copy[0] == 9000000000 and row_copy[1] == 13)

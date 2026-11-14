@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 static void free_type_dimensions(Type type);
+static Type get_builtin_return_type(const ASTNode* ast);
 
 ASTNode* create_ast_node(ASTNodeType type)
 {
@@ -446,6 +447,17 @@ Scope* get_scope(const ASTNode* ast)
     }
 }
 
+static Type get_builtin_return_type(const ASTNode* ast)
+{
+    TypeKind kind = ast->builtin_call.builtin->return_type_id;
+
+    if (kind == TypeArray) {
+        return get_node_data_type(ast->builtin_call.args.data[0]);
+    }
+
+    return (Type){.kind = kind};
+}
+
 Type get_node_data_type(const ASTNode* ast)
 {
     if (!ast) {
@@ -466,7 +478,7 @@ Type get_node_data_type(const ASTNode* ast)
         case ASTBoolean:
             return (Type){.kind = TypeBool};
         case ASTBuiltinCall:
-            return (Type){.kind = ast->builtin_call.builtin->return_type_id};
+            return get_builtin_return_type(ast);
         case ASTCharacter:
             return (Type){.kind = TypeChar};
         case ASTFloat:

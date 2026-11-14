@@ -28,3 +28,17 @@ func make_matrix() {
 let matrix = make_matrix()
 
 assert(matrix[1][1] == 4)
+
+func duplicate(values: &i32[2]) -> i32[2] {
+    return copy(values)
+}
+
+let duplicate_numbers = duplicate(&numbers)
+let literal_copy = copy([30, 40])
+let returned_copy = copy(made)
+
+numbers[0] = 8
+
+assert(duplicate_numbers[0] == 7 and duplicate_numbers[1] == 2)
+assert(literal_copy[0] == 30 and literal_copy[1] == 40)
+assert(returned_copy[0] == 10 and returned_copy[1] == 20)

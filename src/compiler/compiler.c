@@ -2715,15 +2715,16 @@ static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_registe
 static Opcode get_condition_jump_opcode(Opcode comparison)
 {
     switch (comparison) {
-        case OpEq:     return OpBne;
-        case OpNe:     return OpBeq;
-        case OpEqi:    return OpBnei;
-        case OpNei:    return OpBeqi;
-        case OpLtI32: return OpBleI32;
-        case OpLtU32: return OpBleU32;
-        case OpLeI32: return OpBltI32;
-        case OpLeU32: return OpBltU32;
-        default:        return OpHlt;
+        case OpEq:      return OpBne;
+        case OpEqi:     return OpBnei;
+        case OpNe:      return OpBeq;
+        case OpNei:     return OpBeqi;
+        case OpLtI32:   return OpBleI32;
+        case OpLtU32:   return OpBleU32;
+        case OpLeI32:   return OpBltI32;
+        case OpLeU32:   return OpBltU32;
+        default:
+            return OpHlt;
     }
 }
 
@@ -2759,15 +2760,16 @@ static size_t emit_condition_jump(Compiler* compiler, Operand condition)
 static Opcode get_jump_comparison_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OpBne:        return OpEq;
-        case OpBeq:        return OpNe;
-        case OpBnei:       return OpEqi;
-        case OpBeqi:       return OpNei;
-        case OpBleI32:    return OpLtI32;
-        case OpBleU32:    return OpLtU32;
-        case OpBltI32:    return OpLeI32;
-        case OpBltU32:    return OpLeU32;
-        default:            return OpHlt;
+        case OpBeq:     return OpNe;
+        case OpBeqi:    return OpNei;
+        case OpBne:     return OpEq;
+        case OpBnei:    return OpEqi;
+        case OpBltI32:  return OpLeI32;
+        case OpBltU32:  return OpLeU32;
+        case OpBleI32:  return OpLtI32;
+        case OpBleU32:  return OpLtU32;
+        default:
+            return OpHlt;
     }
 }
 
@@ -3635,22 +3637,14 @@ static Opcode get_array_store_opcode(Type type)
 static Opcode get_array_immediate_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OpLdm8:
-            return OpLdmi8;
-        case OpStm8:
-            return OpStmi8;
-        case OpLdm16:
-            return OpLdmi16;
-        case OpStm16:
-            return OpStmi16;
-        case OpLdm32:
-            return OpLdmi32;
-        case OpStm32:
-            return OpStmi32;
-        case OpLdm64:
-            return OpLdmi64;
-        case OpStm64:
-            return OpStmi64;
+        case OpLdm8:    return OpLdmi8;
+        case OpLdm16:   return OpLdmi16;
+        case OpLdm32:   return OpLdmi32;
+        case OpLdm64:   return OpLdmi64;
+        case OpStm8:    return OpStmi8;
+        case OpStm16:   return OpStmi16;
+        case OpStm32:   return OpStmi32;
+        case OpStm64:   return OpStmi64;
         default:
             return opcode;
     }

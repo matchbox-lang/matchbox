@@ -3606,13 +3606,13 @@ static Opcode get_array_load_opcode(Type type)
 
     switch (size) {
         case 1:
-            return OpLde8;
+            return OpLdm8;
         case 2:
-            return OpLde16;
+            return OpLdm16;
         case 4:
-            return OpLde32;
+            return OpLdm32;
         default:
-            return OpLde64;
+            return OpLdm64;
     }
 }
 
@@ -3622,35 +3622,35 @@ static Opcode get_array_store_opcode(Type type)
 
     switch (size) {
         case 1:
-            return OpSte8;
+            return OpStm8;
         case 2:
-            return OpSte16;
+            return OpStm16;
         case 4:
-            return OpSte32;
+            return OpStm32;
         default:
-            return OpSte64;
+            return OpStm64;
     }
 }
 
 static Opcode get_array_immediate_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OpLde8:
-            return OpLdei8;
-        case OpSte8:
-            return OpStei8;
-        case OpLde16:
-            return OpLdei16;
-        case OpSte16:
-            return OpStei16;
-        case OpLde32:
-            return OpLdei32;
-        case OpSte32:
-            return OpStei32;
-        case OpLde64:
-            return OpLdei64;
-        case OpSte64:
-            return OpStei64;
+        case OpLdm8:
+            return OpLdmi8;
+        case OpStm8:
+            return OpStmi8;
+        case OpLdm16:
+            return OpLdmi16;
+        case OpStm16:
+            return OpStmi16;
+        case OpLdm32:
+            return OpLdmi32;
+        case OpStm32:
+            return OpStmi32;
+        case OpLdm64:
+            return OpLdmi64;
+        case OpStm64:
+            return OpStmi64;
         default:
             return opcode;
     }

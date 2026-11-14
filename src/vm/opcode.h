@@ -54,6 +54,8 @@ typedef enum Opcode
     OpLdg,
     OpStg,
     OpStgi,
+
+    // References
     OpRefl,
     OpRefg,
     OpLdr,
@@ -64,27 +66,33 @@ typedef enum Opcode
     OpLdc64,
     OpLdg64,
     OpStg64,
+    
+    // 64-bit references
     OpLdr64,
     OpStr64,
 
-    // Arrays management
+    // Memory loads
+    OpLdm8,
+    OpLdmi8,
+    OpLdm16,
+    OpLdmi16,
+    OpLdm32,
+    OpLdmi32,
+    OpLdm64,
+    OpLdmi64,
+
+    // Memory stores
+    OpStm8,
+    OpStmi8,
+    OpStm16,
+    OpStmi16,
+    OpStm32,
+    OpStmi32,
+    OpStm64,
+    OpStmi64,
+
+    // Array allocation
     OpNewArray,
-    OpLde8,
-    OpLdei8,
-    OpSte8,
-    OpStei8,
-    OpLde16,
-    OpLdei16,
-    OpSte16,
-    OpStei16,
-    OpLde32,
-    OpLdei32,
-    OpSte32,
-    OpStei32,
-    OpLde64,
-    OpLdei64,
-    OpSte64,
-    OpStei64,
 
     // Integer extension
     OpSextI32,

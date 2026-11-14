@@ -98,6 +98,130 @@ static void run(VM* vm)
                 *(Value*)AS_POINTER(vm->fp[b]) = vm->fp[a];
                 break;
 #include VM_WIDE_INSTRUCTIONS
+            case OpLdm8: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+                uint8_t value;
+
+                memcpy(&value, buffer + offset, sizeof(value));
+                vm->fp[a] = U32_VALUE(value);
+                break;
+            }
+            case OpLdmi8: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+                uint8_t value;
+
+                memcpy(&value, buffer + offset, sizeof(value));
+                vm->fp[a] = U32_VALUE(value);
+                break;
+            }
+            case OpStm8: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
+                break;
+            }
+            case OpStmi8: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
+                break;
+            }
+            case OpLdm16: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+                uint16_t value;
+
+                memcpy(&value, buffer + offset, sizeof(value));
+                vm->fp[a] = U32_VALUE(value);
+                break;
+            }
+            case OpLdmi16: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+                uint16_t value;
+
+                memcpy(&value, buffer + offset, sizeof(value));
+                vm->fp[a] = U32_VALUE(value);
+                break;
+            }
+            case OpStm16: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
+                break;
+            }
+            case OpStmi16: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
+                break;
+            }
+            case OpLdm32: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+                uint32_t value;
+
+                memcpy(&value, buffer + offset, sizeof(value));
+                vm->fp[a] = U32_VALUE(value);
+                break;
+            }
+            case OpLdmi32: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+                uint32_t value;
+
+                memcpy(&value, buffer + offset, sizeof(value));
+                vm->fp[a] = U32_VALUE(value);
+                break;
+            }
+            case OpStm32: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
+                break;
+            }
+            case OpStmi32: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
+                break;
+            }
+            case OpLdm64: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(vm->fp + a, buffer + offset, sizeof(uint64_t));
+                break;
+            }
+            case OpLdmi64: {
+                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(vm->fp + a, buffer + offset, sizeof(uint64_t));
+                break;
+            }
+            case OpStm64: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint64_t));
+                break;
+            }
+            case OpStmi64: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint64_t));
+                break;
+            }
             case OpNewArray: {
                 uint16_t position = OPERAND_BC(inst);
                 size_t size = AS_UNSIGNED(vm->module->constants.data[position]);
@@ -105,130 +229,6 @@ static void run(VM* vm)
 
                 vm->fp[a] = POINTER_VALUE(array->data);
                 push_vector_item(&vm->module->objects, array);
-                break;
-            }
-            case OpLde8: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-                uint8_t value;
-
-                memcpy(&value, buffer + offset, sizeof(value));
-                vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpLdei8: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-                uint8_t value;
-
-                memcpy(&value, buffer + offset, sizeof(value));
-                vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpSte8: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
-                break;
-            }
-            case OpStei8: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
-                break;
-            }
-            case OpLde16: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-                uint16_t value;
-
-                memcpy(&value, buffer + offset, sizeof(value));
-                vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpLdei16: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-                uint16_t value;
-
-                memcpy(&value, buffer + offset, sizeof(value));
-                vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpSte16: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
-                break;
-            }
-            case OpStei16: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
-                break;
-            }
-            case OpLde32: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-                uint32_t value;
-
-                memcpy(&value, buffer + offset, sizeof(value));
-                vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpLdei32: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-                uint32_t value;
-
-                memcpy(&value, buffer + offset, sizeof(value));
-                vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpSte32: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
-                break;
-            }
-            case OpStei32: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
-                break;
-            }
-            case OpLde64: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(vm->fp + a, buffer + offset, sizeof(uint64_t));
-                break;
-            }
-            case OpLdei64: {
-                const uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(vm->fp + a, buffer + offset, sizeof(uint64_t));
-                break;
-            }
-            case OpSte64: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint64_t));
-                break;
-            }
-            case OpStei64: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint64_t));
                 break;
             }
             case OpSextI32: {

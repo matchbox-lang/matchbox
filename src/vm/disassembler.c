@@ -215,6 +215,7 @@ static void print_instruction(uint8_t c)
         case OpStm64:       print_opcode_registers3("STM_64"); break;
         case OpStmi64:      print_opcode_registers2_uint8("STMI_64"); break;
         case OpNewArray:    print_opcode_register_uint16("NEW_ARRAY"); break;
+        case OpDupArray:    print_opcode_registers3("DUP_ARRAY"); break;
         case OpSextI32:     print_opcode_registers2_int8("SEXT_I32"); break;
         case OpZextI32:     print_opcode_registers2_int8("ZEXT_I32"); break;
         case OpF32ToF64:    print_opcode_registers2("F32_TO_F64"); break;

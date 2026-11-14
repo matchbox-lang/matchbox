@@ -93,6 +93,7 @@ typedef enum Opcode
 
     // Array allocation
     OpNewArray,
+    OpDupArray,
 
     // Integer extension
     OpSextI32,

@@ -231,6 +231,16 @@ static void run(VM* vm)
                 push_vector_item(&vm->module->objects, array);
                 break;
             }
+            case OpDupArray: {
+                const uint8_t* source = AS_POINTER(vm->fp[b]);
+                size_t size = AS_UNSIGNED(vm->fp[c]);
+                ArrayObject* array = create_array_object(size);
+
+                memcpy(array->data, source, size);
+                vm->fp[a] = POINTER_VALUE(array->data);
+                push_vector_item(&vm->module->objects, array);
+                break;
+            }
             case OpSextI32: {
                 uint32_t value = AS_U32(vm->fp[b]);
                 int32_t result = (int32_t)(value << (32 - c)) >> (32 - c);

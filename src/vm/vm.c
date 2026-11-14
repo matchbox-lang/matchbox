@@ -115,20 +115,6 @@ static void run(VM* vm)
                 vm->fp[a] = U32_VALUE(value);
                 break;
             }
-            case OpStm8: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
-                break;
-            }
-            case OpStmi8: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
-                break;
-            }
             case OpLdm16: {
                 const uint8_t* buffer = AS_POINTER(vm->fp[b]);
                 size_t offset = AS_UNSIGNED(vm->fp[c]);
@@ -145,20 +131,6 @@ static void run(VM* vm)
 
                 memcpy(&value, buffer + offset, sizeof(value));
                 vm->fp[a] = U32_VALUE(value);
-                break;
-            }
-            case OpStm16: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
-                break;
-            }
-            case OpStmi16: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
                 break;
             }
             case OpLdm32: {
@@ -179,20 +151,6 @@ static void run(VM* vm)
                 vm->fp[a] = U32_VALUE(value);
                 break;
             }
-            case OpStm32: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = AS_UNSIGNED(vm->fp[c]);
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
-                break;
-            }
-            case OpStmi32: {
-                uint8_t* buffer = AS_POINTER(vm->fp[b]);
-                size_t offset = c;
-
-                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
-                break;
-            }
             case OpLdm64: {
                 const uint8_t* buffer = AS_POINTER(vm->fp[b]);
                 size_t offset = AS_UNSIGNED(vm->fp[c]);
@@ -205,6 +163,48 @@ static void run(VM* vm)
                 size_t offset = c;
 
                 memcpy(vm->fp + a, buffer + offset, sizeof(uint64_t));
+                break;
+            }
+            case OpStm8: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
+                break;
+            }
+            case OpStmi8: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint8_t));
+                break;
+            }
+            case OpStm16: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
+                break;
+            }
+            case OpStmi16: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint16_t));
+                break;
+            }
+            case OpStm32: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = AS_UNSIGNED(vm->fp[c]);
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
+                break;
+            }
+            case OpStmi32: {
+                uint8_t* buffer = AS_POINTER(vm->fp[b]);
+                size_t offset = c;
+
+                memcpy(buffer + offset, vm->fp + a, sizeof(uint32_t));
                 break;
             }
             case OpStm64: {
@@ -344,22 +344,6 @@ static void run(VM* vm)
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) / AS_I32(vm->fp[c]));
                 break;
             }
-            case OpIdivI16: {
-                if (!AS_I16(vm->fp[c])) {
-                    division_by_zero_error();
-                }
-
-                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) / AS_I16(vm->fp[c]));
-                break;
-            }
-            case OpIdivI8: {
-                if (!AS_I8(vm->fp[c])) {
-                    division_by_zero_error();
-                }
-
-                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) / AS_I8(vm->fp[c]));
-                break;
-            }
             case OpIdivU32: {
                 if (!AS_U32(vm->fp[c])) {
                     division_by_zero_error();
@@ -368,12 +352,28 @@ static void run(VM* vm)
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) / AS_U32(vm->fp[c]));
                 break;
             }
+            case OpIdivI16: {
+                if (!AS_I16(vm->fp[c])) {
+                    division_by_zero_error();
+                }
+
+                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) / AS_I16(vm->fp[c]));
+                break;
+            }
             case OpIdivU16: {
                 if (!AS_U16(vm->fp[c])) {
                     division_by_zero_error();
                 }
 
                 vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) / AS_U16(vm->fp[c]));
+                break;
+            }
+            case OpIdivI8: {
+                if (!AS_I8(vm->fp[c])) {
+                    division_by_zero_error();
+                }
+
+                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) / AS_I8(vm->fp[c]));
                 break;
             }
             case OpIdivU8: {
@@ -397,22 +397,6 @@ static void run(VM* vm)
                 vm->fp[a] = I32_VALUE(AS_I32(vm->fp[b]) % AS_I32(vm->fp[c]));
                 break;
             }
-            case OpRemI16: {
-                if (!AS_I16(vm->fp[c])) {
-                    division_by_zero_error();
-                }
-
-                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) % AS_I16(vm->fp[c]));
-                break;
-            }
-            case OpRemI8: {
-                if (!AS_I8(vm->fp[c])) {
-                    division_by_zero_error();
-                }
-
-                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) % AS_I8(vm->fp[c]));
-                break;
-            }
             case OpRemU32: {
                 if (!AS_U32(vm->fp[c])) {
                     division_by_zero_error();
@@ -421,12 +405,28 @@ static void run(VM* vm)
                 vm->fp[a] = U32_VALUE(AS_U32(vm->fp[b]) % AS_U32(vm->fp[c]));
                 break;
             }
+            case OpRemI16: {
+                if (!AS_I16(vm->fp[c])) {
+                    division_by_zero_error();
+                }
+
+                vm->fp[a] = I16_VALUE(AS_I16(vm->fp[b]) % AS_I16(vm->fp[c]));
+                break;
+            }
             case OpRemU16: {
                 if (!AS_U16(vm->fp[c])) {
                     division_by_zero_error();
                 }
 
                 vm->fp[a] = U16_VALUE(AS_U16(vm->fp[b]) % AS_U16(vm->fp[c]));
+                break;
+            }
+            case OpRemI8: {
+                if (!AS_I8(vm->fp[c])) {
+                    division_by_zero_error();
+                }
+
+                vm->fp[a] = I8_VALUE(AS_I8(vm->fp[b]) % AS_I8(vm->fp[c]));
                 break;
             }
             case OpRemU8: {
@@ -572,6 +572,30 @@ static void run(VM* vm)
             case OpNegI8:
                 vm->fp[a] = I8_VALUE(-AS_I8(vm->fp[b]));
                 break;
+            case OpEq:
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) == AS_U32(vm->fp[c]));
+                break;
+            case OpEqi:
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) == (int8_t)c);
+                break;
+            case OpNe:
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) != AS_U32(vm->fp[c]));
+                break;
+            case OpNei:
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) != (int8_t)c);
+                break;
+            case OpLtI32:
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) < AS_I32(vm->fp[c]));
+                break;
+            case OpLtU32:
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) < AS_U32(vm->fp[c]));
+                break;
+            case OpLeI32:
+                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) <= AS_I32(vm->fp[c]));
+                break;
+            case OpLeU32:
+                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) <= AS_U32(vm->fp[c]));
+                break;
             case OpCmpI32: {
                 int32_t left = AS_I32(vm->fp[b]);
                 int32_t right = AS_I32(vm->fp[c]);
@@ -601,30 +625,6 @@ static void run(VM* vm)
                 vm->fp[a] = I32_VALUE(result);
                 break;
             }
-            case OpEq:
-                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) == AS_U32(vm->fp[c]));
-                break;
-            case OpEqi:
-                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) == (int8_t)c);
-                break;
-            case OpNe:
-                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) != AS_U32(vm->fp[c]));
-                break;
-            case OpNei:
-                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) != (int8_t)c);
-                break;
-            case OpLtI32:
-                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) < AS_I32(vm->fp[c]));
-                break;
-            case OpLtU32:
-                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) < AS_U32(vm->fp[c]));
-                break;
-            case OpLeI32:
-                vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) <= AS_I32(vm->fp[c]));
-                break;
-            case OpLeU32:
-                vm->fp[a] = BOOL_VALUE(AS_U32(vm->fp[b]) <= AS_U32(vm->fp[c]));
-                break;
             case OpBz:
                 if (!AS_U32(vm->fp[a])) {
                     vm->ip += (int16_t)OPERAND_BC(inst);
@@ -729,30 +729,6 @@ static void run(VM* vm)
                 vm->fp[a] = vm->fp[b];
                 vm->fp[a + 1] = vm->fp[c];
                 break;
-            case OpMovLdi:
-                vm->fp[a] = vm->fp[b];
-                vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
-                break;
-            case OpMovLdc:
-                vm->fp[a] = vm->fp[b];
-                vm->fp[a + 1] = vm->module->constants.data[c];
-                break;
-            case OpMovLdg:
-                vm->fp[a] = vm->fp[b];
-                vm->fp[a + 1] = vm->globals.data[c];
-                break;
-            case OpLdiLdg:
-                vm->fp[a] = SIGNED_VALUE((int8_t)b);
-                vm->fp[a + 1] = vm->globals.data[c];
-                break;
-            case OpLdgLdi:
-                vm->fp[a] = vm->globals.data[b];
-                vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
-                break;
-            case OpStgCall:
-                vm->globals.data[b] = vm->fp[a];
-                function_position = c;
-                goto call;
             case OpLdiCall: {
                 uint16_t operands = OPERAND_BC(inst);
                 int16_t imm = LOAD_CALL_SIGNED_OPERAND(operands);
@@ -782,6 +758,30 @@ static void run(VM* vm)
                 function_position = LOAD_CALL_FUNCTION(operands);
                 goto call;
             }
+            case OpStgCall:
+                vm->globals.data[b] = vm->fp[a];
+                function_position = c;
+                goto call;
+            case OpLdiLdg:
+                vm->fp[a] = SIGNED_VALUE((int8_t)b);
+                vm->fp[a + 1] = vm->globals.data[c];
+                break;
+            case OpLdgLdi:
+                vm->fp[a] = vm->globals.data[b];
+                vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
+                break;
+            case OpMovLdi:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = SIGNED_VALUE((int8_t)c);
+                break;
+            case OpMovLdc:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->module->constants.data[c];
+                break;
+            case OpMovLdg:
+                vm->fp[a] = vm->fp[b];
+                vm->fp[a + 1] = vm->globals.data[c];
+                break;
             case OpWide: {
                 Instruction prefix = inst;
                 inst = *vm->ip++;

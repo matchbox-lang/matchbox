@@ -3979,22 +3979,39 @@ static ASTNode* get_index_owner(ASTNode* ast)
     return NULL;
 }
 
+static Type get_index_literal_type(ASTNode* expression)
+{
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
+        return get_index_literal_type(expression->prefix.expr);
+    }
+
+    bool negative;
+
+    get_integer_literal(expression, &negative);
+
+    if (negative) {
+        return (Type){.kind = TypeI64};
+    }
+
+    return (Type){.kind = TypeUsize};
+}
+
 static void analyze_index(Analyzer* analyzer, ASTNode* ast)
 {
+    Type literal_type = get_index_literal_type(ast->index.index);
+
     analyze_node(analyzer, ast->index.array);
-    apply_literal_type(ast->index.index, (Type){.kind = TypeUsize});
+    apply_literal_type(ast->index.index, literal_type);
     analyze_node(analyzer, ast->index.index);
 
     Type array_type = get_node_data_type(ast->index.array);
     Type index_type = get_node_data_type(ast->index.index);
     uint64_t value = 0;
     ast->index.constant = evaluate_integer_constant(ast->index.index, &value);
-    bool compatible = can_implicitly_widen_integer(index_type.kind, TypeUsize);
+    ASTNode* constant_expression = get_index_constant_expression(ast->index.index);
+    bool compatible = ast->index.constant || can_implicitly_widen_integer(index_type.kind, TypeUsize)
+        || (is_integer_type(index_type.kind) && constant_expression);
     bool negative = is_signed_integer_type(index_type.kind) && (int64_t)value < 0;
-
-    if (ast->index.constant && !negative && value <= SIZE_MAX) {
-        compatible = true;
-    }
 
     if (!is_array_type(array_type.kind)) {
         semantic_error("Indexing requires an array", ast->index.token);
@@ -4011,7 +4028,7 @@ static void analyze_index(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    if (value >= info->count) {
+    if (negative || value > SIZE_MAX || value >= info->count) {
         semantic_error("Array index is out of bounds", ast->index.token);
     }
 

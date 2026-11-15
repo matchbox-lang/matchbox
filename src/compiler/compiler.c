@@ -92,6 +92,8 @@ static Operand compile_array(Compiler* compiler, ASTNode* ast);
 static Operand compile_usize_literal(Compiler* compiler, size_t value);
 static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
+static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int destination);
+static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination);
 static Operand compile_index(Compiler* compiler, ASTNode* ast);
 static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
 static void scale_array_index(Compiler* compiler, Operand index, size_t stride);
@@ -3873,8 +3875,17 @@ static void scale_array_index(Compiler* compiler, Operand index, size_t stride)
         return;
     }
 
-    Operand step = compile_usize_literal(compiler, stride);
     Type type = {.kind = TypeUsize};
+
+    if (stride <= INT8_MAX) {
+        Opcode opcode = get_width_opcode(type, OpMuliI64, OpMuliI32, OpMuliI16, OpMuliI8);
+
+        emit_instruction(compiler, opcode, index.reg, index.reg, stride);
+
+        return;
+    }
+
+    Operand step = compile_usize_literal(compiler, stride);
     Opcode opcode = get_integer_opcode(type, IntMul);
 
     reserve_pointer_padding(compiler);
@@ -3903,8 +3914,8 @@ static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t
     Type type = {.kind = TypeUsize};
     index.temporary = false;
     Operand length = compile_usize_literal(compiler, count);
-    Operand condition = emit_numeric_comparison(compiler, TokenLess, type, index, length);
-    size_t valid_jump = emit_jump(compiler, OpBnz, condition.reg);
+    Operand condition = emit_numeric_comparison(compiler, TokenGreaterEqual, type, index, length);
+    size_t valid_jump = emit_condition_jump(compiler, condition);
 
     release_operand(compiler, condition);
     compile_index_panic(compiler);
@@ -3986,6 +3997,36 @@ static Operand compile_index_address(Compiler* compiler, ASTNode* ast)
     return offset_buffer(compiler, buffer, offset);
 }
 
+static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int destination)
+{
+    Operand buffer = compile_expression(compiler, ast->index.array, false);
+
+    buffer = materialize_operand(compiler, buffer);
+
+    Operand offset = compile_runtime_index_offset(compiler, ast);
+    Opcode opcode = get_memory_load_opcode(ast->index.type_id);
+
+    emit_instruction(compiler, opcode, destination, buffer.reg, offset.reg);
+    release_operand(compiler, offset);
+    release_operand(compiler, buffer);
+}
+
+static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination)
+{
+    if (!ast->index.constant) {
+        compile_runtime_index_load(compiler, ast, destination);
+
+        return;
+    }
+
+    size_t offset;
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
+    Opcode opcode = get_memory_load_opcode(ast->index.type_id);
+
+    emit_memory_access(compiler, opcode, destination, buffer.reg, offset);
+    release_operand(compiler, buffer);
+}
+
 static Operand compile_index(Compiler* compiler, ASTNode* ast)
 {
     if (is_array_type(ast->index.type_id.kind)) {
@@ -3994,12 +4035,8 @@ static Operand compile_index(Compiler* compiler, ASTNode* ast)
 
     size_t slots = get_type_slot_count(ast->index.type_id.kind);
     int destination = allocate_registers(compiler, slots);
-    size_t offset;
-    Operand buffer = compile_index_buffer(compiler, ast, &offset);
-    Opcode opcode = get_memory_load_opcode(ast->index.type_id);
 
-    emit_memory_access(compiler, opcode, destination, buffer.reg, offset);
-    release_operand(compiler, buffer);
+    compile_index_load(compiler, ast, destination);
 
     Operand result = {destination, true, slots};
 

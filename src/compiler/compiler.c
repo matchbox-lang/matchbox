@@ -91,6 +91,7 @@ static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_registe
 static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 static Operand compile_array(Compiler* compiler, ASTNode* ast);
+static Operand compile_array_index_value(Compiler* compiler, size_t value);
 static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
 static Operand compile_index(Compiler* compiler, ASTNode* ast);
@@ -2487,9 +2488,27 @@ static Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard
     return compile_call(compiler, function, position, &args, NULL, discard);
 }
 
+static Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    compile_expression(compiler, argument, true);
+
+    if (discard) {
+        return no_operand();
+    }
+
+    return compile_array_index_value(compiler, type.array->count);
+}
+
 static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
 {
     const Builtin* builtin = ast->builtin_call.builtin;
+
+    if (!builtin->entry) {
+        return compile_array_length(compiler, ast, discard);
+    }
 
     if (builtin->entry == builtin_copy_array) {
         return compile_array_copy(compiler, ast, discard);
@@ -3535,6 +3554,15 @@ static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference)
     return match_result_operand(type, destination);
 }
 
+static bool compile_discarded_array(Compiler* compiler, ASTNode* ast)
+{
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        compile_expression(compiler, ast->array.elements.data[i], true);
+    }
+
+    return true;
+}
+
 static bool compile_discarded_prefix(Compiler* compiler, ASTNode* ast)
 {
     if (ast->prefix.operator.type == TokenKeywordConst) {
@@ -3549,6 +3577,8 @@ static bool compile_discarded_prefix(Compiler* compiler, ASTNode* ast)
 static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTArray:
+            return compile_discarded_array(compiler, ast);
         case ASTBoolean:
         case ASTCharacter:
         case ASTFloat:

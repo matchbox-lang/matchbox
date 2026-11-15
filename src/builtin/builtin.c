@@ -105,6 +105,7 @@ static const Builtin builtins[BUILTINS_MAX] = {
     {"tanh",        builtin_tanh_f64,       1,  {TypeF64},                              TypeF64,    true},
 
     // Memory
+    {"len",         NULL,                   1,  {TypeArray},                            TypeUsize,  true},
     {"copy",        builtin_copy_array,     1,  {TypeArray},                            TypeArray,  true},
 
     // String

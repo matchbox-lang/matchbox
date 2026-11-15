@@ -6,7 +6,6 @@
 typedef struct ArrayObject
 {
     Object object;
-    size_t count;
     uint8_t data[];
 } ArrayObject;
 

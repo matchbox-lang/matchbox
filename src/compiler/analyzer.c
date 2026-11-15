@@ -2075,7 +2075,7 @@ static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token to
         semantic_token_error("Invalid arguments to function ", token);
     }
 
-    if (builtin->return_type_id == TypeArray) {
+    if (builtin->params[0] == TypeArray) {
         return;
     }
 

@@ -1,4 +1,6 @@
 #include "compiler/constant.h"
+#include "builtin/builtin.h"
+#include "common/array_type.h"
 #include "common/unicode.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
@@ -6,6 +8,7 @@
 #include <math.h>
 
 static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
+static bool can_discard_length_argument(const ASTNode* ast);
 static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type);
 
 static _Noreturn void invalid_constant_conversion_error(Token token, Type destination)
@@ -443,6 +446,55 @@ static bool evaluate_conditional(const ASTNode* ast, ConstantValue* value)
     return evaluate_selected_branch(ast, value);
 }
 
+static bool can_discard_length_prefix(const ASTNode* ast)
+{
+    bool reference = ast->prefix.operator.type == TokenAmpersand || ast->prefix.operator.type == TokenCircumflex;
+
+    return reference && can_discard_length_argument(ast->prefix.expr);
+}
+
+static bool can_discard_length_argument(const ASTNode* ast)
+{
+    if (ast->type == ASTVariable || is_literal(ast)) {
+        return true;
+    }
+
+    if (ast->type == ASTPrefix) {
+        return can_discard_length_prefix(ast);
+    }
+
+    if (ast->type != ASTArray) {
+        return false;
+    }
+
+    bool discard = true;
+
+    for (size_t i = 0; i < ast->array.elements.count && discard; i++) {
+        discard = can_discard_length_argument(ast->array.elements.data[i]);
+    }
+
+    return discard;
+}
+
+static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
+{
+    if (ast->builtin_call.builtin->entry) {
+        return false;
+    }
+
+    const ASTNode* argument = ast->builtin_call.args.data[0];
+    bool discard = can_discard_length_argument(argument);
+
+    if (!discard) {
+        return false;
+    }
+
+    Type type = get_node_data_type(argument);
+    value->integer = type.array->count;
+
+    return true;
+}
+
 bool evaluate_constant(const ASTNode* ast, ConstantValue* value)
 {
     if (!ast) {
@@ -452,6 +504,8 @@ bool evaluate_constant(const ASTNode* ast, ConstantValue* value)
     Type type = get_node_data_type(ast);
 
     switch (ast->type) {
+        case ASTBuiltinCall:
+            return evaluate_builtin_call(ast, value);
         case ASTInteger:
             value->integer = normalize_integer_constant(ast->integer_literal.value, type);
             value->floating = integer_constant_to_float(value->integer, type, (Type){.kind = TypeF64});

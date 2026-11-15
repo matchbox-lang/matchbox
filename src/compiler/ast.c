@@ -12,6 +12,7 @@
 
 static void free_type_dimensions(Type type);
 static Type get_builtin_return_type(const ASTNode* ast);
+static bool are_simple_match_values(const Vector* values);
 
 ASTNode* create_ast_node(ASTNodeType type)
 {
@@ -619,6 +620,34 @@ bool is_expression_statement(const ASTNode* ast)
     }
 }
 
+ASTNode* get_index_constant_expression(ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    if (ast->type == ASTPrefix && ast->prefix.operator.type == TokenKeywordConst) {
+        return ast;
+    }
+
+    if (ast->type != ASTVariable) {
+        return NULL;
+    }
+
+    ASTNode* symbol = ast->variable.symbol;
+
+    if (!is_variable_definition(symbol)) {
+        return NULL;
+    }
+
+    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+        || symbol->variable_definition.reference_type != RefNone) {
+        return NULL;
+    }
+
+    return get_index_constant_expression(symbol->variable_definition.expr);
+}
+
 bool is_index(const ASTNode* ast)
 {
     return ast && (ast->type == ASTIndex || ast->type == ASTIndexAssignment);
@@ -627,6 +656,37 @@ bool is_index(const ASTNode* ast)
 bool is_constant_index(const ASTNode* ast)
 {
     return is_index(ast) && ast->index.constant;
+}
+
+static bool are_simple_match_values(const Vector* values)
+{
+    size_t index = 0;
+
+    while (index < values->count && is_simple_match_value(values->data[index])) {
+        index++;
+    }
+
+    return index == values->count;
+}
+
+bool is_simple_match_value(const ASTNode* ast)
+{
+    if (!ast) {
+        return false;
+    }
+
+    switch (ast->type) {
+        case ASTBoolean:
+        case ASTCharacter:
+        case ASTInteger:
+        case ASTFloat:
+        case ASTVariable:
+            return true;
+        case ASTBuiltinCall:
+            return are_simple_match_values(&ast->builtin_call.args);
+        default:
+            return false;
+    }
 }
 
 bool is_literal(const ASTNode* ast)

@@ -3987,7 +3987,14 @@ static void analyze_index(Analyzer* analyzer, ASTNode* ast)
 
     Type array_type = get_node_data_type(ast->index.array);
     Type index_type = get_node_data_type(ast->index.index);
+    uint64_t value = 0;
+    ast->index.constant = evaluate_integer_constant(ast->index.index, &value);
     bool compatible = can_implicitly_widen_integer(index_type.kind, TypeUsize);
+    bool negative = is_signed_integer_type(index_type.kind) && (int64_t)value < 0;
+
+    if (ast->index.constant && !negative && value <= SIZE_MAX) {
+        compatible = true;
+    }
 
     if (!is_array_type(array_type.kind)) {
         semantic_error("Indexing requires an array", ast->index.token);
@@ -3999,8 +4006,6 @@ static void analyze_index(Analyzer* analyzer, ASTNode* ast)
 
     const ArrayType* info = array_type.array;
     ast->index.type_id = info->element_type;
-    uint64_t value = 0;
-    ast->index.constant = evaluate_integer_constant(ast->index.index, &value);
 
     if (!ast->index.constant) {
         return;

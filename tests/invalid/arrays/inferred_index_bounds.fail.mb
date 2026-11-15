@@ -1,0 +1,4 @@
+let values = [10, 20]
+let position = 2
+
+print(values[position])

@@ -83,7 +83,6 @@ static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand ope
 static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast);
 static ASTNode* get_current_function_definition(Compiler* compiler);
 static bool is_match_alternative(ASTNode* pattern);
-static bool is_simple_match_value(ASTNode* ast);
 static bool get_literal_match_value(ASTNode* ast, uint64_t* value);
 static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
 static void patch_jump(Compiler* compiler, size_t position);
@@ -97,6 +96,8 @@ static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination
 static Operand compile_index(Compiler* compiler, ASTNode* ast);
 static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
 static void scale_array_index(Compiler* compiler, Operand index, size_t stride);
+static uint64_t read_compiled_integer_constant(Compiler* compiler, ASTNode* ast);
+static void resolve_index_constant(Compiler* compiler, ASTNode* ast);
 static void compile_index_panic(Compiler* compiler);
 static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count);
 static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast);
@@ -3110,36 +3111,6 @@ static void mark_match_join(Compiler* compiler, Vector* jumps)
     patch_match_jumps(compiler, jumps);
 }
 
-static bool are_simple_match_values(Vector* values)
-{
-    size_t count = count_vector(values);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* value = get_vector_at(values, i);
-        if (!is_simple_match_value(value)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static bool is_simple_match_value(ASTNode* ast)
-{
-    switch (ast->type) {
-        case ASTBoolean:
-        case ASTCharacter:
-        case ASTInteger:
-        case ASTFloat:
-        case ASTVariable:
-            return true;
-        case ASTBuiltinCall:
-            return are_simple_match_values(&ast->builtin_call.args);
-        default:
-            return false;
-    }
-}
-
 static bool can_use_direct_match_branch(MatchArm* arm)
 {
     size_t count = count_vector(&arm->branch->compound.statements);
@@ -3894,6 +3865,53 @@ static void scale_array_index(Compiler* compiler, Operand index, size_t stride)
     release_operand(compiler, step);
 }
 
+static uint64_t read_compiled_integer_constant(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast);
+    size_t position = ast->prefix.constant_position;
+    const Value* constants = compiler->module->constants.data;
+    size_t size = get_integer_type_size(type.kind);
+
+    if (size == sizeof(uint64_t)) {
+        return read_u64(constants, position);
+    }
+
+    if (is_signed_integer_type(type.kind)) {
+        return (uint64_t)read_signed_value(constants[position], type);
+    }
+
+    return read_unsigned_value(constants[position], type);
+}
+
+static void resolve_index_constant(Compiler* compiler, ASTNode* ast)
+{
+    if (ast->index.constant) {
+        return;
+    }
+
+    ASTNode* expression = get_index_constant_expression(ast->index.index);
+
+    if (!expression) {
+        return;
+    }
+
+    if (!expression->prefix.evaluated) {
+        evaluate_constant_expression(compiler, expression);
+    }
+
+    uint64_t value = read_compiled_integer_constant(compiler, expression);
+    Type type = get_node_data_type(ast->index.array);
+
+    if (value > SIZE_MAX || value >= type.array->count) {
+        Token token = ast->index.token;
+
+        fatal_source_error(token.line, token.column, "Array index is out of bounds");
+    }
+
+    ast->index.constant = true;
+    ast->index.position = (size_t)value;
+}
+
 static void compile_index_panic(Compiler* compiler)
 {
     static const char message[] = "Array index is out of bounds";
@@ -3981,6 +3999,8 @@ static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
 
 static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* offset)
 {
+    resolve_index_constant(compiler, ast);
+
     ASTNode* base = get_index_base(ast, offset);
     if (base == ast) {
         return compile_runtime_index_address(compiler, ast);
@@ -4013,6 +4033,8 @@ static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int des
 
 static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination)
 {
+    resolve_index_constant(compiler, ast);
+
     if (!ast->index.constant) {
         compile_runtime_index_load(compiler, ast, destination);
 

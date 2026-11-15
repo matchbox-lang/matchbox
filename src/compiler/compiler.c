@@ -91,7 +91,7 @@ static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_registe
 static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 static Operand compile_array(Compiler* compiler, ASTNode* ast);
-static Operand compile_array_index_value(Compiler* compiler, size_t value);
+static Operand compile_usize_literal(Compiler* compiler, size_t value);
 static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
 static Operand compile_index(Compiler* compiler, ASTNode* ast);
@@ -2499,7 +2499,7 @@ static Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool disca
         return no_operand();
     }
 
-    return compile_array_index_value(compiler, type.array->count);
+    return compile_usize_literal(compiler, type.array->count);
 }
 
 static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
@@ -3616,7 +3616,7 @@ static Operand compile_array_new(Compiler* compiler, Type type)
     return compile_call(compiler, function, position, &args, NULL, false);
 }
 
-static Operand compile_array_index_value(Compiler* compiler, size_t value)
+static Operand compile_usize_literal(Compiler* compiler, size_t value)
 {
     ASTNode literal = {.type = ASTInteger};
     literal.integer_literal.value = value;
@@ -3658,7 +3658,7 @@ static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
 
     reserve_pointer_padding(compiler);
 
-    Operand index = compile_array_index_value(compiler, offset);
+    Operand index = compile_usize_literal(compiler, offset);
     Opcode opcode = get_pointer_add_opcode();
 
     reserve_pointer_padding(compiler);
@@ -3670,7 +3670,7 @@ static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
     return buffer;
 }
 
-static Opcode get_array_load_opcode(Type type)
+static Opcode get_memory_load_opcode(Type type)
 {
     size_t size = get_array_storage_size(type);
 
@@ -3686,7 +3686,7 @@ static Opcode get_array_load_opcode(Type type)
     }
 }
 
-static Opcode get_array_store_opcode(Type type)
+static Opcode get_memory_store_opcode(Type type)
 {
     size_t size = get_array_storage_size(type);
 
@@ -3702,7 +3702,7 @@ static Opcode get_array_store_opcode(Type type)
     }
 }
 
-static Opcode get_array_immediate_opcode(Opcode opcode)
+static Opcode get_memory_immediate_opcode(Opcode opcode)
 {
     switch (opcode) {
         case OpLdm8:    return OpLdmi8;
@@ -3718,17 +3718,17 @@ static Opcode get_array_immediate_opcode(Opcode opcode)
     }
 }
 
-static void emit_array_access(Compiler* compiler, Opcode opcode, int value, int buffer, size_t offset)
+static void emit_memory_access(Compiler* compiler, Opcode opcode, int value, int buffer, size_t offset)
 {
     if (offset <= UINT8_MAX) {
-        Opcode immediate = get_array_immediate_opcode(opcode);
+        Opcode immediate = get_memory_immediate_opcode(opcode);
 
         emit_instruction(compiler, immediate, value, buffer, offset);
 
         return;
     }
 
-    Operand index = compile_array_index_value(compiler, offset);
+    Operand index = compile_usize_literal(compiler, offset);
 
     emit_instruction(compiler, opcode, value, buffer, index.reg);
     release_operand(compiler, index);
@@ -3739,11 +3739,11 @@ static void copy_array_element(Compiler* compiler, Operand buffer, Operand sourc
 {
     size_t slots = get_type_slot_count(type.kind);
     int destination = allocate_registers(compiler, slots);
-    Opcode load = get_array_load_opcode(type);
-    Opcode store = get_array_store_opcode(type);
+    Opcode load = get_memory_load_opcode(type);
+    Opcode store = get_memory_store_opcode(type);
 
-    emit_array_access(compiler, load, destination, source.reg, position);
-    emit_array_access(compiler, store, destination, buffer.reg, offset + position);
+    emit_memory_access(compiler, load, destination, source.reg, position);
+    emit_memory_access(compiler, store, destination, buffer.reg, offset + position);
 
     Operand value = {destination, true, slots};
 
@@ -3753,9 +3753,9 @@ static void copy_array_element(Compiler* compiler, Operand buffer, Operand sourc
 static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
 {
     if (!is_array_type(type.kind)) {
-        Opcode opcode = get_array_store_opcode(type);
+        Opcode opcode = get_memory_store_opcode(type);
 
-        emit_array_access(compiler, opcode, value.reg, buffer.reg, offset);
+        emit_memory_access(compiler, opcode, value.reg, buffer.reg, offset);
 
         return;
     }
@@ -3798,13 +3798,13 @@ static void compile_array_fill_loop(Compiler* compiler, Operand array, Operand v
     size_t size)
 {
     size_t stride = get_array_storage_size(type);
-    Operand index = compile_array_index_value(compiler, offset);
-    Operand end = compile_array_index_value(compiler, offset + size);
-    Operand step = compile_array_index_value(compiler, stride);
+    Operand index = compile_usize_literal(compiler, offset);
+    Operand end = compile_usize_literal(compiler, offset + size);
+    Operand step = compile_usize_literal(compiler, stride);
     int condition = allocate_register(compiler);
     Opcode compare = OpCmpU32;
     Opcode add = get_pointer_add_opcode();
-    Opcode store = get_array_store_opcode(type);
+    Opcode store = get_memory_store_opcode(type);
 
     if (sizeof(void*) == sizeof(uint64_t)) {
         compare = OpCmpU64;
@@ -3898,9 +3898,9 @@ static Operand compile_index(Compiler* compiler, ASTNode* ast)
     size_t offset;
     ASTNode* base = get_index_base(ast, &offset);
     Operand buffer = compile_expression(compiler, base, false);
-    Opcode opcode = get_array_load_opcode(ast->index.type_id);
+    Opcode opcode = get_memory_load_opcode(ast->index.type_id);
 
-    emit_array_access(compiler, opcode, destination, buffer.reg, offset);
+    emit_memory_access(compiler, opcode, destination, buffer.reg, offset);
     release_operand(compiler, buffer);
 
     Operand result = {destination, true, slots};

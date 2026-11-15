@@ -547,7 +547,7 @@ static bool evaluate_count_variable(const ASTNode* ast, uint64_t* value)
         return false;
     }
 
-    return evaluate_array_count(symbol->variable_definition.expr, value);
+    return evaluate_integer_constant(symbol->variable_definition.expr, value);
 }
 
 static bool divide_count_values(uint64_t left, uint64_t right, Type type, bool remainder, uint64_t* value)
@@ -580,8 +580,8 @@ static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
 {
     uint64_t left = 0;
     uint64_t right = 0;
-    bool left_constant = evaluate_array_count(ast->binary.left_expr, &left);
-    bool right_constant = evaluate_array_count(ast->binary.right_expr, &right);
+    bool left_constant = evaluate_integer_constant(ast->binary.left_expr, &left);
+    bool right_constant = evaluate_integer_constant(ast->binary.right_expr, &right);
 
     if (!left_constant || !right_constant) {
         return false;
@@ -628,7 +628,7 @@ static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
 
 static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
 {
-    bool evaluated = evaluate_array_count(ast->prefix.expr, value);
+    bool evaluated = evaluate_integer_constant(ast->prefix.expr, value);
 
     if (!evaluated) {
         return false;
@@ -668,7 +668,7 @@ static bool evaluate_count_conversion(const ASTNode* ast, uint64_t* value)
         return true;
     }
 
-    return evaluate_array_count(ast->conversion.expr, value);
+    return evaluate_integer_constant(ast->conversion.expr, value);
 }
 
 static bool evaluate_count_expression(const ASTNode* ast, uint64_t* value)
@@ -696,7 +696,7 @@ static bool evaluate_count_expression(const ASTNode* ast, uint64_t* value)
     return evaluated;
 }
 
-bool evaluate_array_count(const ASTNode* ast, uint64_t* value)
+bool evaluate_integer_constant(const ASTNode* ast, uint64_t* value)
 {
     Type type = get_node_data_type(ast);
     ReferenceType reference = get_reference_type(ast);

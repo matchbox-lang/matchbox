@@ -2419,7 +2419,7 @@ static void apply_function_array_moves(ASTNode* function)
     }
 }
 
-static bool contains_array_binding(const Vector* bindings, const ASTNode* symbol)
+static bool contains_binding(const Vector* bindings, const ASTNode* symbol)
 {
     size_t position = 0;
 
@@ -3039,7 +3039,7 @@ static void record_function_array_initialization(ASTNode* function, OwnershipSta
     ASTNode* symbol = state->symbol;
     bool initialized = is_initialized(symbol);
     bool possible = symbol->variable_definition.possibly_initialized;
-    bool uninitialized_return = contains_array_binding(
+    bool uninitialized_return = contains_binding(
         &function->function_definition.array_uninitialized_returns, symbol);
 
     if (!state->initialized && initialized && !uninitialized_return) {
@@ -3748,7 +3748,7 @@ static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
 
     Type type = get_node_data_type(expression);
     uint64_t value = 0;
-    bool constant = evaluate_array_count(expression, &value);
+    bool constant = evaluate_integer_constant(expression, &value);
 
     if (!constant || !is_integer_type(type.kind) || value > SIZE_MAX || (int64_t)value < 0) {
         fatal_error("Array count must be a nonnegative compile-time integer");
@@ -4000,7 +4000,7 @@ static void analyze_index(Analyzer* analyzer, ASTNode* ast)
     const ArrayType* info = array_type.array;
     ast->index.type_id = info->element_type;
     uint64_t value = 0;
-    bool constant = evaluate_array_count(ast->index.index, &value);
+    bool constant = evaluate_integer_constant(ast->index.index, &value);
 
     if (!constant) {
         semantic_error("Array index must be proven at compile time", ast->index.token);

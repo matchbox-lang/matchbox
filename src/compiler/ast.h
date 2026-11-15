@@ -77,6 +77,7 @@ typedef struct ASTNode
             Token operator;
             Type type_id;
             size_t position;
+            bool constant;
         } index;
 
         struct {
@@ -284,6 +285,8 @@ ASTNode* get_reference_origin(const ASTNode* ast);
 Vector* get_reference_origins(ASTNode* ast);
 ReferenceType get_reference_type(const ASTNode* ast);
 bool is_expression_statement(const ASTNode* ast);
+bool is_index(const ASTNode* ast);
+bool is_constant_index(const ASTNode* ast);
 bool is_literal(const ASTNode* ast);
 bool is_text_literal(const ASTNode* ast);
 bool is_function_call(const ASTNode* ast);

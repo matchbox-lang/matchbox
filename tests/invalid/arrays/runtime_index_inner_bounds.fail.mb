@@ -1,0 +1,4 @@
+let matrix: i32[2][2] = [[1, 2], [3, 4]]
+var index: usize = 2
+
+print(matrix[0][index])

@@ -1,0 +1,6 @@
+let matrix: i32[2][0] = [[], []]
+var index: usize = 2
+
+let length = len(matrix[index])
+
+print(length)

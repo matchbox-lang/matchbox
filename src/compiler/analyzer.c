@@ -4000,10 +4000,10 @@ static void analyze_index(Analyzer* analyzer, ASTNode* ast)
     const ArrayType* info = array_type.array;
     ast->index.type_id = info->element_type;
     uint64_t value = 0;
-    bool constant = evaluate_integer_constant(ast->index.index, &value);
+    ast->index.constant = evaluate_integer_constant(ast->index.index, &value);
 
-    if (!constant) {
-        semantic_error("Array index must be proven at compile time", ast->index.token);
+    if (!ast->index.constant) {
+        return;
     }
 
     if (value >= info->count) {

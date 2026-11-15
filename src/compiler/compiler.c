@@ -23,8 +23,6 @@
 #include "vm/vm.h"
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
@@ -96,6 +94,13 @@ static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
 static Operand compile_index(Compiler* compiler, ASTNode* ast);
 static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
+static void scale_array_index(Compiler* compiler, Operand index, size_t stride);
+static void compile_index_panic(Compiler* compiler);
+static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count);
+static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast);
+static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, ASTNode* ast);
+static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast);
+static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* offset);
 
 static _Noreturn void branch_offset_overflow_error(void)
 {
@@ -3862,12 +3867,97 @@ static Operand compile_array(Compiler* compiler, ASTNode* ast)
     return array;
 }
 
+static void scale_array_index(Compiler* compiler, Operand index, size_t stride)
+{
+    if (stride == 1) {
+        return;
+    }
+
+    Operand step = compile_usize_literal(compiler, stride);
+    Type type = {.kind = TypeUsize};
+    Opcode opcode = get_integer_opcode(type, IntMul);
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, index.reg, index.reg, step.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, step);
+}
+
+static void compile_index_panic(Compiler* compiler)
+{
+    static const char message[] = "Array index is out of bounds";
+    size_t constant = add_string_constant(compiler->module, message, sizeof(message) - 1);
+    Type argument_types[] = {{.kind = TypeString}};
+    const Builtin* builtin = resolve_builtin("panic", argument_types, 1);
+    uint16_t position = get_builtin_function_position(compiler, builtin);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+
+    int reg = emit_ldc(compiler, constant);
+    Operand argument = make_operand(reg, true);
+
+    compile_call_with_argument(compiler, function, position, argument, true);
+}
+
+static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count)
+{
+    Type type = {.kind = TypeUsize};
+    index.temporary = false;
+    Operand length = compile_usize_literal(compiler, count);
+    Operand condition = emit_numeric_comparison(compiler, TokenLess, type, index, length);
+    size_t valid_jump = emit_jump(compiler, OpBnz, condition.reg);
+
+    release_operand(compiler, condition);
+    compile_index_panic(compiler);
+    patch_jump(compiler, valid_jump);
+}
+
+static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast->index.array);
+    const ArrayType* info = type.array;
+    size_t stride = get_array_storage_size(info->element_type);
+    Type index_type = {.kind = TypeUsize};
+    Operand index = compile_converted_expression(compiler, ast->index.index, index_type, false);
+
+    index = materialize_operand(compiler, index);
+
+    reserve_pointer_padding(compiler);
+    compile_index_bounds_check(compiler, index, info->count);
+    scale_array_index(compiler, index, stride);
+    release_pointer_padding(compiler);
+
+    return index;
+}
+
+static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, ASTNode* ast)
+{
+    reserve_pointer_padding(compiler);
+
+    Operand offset = compile_runtime_index_offset(compiler, ast);
+    Opcode add = get_pointer_add_opcode();
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, add, buffer.reg, buffer.reg, offset.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, offset);
+    release_pointer_padding(compiler);
+}
+
+static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast)
+{
+    Operand buffer = compile_expression(compiler, ast->index.array, false);
+    buffer = materialize_operand(compiler, buffer);
+    offset_buffer_by_runtime_index(compiler, buffer, ast);
+
+    return buffer;
+}
+
 static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
 {
     ASTNode* base = ast;
     *offset = 0;
 
-    while (base->type == ASTIndex || base->type == ASTIndexAssignment) {
+    while (is_constant_index(base)) {
         Type type = get_node_data_type(base->index.array);
         const ArrayType* info = type.array;
         size_t stride = get_array_storage_size(info->element_type);
@@ -3878,11 +3968,20 @@ static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
     return base;
 }
 
+static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* offset)
+{
+    ASTNode* base = get_index_base(ast, offset);
+    if (base == ast) {
+        return compile_runtime_index_address(compiler, ast);
+    }
+
+    return compile_expression(compiler, base, false);
+}
+
 static Operand compile_index_address(Compiler* compiler, ASTNode* ast)
 {
     size_t offset;
-    ASTNode* base = get_index_base(ast, &offset);
-    Operand buffer = compile_expression(compiler, base, false);
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
 
     return offset_buffer(compiler, buffer, offset);
 }
@@ -3896,8 +3995,7 @@ static Operand compile_index(Compiler* compiler, ASTNode* ast)
     size_t slots = get_type_slot_count(ast->index.type_id.kind);
     int destination = allocate_registers(compiler, slots);
     size_t offset;
-    ASTNode* base = get_index_base(ast, &offset);
-    Operand buffer = compile_expression(compiler, base, false);
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
     Opcode opcode = get_memory_load_opcode(ast->index.type_id);
 
     emit_memory_access(compiler, opcode, destination, buffer.reg, offset);
@@ -3911,8 +4009,7 @@ static Operand compile_index(Compiler* compiler, ASTNode* ast)
 static void compile_index_assignment(Compiler* compiler, ASTNode* ast)
 {
     size_t offset;
-    ASTNode* base = get_index_base(ast, &offset);
-    Operand buffer = compile_expression(compiler, base, false);
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
     buffer = materialize_operand(compiler, buffer);
     Operand value = compile_converted_expression(compiler, ast->index.value, ast->index.type_id, false);
 

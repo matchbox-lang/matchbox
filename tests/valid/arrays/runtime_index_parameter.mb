@@ -1,0 +1,21 @@
+func read(values: &i32[2], index: usize) -> i32 {
+    let value = values[index]
+
+    assert(index < 2)
+
+    return value
+}
+
+func write(values: ^i32[2], index: usize, value: i32) {
+    values[index] = value
+
+    assert(index < 2)
+}
+
+let values = [10, 20]
+let first = read(&values, 0)
+let last = read(&values, 1)
+
+assert(first == 10 and last == 20)
+write(^values, 1, 30)
+assert(values[1] == 30)

@@ -1,0 +1,5 @@
+let matrix: i32[2][2] = [[1, 2], [3, 4]]
+var index: usize = 2
+let row = [5, 6]
+
+matrix[index] = row

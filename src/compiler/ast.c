@@ -619,6 +619,16 @@ bool is_expression_statement(const ASTNode* ast)
     }
 }
 
+bool is_index(const ASTNode* ast)
+{
+    return ast && (ast->type == ASTIndex || ast->type == ASTIndexAssignment);
+}
+
+bool is_constant_index(const ASTNode* ast)
+{
+    return is_index(ast) && ast->index.constant;
+}
+
 bool is_literal(const ASTNode* ast)
 {
     if (!ast) {

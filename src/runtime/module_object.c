@@ -6,7 +6,6 @@
 #include "runtime/string_object.h"
 #include "runtime/value.h"
 #include <stdlib.h>
-#include <string.h>
 
 static StringObject* get_string_object(ModuleObject* module, const char* chars, size_t length);
 
@@ -59,21 +58,6 @@ void free_module_object(ModuleObject* module)
     free_memory(module);
 }
 
-static bool matches_string_object(const Object* object, const char* chars, size_t length)
-{
-    if (object->type != ObjString) {
-        return false;
-    }
-
-    const StringObject* string = (const StringObject*)object;
-
-    if (string->length != length) {
-        return false;
-    }
-
-    return memcmp(string->chars, chars, length) == 0;
-}
-
 static size_t find_object_constant(const ModuleObject* module, const Object* object)
 {
     size_t position = 0;
@@ -92,7 +76,13 @@ static size_t find_object_constant(const ModuleObject* module, const Object* obj
 static size_t find_string_object_constant(const ModuleObject* module, const Object* object,
     const char* chars, size_t length)
 {
-    bool matches = matches_string_object(object, chars, length);
+    if (object->type != ObjString) {
+        return SIZE_MAX;
+    }
+
+    const StringObject* string = (const StringObject*)object;
+    bool matches = compare_string_object_chars(string, chars, length);
+
     if (!matches) {
         return SIZE_MAX;
     }
@@ -117,7 +107,9 @@ static StringObject* get_string_object(ModuleObject* module, const char* chars, 
 {
     size_t index = 0;
 
-    while (index < module->objects.count && !matches_string_object(module->objects.data[index], chars, length)) {
+    while (index < module->objects.count &&
+        (((const Object*)module->objects.data[index])->type != ObjString ||
+        !compare_string_object_chars((const StringObject*)module->objects.data[index], chars, length))) {
         index++;
     }
 

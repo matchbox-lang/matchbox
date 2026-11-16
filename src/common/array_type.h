@@ -14,6 +14,7 @@ typedef struct ArrayType
 } ArrayType;
 
 bool is_array_type(TypeKind kind);
+bool array_shapes_equal(Type left, Type right);
 Type get_array_type(Vector* array_types, Type element_type, size_t count);
 Type get_array_leaf_type(Type type);
 size_t get_array_storage_size(Type type);

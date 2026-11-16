@@ -1,0 +1,27 @@
+var calls = 0
+
+func values() -> i32[2] {
+    calls += 1
+
+    return [calls, calls]
+}
+
+let sum = values() + values()
+
+assert(sum == [3, 3])
+assert(calls == 2)
+
+let different = values() == [[1, 1]]
+
+assert(not different)
+assert(calls == 3)
+
+func add(left: &i32[2], right: &i32[2]) -> i32[2] {
+    return left + right
+}
+
+let a = [2, 4]
+let b = [3, 5]
+let result = add(a, b)
+
+assert(result == [5, 9])

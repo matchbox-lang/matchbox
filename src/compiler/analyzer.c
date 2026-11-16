@@ -25,6 +25,7 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context);
 static void clear_node_analysis(ASTNode* ast, Vector* functions);
 static void analyze_node(Analyzer* analyzer, ASTNode* ast);
 static void analyze_array(Analyzer* analyzer, ASTNode* ast);
+static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type);
 static void consume_array(ASTNode* ast);
 static void resolve_dimensions(Analyzer* analyzer, Type* type);
 static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast);
@@ -1716,6 +1717,50 @@ static void apply_binary_integer_literal_types(ASTNode* left, ASTNode* right)
     }
 }
 
+static Type array_binary_result_type(Analyzer* analyzer, Type shape, Type leaf)
+{
+    if (!is_array_type(shape.kind)) {
+        return leaf;
+    }
+
+    Type element = array_binary_result_type(analyzer, shape.array->element_type, leaf);
+
+    return get_array_type(&analyzer->array_types, element, shape.array->count);
+}
+
+static void analyze_array_binary(Analyzer* analyzer, ASTNode* ast, Type left, Type right)
+{
+    TokenType operator_type = ast->binary.operator.type;
+    bool equality = is_equality_token(operator_type);
+    bool same_shape = array_shapes_equal(left, right);
+
+    if (!is_array_type(left.kind) || !is_array_type(right.kind)) {
+        semantic_error("Array binary operators require two arrays", ast->binary.operator);
+    }
+
+    if (!same_shape && !equality) {
+        semantic_error("Array binary operators require matching shapes", ast->binary.operator);
+    }
+
+    if (!same_shape) {
+        ast->binary.type_id = (Type){.kind = TypeBool};
+
+        return;
+    }
+
+    Type left_leaf = get_array_leaf_type(left);
+    Type right_leaf = get_array_leaf_type(right);
+
+    analyze_binary_types(ast, left_leaf, right_leaf);
+
+    Type result = ast->binary.type_id;
+    ast->binary.type_id = (Type){.kind = TypeBool};
+
+    if (!equality) {
+        ast->binary.type_id = array_binary_result_type(analyzer, left, result);
+    }
+}
+
 static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_node(analyzer, ast->binary.left_expr);
@@ -1723,31 +1768,41 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
 
     Type left_type = get_node_data_type(ast->binary.left_expr);
     Type right_type = get_node_data_type(ast->binary.right_expr);
-    TokenType operator_type = ast->binary.operator.type;
 
     if (is_array_type(left_type.kind) || is_array_type(right_type.kind)) {
-        semantic_error("Binary operators are not supported for arrays", ast->binary.operator);
+        analyze_array_binary(analyzer, ast, left_type, right_type);
+
+        return;
     }
 
+    TokenType operator_type = ast->binary.operator.type;
     bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
 
     if (comparison) {
         apply_binary_float_literal_types(ast->binary.left_expr, ast->binary.right_expr);
     }
 
+    apply_binary_integer_literal_types(ast->binary.left_expr, ast->binary.right_expr);
+
+    left_type = get_node_data_type(ast->binary.left_expr);
+    right_type = get_node_data_type(ast->binary.right_expr);
+
+    analyze_binary_types(ast, left_type, right_type);
+}
+
+static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type)
+{
+    TokenType operator_type = ast->binary.operator.type;
+
     bool left_text = left_type.kind == TypeChar || left_type.kind == TypeString;
     bool right_text = right_type.kind == TypeChar || right_type.kind == TypeString;
 
-    if (ast->binary.operator.type == TokenPlus && left_text && right_text) {
+    if (operator_type == TokenPlus && left_text && right_text) {
         ast->binary.type_id = (Type){.kind = TypeString};
 
         return;
     }
 
-    apply_binary_integer_literal_types(ast->binary.left_expr, ast->binary.right_expr);
-
-    left_type = get_node_data_type(ast->binary.left_expr);
-    right_type = get_node_data_type(ast->binary.right_expr);
     Type common_type = {.kind = get_common_numeric_type(left_type.kind, right_type.kind)};
     bool float_operands = is_float_type(common_type.kind);
 
@@ -1765,36 +1820,36 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
         semantic_error("Invalid operator for string operands", ast->binary.operator);
     }
 
-    if (left_type.kind == TypeChar && !is_character_comparison_token(ast->binary.operator.type)) {
+    if (left_type.kind == TypeChar && !is_character_comparison_token(operator_type)) {
         semantic_error("Invalid operator for char operands", ast->binary.operator);
     }
 
-    if (is_logical_token(ast->binary.operator.type) && left_type.kind != TypeBool) {
+    if (is_logical_token(operator_type) && left_type.kind != TypeBool) {
         semantic_error("Logical operators require bool operands", ast->binary.operator);
     }
 
-    if (is_comparison_token(ast->binary.operator.type) && !is_integer_type(left_type.kind)
+    if (is_comparison_token(operator_type) && !is_integer_type(left_type.kind)
         && !float_operands && left_type.kind != TypeChar) {
         semantic_error("Comparison operators require compatible operand types", ast->binary.operator);
     }
 
-    if (ast->binary.operator.type == TokenPower && left_type.kind != TypeI32) {
+    if (operator_type == TokenPower && left_type.kind != TypeI32) {
         semantic_error("Invalid operands for binary operator", ast->binary.operator);
     }
 
-    if (float_operands && !is_term_token(ast->binary.operator.type)
-        && !is_factor_token(ast->binary.operator.type) && !is_comparison_token(ast->binary.operator.type)
-        && !is_equality_token(ast->binary.operator.type)) {
+    if (float_operands && !is_term_token(operator_type)
+        && !is_factor_token(operator_type) && !is_comparison_token(operator_type)
+        && !is_equality_token(operator_type)) {
         semantic_error("Invalid operands for binary operator", ast->binary.operator);
     }
 
     ast->binary.type_id = common_type;
 
-    if (ast->binary.operator.type == TokenSpaceship) {
+    if (operator_type == TokenSpaceship) {
         ast->binary.type_id = (Type){.kind = TypeI32};
     }
 
-    if (is_bool_operator_token(ast->binary.operator.type)) {
+    if (is_bool_operator_token(operator_type)) {
         ast->binary.type_id = (Type){.kind = TypeBool};
     }
 }

@@ -1,6 +1,7 @@
 #include "compiler/ast_optimizer.h"
 #include "builtin/builtin.h"
 #include "builtin/string.h"
+#include "common/array_type.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
@@ -11,6 +12,8 @@
 #include "runtime/string_object.h"
 #include <stdint.h>
 
+#define ARRAY_BINARY_EXPANSION_LIMIT 16
+
 static void remove_discarded_expression_reads(ASTNode* ast);
 static void remove_discarded_statement_reads(ASTNode* ast);
 static void mark_called_functions(ASTNode* ast);
@@ -18,7 +21,6 @@ static void reset_function_call_counts(ASTNode* ast);
 static void optimize_node(ASTNode* ast);
 static void optimize_match_pattern(ASTNode* pattern);
 static void optimize_conditional(ASTNode* ast, bool fold);
-static void replace_with_expression(ASTNode* ast, ASTNode* expression);
 
 static void write_text_literal(Writer* writer, ASTNode* ast)
 {
@@ -77,9 +79,9 @@ static bool fold_concatenation(ASTNode* ast)
     free_ast_node(ast->binary.left_expr);
     free_ast_node(ast->binary.right_expr);
 
-    ast->type = ASTString;
-    ast->string_literal.value = string;
-    ast->string_literal.token = token;
+    ASTNode* replacement = create_string_node(token, string);
+
+    replace_ast_node(ast, replacement);
 
     return true;
 }
@@ -101,7 +103,7 @@ static void fold_binary(ASTNode* ast)
 
     free_ast_node(ast->binary.left_expr);
     free_ast_node(ast->binary.right_expr);
-    replace_with_expression(ast, replacement);
+    replace_ast_node(ast, replacement);
 }
 
 static bool is_literal_of_type(ASTNode* ast, Type type)
@@ -138,18 +140,6 @@ static void set_literal_token(ASTNode* ast, Token token)
     }
 }
 
-static ASTNode copy_literal_initializer(ASTNode* initializer)
-{
-    ASTNode replacement = *initializer;
-
-    if (initializer->type == ASTString) {
-        StringObject* string = initializer->string_literal.value;
-        replacement.string_literal.value = copy_string_object(string->chars, string->length);
-    }
-
-    return replacement;
-}
-
 static void propagate_literal_let(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
@@ -181,14 +171,14 @@ static void propagate_literal_let(ASTNode* ast)
         return;
     }
 
-    ASTNode replacement = copy_literal_initializer(initializer);
+    ASTNode* replacement = copy_literal_node(initializer);
     Token token = ast->variable.token;
 
-    set_literal_token(&replacement, token);
+    set_literal_token(replacement, token);
     free_string_object(ast->variable.id);
 
     symbol->variable_definition.read_count--;
-    *ast = replacement;
+    replace_ast_node(ast, replacement);
 }
 
 static void fold_prefix(ASTNode* ast)
@@ -205,7 +195,7 @@ static void fold_prefix(ASTNode* ast)
 
     free_ast_node(ast->prefix.expr);
     free_vector(&ast->prefix.reference_origins);
-    replace_with_expression(ast, replacement);
+    replace_ast_node(ast, replacement);
 }
 
 static void optimize_nodes(Vector* nodes)
@@ -287,14 +277,14 @@ static void fold_conditional(ASTNode* ast)
         return;
     }
 
-    ASTNode replacement = *result;
+    ASTNode* replacement = copy_literal_node(result);
 
     free_ast_node(ast->conditional.condition);
     free_ast_node(ast->conditional.then_branch);
     free_ast_node(ast->conditional.else_branch);
     free_vector(&ast->conditional.reference_origins);
 
-    *ast = replacement;
+    replace_ast_node(ast, replacement);
 }
 
 static void optimize_conditional(ASTNode* ast, bool fold)
@@ -350,15 +340,6 @@ static void optimize_match(ASTNode* ast)
     }
 }
 
-static void replace_with_expression(ASTNode* ast, ASTNode* expression)
-{
-    ASTNode replacement = *expression;
-
-    free_memory(expression);
-
-    *ast = replacement;
-}
-
 static void optimize_builtin_call(ASTNode* ast)
 {
     optimize_nodes(&ast->builtin_call.args);
@@ -378,7 +359,7 @@ static void optimize_builtin_call(ASTNode* ast)
     }
 
     free_vector(&ast->builtin_call.args);
-    replace_with_expression(ast, expression);
+    replace_ast_node(ast, expression);
 }
 
 static void fold_explicit_conversion(ASTNode* ast)
@@ -413,13 +394,104 @@ static void optimize_conversion(ASTNode* ast)
         return;
     }
 
-    replace_with_expression(ast, expression);
+    replace_ast_node(ast, expression);
+}
+
+static bool is_literal_array_tree(ASTNode* ast)
+{
+    if (is_literal(ast)) {
+        return true;
+    }
+
+    if (ast->type != ASTArray || ast->array.fill) {
+        return false;
+    }
+
+    bool literal = true;
+
+    for (size_t i = 0; i < ast->array.elements.count && literal; i++) {
+        literal = is_literal_array_tree(ast->array.elements.data[i]);
+    }
+
+    return literal;
+}
+
+static void copy_array_literals(ASTNode* ast, Vector* literals)
+{
+    if (ast->type != ASTArray) {
+        ASTNode* literal = copy_literal_node(ast);
+
+        push_vector_item(literals, literal);
+
+        return;
+    }
+
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        copy_array_literals(ast->array.elements.data[i], literals);
+    }
+}
+
+static void append_array_binary_element(ASTNode* result, ASTNode* binary, ASTNode* left, ASTNode* right)
+{
+    Type result_type = get_array_leaf_type(binary->binary.type_id);
+    Type operand_type = binary->binary.operand_type;
+    ASTNode* element = create_typed_binary_node(left, right, binary->binary.operator, operand_type, result_type);
+
+    optimize_node(element);
+    push_vector_item(&result->array.elements, element);
+}
+
+static bool expand_literal_array_binary(ASTNode* ast)
+{
+    Type type = ast->binary.type_id;
+
+    if (!is_array_type(type.kind)) {
+        return false;
+    }
+
+    Type leaf = get_array_leaf_type(type);
+    size_t stride = get_array_storage_size(leaf);
+    size_t size = get_array_storage_size(type);
+    size_t count = size / stride;
+    ASTNode* left = ast->binary.left_expr;
+    ASTNode* right = ast->binary.right_expr;
+
+    if (count > ARRAY_BINARY_EXPANSION_LIMIT || !is_literal_array_tree(left) || !is_literal_array_tree(right)) {
+        return false;
+    }
+
+    Vector left_literals;
+    Vector right_literals;
+
+    init_vector(&left_literals);
+    init_vector(&right_literals);
+    copy_array_literals(left, &left_literals);
+    copy_array_literals(right, &right_literals);
+
+    ASTNode* result = create_array_node(ast->binary.operator, type, true);
+
+    for (size_t i = 0; i < count; i++) {
+        append_array_binary_element(result, ast, left_literals.data[i], right_literals.data[i]);
+    }
+
+    free_vector(&left_literals);
+    free_vector(&right_literals);
+    free_ast_node(left);
+    free_ast_node(right);
+    replace_ast_node(ast, result);
+
+    return true;
 }
 
 static void optimize_binary(ASTNode* ast)
 {
     optimize_node(ast->binary.left_expr);
     optimize_node(ast->binary.right_expr);
+
+    if (expand_literal_array_binary(ast)) {
+        return;
+    }
+
     fold_binary(ast);
 }
 

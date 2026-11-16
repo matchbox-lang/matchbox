@@ -64,6 +64,36 @@ ASTNode* create_ast_node(ASTNodeType type)
     return ast;
 }
 
+ASTNode* create_array_node(Token token, Type type, bool flat)
+{
+    ASTNode* ast = create_ast_node(ASTArray);
+    ast->array.token = token;
+    ast->array.type_id = type;
+    ast->array.flat = flat;
+
+    return ast;
+}
+
+ASTNode* copy_literal_node(const ASTNode* literal)
+{
+    ASTNode* copy = create_ast_node(literal->type);
+    *copy = *literal;
+
+    if (literal->type == ASTString) {
+        StringObject* string = literal->string_literal.value;
+        copy->string_literal.value = copy_string_object(string->chars, string->length);
+    }
+
+    return copy;
+}
+
+void replace_ast_node(ASTNode* ast, ASTNode* replacement)
+{
+    *ast = *replacement;
+
+    free_memory(replacement);
+}
+
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr)
 {
     ASTNode* ast = create_ast_node(ASTAssignment);
@@ -88,6 +118,15 @@ ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token
     ast->binary.operator = token;
     ast->binary.right_expr = right_expr;
     ast->binary.type_id = (Type){.kind = TypeUnknown};
+
+    return ast;
+}
+
+ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type)
+{
+    ASTNode* ast = create_binary_node(left, right, token);
+    ast->binary.operand_type = operand_type;
+    ast->binary.type_id = result_type;
 
     return ast;
 }

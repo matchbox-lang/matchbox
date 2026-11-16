@@ -15,6 +15,22 @@ bool is_array_type(TypeKind kind)
     return kind == TypeArray;
 }
 
+bool array_shapes_equal(Type left, Type right)
+{
+    bool left_array = is_array_type(left.kind);
+    bool right_array = is_array_type(right.kind);
+
+    if (!left_array || !right_array) {
+        return left_array == right_array;
+    }
+
+    if (left.array->count != right.array->count) {
+        return false;
+    }
+
+    return array_shapes_equal(left.array->element_type, right.array->element_type);
+}
+
 size_t get_array_storage_size(Type type)
 {
     if (!is_array_type(type.kind)) {

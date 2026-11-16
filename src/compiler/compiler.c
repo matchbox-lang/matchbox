@@ -34,6 +34,16 @@ typedef struct Operand
     size_t slots;
 } Operand;
 
+typedef struct ArrayBinaryOffsets
+{
+    Operand left;
+    Operand right;
+    Operand result;
+    size_t left_stride;
+    size_t right_stride;
+    size_t result_stride;
+} ArrayBinaryOffsets;
+
 typedef struct CallArea
 {
     int result_register;
@@ -75,9 +85,10 @@ static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast, Ty
 static void compile_blocklevel_statements(Compiler* compiler, Vector* nodes);
 static void compile_top_level_statements(Compiler* compiler, Vector* nodes);
 static size_t get_node_slot_count(ASTNode* ast);
-static Operand compile_power(Compiler* compiler, ASTNode* left_expression, ASTNode* right_expression);
 static Operand compile_integer_cast(Compiler* compiler, Operand operand, Type source, Type destination);
-static Operand compile_concatenation(Compiler* compiler, ASTNode* ast);
+static Operand emit_binary_builtin(Compiler* compiler, TokenType operator_type,
+    Type left_type, Type right_type, Operand left, Operand right);
+static Operand convert_operand(Compiler* compiler, Operand operand, Type source, Type destination);
 static void compile_power_assignment(Compiler* compiler, ASTNode* ast);
 static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast);
@@ -88,6 +99,7 @@ static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_registe
 static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 static Operand compile_array(Compiler* compiler, ASTNode* ast);
+static Operand compile_array_binary(Compiler* compiler, ASTNode* ast);
 static Operand compile_usize_literal(Compiler* compiler, size_t value);
 static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
@@ -691,6 +703,21 @@ static Operand dereference_operand(Compiler* compiler, Operand operand, size_t s
     return slots == 2 ? make_wide_operand(operand.reg, true) : operand;
 }
 
+
+static Operand load_variable_value(Compiler* compiler, ASTNode* symbol)
+{
+    Operand value = load_variable(compiler, symbol);
+
+    if (get_reference_type(symbol) == RefNone) {
+        return value;
+    }
+
+    Type type = get_node_data_type(symbol);
+    size_t slots = get_type_slot_count(type.kind);
+
+    return dereference_operand(compiler, value, slots);
+}
+
 static void store_global_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     size_t position = ast->variable_definition.position;
@@ -769,11 +796,8 @@ static bool is_narrow_integer_immediate(uint64_t value, Type type)
     return signed_value >= INT16_MIN && signed_value <= INT16_MAX;
 }
 
-static Operand compile_number(Compiler* compiler, ASTNode* ast)
+static Operand compile_integer_value(Compiler* compiler, uint64_t value, Type type)
 {
-    uint64_t value = ast->integer_literal.value;
-    Type type = get_node_data_type(ast);
-
     if (type.kind == TypeF64) {
         size_t position = make_f64_constant(compiler, (double)value);
 
@@ -786,7 +810,7 @@ static Operand compile_number(Compiler* compiler, ASTNode* ast)
         return make_operand(emit_ldc(compiler, position), true);
     }
 
-    if (get_node_slot_count(ast) == 2) {
+    if (get_type_slot_count(type.kind) == 2) {
         return compile_wide_number(compiler, value);
     }
 
@@ -1133,21 +1157,6 @@ static Operand emit_float_operands(Compiler* compiler, Opcode opcode,
         : make_operand(destination, true);
 }
 
-static Operand compile_float_binary(Compiler* compiler, ASTNode* ast)
-{
-    Type type = get_node_data_type(ast);
-    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, type, false);
-
-    if (!left.temporary && !is_direct_variable(compiler, ast->binary.right_expr)) {
-        left = materialize_operand(compiler, left);
-    }
-
-    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, type, false);
-    Opcode opcode = get_float_opcode(type, ast->binary.operator.type);
-
-    return emit_float_operands(compiler, opcode, type, left, right);
-}
-
 static Operand emit_ordered_comparison(Compiler* compiler, Type type,
     Operand left, Operand right, bool or_equal, bool reversed)
 {
@@ -1287,24 +1296,24 @@ static Operand compile_comparison_operand(Compiler* compiler, ASTNode* ast, Type
     return normalize_integer_operand(compiler, value, type);
 }
 
-static Operand compile_numeric_comparison(Compiler* compiler, ASTNode* ast)
-{
-    Type type = ast->binary.operand_type;
-    Operand left = compile_comparison_operand(compiler, ast->binary.left_expr, type);
-    bool direct = is_direct_variable(compiler, ast->binary.right_expr);
-
-    if (!left.temporary && !direct) {
-        left = materialize_operand(compiler, left);
-    }
-
-    Operand right = compile_comparison_operand(compiler, ast->binary.right_expr, type);
-
-    return emit_numeric_comparison(compiler, ast->binary.operator.type, type, left, right);
-}
-
 static Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
     Type type, Operand left, Operand right)
 {
+    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
+
+    if (comparison) {
+        left = normalize_integer_operand(compiler, left, type);
+        right = normalize_integer_operand(compiler, right, type);
+
+        return emit_numeric_comparison(compiler, operator_type, type, left, right);
+    }
+
+    if (is_float_type(type.kind)) {
+        Opcode opcode = get_float_opcode(type, operator_type);
+
+        return emit_float_operands(compiler, opcode, type, left, right);
+    }
+
     switch (operator_type) {
         case TokenPlus:
             return emit_binary_operands(compiler, IntAdd, type, left, right);
@@ -1316,8 +1325,10 @@ static Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
             return emit_binary_operands(compiler, IntDiv, type, left, right);
         case TokenPercent:
             return emit_binary_operands(compiler, IntRem, type, left, right);
+        case TokenKeywordAnd:
         case TokenAmpersand:
             return emit_binary_operands(compiler, IntBand, type, left, right);
+        case TokenKeywordOr:
         case TokenPipe:
             return emit_binary_operands(compiler, IntBor, type, left, right);
         case TokenCircumflex:
@@ -1354,42 +1365,37 @@ static Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)
 
 static Operand compile_binary(Compiler* compiler, ASTNode* ast)
 {
-    Type result_type = get_node_data_type(ast);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
 
-    if (result_type.kind == TypeString) {
-        return compile_concatenation(compiler, ast);
-    }
-
-    if (ast->binary.operator.type == TokenPower) {
-        return compile_power(compiler, ast->binary.left_expr, ast->binary.right_expr);
+    if (is_array_type(left_type.kind)) {
+        return compile_array_binary(compiler, ast);
     }
 
     TokenType operator_type = ast->binary.operator.type;
 
-    bool logical = is_logical_token(operator_type);
-    if (logical) {
+    if (is_logical_token(operator_type)) {
         return compile_logical_binary(compiler, ast);
     }
 
-    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
-    if (comparison) {
-        return compile_numeric_comparison(compiler, ast);
-    }
-
-    if (is_float_type(get_node_data_type(ast).kind)) {
-        return compile_float_binary(compiler, ast);
-    }
-
+    Type right_type = get_node_data_type(ast->binary.right_expr);
     Type type = ast->binary.operand_type;
-    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, type, false);
+    Type result_type = ast->binary.type_id;
+    bool concatenation = result_type.kind == TypeString;
+    Type left_destination = concatenation ? left_type : type;
+    Type right_destination = concatenation ? right_type : type;
+    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, left_destination, false);
 
     if (!left.temporary && !is_direct_variable(compiler, ast->binary.right_expr)) {
         left = materialize_operand(compiler, left);
     }
 
-    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, type, false);
+    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, right_destination, false);
 
-    return emit_binary_operator(compiler, ast->binary.operator.type, type, left, right);
+    if (concatenation || operator_type == TokenPower) {
+        return emit_binary_builtin(compiler, operator_type, left_type, right_type, left, right);
+    }
+
+    return emit_binary_operator(compiler, operator_type, type, left, right);
 }
 
 static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand)
@@ -1571,13 +1577,7 @@ static Operand compile_variable(Compiler* compiler, ASTNode* ast)
         return compile_converted_expression(compiler, symbol->variable_definition.expr, type, false);
     }
 
-    Operand value = load_variable(compiler, ast->variable.symbol);
-
-    if (get_reference_type(ast) == RefNone) {
-        return value;
-    }
-
-    return dereference_operand(compiler, value, get_type_slot_count(get_node_data_type(ast).kind));
+    return load_variable_value(compiler, symbol);
 }
 
 static void store_assignment_value(Compiler* compiler, ASTNode* symbol, Operand value)
@@ -1601,12 +1601,7 @@ static void compile_compound_assignment(
 {
     Type type = get_node_data_type(ast->assignment.symbol);
 
-    Operand left = load_variable(compiler, ast->assignment.symbol);
-
-    if (get_reference_type(ast->assignment.symbol) != RefNone) {
-        left = dereference_operand(
-            compiler, left, get_type_slot_count(get_node_data_type(ast->assignment.symbol).kind));
-    }
+    Operand left = load_variable_value(compiler, ast->assignment.symbol);
 
     if (!left.temporary && !is_direct_variable(compiler, ast->assignment.expr)) {
         left = materialize_operand(compiler, left);
@@ -1821,12 +1816,9 @@ static uint64_t get_widened_integer_literal_value(ASTNode* ast, Type source)
 static Operand compile_widened_integer_literal(Compiler* compiler, ASTNode* ast, Type destination)
 {
     Type source = get_node_data_type(ast);
-    ASTNode literal = *ast;
+    uint64_t value = get_widened_integer_literal_value(ast, source);
 
-    literal.integer_literal.value = get_widened_integer_literal_value(ast, source);
-    literal.integer_literal.type_id = destination;
-
-    return compile_number(compiler, &literal);
+    return compile_integer_value(compiler, value, destination);
 }
 
 static Operand compile_integer_literal_as_float(Compiler* compiler, ASTNode* ast, Type destination)
@@ -1873,6 +1865,11 @@ static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast,
         return operand;
     }
 
+    return convert_operand(compiler, operand, source, destination);
+}
+
+static Operand convert_operand(Compiler* compiler, Operand operand, Type source, Type destination)
+{
     if (!types_equal(source, destination) && can_implicitly_widen_type(source.kind, destination.kind)) {
         operand = normalize_unsigned_operand(compiler, operand, source);
     }
@@ -2262,19 +2259,20 @@ static uint16_t get_builtin_function_position(Compiler* compiler, const Builtin*
     return position;
 }
 
-static Type get_builtin_argument_type(const Builtin* builtin, const ASTNode* argument)
+static Type get_builtin_argument_type(const Builtin* builtin, Type type)
 {
     if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
         return (Type){.kind = builtin->params[0]};
     }
 
-    return get_node_data_type(argument);
+    return type;
 }
 
-static bool matches_builtin_arguments(const FunctionObject* function, const Builtin* builtin, const Vector* args)
+static bool matches_builtin_arguments(const FunctionObject* function, const Builtin* builtin,
+    const Type* types, size_t count)
 {
     if (function->type != FuncBuiltin || function->entry != builtin->entry
-        || function->argument_count != args->count) {
+        || function->argument_count != count) {
         return false;
     }
 
@@ -2284,9 +2282,8 @@ static bool matches_builtin_arguments(const FunctionObject* function, const Buil
 
     bool matches = true;
 
-    for (size_t i = 0; i < args->count && matches; i++) {
-        ASTNode* argument = args->data[i];
-        Type type = get_node_data_type(argument);
+    for (size_t i = 0; i < count && matches; i++) {
+        Type type = types[i];
         matches = matches_argument_format(&function->argument_formats[i], type);
     }
 
@@ -2305,10 +2302,10 @@ static void set_builtin_argument_format(
     function->argument_formats[index] = format;
 }
 
-static FunctionObject* create_variadic_builtin_function(Compiler* compiler, const Builtin* builtin, const Vector* args)
+static FunctionObject* create_variadic_builtin_function(Compiler* compiler, const Builtin* builtin,
+    const Type* types, size_t count)
 {
     FunctionObject* function = create_builtin_function_object(builtin);
-    size_t count = args->count;
 
     if (count > SIZE_MAX / sizeof(ArgumentFormat)) {
         out_of_memory_error();
@@ -2321,8 +2318,7 @@ static FunctionObject* create_variadic_builtin_function(Compiler* compiler, cons
     function->argument_count = count;
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* argument = args->data[i];
-        Type type = get_builtin_argument_type(builtin, argument);
+        Type type = get_builtin_argument_type(builtin, types[i]);
 
         set_builtin_argument_format(compiler, function, type, i);
 
@@ -2334,7 +2330,8 @@ static FunctionObject* create_variadic_builtin_function(Compiler* compiler, cons
     return function;
 }
 
-static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* builtin, const Vector* args)
+static uint16_t get_typed_builtin_call_position(Compiler* compiler, const Builtin* builtin,
+    const Type* types, size_t argument_count)
 {
     if (builtin->param_count >= 0) {
         return get_builtin_function_position(compiler, builtin);
@@ -2344,7 +2341,7 @@ static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* bui
 
     for (size_t i = 0; i < count; i++) {
         FunctionObject* function = compiler->module->functions.data[i];
-        bool matches = matches_builtin_arguments(function, builtin, args);
+        bool matches = matches_builtin_arguments(function, builtin, types, argument_count);
 
         if (matches) {
             return make_function_position(i);
@@ -2352,10 +2349,29 @@ static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* bui
     }
 
     uint16_t position = make_function_position(count);
-    FunctionObject* function = create_variadic_builtin_function(compiler, builtin, args);
+    FunctionObject* function = create_variadic_builtin_function(compiler, builtin, types, argument_count);
 
     push_vector_item(&compiler->module->functions, function);
     push_vector_item(&compiler->function_references, NULL);
+
+    return position;
+}
+
+static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* builtin, const Vector* args)
+{
+    if (builtin->param_count >= 0) {
+        return get_builtin_function_position(compiler, builtin);
+    }
+
+    Type* types = allocate_memory(args->count * sizeof(Type));
+
+    for (size_t i = 0; i < args->count; i++) {
+        types[i] = get_node_data_type(args->data[i]);
+    }
+
+    uint16_t position = get_typed_builtin_call_position(compiler, builtin, types, args->count);
+
+    free_memory(types);
 
     return position;
 }
@@ -2401,37 +2417,60 @@ static Operand compile_call(Compiler* compiler, FunctionObject* function, uint16
     return close_call_area(compiler, function, function_position, call, discard);
 }
 
-static Operand compile_power(Compiler* compiler, ASTNode* left_expression, ASTNode* right_expression)
+static Operand emit_builtin_operands(Compiler* compiler, const Builtin* builtin,
+    const Type* types, const Operand* arguments, size_t count, bool discard)
 {
-    void* items[] = {left_expression, right_expression};
-    Vector args = {.data = items, .capacity = 2, .count = 2};
-    Type argument_types[] = {(Type){.kind = TypeI32}, (Type){.kind = TypeI32}};
-    const Builtin* builtin = resolve_builtin("pow", argument_types, 2);
-    uint16_t position = get_builtin_function_position(compiler, builtin);
+    uint16_t position = get_typed_builtin_call_position(compiler, builtin, types, count);
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    CallArea call = open_call_area(compiler);
 
-    return compile_call(compiler, function, position, &args, NULL, false);
+    for (size_t i = 0; i < count; i++) {
+        Operand argument = arguments[i];
+        int reg = allocate_registers(compiler, argument.slots);
+
+        emit_operand_mov(compiler, reg, argument);
+    }
+
+    Operand result = close_call_area(compiler, function, position, call, discard);
+
+    release_operand(compiler, result);
+
+    for (size_t i = count; i > 0; i--) {
+        release_operand(compiler, arguments[i - 1]);
+    }
+
+    if (!result.temporary) {
+        return result;
+    }
+
+    int destination = allocate_registers(compiler, result.slots);
+
+    emit_operand_mov(compiler, destination, result);
+
+    result.reg = destination;
+
+    return result;
 }
 
-static Operand compile_concatenation(Compiler* compiler, ASTNode* ast)
+static Operand emit_binary_builtin(Compiler* compiler, TokenType operator_type,
+    Type left_type, Type right_type, Operand left, Operand right)
 {
-    ASTNode* left = ast->binary.left_expr;
-    ASTNode* right = ast->binary.right_expr;
-    void* items[] = {left, right};
-    Vector args = {.data = items, .capacity = 2, .count = 2};
-    const Builtin* builtin = resolve_builtin("string", NULL, 0);
-    uint16_t position = get_builtin_call_position(compiler, builtin, &args);
-    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    const char* name = operator_type == TokenPower ? "pow" : "string";
+    Type types[] = {left_type, right_type};
+    Operand arguments[] = {left, right};
+    const Builtin* builtin = resolve_builtin(name, types, 2);
 
-    return compile_call(compiler, function, position, &args, NULL, false);
+    return emit_builtin_operands(compiler, builtin, types, arguments, 2, false);
 }
 
 static void compile_power_assignment(Compiler* compiler, ASTNode* ast)
 {
-    ASTNode left = {.type = ASTVariable};
-    left.variable.symbol = ast->assignment.symbol;
+    Type type = get_node_data_type(ast->assignment.symbol);
+    Operand left = load_variable_value(compiler, ast->assignment.symbol);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->assignment.expr, false);
+    Operand result = emit_binary_builtin(compiler, TokenPower, type, type, left, right);
 
-    Operand result = compile_power(compiler, &left, ast->assignment.expr);
     store_assignment_value(compiler, ast->assignment.symbol, result);
 }
 
@@ -2454,25 +2493,34 @@ static void compile_call_with_argument(Compiler* compiler, FunctionObject* funct
     release_operand(compiler, argument);
 }
 
-static Operand compile_typed_variadic_call(Compiler* compiler, ASTNode* ast, FunctionObject* function,
+static Operand compile_typed_builtin_call(Compiler* compiler, ASTNode* ast, FunctionObject* function,
     uint16_t position, bool discard)
 {
-    ASTNode parameter = {.type = ASTParameter};
-    parameter.parameter.type_id = (Type){.kind = ast->builtin_call.builtin->params[0]};
-    parameter.parameter.reference_type = RefNone;
-    Vector params;
+    const Builtin* builtin = ast->builtin_call.builtin;
+    Vector* args = &ast->builtin_call.args;
 
-    init_vector(&params);
+    if (!function->return_count && args->count == 1) {
+        Type type = {.kind = builtin->params[0]};
+        Operand argument = compile_converted_expression(compiler, args->data[0], type, false);
 
-    for (size_t i = 0; i < ast->builtin_call.args.count; i++) {
-        push_vector_item(&params, &parameter);
+        emit_call_instruction(compiler, argument.reg, position);
+        release_operand(compiler, argument);
+
+        return no_operand();
     }
 
-    Operand result = compile_call(compiler, function, position, &ast->builtin_call.args, &params, discard);
+    CallArea call = open_call_area(compiler);
 
-    free_vector(&params);
+    for (size_t i = 0; i < args->count; i++) {
+        size_t parameter = builtin->param_count == BUILTIN_TYPED_VARIADIC ? 0 : i;
+        Type type = {.kind = builtin->params[parameter]};
+        int destination = compiler->register_count;
+        Operand argument = compile_converted_expression(compiler, args->data[i], type, false);
 
-    return result;
+        store_argument(compiler, argument, destination, false);
+    }
+
+    return close_call_area(compiler, function, position, call, discard);
 }
 
 static Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
@@ -2480,20 +2528,16 @@ static Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard
     ASTNode* argument = ast->builtin_call.args.data[0];
     Type type = get_node_data_type(argument);
 
-    ASTNode byte_count = {.type = ASTInteger};
-    byte_count.integer_literal.type_id = (Type){.kind = TypeUsize};
-    byte_count.integer_literal.value = get_array_storage_size(type);
-
+    size_t size = get_array_storage_size(type);
     Builtin builtin = *ast->builtin_call.builtin;
     builtin.param_count = 2;
     builtin.params[1] = TypeUsize;
+    Type types[] = {type, {.kind = TypeUsize}};
+    Operand arguments[2];
+    arguments[0] = compile_expression(compiler, argument, false);
+    arguments[1] = compile_usize_literal(compiler, size);
 
-    void* items[] = {argument, &byte_count};
-    Vector args = {.data = items, .capacity = 2, .count = 2};
-    uint16_t position = get_builtin_call_position(compiler, &builtin, &args);
-    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
-
-    return compile_call(compiler, function, position, &args, NULL, discard);
+    return emit_builtin_operands(compiler, &builtin, types, arguments, 2, discard);
 }
 
 static Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool discard)
@@ -2529,23 +2573,7 @@ static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool disca
         return compile_call(compiler, function, position, &ast->builtin_call.args, NULL, discard);
     }
 
-    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
-        return compile_typed_variadic_call(compiler, ast, function, position, discard);
-    }
-
-    ASTNode parameters[BUILTIN_PARAMS_MAX] = {0};
-    void* items[BUILTIN_PARAMS_MAX];
-    size_t count = builtin->param_count;
-    Vector params = {.data = items, .capacity = count, .count = count};
-
-    for (size_t i = 0; i < count; i++) {
-        parameters[i].type = ASTParameter;
-        parameters[i].parameter.type_id = (Type){.kind = builtin->params[i]};
-        parameters[i].parameter.reference_type = RefNone;
-        items[i] = &parameters[i];
-    }
-
-    return compile_call(compiler, function, position, &ast->builtin_call.args, &params, discard);
+    return compile_typed_builtin_call(compiler, ast, function, position, discard);
 }
 
 static Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
@@ -3552,9 +3580,28 @@ static bool compile_discarded_prefix(Compiler* compiler, ASTNode* ast)
     return true;
 }
 
+static bool compile_discarded_array_binary(Compiler* compiler, ASTNode* ast)
+{
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    TokenType operator_type = ast->binary.operator.type;
+    bool division = operator_type == TokenSlash || operator_type == TokenPercent;
+    Type operand_type = ast->binary.operand_type;
+
+    if (!is_array_type(left_type.kind) || (division && is_integer_type(operand_type.kind))) {
+        return false;
+    }
+
+    compile_expression(compiler, ast->binary.left_expr, true);
+    compile_expression(compiler, ast->binary.right_expr, true);
+
+    return true;
+}
+
 static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTBinary:
+            return compile_discarded_array_binary(compiler, ast);
         case ASTArray:
             return compile_discarded_array(compiler, ast);
         case ASTBoolean:
@@ -3582,25 +3629,21 @@ static Operand compile_array_new(Compiler* compiler, Type type)
         .constant_evaluable = true
     };
 
-    ASTNode byte_count = {.type = ASTInteger};
-    byte_count.integer_literal.type_id = (Type){.kind = TypeUsize};
-    byte_count.integer_literal.value = get_array_storage_size(type);
-
-    void* items[] = {&byte_count};
-    Vector args = {.data = items, .capacity = 1, .count = 1};
+    size_t size = get_array_storage_size(type);
     uint16_t position = get_builtin_function_position(compiler, &builtin);
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    CallArea call = open_call_area(compiler);
 
-    return compile_call(compiler, function, position, &args, NULL, false);
+    compile_usize_literal(compiler, size);
+
+    return close_call_area(compiler, function, position, call, false);
 }
 
 static Operand compile_usize_literal(Compiler* compiler, size_t value)
 {
-    ASTNode literal = {.type = ASTInteger};
-    literal.integer_literal.value = value;
-    literal.integer_literal.type_id = (Type){.kind = TypeUsize};
+    Type type = {.kind = TypeUsize};
 
-    return compile_number(compiler, &literal);
+    return compile_integer_value(compiler, value, type);
 }
 
 static void reserve_pointer_padding(Compiler* compiler)
@@ -3726,6 +3769,207 @@ static void copy_array_element(Compiler* compiler, Operand buffer, Operand sourc
     Operand value = {destination, true, slots};
 
     release_operand(compiler, value);
+}
+
+static Operand create_array_binary_offset(Compiler* compiler, size_t stride,
+    size_t shared_stride, Operand shared_offset)
+{
+    if (stride == shared_stride) {
+        return shared_offset;
+    }
+
+    Operand offset = compile_usize_literal(compiler, 0);
+    offset.temporary = false;
+
+    return offset;
+}
+
+static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, ASTNode* ast)
+{
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+    Type left_leaf = get_array_leaf_type(left_type);
+    Type right_leaf = get_array_leaf_type(right_type);
+    Type result_leaf = get_array_leaf_type(ast->binary.type_id);
+    ArrayBinaryOffsets offsets;
+    offsets.left_stride = get_array_storage_size(left_leaf);
+    offsets.right_stride = get_array_storage_size(right_leaf);
+    offsets.result_stride = get_array_storage_size(result_leaf);
+    offsets.left = create_array_binary_offset(compiler, offsets.left_stride, 0, (Operand){0});
+    offsets.right = create_array_binary_offset(compiler, offsets.right_stride, offsets.left_stride, offsets.left);
+    offsets.result = offsets.left;
+
+    if (is_equality_token(ast->binary.operator.type)) {
+        offsets.result_stride = offsets.left_stride;
+
+        return offsets;
+    }
+
+    if (offsets.result_stride == offsets.right_stride) {
+        offsets.result = offsets.right;
+
+        return offsets;
+    }
+
+    offsets.result = create_array_binary_offset(compiler, offsets.result_stride, offsets.left_stride, offsets.left);
+
+    return offsets;
+}
+
+static void advance_array_binary_offset(Compiler* compiler, Operand offset, size_t stride)
+{
+    Type type = {.kind = TypeUsize};
+    Opcode opcode = get_width_opcode(type, OpAddiI64, OpAddiI32, OpAddiI16, OpAddiI8);
+
+    emit_instruction(compiler, opcode, offset.reg, offset.reg, stride);
+}
+
+static void advance_array_binary_offsets(Compiler* compiler, const ArrayBinaryOffsets* offsets)
+{
+    advance_array_binary_offset(compiler, offsets->left, offsets->left_stride);
+
+    if (offsets->right.reg != offsets->left.reg) {
+        advance_array_binary_offset(compiler, offsets->right, offsets->right_stride);
+    }
+
+    if (offsets->result.reg != offsets->left.reg && offsets->result.reg != offsets->right.reg) {
+        advance_array_binary_offset(compiler, offsets->result, offsets->result_stride);
+    }
+}
+
+static Operand load_array_binary_element(Compiler* compiler, Operand buffer, Operand offset, Type type)
+{
+    size_t slots = get_type_slot_count(type.kind);
+    int reg = allocate_registers(compiler, slots);
+    Opcode opcode = get_memory_load_opcode(type);
+
+    emit_instruction(compiler, opcode, reg, buffer.reg, offset.reg);
+
+    Operand value = {reg, true, slots};
+    value = normalize_integer_operand(compiler, value, type);
+    value.temporary = false;
+
+    return value;
+}
+
+static Operand compile_array_leaf_binary(Compiler* compiler, ASTNode* ast, Operand left, Operand right,
+    Type left_type, Type right_type)
+{
+    // Bind loaded elements to local registers so scalar operators share the same compilation path
+    TokenType operator_type = ast->binary.operator.type;
+    Type result_type = get_array_leaf_type(ast->binary.type_id);
+    Type operand_type = ast->binary.operand_type;
+
+    if (is_equality_token(operator_type)) {
+        operator_type = TokenEqualEqual;
+    }
+
+    if (operator_type == TokenPower || result_type.kind == TypeString) {
+        return emit_binary_builtin(compiler, operator_type, left_type, right_type, left, right);
+    }
+
+    left = convert_operand(compiler, left, left_type, operand_type);
+    right = convert_operand(compiler, right, right_type, operand_type);
+
+    return emit_binary_operator(compiler, operator_type, operand_type, left, right);
+}
+
+static void compile_array_binary_body(Compiler* compiler, ASTNode* ast, Operand left, Operand right,
+    Operand result, const ArrayBinaryOffsets* offsets)
+{
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+    Type left_leaf = get_array_leaf_type(left_type);
+    Type right_leaf = get_array_leaf_type(right_type);
+    Operand left_value = load_array_binary_element(compiler, left, offsets->left, left_leaf);
+    Operand right_value = load_array_binary_element(compiler, right, offsets->right, right_leaf);
+    Operand value = compile_array_leaf_binary(compiler, ast, left_value, right_value, left_leaf, right_leaf);
+    bool equality = is_equality_token(ast->binary.operator.type);
+
+    if (equality) {
+        emit_operand_mov(compiler, result.reg, value);
+
+        return;
+    }
+
+    Type result_leaf = get_array_leaf_type(ast->binary.type_id);
+    Opcode store = get_memory_store_opcode(result_leaf);
+
+    emit_instruction(compiler, store, value.reg, result.reg, offsets->result.reg);
+}
+
+static void compile_array_binary_loop(Compiler* compiler, ASTNode* ast, Operand left, Operand right, Operand result)
+{
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    size_t size = get_array_storage_size(left_type);
+    int previous_register_count = compiler->register_count;
+    ArrayBinaryOffsets offsets = create_array_binary_offsets(compiler, ast);
+    Operand end = compile_usize_literal(compiler, size);
+    int condition = allocate_register(compiler);
+    int body_register_count = compiler->register_count;
+    Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    emit_instruction(compiler, compare, condition, offsets.left.reg, end.reg);
+
+    size_t exit_jump = emit_jump(compiler, OpBz, condition);
+
+    compile_array_binary_body(compiler, ast, left, right, result, &offsets);
+
+    compiler->register_count = body_register_count;
+    bool equality = is_equality_token(ast->binary.operator.type);
+    size_t unequal_jump = 0;
+
+    if (equality) {
+        unequal_jump = emit_jump(compiler, OpBz, result.reg);
+    }
+
+    advance_array_binary_offsets(compiler, &offsets);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
+
+    if (equality) {
+        patch_jump(compiler, unequal_jump);
+    }
+
+    compiler->register_count = previous_register_count;
+}
+
+static Operand compile_array_binary(Compiler* compiler, ASTNode* ast)
+{
+    bool equality = is_equality_token(ast->binary.operator.type);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+    bool same_shape = array_shapes_equal(left_type, right_type);
+    Operand result;
+
+    if (equality) {
+        int reg = emit_ldi(compiler, same_shape);
+        result = make_operand(reg, true);
+    } else {
+        result = compile_array_new(compiler, ast->binary.type_id);
+    }
+
+    int previous_register_count = compiler->register_count;
+    Operand left = compile_expression(compiler, ast->binary.left_expr, false);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->binary.right_expr, false);
+    right = materialize_operand(compiler, right);
+
+    if (same_shape) {
+        compile_array_binary_loop(compiler, ast, left, right, result);
+    }
+
+    compiler->register_count = previous_register_count;
+    TokenType operator_type = ast->binary.operator.type;
+
+    if (operator_type == TokenNotEqual || operator_type == TokenNotEqualEqual) {
+        emit_instruction(compiler, OpNot, result.reg, result.reg, 0);
+    }
+
+    return result;
 }
 
 static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
@@ -4121,7 +4365,7 @@ static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard
             result = compile_float(compiler, ast);
             break;
         case ASTInteger:
-            result = compile_number(compiler, ast);
+            result = compile_integer_value(compiler, ast->integer_literal.value, ast->integer_literal.type_id);
             break;
         case ASTPrefix:
             result = compile_prefix(compiler, ast);

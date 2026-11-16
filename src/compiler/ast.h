@@ -258,8 +258,12 @@ typedef struct ASTNode
 } ASTNode;
 
 ASTNode* create_ast_node(ASTNodeType type);
+ASTNode* create_array_node(Token token, Type type, bool flat);
+ASTNode* copy_literal_node(const ASTNode* literal);
+void replace_ast_node(ASTNode* ast, ASTNode* replacement);
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
 ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token);
+ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type);
 ASTNode* create_boolean_node(Token token, bool value);
 ASTNode* create_builtin_call_node(Token token, const Builtin* builtin);
 ASTNode* create_character_node(Token token, uint32_t value);

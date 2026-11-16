@@ -12,11 +12,11 @@ static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
 static bool can_discard_length_argument(const ASTNode* ast);
 static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type);
 
-static _Noreturn void invalid_constant_conversion_error(Token token, Type destination)
+static _Noreturn void invalid_conversion_error(Token token, Type destination)
 {
     const char* name = get_data_type_name(destination);
 
-    fatal_source_error(token.line, token.column, "Constant is outside the supported domain of conversion to %s", name);
+    fatal_source_error(token.line, token.column, "Cannot convert valuex to %s", name);
 }
 
 static uint64_t normalize_integer_constant(uint64_t value, Type type)
@@ -60,7 +60,7 @@ static uint64_t float_constant_to_integer(double value, Type destination, Token 
     }
 
     if (!isfinite(truncated) || truncated < lower || truncated >= upper) {
-        invalid_constant_conversion_error(token, destination);
+        invalid_conversion_error(token, destination);
     }
 
     if (signed_type) {
@@ -296,7 +296,7 @@ static bool evaluate_conversion(const ASTNode* ast, ConstantValue* value)
     bool scalar = value->integer <= UINT32_MAX && is_unicode_scalar((uint32_t)value->integer);
 
     if (destination.kind == TypeChar && !scalar) {
-        invalid_constant_conversion_error(token, destination);
+        invalid_conversion_error(token, destination);
     }
 
     if (destination.kind != TypeChar) {

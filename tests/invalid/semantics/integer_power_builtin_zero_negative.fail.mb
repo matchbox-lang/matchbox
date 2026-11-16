@@ -1,0 +1,5 @@
+var base: i64 = 0
+var exponent: i64 = -1
+let result = pow(base, exponent)
+
+print(result)

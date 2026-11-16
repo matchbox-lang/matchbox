@@ -2,6 +2,7 @@
 #include "builtin/builtin.h"
 #include "common/array_type.h"
 #include "common/unicode.h"
+#include "common/math.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include <limits.h>
@@ -148,6 +149,21 @@ static bool fold_remainder(uint32_t left, uint32_t right, uint64_t* value)
     return true;
 }
 
+static bool fold_power(uint32_t left, uint32_t right, uint64_t* value)
+{
+    int64_t base = signed_i32_value(left);
+    int64_t exponent = signed_i32_value(right);
+
+    if (base == 0 && exponent < 0) {
+        return false;
+    }
+
+    int64_t result = ipow(base, exponent);
+    *value = (uint64_t)result;
+
+    return true;
+}
+
 static bool fold_binary_value(TokenType operator, uint32_t left, uint32_t right, uint64_t* value)
 {
     switch (operator) {
@@ -165,8 +181,7 @@ static bool fold_binary_value(TokenType operator, uint32_t left, uint32_t right,
         case TokenPercent:
             return fold_remainder(left, right, value);
         case TokenPower:
-            *value = (int)pow(left, right);
-            return true;
+            return fold_power(left, right, value);
         case TokenAmpersand:
             *value = left & right;
             return true;

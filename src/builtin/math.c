@@ -1,4 +1,5 @@
 #include "builtin/math.h"
+#include "common/math.h"
 #include "common/util.h"
 #include <math.h>
 
@@ -828,7 +829,8 @@ void builtin_pow_i32(VM* vm, const FunctionObject* function, Value* frame)
 
     int32_t a = AS_SIGNED(frame[0]);
     int32_t b = AS_SIGNED(frame[1]);
-    int32_t result = pow(a, b);
+    int64_t value = ipow(a, b);
+    int32_t result = (int32_t)value;
 
     frame[-2] = SIGNED_VALUE(result);
 }
@@ -840,7 +842,8 @@ void builtin_pow_i64(VM* vm, const FunctionObject* function, Value* frame)
 
     int64_t a = read_i64(frame, 0);
     int64_t b = read_i64(frame, 2);
-    int64_t result = pow(a, b);
+    int64_t value = ipow(a, b);
+    int64_t result = (int64_t)value;
 
     write_i64(frame, result);
 }

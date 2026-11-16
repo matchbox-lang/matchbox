@@ -1,12 +1,11 @@
 #include "cli/program_test_runner.h"
 #include "cli/options.h"
 #include "cli/path.h"
+#include "cli/test_discovery.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
 #include "config.h"
-#include <dirent.h>
-#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +29,6 @@ typedef struct ProgramTestRun
     int failed;
     int discovery_failed;
 } ProgramTestRun;
-
-static void discover_program_test_path(ProgramTestRun* run, const char* path);
 
 static void append_process_output(Vector* output, const char* buffer)
 {
@@ -195,78 +192,6 @@ static void run_program_test_case(ProgramTestRun* run, const char* path)
     run->failed++;
 }
 
-static void discover_program_test_directory_entry(ProgramTestRun* run, const char* path, const char* name)
-{
-    if (path_is_current_or_parent_directory(name)) {
-        return;
-    }
-
-    char* child = join_path(path, name);
-
-    discover_program_test_path(run, child);
-    free_path(child);
-}
-
-static void discover_program_test_directory(ProgramTestRun* run, const char* path)
-{
-    DIR* directory = opendir(path);
-
-    if (!directory) {
-        run->discovery_failed++;
-
-        report_error("Could not read directory %s", path);
-
-        return;
-    }
-
-    struct dirent* entry;
-
-    errno = 0;
-
-    while ((entry = readdir(directory))) {
-        discover_program_test_directory_entry(run, path, entry->d_name);
-
-        errno = 0;
-    }
-
-    int read_error = errno;
-
-    closedir(directory);
-
-    if (read_error != 0) {
-        run->discovery_failed++;
-
-        report_error("Could not read directory %s", path);
-    }
-}
-
-static void discover_program_test_path(ProgramTestRun* run, const char* path)
-{
-    if (path_is_directory(path)) {
-        discover_program_test_directory(run, path);
-
-        return;
-    }
-
-    if (!path_has_extension(path, ".mb")) {
-        return;
-    }
-
-    size_t length = strlen(path);
-    char* copy = allocate_memory(length + 1);
-
-    memcpy(copy, path, length + 1);
-    push_vector_item(&run->paths, copy);
-}
-
-static int compare_paths(const void* left, const void* right)
-{
-    const char* left_path = *(const char* const*)left;
-    const char* right_path = *(const char* const*)right;
-
-    return strcmp(left_path, right_path);
-}
-
 static void free_program_test_run(ProgramTestRun* run)
 {
     for (size_t i = 0; i < run->paths.count; i++) {
@@ -317,8 +242,7 @@ static void init_program_test_run(ProgramTestRun* run, const Options* options)
 
 static bool discover_program_tests(ProgramTestRun* run, const char* path)
 {
-    discover_program_test_path(run, path);
-    qsort(run->paths.data, run->paths.count, sizeof(void*), compare_paths);
+    run->discovery_failed += discover_test_paths(&run->paths, path);
 
     if (run->paths.count == 0) {
         report_error("No programs found in %s", path);

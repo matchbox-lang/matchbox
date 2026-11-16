@@ -1,6 +1,7 @@
 #include "cli/test_runner.h"
 #include "cli/options.h"
 #include "cli/path.h"
+#include "cli/test_discovery.h"
 #include "common/errors.h"
 #include "common/io.h"
 #include "common/memory.h"
@@ -11,7 +12,6 @@
 #include "compiler/scope.h"
 #include "runtime/module_object.h"
 #include "vm/vm.h"
-#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,8 +36,6 @@ typedef struct TestRun
     int failed;
     int validation_failed;
 } TestRun;
-
-static void discover_test_path(TestRun* run, const char* path);
 
 static bool should_print_result(TestOutput output, bool passed)
 {
@@ -215,77 +213,6 @@ static void discover_test_file(TestRun* run, const char* path)
     }
 }
 
-static void discover_test_directory_entry(TestRun* run, const char* path, const char* name)
-{
-    if (path_is_current_or_parent_directory(name)) {
-        return;
-    }
-
-    char* child = join_path(path, name);
-
-    discover_test_path(run, child);
-    free_path(child);
-}
-
-static void discover_test_directory(TestRun* run, const char* path)
-{
-    DIR* directory = opendir(path);
-    if (!directory) {
-        run->validation_failed++;
-
-        report_error("Could not read directory %s", path);
-
-        return;
-    }
-
-    struct dirent* entry;
-
-    errno = 0;
-
-    while ((entry = readdir(directory))) {
-        discover_test_directory_entry(run, path, entry->d_name);
-
-        errno = 0;
-    }
-
-    int read_error = errno;
-
-    closedir(directory);
-
-    if (read_error != 0) {
-        run->validation_failed++;
-
-        report_error("Could not read directory %s", path);
-    }
-}
-
-static void discover_test_path(TestRun* run, const char* path)
-{
-    if (path_is_directory(path)) {
-        discover_test_directory(run, path);
-
-        return;
-    }
-
-    if (!path_has_extension(path, ".mb")) {
-        return;
-    }
-
-    size_t length = strlen(path);
-    char* copy = allocate_memory(length + 1);
-
-    memcpy(copy, path, length + 1);
-    push_vector_item(&run->paths, copy);
-}
-
-static int compare_paths(const void* left, const void* right)
-{
-    const char* left_path = *(const char* const*)left;
-    const char* right_path = *(const char* const*)right;
-
-    return strcmp(left_path, right_path);
-}
-
 static bool run_test_block(const TestCase* test)
 {
     char* source = read_test_source(test->path);
@@ -427,8 +354,7 @@ static void init_test_run(TestRun* run, TestOutput output)
 
 static bool discover_tests(TestRun* run, const char* path)
 {
-    discover_test_path(run, path);
-    qsort(run->paths.data, run->paths.count, sizeof(void*), compare_paths);
+    run->validation_failed += discover_test_paths(&run->paths, path);
 
     for (size_t i = 0; i < run->paths.count; i++) {
         const char* filename = run->paths.data[i];

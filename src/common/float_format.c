@@ -71,17 +71,6 @@ static void append_float_fraction(char* buffer, size_t size)
     snprintf(buffer + length, size - length, ".0");
 }
 
-static bool same_f32_bits(float left, float right)
-{
-    uint32_t left_bits;
-    uint32_t right_bits;
-
-    memcpy(&left_bits, &left, sizeof(left_bits));
-    memcpy(&right_bits, &right, sizeof(right_bits));
-
-    return left_bits == right_bits;
-}
-
 static bool same_f64_bits(double left, double right)
 {
     uint64_t left_bits;
@@ -93,7 +82,39 @@ static bool same_f64_bits(double left, double right)
     return left_bits == right_bits;
 }
 
-void format_shortest_f32(char* buffer, size_t size, float value)
+static bool round_trips_float(const char* text, double value, int digits)
+{
+    double parsed;
+
+    if (digits == 9) {
+        parsed = strtof(text, NULL);
+    } else {
+        parsed = strtod(text, NULL);
+    }
+
+    return same_f64_bits(value, parsed);
+}
+
+static size_t select_shortest_float(char* buffer, size_t size, char* candidate, bool round_trip, size_t shortest)
+{
+    if (!round_trip) {
+        return shortest;
+    }
+
+    normalize_float_exponent(candidate, 32);
+
+    size_t length = strlen(candidate);
+
+    if (length >= shortest) {
+        return shortest;
+    }
+
+    snprintf(buffer, size, "%s", candidate);
+
+    return length;
+}
+
+static void format_shortest_float(char* buffer, size_t size, double value, int digits)
 {
     if (format_special_float(buffer, size, value)) {
         return;
@@ -102,61 +123,25 @@ void format_shortest_f32(char* buffer, size_t size, float value)
     char candidate[32];
     size_t shortest = SIZE_MAX;
 
-    snprintf(buffer, size, "%.9g", value);
+    snprintf(buffer, size, "%.*g", digits, value);
     normalize_float_exponent(buffer, size);
 
-    for (int precision = 1; precision <= 9; precision++) {
+    for (int precision = 1; precision <= digits; precision++) {
         snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
-        float parsed = strtof(candidate, NULL);
 
-        if (!same_f32_bits(value, parsed)) {
-            continue;
-        }
-
-        normalize_float_exponent(candidate, sizeof(candidate));
-
-        size_t length = strlen(candidate);
-        if (length >= shortest) {
-            continue;
-        }
-
-        shortest = length;
-        snprintf(buffer, size, "%s", candidate);
+        bool round_trip = round_trips_float(candidate, value, digits);
+        shortest = select_shortest_float(buffer, size, candidate, round_trip, shortest);
     }
 
     append_float_fraction(buffer, size);
 }
 
+void format_shortest_f32(char* buffer, size_t size, float value)
+{
+    format_shortest_float(buffer, size, value, 9);
+}
+
 void format_shortest_f64(char* buffer, size_t size, double value)
 {
-    if (format_special_float(buffer, size, value)) {
-        return;
-    }
-
-    char candidate[32];
-    size_t shortest = SIZE_MAX;
-
-    snprintf(buffer, size, "%.17g", value);
-    normalize_float_exponent(buffer, size);
-
-    for (int precision = 1; precision <= 17; precision++) {
-        snprintf(candidate, sizeof(candidate), "%.*g", precision, value);
-        double parsed = strtod(candidate, NULL);
-
-        if (!same_f64_bits(value, parsed)) {
-            continue;
-        }
-
-        normalize_float_exponent(candidate, sizeof(candidate));
-
-        size_t length = strlen(candidate);
-        if (length >= shortest) {
-            continue;
-        }
-
-        shortest = length;
-        snprintf(buffer, size, "%s", candidate);
-    }
-
-    append_float_fraction(buffer, size);
+    format_shortest_float(buffer, size, value, 17);
 }

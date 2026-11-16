@@ -109,7 +109,6 @@ ASTNode* get_local_symbol(const Scope* scope, StringView id)
 ASTNode* get_symbol(const Scope* scope, StringView id)
 {
     ASTNode* symbol = get_table_at(&scope->symbols, id);
-
     if (symbol) {
         return symbol;
     }

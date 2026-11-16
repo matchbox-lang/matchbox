@@ -1,7 +1,7 @@
 #ifndef VALUE_H
 #define VALUE_H
 
-#include "common/data_type.h"
+#include "common/type.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -66,8 +66,8 @@ typedef struct ValueArray
 
 void init_value_array(ValueArray* array);
 void free_value_array(ValueArray* array);
-int32_t read_signed_value(Value value, DataType type);
-uint32_t read_unsigned_value(Value value, DataType type);
+int32_t read_signed_value(Value value, Type type);
+uint32_t read_unsigned_value(Value value, Type type);
 int64_t read_i64(const Value* frame, size_t position);
 uint64_t read_u64(const Value* frame, size_t position);
 double read_f64(const Value* frame, size_t position);

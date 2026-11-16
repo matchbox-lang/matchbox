@@ -1,0 +1,21 @@
+let a: i8[] = [1, 2, 3]
+let b: i8[] = a
+let expected: &i8[3] = &b
+
+assert(expected[2] == 3)
+
+func take(values: i8[3]) -> i8[3] {
+    let moved: i8[] = values
+
+    return moved
+}
+
+let c: i8[] = take(b)
+
+assert(c[0] == 1 and c[2] == 3)
+
+let empty: char[0] = []
+let moved_empty: char[] = empty
+let expected_empty: &char[0] = &moved_empty
+
+print(expected_empty)

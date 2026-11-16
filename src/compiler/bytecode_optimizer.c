@@ -30,18 +30,16 @@ typedef struct KnownConstant
 static bool uses_register_pairs(Opcode opcode)
 {
     switch (opcode) {
-        case OpCmpI64:
-        case OpCmpU64:
-        case OpCmplF64:
-        case OpCmpgF64:
         case OpMov64:
         case OpLdc64:
         case OpLdg64:
-        case OpLdc64Call:
-        case OpLdg64Call:
         case OpStg64:
         case OpLdr64:
         case OpStr64:
+        case OpLdm64:
+        case OpLdmi64:
+        case OpStm64:
+        case OpStmi64:
         case OpF32ToF64:
         case OpF64ToF32:
         case OpF32ToI64:
@@ -62,7 +60,6 @@ static bool uses_register_pairs(Opcode opcode)
         case OpDivF64:
         case OpRemF64:
         case OpNegF64:
-        case OpRet64:
         case OpAddI64:
         case OpAddiI64:
         case OpSubI64:
@@ -87,8 +84,16 @@ static bool uses_register_pairs(Opcode opcode)
         case OpAsrI64:
         case OpAsriI64:
         case OpNegI64:
+        case OpCmpI64:
+        case OpCmpU64:
+        case OpCmplF64:
+        case OpCmpgF64:
+        case OpRet64:
+        case OpLdc64Call:
+        case OpLdg64Call:
             return true;
-        default: return false;
+        default:
+            return false;
     }
 }
 
@@ -197,7 +202,9 @@ static bool invalidates_constants(Opcode opcode)
     bool end = ends_block(opcode);
 
     return end || opcode == OpCall || opcode == OpStgCall || opcode == OpStg || opcode == OpStg64
-        || opcode == OpStr || opcode == OpStr64
+        || opcode == OpStr || opcode == OpStr64 || opcode == OpStm8 || opcode == OpStm16
+        || opcode == OpStm32 || opcode == OpStm64
+        || opcode == OpStmi8 || opcode == OpStmi16 || opcode == OpStmi32 || opcode == OpStmi64
         || opcode == OpRefl || opcode == OpRefg || opcode == OpWide;
 }
 
@@ -683,13 +690,14 @@ static bool fuse_move_load(OptimizationWord* first, OptimizationWord* second)
 static Opcode load_call_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OpLdi:    return OpLdiCall;
-        case OpLdc:    return OpLdcCall;
-        case OpLdg:    return OpLdgCall;
-        case OpLdc64: return OpLdc64Call;
-        case OpLdg64: return OpLdg64Call;
-        case OpLdr:    return OpLdrCall;
-        default:        return OpHlt;
+        case OpLdi:     return OpLdiCall;
+        case OpLdc:     return OpLdcCall;
+        case OpLdg:     return OpLdgCall;
+        case OpLdr:     return OpLdrCall;
+        case OpLdc64:   return OpLdc64Call;
+        case OpLdg64:   return OpLdg64Call;
+        default:
+            return OpHlt;
     }
 }
 

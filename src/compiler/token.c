@@ -156,6 +156,36 @@ bool is_float_assignment_token(TokenType type)
         || type == TokenStarEqual || type == TokenSlashEqual || type == TokenPercentEqual;
 }
 
+TokenType get_assignment_binary_token(TokenType type)
+{
+    switch (type) {
+        case TokenPlusEqual:
+            return TokenPlus;
+        case TokenMinusEqual:
+            return TokenMinus;
+        case TokenStarEqual:
+            return TokenStar;
+        case TokenSlashEqual:
+            return TokenSlash;
+        case TokenPercentEqual:
+            return TokenPercent;
+        case TokenPowerEqual:
+            return TokenPower;
+        case TokenAndEqual:
+            return TokenAmpersand;
+        case TokenOrEqual:
+            return TokenPipe;
+        case TokenCircumflexEqual:
+            return TokenCircumflex;
+        case TokenLshiftEqual:
+            return TokenLshift;
+        case TokenRshiftEqual:
+            return TokenRshift;
+        default:
+            return TokenUnknown;
+    }
+}
+
 bool is_assignment_token(TokenType type)
 {
     switch (type) {
@@ -177,7 +207,7 @@ bool is_assignment_token(TokenType type)
     }
 }
 
-DataType get_token_data_type(TokenType type)
+TypeKind get_token_data_type(TokenType type)
 {
     switch (type) {
         case TokenKeywordI8:        return TypeI8;
@@ -203,7 +233,7 @@ DataType get_token_data_type(TokenType type)
 
 bool is_type_token(TokenType type)
 {
-    DataType data_type = get_token_data_type(type);
+    TypeKind data_type = get_token_data_type(type);
 
     return data_type != TypeUnknown;
 }

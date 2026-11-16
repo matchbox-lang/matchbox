@@ -1,0 +1,17 @@
+func update(values: ^i32[2], other: &i32[2]) {
+    values += other
+    values *= values
+}
+
+let values = [3, 4]
+let other = [2, 3]
+
+update(^values, &other)
+assert(values == [25, 49])
+assert(other == [2, 3])
+
+let reference = ^values
+
+reference -= [1, 2]
+assert(reference == [24, 47])
+assert(values == [24, 47])

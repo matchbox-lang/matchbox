@@ -1,0 +1,7 @@
+func take(values: i32[2]) -> i32[2] {
+    return values
+}
+
+let values = [1, 2]
+
+values += take(values)

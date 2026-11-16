@@ -1,0 +1,4 @@
+let a: i8[] = [1, 2, 3]
+let b: i8[] = a
+
+print(a)

@@ -1,7 +1,11 @@
 #include "runtime/argument_format.h"
+#include "common/array_type.h"
+#include "runtime/array_format.h"
 #include "common/errors.h"
 #include "runtime/concatenation.h"
+#include "runtime/module_object.h"
 #include <stdint.h>
+#include <string.h>
 
 typedef struct FormattedArguments
 {
@@ -10,13 +14,16 @@ typedef struct FormattedArguments
     size_t count;
 } FormattedArguments;
 
+static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data);
+static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format);
+
 void format_arguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count)
 {
     for (size_t i = 0; i < count; i++) {
         const ArgumentFormat* format = &formats[i];
         const Value* argument = frame + format->slot;
 
-        format->formatter(writer, argument);
+        format_argument(writer, argument, format);
     }
 }
 
@@ -31,6 +38,15 @@ static size_t argument_capacity(const Value* frame, const ArgumentFormat* format
 {
     if (format->capacity) {
         return format->capacity;
+    }
+
+    if (format->array) {
+        Writer writer;
+
+        init_buffer_writer(&writer, NULL, 0);
+        format_argument(&writer, frame + format->slot, format);
+
+        return writer.length;
     }
 
     const StringObject* string = AS_POINTER(frame[format->slot]);
@@ -124,14 +140,14 @@ void format_u64_argument(Writer* writer, const Value* argument)
     format_u64(writer, value);
 }
 
-static void format_isize_argument(Writer* writer, const Value* argument)
+void format_isize_argument(Writer* writer, const Value* argument)
 {
     intptr_t value = AS_SIGNED(argument[0]);
 
     format_i64(writer, value);
 }
 
-static void format_usize_argument(Writer* writer, const Value* argument)
+void format_usize_argument(Writer* writer, const Value* argument)
 {
     uintptr_t value = AS_UNSIGNED(argument[0]);
 
@@ -173,9 +189,51 @@ void format_string_argument(Writer* writer, const Value* argument)
     format_string(writer, value);
 }
 
-ArgumentFormat get_argument_format(DataType type)
+static void format_array_item(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t index)
 {
-    switch (type) {
+    if (index) {
+        write_bytes(writer, ", ", 2);
+    }
+
+    if (format->element.array) {
+        format_array_data(writer, format->element.array, data);
+
+        return;
+    }
+
+    Value argument[2] = {0};
+
+    memcpy(argument, data, format->stride);
+    format->element.formatter(writer, argument);
+}
+
+static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data)
+{
+    write_bytes(writer, "[", 1);
+
+    for (size_t i = 0; i < format->count; i++) {
+        format_array_item(writer, format, data + i * format->stride, i);
+    }
+
+    write_bytes(writer, "]", 1);
+}
+
+static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format)
+{
+    if (!format->array) {
+        format->formatter(writer, argument);
+
+        return;
+    }
+
+    const uint8_t* data = AS_POINTER(argument[0]);
+
+    format_array_data(writer, format->array, data);
+}
+
+static ArgumentFormat get_scalar_argument_format(TypeKind kind)
+{
+    switch (kind) {
         case TypeI8:
             return (ArgumentFormat){.formatter = format_i8_argument, .capacity = 4};
         case TypeI16:
@@ -209,4 +267,49 @@ ArgumentFormat get_argument_format(DataType type)
         default:
             return (ArgumentFormat){0};
     }
+}
+
+ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
+{
+    if (!is_array_type(type.kind)) {
+        return get_scalar_argument_format(type.kind);
+    }
+
+    const ArrayType* info = type.array;
+    ArrayFormat* format = ALLOCATE_OBJECT(ArrayFormat, ObjArrayFormat);
+    format->count = info->count;
+    format->stride = get_array_storage_size(info->element_type);
+
+    push_vector_item(&module->objects, format);
+
+    format->element = compile_argument_format(module, info->element_type);
+
+    return (ArgumentFormat){.array = format};
+}
+
+static bool matches_array_format(const ArrayFormat* format, Type type)
+{
+    if (!format) {
+        return false;
+    }
+
+    const ArrayType* info = type.array;
+    size_t stride = get_array_storage_size(info->element_type);
+
+    if (format->count != info->count || format->stride != stride) {
+        return false;
+    }
+
+    return matches_argument_format(&format->element, info->element_type);
+}
+
+bool matches_argument_format(const ArgumentFormat* format, Type type)
+{
+    if (is_array_type(type.kind)) {
+        return matches_array_format(format->array, type);
+    }
+
+    ArgumentFormat scalar = get_scalar_argument_format(type.kind);
+
+    return !format->array && format->formatter == scalar.formatter;
 }

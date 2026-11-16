@@ -29,26 +29,6 @@ case OpLdc64:
 case OpLdg64:
     WRITE_U64(vm->fp, a, READ_U64(vm->globals.data, OPERAND_BC(inst)));
     break;
-case OpLdc64Call: {
-    uint16_t operands = OPERAND_BC(inst);
-    uint16_t position = LOAD_CALL_OPERAND(operands);
-
-    vm->fp[a] = vm->module->constants.data[position];
-    vm->fp[a + 1] = vm->module->constants.data[position + 1];
-
-    function_position = LOAD_CALL_FUNCTION(operands);
-    goto call;
-}
-case OpLdg64Call: {
-    uint16_t operands = OPERAND_BC(inst);
-    uint16_t position = LOAD_CALL_OPERAND(operands);
-
-    vm->fp[a] = vm->globals.data[position];
-    vm->fp[a + 1] = vm->globals.data[position + 1];
-
-    function_position = LOAD_CALL_FUNCTION(operands);
-    goto call;
-}
 case OpStg64:
     WRITE_U64(vm->globals.data, OPERAND_BC(inst), READ_U64(vm->fp, a));
     break;
@@ -310,18 +290,6 @@ case OpNegI64: {
     WRITE_U64(vm->fp, a, -READ_U64(vm->fp, b));
     break;
 }
-case OpRet64: {
-    Value* frame = vm->fp;
-    Instruction* return_ip = AS_POINTER(frame[-2]);
-    Value* return_fp = AS_POINTER(frame[-1]);
-
-    frame[-2] = frame[a];
-    frame[-1] = frame[a + 1];
-    vm->ip = return_ip;
-    vm->fp = return_fp;
-    break;
-}
-
 case OpCmpI64: {
     int64_t left = (int64_t)READ_U64(vm->fp, b);
     int64_t right = (int64_t)READ_U64(vm->fp, c);
@@ -354,6 +322,37 @@ case OpCmpgF64: {
 
     vm->fp[a] = I32_VALUE(result);
     break;
+}
+case OpRet64: {
+    Value* frame = vm->fp;
+    Instruction* return_ip = AS_POINTER(frame[-2]);
+    Value* return_fp = AS_POINTER(frame[-1]);
+
+    frame[-2] = frame[a];
+    frame[-1] = frame[a + 1];
+    vm->ip = return_ip;
+    vm->fp = return_fp;
+    break;
+}
+case OpLdc64Call: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->module->constants.data[position];
+    vm->fp[a + 1] = vm->module->constants.data[position + 1];
+
+    function_position = LOAD_CALL_FUNCTION(operands);
+    goto call;
+}
+case OpLdg64Call: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->globals.data[position];
+    vm->fp[a + 1] = vm->globals.data[position + 1];
+
+    function_position = LOAD_CALL_FUNCTION(operands);
+    goto call;
 }
 
 #undef READ_U64

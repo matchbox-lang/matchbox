@@ -1,0 +1,2 @@
+let value: i8 = 25
+let values = u16[3](value)

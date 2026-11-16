@@ -1,0 +1,29 @@
+func last(values: &i16[3]) -> i16 {
+    return values[2]
+}
+
+let matrix: i16[2][3] = [[1, 2, 3], [4, 5, 6]]
+var row: usize = 1
+var column: usize = 2
+
+assert(matrix[row][column] == 6)
+assert(matrix[0][column] == 3 and matrix[row][0] == 4)
+
+matrix[row][column] = 9
+matrix[0][column] = 8
+matrix[row][0] = 7
+
+let replacement: i16[3] = [10, 11, 12]
+matrix[row] = replacement
+let selected = last(matrix[row])
+let copied = copy(matrix[row])
+let length = len(matrix[row])
+
+assert(matrix[0][2] == 8 and matrix[1][2] == 12)
+assert(copied[0] == 10 and copied[2] == 12 and length == 3 and selected == 12)
+
+let cube: i32[2][2][2] = [1, 2, 3, 4, 5, 6, 7, 8]
+column = 1
+cube[row][column][0] = 20
+
+assert(cube[row][column][0] == 20 and cube[row][column][column] == 8)

@@ -18,6 +18,7 @@ StringObject* create_string_object(const char* chars, size_t length, size_t hash
 StringObject* copy_string_object(const char* chars, size_t length);
 StringView get_string_view(const StringObject* string);
 void free_string_object(StringObject* string);
+bool compare_string_object_chars(const StringObject* string, const char* chars, size_t length);
 bool compare_string_object(const StringObject* a, const StringObject* b);
 void print_string_object(const StringObject* string);
 

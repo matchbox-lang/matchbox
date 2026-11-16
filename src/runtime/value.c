@@ -17,26 +17,26 @@ void free_value_array(ValueArray* array)
     free_memory(array->data);
 }
 
-int32_t read_signed_value(Value value, DataType type)
+int32_t read_signed_value(Value value, Type type)
 {
-    if (type == TypeI8) {
+    if (type.kind == TypeI8) {
         return AS_I8(value);
     }
 
-    if (type == TypeI16) {
+    if (type.kind == TypeI16) {
         return AS_I16(value);
     }
 
     return AS_I32(value);
 }
 
-uint32_t read_unsigned_value(Value value, DataType type)
+uint32_t read_unsigned_value(Value value, Type type)
 {
-    if (type == TypeU8) {
+    if (type.kind == TypeU8) {
         return AS_U8(value);
     }
 
-    if (type == TypeU16) {
+    if (type.kind == TypeU16) {
         return AS_U16(value);
     }
 

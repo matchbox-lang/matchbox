@@ -1,0 +1,2 @@
+let value: i32 = 25
+let values = i8[3](value)

@@ -1,0 +1,4 @@
+let values = [1, 2]
+let other = [1, 2, 3]
+
+values += other

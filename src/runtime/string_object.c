@@ -52,6 +52,15 @@ void free_string_object(StringObject* string)
     free_memory(string);
 }
 
+bool compare_string_object_chars(const StringObject* string, const char* chars, size_t length)
+{
+    if (string->length != length) {
+        return false;
+    }
+
+    return memcmp(string->chars, chars, length) == 0;
+}
+
 bool compare_string_object(const StringObject* a, const StringObject* b)
 {
     StringView left = get_string_view(a);

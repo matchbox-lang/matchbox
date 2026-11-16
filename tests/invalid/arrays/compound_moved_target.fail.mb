@@ -1,0 +1,4 @@
+let values = [1, 2]
+let taken = values
+
+values += [3, 4]

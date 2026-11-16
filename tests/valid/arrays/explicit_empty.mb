@@ -1,0 +1,8 @@
+let empty_chars: char[0] = []
+
+print(empty_chars)
+
+let empty_copy = copy(empty_chars)
+
+print(empty_copy)
+print(empty_chars)

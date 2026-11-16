@@ -1,0 +1,8 @@
+func index() -> i8 {
+    return -1
+}
+
+let values = [10, 20]
+let position = const index()
+
+print(values[position])

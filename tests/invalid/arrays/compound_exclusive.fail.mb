@@ -1,0 +1,5 @@
+let values = [1, 2]
+let reference = ^values
+
+values += [3, 4]
+print(reference)

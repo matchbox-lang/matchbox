@@ -1,0 +1,22 @@
+let bytes = u8[2](250)
+let shorts = i16[2](-300)
+let wide = i64[2](5000000000)
+let huge = u64[2](18446744073709551615)
+let singles = f32[2](1.5)
+let doubles = f64[2](2.5)
+let increments = u8[2](2)
+
+bytes += increments
+shorts *= increments
+wide += shorts
+huge -= increments
+singles += increments
+doubles += singles
+doubles /= f32[2](2.0)
+doubles %= f64[2](2.0)
+assert(bytes == u8[2](252))
+assert(shorts == i16[2](-600))
+assert(wide == i64[2](4999999400))
+assert(huge == u64[2](18446744073709551613))
+assert(singles == f32[2](3.5))
+assert(doubles == f64[2](1.0))

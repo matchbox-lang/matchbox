@@ -1,0 +1,17 @@
+func length(values: &i32[2]) -> usize {
+    return len(values)
+}
+
+func make() -> u8[2] {
+    return [10, 20]
+}
+
+let numbers = [1, 2]
+let made = make()
+let parameter_length = length(&numbers)
+let returned_length = len(made)
+let shared_length = len(&numbers)
+let exclusive_length = len(^numbers)
+
+assert(parameter_length == 2 and returned_length == 2)
+assert(shared_length == 2 and exclusive_length == 2)

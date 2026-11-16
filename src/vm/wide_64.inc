@@ -7,24 +7,6 @@ case OpLdc64:
 case OpLdg64:
     vm->fp[a] = vm->globals.data[OPERAND_BC(inst)];
     break;
-case OpLdc64Call: {
-    uint16_t operands = OPERAND_BC(inst);
-    uint16_t position = LOAD_CALL_OPERAND(operands);
-
-    vm->fp[a] = vm->module->constants.data[position];
-
-    function_position = LOAD_CALL_FUNCTION(operands);
-    goto call;
-}
-case OpLdg64Call: {
-    uint16_t operands = OPERAND_BC(inst);
-    uint16_t position = LOAD_CALL_OPERAND(operands);
-
-    vm->fp[a] = vm->globals.data[position];
-
-    function_position = LOAD_CALL_FUNCTION(operands);
-    goto call;
-}
 case OpStg64:
     vm->globals.data[OPERAND_BC(inst)] = vm->fp[a];
     break;
@@ -200,17 +182,6 @@ case OpAsriI64:
 case OpNegI64:
     vm->fp[a] = SIGNED_VALUE(-vm->fp[b].signed_value);
     break;
-case OpRet64: {
-    Value* frame = vm->fp;
-    Instruction* return_ip = AS_POINTER(frame[-2]);
-    Value* return_fp = AS_POINTER(frame[-1]);
-
-    frame[-2] = frame[a];
-    vm->ip = return_ip;
-    vm->fp = return_fp;
-    break;
-}
-
 case OpCmpI64: {
     int64_t left = AS_SIGNED(vm->fp[b]);
     int64_t right = AS_SIGNED(vm->fp[c]);
@@ -239,4 +210,32 @@ case OpCmpgF64: {
 
     vm->fp[a] = I32_VALUE(result);
     break;
+}
+case OpRet64: {
+    Value* frame = vm->fp;
+    Instruction* return_ip = AS_POINTER(frame[-2]);
+    Value* return_fp = AS_POINTER(frame[-1]);
+
+    frame[-2] = frame[a];
+    vm->ip = return_ip;
+    vm->fp = return_fp;
+    break;
+}
+case OpLdc64Call: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->module->constants.data[position];
+
+    function_position = LOAD_CALL_FUNCTION(operands);
+    goto call;
+}
+case OpLdg64Call: {
+    uint16_t operands = OPERAND_BC(inst);
+    uint16_t position = LOAD_CALL_OPERAND(operands);
+
+    vm->fp[a] = vm->globals.data[position];
+
+    function_position = LOAD_CALL_FUNCTION(operands);
+    goto call;
 }

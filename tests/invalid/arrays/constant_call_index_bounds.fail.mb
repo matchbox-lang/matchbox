@@ -1,0 +1,8 @@
+func index() -> usize {
+    return 2
+}
+
+let values = [10, 20]
+let position = const index()
+
+print(values[position])

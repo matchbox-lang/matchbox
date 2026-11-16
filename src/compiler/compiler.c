@@ -1,5 +1,7 @@
 #include "compiler/compiler.h"
+#include "common/array_type.h"
 #include "builtin/builtin.h"
+#include "builtin/memory.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/util.h"
@@ -21,8 +23,6 @@
 #include "vm/vm.h"
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
@@ -33,6 +33,25 @@ typedef struct Operand
     bool temporary;
     size_t slots;
 } Operand;
+
+typedef struct ArrayBinaryOperation
+{
+    TokenType operator_type;
+    Type left_type;
+    Type right_type;
+    Type result_type;
+    Type operand_type;
+} ArrayBinaryOperation;
+
+typedef struct ArrayBinaryOffsets
+{
+    Operand left;
+    Operand right;
+    Operand result;
+    size_t left_stride;
+    size_t right_stride;
+    size_t result_stride;
+} ArrayBinaryOffsets;
 
 typedef struct CallArea
 {
@@ -71,23 +90,43 @@ static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
 static Operand compile_reference_expression(Compiler* compiler, ASTNode* ast);
 static Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool reference);
 static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference);
-static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast, DataType destination, bool reference);
+static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast, Type destination, bool reference);
 static void compile_blocklevel_statements(Compiler* compiler, Vector* nodes);
 static void compile_top_level_statements(Compiler* compiler, Vector* nodes);
 static size_t get_node_slot_count(ASTNode* ast);
-static Operand compile_power(Compiler* compiler, ASTNode* left_expression, ASTNode* right_expression);
-static Operand compile_integer_cast(Compiler* compiler, Operand operand, DataType source, DataType destination);
-static Operand compile_concatenation(Compiler* compiler, ASTNode* ast);
+static Operand compile_integer_cast(Compiler* compiler, Operand operand, Type source, Type destination);
+static Operand emit_binary_builtin(Compiler* compiler, TokenType operator_type,
+    Type left_type, Type right_type, Operand left, Operand right);
+static Operand convert_operand(Compiler* compiler, Operand operand, Type source, Type destination);
 static void compile_power_assignment(Compiler* compiler, ASTNode* ast);
 static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand);
 static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast);
 static ASTNode* get_current_function_definition(Compiler* compiler);
 static bool is_match_alternative(ASTNode* pattern);
-static bool is_simple_match_value(ASTNode* ast);
 static bool get_literal_match_value(ASTNode* ast, uint64_t* value);
 static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
 static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
+static Operand compile_array(Compiler* compiler, ASTNode* ast);
+static Operand compile_array_binary(Compiler* compiler, ASTNode* ast);
+static void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast);
+static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast);
+static Operand compile_usize_literal(Compiler* compiler, size_t value);
+static Operand compile_array_new(Compiler* compiler, Type type);
+static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
+static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int destination);
+static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination);
+static Operand compile_index(Compiler* compiler, ASTNode* ast);
+static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
+static void scale_array_index(Compiler* compiler, Operand index, size_t stride);
+static uint64_t read_compiled_integer_constant(Compiler* compiler, ASTNode* ast);
+static void resolve_index_constant(Compiler* compiler, ASTNode* ast);
+static void compile_index_panic(Compiler* compiler);
+static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count);
+static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast);
+static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, ASTNode* ast);
+static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast);
+static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* offset);
 
 static _Noreturn void branch_offset_overflow_error(void)
 {
@@ -675,6 +714,21 @@ static Operand dereference_operand(Compiler* compiler, Operand operand, size_t s
     return slots == 2 ? make_wide_operand(operand.reg, true) : operand;
 }
 
+
+static Operand load_variable_value(Compiler* compiler, ASTNode* symbol)
+{
+    Operand value = load_variable(compiler, symbol);
+
+    if (get_reference_type(symbol) == RefNone) {
+        return value;
+    }
+
+    Type type = get_node_data_type(symbol);
+    size_t slots = get_type_slot_count(type.kind);
+
+    return dereference_operand(compiler, value, slots);
+}
+
 static void store_global_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     size_t position = ast->variable_definition.position;
@@ -740,9 +794,9 @@ static Operand compile_wide_number(Compiler* compiler, uint64_t value)
     return make_wide_operand(reg, true);
 }
 
-static bool is_narrow_integer_immediate(uint64_t value, DataType type)
+static bool is_narrow_integer_immediate(uint64_t value, Type type)
 {
-    bool signed_type = is_signed_integer_type(type);
+    bool signed_type = is_signed_integer_type(type.kind);
 
     if (!signed_type) {
         return value <= INT16_MAX;
@@ -753,31 +807,28 @@ static bool is_narrow_integer_immediate(uint64_t value, DataType type)
     return signed_value >= INT16_MIN && signed_value <= INT16_MAX;
 }
 
-static Operand compile_number(Compiler* compiler, ASTNode* ast)
+static Operand compile_integer_value(Compiler* compiler, uint64_t value, Type type)
 {
-    uint64_t value = ast->integer_literal.value;
-    DataType type = get_node_data_type(ast);
-
-    if (type == TypeF64) {
+    if (type.kind == TypeF64) {
         size_t position = make_f64_constant(compiler, (double)value);
 
         return make_wide_operand(emit_ldc_i64(compiler, position), true);
     }
 
-    if (type == TypeF32) {
+    if (type.kind == TypeF32) {
         size_t position = make_f32_constant(compiler, (float)value);
 
         return make_operand(emit_ldc(compiler, position), true);
     }
 
-    if (get_node_slot_count(ast) == 2) {
+    if (get_type_slot_count(type.kind) == 2) {
         return compile_wide_number(compiler, value);
     }
 
     bool immediate = is_narrow_integer_immediate(value, type);
 
     if (!immediate) {
-        Value constant = is_signed_integer_type(type)
+        Value constant = is_signed_integer_type(type.kind)
             ? SIGNED_VALUE((int64_t)value)
             : UNSIGNED_VALUE(value);
         size_t position = make_constant(compiler, constant);
@@ -788,9 +839,9 @@ static Operand compile_number(Compiler* compiler, ASTNode* ast)
     return make_operand(emit_ldi(compiler, (int16_t)value), true);
 }
 
-static Operand compile_float_value(Compiler* compiler, double value, DataType type)
+static Operand compile_float_value(Compiler* compiler, double value, Type type)
 {
-    if (type == TypeF64) {
+    if (type.kind == TypeF64) {
         size_t position = make_f64_constant(compiler, value);
         int reg = emit_ldc_i64(compiler, position);
 
@@ -806,7 +857,7 @@ static Operand compile_float_value(Compiler* compiler, double value, DataType ty
 static Operand compile_float(Compiler* compiler, ASTNode* ast)
 {
     double value = ast->float_literal.value;
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
 
     return compile_float_value(compiler, value, type);
 }
@@ -853,7 +904,7 @@ static size_t get_node_slot_count(ASTNode* ast)
         return 1;
     }
 
-    return get_type_slot_count(get_node_data_type(ast));
+    return get_type_slot_count(get_node_data_type(ast).kind);
 }
 
 static bool is_direct_variable(Compiler* compiler, ASTNode* ast)
@@ -868,9 +919,9 @@ static bool is_direct_variable(Compiler* compiler, ASTNode* ast)
         || is_compiling_top_level(compiler);
 }
 
-static Opcode get_width_opcode(DataType type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
+static Opcode get_width_opcode(Type type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8)
 {
-    size_t size = get_integer_type_size(type);
+    size_t size = get_integer_type_size(type.kind);
     
     switch (size) {
         case 8:
@@ -886,34 +937,34 @@ static Opcode get_width_opcode(DataType type, Opcode opcode64, Opcode opcode32, 
     }
 }
 
-static Opcode get_division_opcode(DataType type)
+static Opcode get_division_opcode(Type type)
 {
-    if (is_signed_integer_type(type)) {
+    if (is_signed_integer_type(type.kind)) {
         return get_width_opcode(type, OpIdivI64, OpIdivI32, OpIdivI16, OpIdivI8);
     }
 
     return get_width_opcode(type, OpIdivU64, OpIdivU32, OpIdivU16, OpIdivU8);
 }
 
-static Opcode get_remainder_opcode(DataType type)
+static Opcode get_remainder_opcode(Type type)
 {
-    if (is_signed_integer_type(type)) {
+    if (is_signed_integer_type(type.kind)) {
         return get_width_opcode(type, OpRemI64, OpRemI32, OpRemI16, OpRemI8);
     }
 
     return get_width_opcode(type, OpRemU64, OpRemU32, OpRemU16, OpRemU8);
 }
 
-static Opcode get_right_shift_opcode(DataType type)
+static Opcode get_right_shift_opcode(Type type)
 {
-    if (is_signed_integer_type(type)) {
+    if (is_signed_integer_type(type.kind)) {
         return get_width_opcode(type, OpAsrI64, OpAsrI32, OpAsrI16, OpAsrI8);
     }
 
     return get_width_opcode(type, OpLsrI64, OpLsrI32, OpLsrI16, OpLsrI8);
 }
 
-static Opcode get_integer_opcode(DataType type, IntegerOperation operation)
+static Opcode get_integer_opcode(Type type, IntegerOperation operation)
 {
     switch (operation) {
         case IntAdd:
@@ -961,7 +1012,7 @@ static int select_binary_destination(Compiler* compiler, Operand left, Operand r
 }
 
 static Operand emit_binary_operands(
-    Compiler* compiler, IntegerOperation operation, DataType type, Operand left, Operand right)
+    Compiler* compiler, IntegerOperation operation, Type type, Operand left, Operand right)
 {
     int destination = select_binary_destination(compiler, left, right, left.slots);
     Opcode opcode = get_integer_opcode(type, operation);
@@ -1059,80 +1110,65 @@ static Operand emit_reversed_comparison(Compiler* compiler, Opcode opcode, Opera
     return make_operand(destination, true);
 }
 
-static Opcode get_comparison_opcode(DataType type, bool or_equal)
+static Opcode get_comparison_opcode(Type type, bool or_equal)
 {
-    if (is_signed_integer_type(type)) {
+    if (is_signed_integer_type(type.kind)) {
         return or_equal ? OpLeI32 : OpLtI32;
     }
 
     return or_equal ? OpLeU32 : OpLtU32;
 }
 
-static Opcode get_float_opcode(DataType type, TokenType operator_type)
+static Opcode get_float_opcode(Type type, TokenType operator_type)
 {
     switch (operator_type) {
         case TokenPlus:
-            return type == TypeF64 ? OpAddF64 : OpAddF32;
+            return type.kind == TypeF64 ? OpAddF64 : OpAddF32;
         case TokenMinus:
-            return type == TypeF64 ? OpSubF64 : OpSubF32;
+            return type.kind == TypeF64 ? OpSubF64 : OpSubF32;
         case TokenStar:
-            return type == TypeF64 ? OpMulF64 : OpMulF32;
+            return type.kind == TypeF64 ? OpMulF64 : OpMulF32;
         case TokenSlash:
-            return type == TypeF64 ? OpDivF64 : OpDivF32;
+            return type.kind == TypeF64 ? OpDivF64 : OpDivF32;
         case TokenPercent:
-            return type == TypeF64 ? OpRemF64 : OpRemF32;
+            return type.kind == TypeF64 ? OpRemF64 : OpRemF32;
         default:
             return OpHlt;
     }
 }
 
-static Opcode get_float_operation_opcode(DataType type, IntegerOperation operation)
+static Opcode get_float_operation_opcode(Type type, IntegerOperation operation)
 {
     switch (operation) {
         case IntAdd:
-            return type == TypeF64 ? OpAddF64 : OpAddF32;
+            return type.kind == TypeF64 ? OpAddF64 : OpAddF32;
         case IntSub:
-            return type == TypeF64 ? OpSubF64 : OpSubF32;
+            return type.kind == TypeF64 ? OpSubF64 : OpSubF32;
         case IntMul:
-            return type == TypeF64 ? OpMulF64 : OpMulF32;
+            return type.kind == TypeF64 ? OpMulF64 : OpMulF32;
         case IntDiv:
-            return type == TypeF64 ? OpDivF64 : OpDivF32;
+            return type.kind == TypeF64 ? OpDivF64 : OpDivF32;
         case IntRem:
-            return type == TypeF64 ? OpRemF64 : OpRemF32;
+            return type.kind == TypeF64 ? OpRemF64 : OpRemF32;
         default:
             return OpHlt;
     }
 }
 
 static Operand emit_float_operands(Compiler* compiler, Opcode opcode,
-    DataType type, Operand left, Operand right)
+    Type type, Operand left, Operand right)
 {
-    size_t slots = get_type_slot_count(type);
+    size_t slots = get_type_slot_count(type.kind);
     int destination = select_binary_destination(compiler, left, right, slots);
 
     emit_instruction(compiler, opcode, destination, left.reg, right.reg);
 
-    return type == TypeF64
+    return type.kind == TypeF64
         ? make_wide_operand(destination, true)
         : make_operand(destination, true);
 }
 
-static Operand compile_float_binary(Compiler* compiler, ASTNode* ast)
-{
-    DataType type = get_node_data_type(ast);
-    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, type, false);
-
-    if (!left.temporary && !is_direct_variable(compiler, ast->binary.right_expr)) {
-        left = materialize_operand(compiler, left);
-    }
-
-    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, type, false);
-    Opcode opcode = get_float_opcode(type, ast->binary.operator.type);
-
-    return emit_float_operands(compiler, opcode, type, left, right);
-}
-
-static Operand emit_ordered_comparison(Compiler* compiler, DataType type,
+static Operand emit_ordered_comparison(Compiler* compiler, Type type,
     Operand left, Operand right, bool or_equal, bool reversed)
 {
     Opcode opcode = get_comparison_opcode(type, or_equal);
@@ -1162,17 +1198,17 @@ static Opcode get_float64_three_way_opcode(TokenType operator_type)
     return OpCmplF64;
 }
 
-static Opcode get_three_way_opcode(DataType type, TokenType operator_type)
+static Opcode get_three_way_opcode(Type type, TokenType operator_type)
 {
-    size_t size = get_integer_type_size(type);
+    size_t size = get_integer_type_size(type.kind);
 
     if (size == 8) {
-        bool signed_type = is_signed_integer_type(type);
+        bool signed_type = is_signed_integer_type(type.kind);
 
         return signed_type ? OpCmpI64 : OpCmpU64;
     }
 
-    switch (type) {
+    switch (type.kind) {
         case TypeF32:
             return get_float32_three_way_opcode(operator_type);
         case TypeF64:
@@ -1181,7 +1217,7 @@ static Opcode get_three_way_opcode(DataType type, TokenType operator_type)
             break;
     }
 
-    bool signed_type = is_signed_integer_type(type);
+    bool signed_type = is_signed_integer_type(type.kind);
 
     return signed_type ? OpCmpI32 : OpCmpU32;
 }
@@ -1199,7 +1235,7 @@ static Operand emit_three_way_comparison(Compiler* compiler, Opcode opcode, Oper
 }
 
 static Operand emit_integer_comparison(Compiler* compiler, TokenType operator_type,
-    DataType type, Operand left, Operand right)
+    Type type, Operand left, Operand right)
 {
     switch (operator_type) {
         case TokenEqualEqual:
@@ -1218,10 +1254,10 @@ static Operand emit_integer_comparison(Compiler* compiler, TokenType operator_ty
 }
 
 static Operand emit_numeric_comparison(Compiler* compiler, TokenType operator_type,
-    DataType type, Operand left, Operand right)
+    Type type, Operand left, Operand right)
 {
-    bool floating = is_float_type(type);
-    bool wide = get_integer_type_size(type) == 8;
+    bool floating = is_float_type(type.kind);
+    bool wide = get_integer_type_size(type.kind) == 8;
 
     if (!floating && !wide && operator_type != TokenSpaceship) {
         return emit_integer_comparison(compiler, operator_type, type, left, right);
@@ -1239,12 +1275,12 @@ static Operand emit_numeric_comparison(Compiler* compiler, TokenType operator_ty
 
     emit_instruction(compiler, OpLdi, zero_register, 0, 0);
 
-    return emit_numeric_comparison(compiler, operator_type, TypeI32, ordering, zero);
+    return emit_numeric_comparison(compiler, operator_type, (Type){.kind = TypeI32}, ordering, zero);
 }
 
-static Operand normalize_integer_operand(Compiler* compiler, Operand operand, DataType type)
+static Operand normalize_integer_operand(Compiler* compiler, Operand operand, Type type)
 {
-    size_t size = get_integer_type_size(type);
+    size_t size = get_integer_type_size(type.kind);
 
     if (size != 1 && size != 2) {
         return operand;
@@ -1255,7 +1291,7 @@ static Operand normalize_integer_operand(Compiler* compiler, Operand operand, Da
     Opcode opcode = OpZextI32;
     int width = size * 8;
 
-    if (is_signed_integer_type(type)) {
+    if (is_signed_integer_type(type.kind)) {
         opcode = OpSextI32;
     }
 
@@ -1264,31 +1300,31 @@ static Operand normalize_integer_operand(Compiler* compiler, Operand operand, Da
     return operand;
 }
 
-static Operand compile_comparison_operand(Compiler* compiler, ASTNode* ast, DataType type)
+static Operand compile_comparison_operand(Compiler* compiler, ASTNode* ast, Type type)
 {
     Operand value = compile_converted_expression(compiler, ast, type, false);
 
     return normalize_integer_operand(compiler, value, type);
 }
 
-static Operand compile_numeric_comparison(Compiler* compiler, ASTNode* ast)
+static Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
+    Type type, Operand left, Operand right)
 {
-    DataType type = ast->binary.operand_type;
-    Operand left = compile_comparison_operand(compiler, ast->binary.left_expr, type);
-    bool direct = is_direct_variable(compiler, ast->binary.right_expr);
+    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
 
-    if (!left.temporary && !direct) {
-        left = materialize_operand(compiler, left);
+    if (comparison) {
+        left = normalize_integer_operand(compiler, left, type);
+        right = normalize_integer_operand(compiler, right, type);
+
+        return emit_numeric_comparison(compiler, operator_type, type, left, right);
     }
 
-    Operand right = compile_comparison_operand(compiler, ast->binary.right_expr, type);
+    if (is_float_type(type.kind)) {
+        Opcode opcode = get_float_opcode(type, operator_type);
 
-    return emit_numeric_comparison(compiler, ast->binary.operator.type, type, left, right);
-}
+        return emit_float_operands(compiler, opcode, type, left, right);
+    }
 
-static Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
-    DataType type, Operand left, Operand right)
-{
     switch (operator_type) {
         case TokenPlus:
             return emit_binary_operands(compiler, IntAdd, type, left, right);
@@ -1300,8 +1336,10 @@ static Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
             return emit_binary_operands(compiler, IntDiv, type, left, right);
         case TokenPercent:
             return emit_binary_operands(compiler, IntRem, type, left, right);
+        case TokenKeywordAnd:
         case TokenAmpersand:
             return emit_binary_operands(compiler, IntBand, type, left, right);
+        case TokenKeywordOr:
         case TokenPipe:
             return emit_binary_operands(compiler, IntBor, type, left, right);
         case TokenCircumflex:
@@ -1338,42 +1376,37 @@ static Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)
 
 static Operand compile_binary(Compiler* compiler, ASTNode* ast)
 {
-    DataType result_type = get_node_data_type(ast);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
 
-    if (result_type == TypeString) {
-        return compile_concatenation(compiler, ast);
-    }
-
-    if (ast->binary.operator.type == TokenPower) {
-        return compile_power(compiler, ast->binary.left_expr, ast->binary.right_expr);
+    if (is_array_type(left_type.kind)) {
+        return compile_array_binary(compiler, ast);
     }
 
     TokenType operator_type = ast->binary.operator.type;
 
-    bool logical = is_logical_token(operator_type);
-    if (logical) {
+    if (is_logical_token(operator_type)) {
         return compile_logical_binary(compiler, ast);
     }
 
-    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
-    if (comparison) {
-        return compile_numeric_comparison(compiler, ast);
-    }
-
-    if (is_float_type(get_node_data_type(ast))) {
-        return compile_float_binary(compiler, ast);
-    }
-
-    DataType type = ast->binary.operand_type;
-    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, type, false);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+    Type type = ast->binary.operand_type;
+    Type result_type = ast->binary.type_id;
+    bool concatenation = result_type.kind == TypeString;
+    Type left_destination = concatenation ? left_type : type;
+    Type right_destination = concatenation ? right_type : type;
+    Operand left = compile_converted_expression(compiler, ast->binary.left_expr, left_destination, false);
 
     if (!left.temporary && !is_direct_variable(compiler, ast->binary.right_expr)) {
         left = materialize_operand(compiler, left);
     }
 
-    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, type, false);
+    Operand right = compile_converted_expression(compiler, ast->binary.right_expr, right_destination, false);
 
-    return emit_binary_operator(compiler, ast->binary.operator.type, type, left, right);
+    if (concatenation || operator_type == TokenPower) {
+        return emit_binary_builtin(compiler, operator_type, left_type, right_type, left, right);
+    }
+
+    return emit_binary_operator(compiler, operator_type, type, left, right);
 }
 
 static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand)
@@ -1390,13 +1423,13 @@ static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand ope
     return operand.slots == 2 ? make_wide_operand(destination, true) : make_operand(destination, true);
 }
 
-static Opcode get_negation_opcode(DataType type)
+static Opcode get_negation_opcode(Type type)
 {
-    if (type == TypeF32) {
+    if (type.kind == TypeF32) {
         return OpNegF32;
     }
 
-    if (type == TypeF64) {
+    if (type.kind == TypeF64) {
         return OpNegF64;
     }
 
@@ -1480,12 +1513,12 @@ static void evaluate_constant_expression(Compiler* compiler, ASTNode* ast)
 
 static int emit_scalar_constant(Compiler* compiler, ASTNode* ast, size_t position)
 {
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
     Value value = compiler->module->constants.data[position];
     uint64_t integer = AS_UNSIGNED(value);
-    bool scalar = is_integer_type(type) || type == TypeBool || type == TypeChar;
+    bool scalar = is_integer_type(type.kind) || type.kind == TypeBool || type.kind == TypeChar;
 
-    if (type == TypeBool) {
+    if (type.kind == TypeBool) {
         integer = AS_BOOL(value);
     }
 
@@ -1516,6 +1549,27 @@ static Operand compile_constant(Compiler* compiler, ASTNode* ast)
     return make_operand(reg, true);
 }
 
+static Operand emit_prefix_operand(Compiler* compiler, TokenType operator_type, Type type, Operand operand)
+{
+    Opcode opcode;
+
+    switch (operator_type) {
+        case TokenKeywordNot:
+            opcode = OpNot;
+            break;
+        case TokenTilde:
+            opcode = get_integer_opcode(type, IntBnot);
+            break;
+        case TokenMinus:
+            opcode = get_negation_opcode(type);
+            break;
+        default:
+            return no_operand();
+    }
+
+    return emit_unary_operand(compiler, opcode, operand);
+}
+
 static Operand compile_prefix(Compiler* compiler, ASTNode* ast)
 {
     if (ast->prefix.operator.type == TokenKeywordConst) {
@@ -1524,25 +1578,18 @@ static Operand compile_prefix(Compiler* compiler, ASTNode* ast)
 
     if (get_reference_type(ast) != RefNone) {
         return dereference_operand(
-            compiler, compile_reference_expression(compiler, ast), get_type_slot_count(get_node_data_type(ast)));
+            compiler, compile_reference_expression(compiler, ast), get_type_slot_count(get_node_data_type(ast).kind));
+    }
+
+    Type type = get_node_data_type(ast);
+
+    if (is_array_type(type.kind)) {
+        return compile_array_prefix(compiler, ast);
     }
 
     Operand operand = compile_expression(compiler, ast->prefix.expr, false);
 
-    switch (ast->prefix.operator.type) {
-        case TokenKeywordNot:
-            return emit_unary_operand(compiler, OpNot, operand);
-        case TokenTilde:
-            return emit_unary_operand(compiler, get_integer_opcode(get_node_data_type(ast), IntBnot), operand);
-        case TokenMinus: {
-            DataType type = get_node_data_type(ast);
-            Opcode opcode = get_negation_opcode(type);
-
-            return emit_unary_operand(compiler, opcode, operand);
-        }
-        default:
-            return no_operand();
-    }
+    return emit_prefix_operand(compiler, ast->prefix.operator.type, type, operand);
 }
 
 static Operand compile_variable(Compiler* compiler, ASTNode* ast)
@@ -1550,18 +1597,12 @@ static Operand compile_variable(Compiler* compiler, ASTNode* ast)
     ASTNode* symbol = ast->variable.symbol;
 
     if (is_variable_definition(symbol) && symbol->variable_definition.constant) {
-        DataType type = get_node_data_type(symbol);
+        Type type = get_node_data_type(symbol);
 
         return compile_converted_expression(compiler, symbol->variable_definition.expr, type, false);
     }
 
-    Operand value = load_variable(compiler, ast->variable.symbol);
-
-    if (get_reference_type(ast) == RefNone) {
-        return value;
-    }
-
-    return dereference_operand(compiler, value, get_type_slot_count(get_node_data_type(ast)));
+    return load_variable_value(compiler, symbol);
 }
 
 static void store_assignment_value(Compiler* compiler, ASTNode* symbol, Operand value)
@@ -1583,14 +1624,9 @@ static void store_assignment_value(Compiler* compiler, ASTNode* symbol, Operand 
 static void compile_compound_assignment(
     Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
-    DataType type = get_node_data_type(ast->assignment.symbol);
+    Type type = get_node_data_type(ast->assignment.symbol);
 
-    Operand left = load_variable(compiler, ast->assignment.symbol);
-
-    if (get_reference_type(ast->assignment.symbol) != RefNone) {
-        left = dereference_operand(
-            compiler, left, get_type_slot_count(get_node_data_type(ast->assignment.symbol)));
-    }
+    Operand left = load_variable_value(compiler, ast->assignment.symbol);
 
     if (!left.temporary && !is_direct_variable(compiler, ast->assignment.expr)) {
         left = materialize_operand(compiler, left);
@@ -1599,7 +1635,7 @@ static void compile_compound_assignment(
     Operand right = compile_converted_expression(compiler, ast->assignment.expr, type, false);
     Operand result;
 
-    if (is_float_type(type)) {
+    if (is_float_type(type.kind)) {
         Opcode opcode = get_float_operation_opcode(type, operation);
         result = emit_float_operands(compiler, opcode, type, left, right);
     } else {
@@ -1626,6 +1662,14 @@ static void compile_simple_assignment(Compiler* compiler, ASTNode* ast)
 
 static void compile_assignment(Compiler* compiler, ASTNode* ast)
 {
+    Type type = get_node_data_type(ast->assignment.symbol);
+
+    if (is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual) {
+        compile_array_compound_assignment(compiler, ast);
+
+        return;
+    }
+
     switch (ast->assignment.operator.type) {
         case TokenPlusEqual:
             return compile_compound_assignment(compiler, ast, IntAdd);
@@ -1665,10 +1709,10 @@ static Operand compile_reference_aware_expression(Compiler* compiler, ASTNode* a
     return compile_expression(compiler, ast, false);
 }
 
-static Operand normalize_unsigned_operand(Compiler* compiler, Operand operand, DataType source)
+static Operand normalize_unsigned_operand(Compiler* compiler, Operand operand, Type source)
 {
 #if UINTPTR_MAX == UINT64_MAX
-    if (source == TypeU32) {
+    if (source.kind == TypeU32) {
         operand = materialize_operand(compiler, operand);
 
         emit_instruction(compiler, OpLsriI32, operand.reg, operand.reg, 0);
@@ -1677,14 +1721,14 @@ static Operand normalize_unsigned_operand(Compiler* compiler, Operand operand, D
     }
 #endif
 
-    if (source != TypeU8 && source != TypeU16) {
+    if (source.kind != TypeU8 && source.kind != TypeU16) {
         return operand;
     }
 
     return normalize_integer_operand(compiler, operand, source);
 }
 
-static Operand extend_integer_operand(Compiler* compiler, Operand operand, DataType source)
+static Operand extend_integer_operand(Compiler* compiler, Operand operand, Type source)
 {
     int destination_register = operand.reg;
 
@@ -1702,7 +1746,7 @@ static Operand extend_integer_operand(Compiler* compiler, Operand operand, DataT
 
     return make_wide_operand(destination_register, true);
 #else
-    if (is_signed_integer_type(source)) {
+    if (is_signed_integer_type(source.kind)) {
         emit_instruction(compiler, OpAsriI32, high_register, destination_register, 31);
 
         return make_wide_operand(destination_register, true);
@@ -1715,10 +1759,10 @@ static Operand extend_integer_operand(Compiler* compiler, Operand operand, DataT
 }
 
 static Operand widen_integer_operand(Compiler* compiler, Operand operand,
-    DataType source, DataType destination)
+    Type source, Type destination)
 {
-    if (!can_implicitly_widen_integer(source, destination)
-        || get_type_slot_count(destination) == operand.slots) {
+    if (!can_implicitly_widen_integer(source.kind, destination.kind)
+        || get_type_slot_count(destination.kind) == operand.slots) {
         return operand;
     }
 
@@ -1726,9 +1770,9 @@ static Operand widen_integer_operand(Compiler* compiler, Operand operand,
 }
 
 static Operand widen_float_operand(Compiler* compiler, Operand operand,
-    DataType source, DataType destination)
+    Type source, Type destination)
 {
-    if (source != TypeF32 || destination != TypeF64) {
+    if (source.kind != TypeF32 || destination.kind != TypeF64) {
         return operand;
     }
 
@@ -1747,13 +1791,13 @@ static Operand widen_float_operand(Compiler* compiler, Operand operand,
 }
 
 static Operand convert_integer_to_float_operand(Compiler* compiler, Operand operand,
-    DataType source, DataType destination)
+    Type source, Type destination)
 {
-    if (!can_implicitly_convert_integer_to_float(source, destination)) {
+    if (!can_implicitly_convert_integer_to_float(source.kind, destination.kind)) {
         return operand;
     }
 
-    bool wide = destination == TypeF64;
+    bool wide = destination.kind == TypeF64;
     int destination_register = operand.reg;
 
     if (!operand.temporary) {
@@ -1762,7 +1806,7 @@ static Operand convert_integer_to_float_operand(Compiler* compiler, Operand oper
         allocate_register(compiler);
     }
 
-    bool signed_integer = is_signed_integer_type(source);
+    bool signed_integer = is_signed_integer_type(source.kind);
     Opcode opcode;
 
     if (wide) {
@@ -1780,11 +1824,11 @@ static Operand convert_integer_to_float_operand(Compiler* compiler, Operand oper
     return make_operand(destination_register, true);
 }
 
-static uint64_t get_widened_integer_literal_value(ASTNode* ast, DataType source)
+static uint64_t get_widened_integer_literal_value(ASTNode* ast, Type source)
 {
     uint64_t value = ast->integer_literal.value;
 
-    switch (source) {
+    switch (source.kind) {
         case TypeI8:
             return (uint64_t)(int64_t)(int8_t)value;
         case TypeI16:
@@ -1802,28 +1846,25 @@ static uint64_t get_widened_integer_literal_value(ASTNode* ast, DataType source)
     }
 }
 
-static Operand compile_widened_integer_literal(Compiler* compiler, ASTNode* ast, DataType destination)
+static Operand compile_widened_integer_literal(Compiler* compiler, ASTNode* ast, Type destination)
 {
-    DataType source = get_node_data_type(ast);
-    ASTNode literal = *ast;
+    Type source = get_node_data_type(ast);
+    uint64_t value = get_widened_integer_literal_value(ast, source);
 
-    literal.integer_literal.value = get_widened_integer_literal_value(ast, source);
-    literal.integer_literal.type_id = destination;
-
-    return compile_number(compiler, &literal);
+    return compile_integer_value(compiler, value, destination);
 }
 
-static Operand compile_integer_literal_as_float(Compiler* compiler, ASTNode* ast, DataType destination)
+static Operand compile_integer_literal_as_float(Compiler* compiler, ASTNode* ast, Type destination)
 {
-    DataType source = get_node_data_type(ast);
+    Type source = get_node_data_type(ast);
     uint64_t integer = get_widened_integer_literal_value(ast, source);
     double number = integer;
 
-    if (is_signed_integer_type(source)) {
+    if (is_signed_integer_type(source.kind)) {
         number = (int64_t)integer;
     }
 
-    if (source == TypeF32) {
+    if (source.kind == TypeF32) {
         number = (float)number;
     }
 
@@ -1831,21 +1872,21 @@ static Operand compile_integer_literal_as_float(Compiler* compiler, ASTNode* ast
 }
 
 static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast,
-    DataType destination, bool reference)
+    Type destination, bool reference)
 {
-    DataType source = get_node_data_type(ast);
-    bool integer_to_float = can_implicitly_convert_integer_to_float(source, destination);
-    bool float_widening = can_implicitly_widen_float(source, destination);
+    Type source = get_node_data_type(ast);
+    bool integer_to_float = can_implicitly_convert_integer_to_float(source.kind, destination.kind);
+    bool float_widening = can_implicitly_widen_float(source.kind, destination.kind);
 
     if (!reference && ast->type == ASTInteger && (integer_to_float || float_widening)) {
         return compile_integer_literal_as_float(compiler, ast, destination);
     }
 
-    if (!reference && ast->type == ASTInteger && can_implicitly_widen_integer(source, destination)) {
+    if (!reference && ast->type == ASTInteger && can_implicitly_widen_integer(source.kind, destination.kind)) {
         return compile_widened_integer_literal(compiler, ast, destination);
     }
 
-    if (!reference && ast->type == ASTFloat && source == TypeF32 && destination == TypeF64) {
+    if (!reference && ast->type == ASTFloat && source.kind == TypeF32 && destination.kind == TypeF64) {
         double value = (float)ast->float_literal.value;
 
         return compile_float_value(compiler, value, destination);
@@ -1857,7 +1898,12 @@ static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast,
         return operand;
     }
 
-    if (source != destination && can_implicitly_widen_type(source, destination)) {
+    return convert_operand(compiler, operand, source, destination);
+}
+
+static Operand convert_operand(Compiler* compiler, Operand operand, Type source, Type destination)
+{
+    if (!types_equal(source, destination) && can_implicitly_widen_type(source.kind, destination.kind)) {
         operand = normalize_unsigned_operand(compiler, operand, source);
     }
 
@@ -1884,22 +1930,22 @@ static Operand shrink_integer_operand(Compiler* compiler, Operand operand)
     return make_operand(result, true);
 }
 
-static Operand compile_integer_cast(Compiler* compiler, Operand operand, DataType source, DataType destination)
+static Operand compile_integer_cast(Compiler* compiler, Operand operand, Type source, Type destination)
 {
     operand = normalize_unsigned_operand(compiler, operand, source);
 
-    if (get_type_slot_count(destination) == 2 && operand.slots == 1) {
+    if (get_type_slot_count(destination.kind) == 2 && operand.slots == 1) {
         return extend_integer_operand(compiler, operand, source);
     }
 
-    if (get_type_slot_count(destination) == 2) {
+    if (get_type_slot_count(destination.kind) == 2) {
         return operand;
     }
 
     operand = shrink_integer_operand(compiler, operand);
     operand = materialize_operand(compiler, operand);
 
-    size_t size = get_integer_type_size(destination);
+    size_t size = get_integer_type_size(destination.kind);
 
     if (size == 8) {
         return operand;
@@ -1911,7 +1957,7 @@ static Operand compile_integer_cast(Compiler* compiler, Operand operand, DataTyp
 
     Opcode opcode = OpLsriI32;
 
-    if (is_signed_integer_type(destination)) {
+    if (is_signed_integer_type(destination.kind)) {
         opcode = OpAsriI32;
     }
 
@@ -1920,7 +1966,7 @@ static Operand compile_integer_cast(Compiler* compiler, Operand operand, DataTyp
     return operand;
 }
 
-static Opcode get_float_to_integer_opcode(DataType source, DataType destination)
+static Opcode get_float_to_integer_opcode(Type source, Type destination)
 {
     static const Opcode opcodes[2][4] = {
         {OpF32ToI32, OpF32ToU32, OpF32ToI64, OpF32ToU64},
@@ -1928,18 +1974,18 @@ static Opcode get_float_to_integer_opcode(DataType source, DataType destination)
     };
     int index = 0;
 
-    if (!is_signed_integer_type(destination)) {
+    if (!is_signed_integer_type(destination.kind)) {
         index++;
     }
 
-    if (get_integer_type_size(destination) == 8) {
+    if (get_integer_type_size(destination.kind) == 8) {
         index += 2;
     }
 
-    return opcodes[source == TypeF64][index];
+    return opcodes[source.kind == TypeF64][index];
 }
 
-static Opcode get_integer_to_float_opcode(DataType source, DataType destination)
+static Opcode get_integer_to_float_opcode(Type source, Type destination)
 {
     static const Opcode signed_opcodes[2][2] = {
         {OpI32ToF32, OpI32ToF64},
@@ -1949,32 +1995,32 @@ static Opcode get_integer_to_float_opcode(DataType source, DataType destination)
         {OpU32ToF32, OpU32ToF64},
         {OpU64ToF32, OpU64ToF64}
     };
-    bool wide_source = get_integer_type_size(source) == 8;
-    bool wide_destination = destination == TypeF64;
+    bool wide_source = get_integer_type_size(source.kind) == 8;
+    bool wide_destination = destination.kind == TypeF64;
 
-    if (is_signed_integer_type(source)) {
+    if (is_signed_integer_type(source.kind)) {
         return signed_opcodes[wide_source][wide_destination];
     }
 
     return unsigned_opcodes[wide_source][wide_destination];
 }
 
-static Opcode get_numeric_conversion_opcode(DataType source, DataType destination)
+static Opcode get_numeric_conversion_opcode(Type source, Type destination)
 {
-    if (is_integer_type(destination)) {
+    if (is_integer_type(destination.kind)) {
         return get_float_to_integer_opcode(source, destination);
     }
 
-    if (is_integer_type(source)) {
+    if (is_integer_type(source.kind)) {
         return get_integer_to_float_opcode(source, destination);
     }
 
     return OpF64ToF32;
 }
 
-static Operand emit_conversion_operand(Compiler* compiler, Operand operand, DataType destination, Opcode opcode)
+static Operand emit_conversion_operand(Compiler* compiler, Operand operand, Type destination, Opcode opcode)
 {
-    size_t slots = get_type_slot_count(destination);
+    size_t slots = get_type_slot_count(destination.kind);
 
     release_operand(compiler, operand);
 
@@ -1992,19 +2038,19 @@ static Operand emit_conversion_operand(Compiler* compiler, Operand operand, Data
 static Operand compile_character_conversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = get_node_data_type(expression);
-    DataType destination = ast->conversion.type_id;
+    Type source = get_node_data_type(expression);
+    Type destination = ast->conversion.type_id;
 
     Operand operand = compile_expression(compiler, expression, false);
 
-    if (destination == TypeChar) {
+    if (destination.kind == TypeChar) {
         return normalize_unsigned_operand(compiler, operand, source);
     }
 
-    return compile_integer_cast(compiler, operand, TypeU32, destination);
+    return compile_integer_cast(compiler, operand, (Type){.kind = TypeU32}, destination);
 }
 
-static Operand compile_boolean_to_integer(Compiler* compiler, ASTNode* expression, DataType destination)
+static Operand compile_boolean_to_integer(Compiler* compiler, ASTNode* expression, Type destination)
 {
     Operand operand = compile_expression(compiler, expression, false);
 
@@ -2012,8 +2058,8 @@ static Operand compile_boolean_to_integer(Compiler* compiler, ASTNode* expressio
 
     emit_instruction(compiler, OpBandiI32, operand.reg, operand.reg, 1);
 
-    if (get_type_slot_count(destination) == 2) {
-        return extend_integer_operand(compiler, operand, TypeU32);
+    if (get_type_slot_count(destination.kind) == 2) {
+        return extend_integer_operand(compiler, operand, (Type){.kind = TypeU32});
     }
 
     return operand;
@@ -2022,24 +2068,24 @@ static Operand compile_boolean_to_integer(Compiler* compiler, ASTNode* expressio
 static Operand compile_explicit_conversion(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* expression = ast->conversion.expr;
-    DataType source = get_node_data_type(expression);
-    DataType destination = ast->conversion.type_id;
+    Type source = get_node_data_type(expression);
+    Type destination = ast->conversion.type_id;
 
-    if (source == destination || can_implicitly_widen_type(source, destination)) {
+    if (types_equal(source, destination) || can_implicitly_widen_type(source.kind, destination.kind)) {
         return compile_converted_expression(compiler, expression, destination, false);
     }
 
-    if (source == TypeBool) {
+    if (source.kind == TypeBool) {
         return compile_boolean_to_integer(compiler, expression, destination);
     }
 
-    if (source == TypeChar || destination == TypeChar) {
+    if (source.kind == TypeChar || destination.kind == TypeChar) {
         return compile_character_conversion(compiler, ast);
     }
 
     Operand operand = compile_expression(compiler, expression, false);
 
-    if (is_integer_type(source) && is_integer_type(destination)) {
+    if (is_integer_type(source.kind) && is_integer_type(destination.kind)) {
         return compile_integer_cast(compiler, operand, source, destination);
     }
 
@@ -2105,7 +2151,7 @@ static Operand compile_argument_expression(Compiler* compiler, Vector* args, Vec
     bool reference = parameter && get_reference_type(parameter) != RefNone;
 
     ASTNode* argument = get_argument_expression(args, parameter, position);
-    DataType destination = parameter ? get_node_data_type(parameter) : get_node_data_type(argument);
+    Type destination = parameter ? get_node_data_type(parameter) : get_node_data_type(argument);
     Operand expression = compile_converted_expression(compiler, argument, destination, reference);
 
     return expression;
@@ -2207,9 +2253,9 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
         function->param_count += get_node_slot_count(
             get_vector_at(&ast->function_definition.params, i));
     }
-    function->return_count = get_type_slot_count(ast->function_definition.return_type_id);
+    function->return_count = get_type_slot_count(ast->function_definition.return_type_id.kind);
 
-    if (ast->function_definition.return_type_id == TypeVoid) {
+    if (ast->function_definition.return_type_id.kind == TypeVoid) {
         function->return_count = 0;
     }
 
@@ -2246,19 +2292,20 @@ static uint16_t get_builtin_function_position(Compiler* compiler, const Builtin*
     return position;
 }
 
-static DataType get_builtin_argument_type(const Builtin* builtin, const ASTNode* argument)
+static Type get_builtin_argument_type(const Builtin* builtin, Type type)
 {
     if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
-        return builtin->params[0];
+        return (Type){.kind = builtin->params[0]};
     }
 
-    return get_node_data_type(argument);
+    return type;
 }
 
-static bool matches_builtin_arguments(const FunctionObject* function, const Builtin* builtin, const Vector* args)
+static bool matches_builtin_arguments(const FunctionObject* function, const Builtin* builtin,
+    const Type* types, size_t count)
 {
     if (function->type != FuncBuiltin || function->entry != builtin->entry
-        || function->argument_count != args->count) {
+        || function->argument_count != count) {
         return false;
     }
 
@@ -2268,31 +2315,30 @@ static bool matches_builtin_arguments(const FunctionObject* function, const Buil
 
     bool matches = true;
 
-    for (size_t i = 0; i < args->count && matches; i++) {
-        ASTNode* argument = args->data[i];
-        DataType type = get_node_data_type(argument);
-        ArgumentFormat format = get_argument_format(type);
-        matches = format.formatter == function->argument_formats[i].formatter;
+    for (size_t i = 0; i < count && matches; i++) {
+        Type type = types[i];
+        matches = matches_argument_format(&function->argument_formats[i], type);
     }
 
     return matches;
 }
 
-static void set_builtin_argument_format(FunctionObject* function, DataType type, size_t index)
+static void set_builtin_argument_format(
+    Compiler* compiler, FunctionObject* function, Type type, size_t index)
 {
     if (!function->argument_formats) {
         return;
     }
 
-    ArgumentFormat format = get_argument_format(type);
+    ArgumentFormat format = compile_argument_format(compiler->module, type);
     format.slot = function->param_count;
     function->argument_formats[index] = format;
 }
 
-static FunctionObject* create_variadic_builtin_function(const Builtin* builtin, const Vector* args)
+static FunctionObject* create_variadic_builtin_function(Compiler* compiler, const Builtin* builtin,
+    const Type* types, size_t count)
 {
     FunctionObject* function = create_builtin_function_object(builtin);
-    size_t count = args->count;
 
     if (count > SIZE_MAX / sizeof(ArgumentFormat)) {
         out_of_memory_error();
@@ -2305,12 +2351,11 @@ static FunctionObject* create_variadic_builtin_function(const Builtin* builtin, 
     function->argument_count = count;
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* argument = args->data[i];
-        DataType type = get_builtin_argument_type(builtin, argument);
+        Type type = get_builtin_argument_type(builtin, types[i]);
 
-        set_builtin_argument_format(function, type, i);
+        set_builtin_argument_format(compiler, function, type, i);
 
-        function->param_count += get_type_slot_count(type);
+        function->param_count += get_type_slot_count(type.kind);
     }
 
     function->max_stack_count = 2 + get_call_area_count(function);
@@ -2318,7 +2363,8 @@ static FunctionObject* create_variadic_builtin_function(const Builtin* builtin, 
     return function;
 }
 
-static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* builtin, const Vector* args)
+static uint16_t get_typed_builtin_call_position(Compiler* compiler, const Builtin* builtin,
+    const Type* types, size_t argument_count)
 {
     if (builtin->param_count >= 0) {
         return get_builtin_function_position(compiler, builtin);
@@ -2328,7 +2374,7 @@ static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* bui
 
     for (size_t i = 0; i < count; i++) {
         FunctionObject* function = compiler->module->functions.data[i];
-        bool matches = matches_builtin_arguments(function, builtin, args);
+        bool matches = matches_builtin_arguments(function, builtin, types, argument_count);
 
         if (matches) {
             return make_function_position(i);
@@ -2336,10 +2382,29 @@ static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* bui
     }
 
     uint16_t position = make_function_position(count);
-    FunctionObject* function = create_variadic_builtin_function(builtin, args);
+    FunctionObject* function = create_variadic_builtin_function(compiler, builtin, types, argument_count);
 
     push_vector_item(&compiler->module->functions, function);
     push_vector_item(&compiler->function_references, NULL);
+
+    return position;
+}
+
+static uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* builtin, const Vector* args)
+{
+    if (builtin->param_count >= 0) {
+        return get_builtin_function_position(compiler, builtin);
+    }
+
+    Type* types = allocate_memory(args->count * sizeof(Type));
+
+    for (size_t i = 0; i < args->count; i++) {
+        types[i] = get_node_data_type(args->data[i]);
+    }
+
+    uint16_t position = get_typed_builtin_call_position(compiler, builtin, types, args->count);
+
+    free_memory(types);
 
     return position;
 }
@@ -2385,37 +2450,60 @@ static Operand compile_call(Compiler* compiler, FunctionObject* function, uint16
     return close_call_area(compiler, function, function_position, call, discard);
 }
 
-static Operand compile_power(Compiler* compiler, ASTNode* left_expression, ASTNode* right_expression)
+static Operand emit_builtin_operands(Compiler* compiler, const Builtin* builtin,
+    const Type* types, const Operand* arguments, size_t count, bool discard)
 {
-    void* items[] = {left_expression, right_expression};
-    Vector args = {.data = items, .capacity = 2, .count = 2};
-    DataType argument_types[] = {TypeI32, TypeI32};
-    const Builtin* builtin = resolve_builtin("pow", argument_types, 2);
-    uint16_t position = get_builtin_function_position(compiler, builtin);
+    uint16_t position = get_typed_builtin_call_position(compiler, builtin, types, count);
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    CallArea call = open_call_area(compiler);
 
-    return compile_call(compiler, function, position, &args, NULL, false);
+    for (size_t i = 0; i < count; i++) {
+        Operand argument = arguments[i];
+        int reg = allocate_registers(compiler, argument.slots);
+
+        emit_operand_mov(compiler, reg, argument);
+    }
+
+    Operand result = close_call_area(compiler, function, position, call, discard);
+
+    release_operand(compiler, result);
+
+    for (size_t i = count; i > 0; i--) {
+        release_operand(compiler, arguments[i - 1]);
+    }
+
+    if (!result.temporary) {
+        return result;
+    }
+
+    int destination = allocate_registers(compiler, result.slots);
+
+    emit_operand_mov(compiler, destination, result);
+
+    result.reg = destination;
+
+    return result;
 }
 
-static Operand compile_concatenation(Compiler* compiler, ASTNode* ast)
+static Operand emit_binary_builtin(Compiler* compiler, TokenType operator_type,
+    Type left_type, Type right_type, Operand left, Operand right)
 {
-    ASTNode* left = ast->binary.left_expr;
-    ASTNode* right = ast->binary.right_expr;
-    void* items[] = {left, right};
-    Vector args = {.data = items, .capacity = 2, .count = 2};
-    const Builtin* builtin = resolve_builtin("string", NULL, 0);
-    uint16_t position = get_builtin_call_position(compiler, builtin, &args);
-    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    const char* name = operator_type == TokenPower ? "pow" : "string";
+    Type types[] = {left_type, right_type};
+    Operand arguments[] = {left, right};
+    const Builtin* builtin = resolve_builtin(name, types, 2);
 
-    return compile_call(compiler, function, position, &args, NULL, false);
+    return emit_builtin_operands(compiler, builtin, types, arguments, 2, false);
 }
 
 static void compile_power_assignment(Compiler* compiler, ASTNode* ast)
 {
-    ASTNode left = {.type = ASTVariable};
-    left.variable.symbol = ast->assignment.symbol;
+    Type type = get_node_data_type(ast->assignment.symbol);
+    Operand left = load_variable_value(compiler, ast->assignment.symbol);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->assignment.expr, false);
+    Operand result = emit_binary_builtin(compiler, TokenPower, type, type, left, right);
 
-    Operand result = compile_power(compiler, &left, ast->assignment.expr);
     store_assignment_value(compiler, ast->assignment.symbol, result);
 }
 
@@ -2438,30 +2526,79 @@ static void compile_call_with_argument(Compiler* compiler, FunctionObject* funct
     release_operand(compiler, argument);
 }
 
-static Operand compile_typed_variadic_call(Compiler* compiler, ASTNode* ast, FunctionObject* function,
+static Operand compile_typed_builtin_call(Compiler* compiler, ASTNode* ast, FunctionObject* function,
     uint16_t position, bool discard)
 {
-    ASTNode parameter = {.type = ASTParameter};
-    parameter.parameter.type_id = ast->builtin_call.builtin->params[0];
-    parameter.parameter.reference_type = RefNone;
-    Vector params;
+    const Builtin* builtin = ast->builtin_call.builtin;
+    Vector* args = &ast->builtin_call.args;
 
-    init_vector(&params);
+    if (!function->return_count && args->count == 1) {
+        Type type = {.kind = builtin->params[0]};
+        Operand argument = compile_converted_expression(compiler, args->data[0], type, false);
 
-    for (size_t i = 0; i < ast->builtin_call.args.count; i++) {
-        push_vector_item(&params, &parameter);
+        emit_call_instruction(compiler, argument.reg, position);
+        release_operand(compiler, argument);
+
+        return no_operand();
     }
 
-    Operand result = compile_call(compiler, function, position, &ast->builtin_call.args, &params, discard);
+    CallArea call = open_call_area(compiler);
 
-    free_vector(&params);
+    for (size_t i = 0; i < args->count; i++) {
+        size_t parameter = builtin->param_count == BUILTIN_TYPED_VARIADIC ? 0 : i;
+        Type type = {.kind = builtin->params[parameter]};
+        int destination = compiler->register_count;
+        Operand argument = compile_converted_expression(compiler, args->data[i], type, false);
 
-    return result;
+        store_argument(compiler, argument, destination, false);
+    }
+
+    return close_call_area(compiler, function, position, call, discard);
+}
+
+static Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    size_t size = get_array_storage_size(type);
+    Builtin builtin = *ast->builtin_call.builtin;
+    builtin.param_count = 2;
+    builtin.params[1] = TypeUsize;
+    Type types[] = {type, {.kind = TypeUsize}};
+    Operand arguments[2];
+    arguments[0] = compile_expression(compiler, argument, false);
+    arguments[1] = compile_usize_literal(compiler, size);
+
+    return emit_builtin_operands(compiler, &builtin, types, arguments, 2, discard);
+}
+
+static Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    compile_expression(compiler, argument, true);
+
+    if (discard) {
+        return no_operand();
+    }
+
+    return compile_usize_literal(compiler, type.array->count);
 }
 
 static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
 {
     const Builtin* builtin = ast->builtin_call.builtin;
+
+    if (!builtin->entry) {
+        return compile_array_length(compiler, ast, discard);
+    }
+
+    if (builtin->entry == builtin_copy_array) {
+        return compile_array_copy(compiler, ast, discard);
+    }
+
     uint16_t position = get_builtin_call_position(compiler, builtin, &ast->builtin_call.args);
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
@@ -2469,23 +2606,7 @@ static Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool disca
         return compile_call(compiler, function, position, &ast->builtin_call.args, NULL, discard);
     }
 
-    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
-        return compile_typed_variadic_call(compiler, ast, function, position, discard);
-    }
-
-    ASTNode parameters[BUILTIN_PARAMS_MAX] = {0};
-    void* items[BUILTIN_PARAMS_MAX];
-    size_t count = builtin->param_count;
-    Vector params = {.data = items, .capacity = count, .count = count};
-
-    for (size_t i = 0; i < count; i++) {
-        parameters[i].type = ASTParameter;
-        parameters[i].parameter.type_id = builtin->params[i];
-        parameters[i].parameter.reference_type = RefNone;
-        items[i] = &parameters[i];
-    }
-
-    return compile_call(compiler, function, position, &ast->builtin_call.args, &params, discard);
+    return compile_typed_builtin_call(compiler, ast, function, position, discard);
 }
 
 static Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
@@ -2499,7 +2620,7 @@ static Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool disc
         return result;
     }
 
-    return dereference_operand(compiler, result, get_type_slot_count(get_node_data_type(ast)));
+    return dereference_operand(compiler, result, get_type_slot_count(get_node_data_type(ast).kind));
 }
 
 static Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
@@ -2600,7 +2721,7 @@ static void compile_return_statement(Compiler* compiler, ASTNode* ast)
 
     bool reference = get_reference_type(ast->return_statement.expr) != RefNone;
     ASTNode* function = get_current_function_definition(compiler);
-    DataType return_type = function->function_definition.return_type_id;
+    Type return_type = function->function_definition.return_type_id;
     Operand value = compile_converted_expression(
         compiler, ast->return_statement.expr, return_type, reference);
 
@@ -2709,15 +2830,16 @@ static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_registe
 static Opcode get_condition_jump_opcode(Opcode comparison)
 {
     switch (comparison) {
-        case OpEq:     return OpBne;
-        case OpNe:     return OpBeq;
-        case OpEqi:    return OpBnei;
-        case OpNei:    return OpBeqi;
-        case OpLtI32: return OpBleI32;
-        case OpLtU32: return OpBleU32;
-        case OpLeI32: return OpBltI32;
-        case OpLeU32: return OpBltU32;
-        default:        return OpHlt;
+        case OpEq:      return OpBne;
+        case OpEqi:     return OpBnei;
+        case OpNe:      return OpBeq;
+        case OpNei:     return OpBeqi;
+        case OpLtI32:   return OpBleI32;
+        case OpLtU32:   return OpBleU32;
+        case OpLeI32:   return OpBltI32;
+        case OpLeU32:   return OpBltU32;
+        default:
+            return OpHlt;
     }
 }
 
@@ -2753,15 +2875,16 @@ static size_t emit_condition_jump(Compiler* compiler, Operand condition)
 static Opcode get_jump_comparison_opcode(Opcode opcode)
 {
     switch (opcode) {
-        case OpBne:        return OpEq;
-        case OpBeq:        return OpNe;
-        case OpBnei:       return OpEqi;
-        case OpBeqi:       return OpNei;
-        case OpBleI32:    return OpLtI32;
-        case OpBleU32:    return OpLtU32;
-        case OpBltI32:    return OpLeI32;
-        case OpBltU32:    return OpLeU32;
-        default:            return OpHlt;
+        case OpBeq:     return OpNe;
+        case OpBeqi:    return OpNei;
+        case OpBne:     return OpEq;
+        case OpBnei:    return OpEqi;
+        case OpBltI32:  return OpLeI32;
+        case OpBltU32:  return OpLeU32;
+        case OpBleI32:  return OpLtI32;
+        case OpBleU32:  return OpLtU32;
+        default:
+            return OpHlt;
     }
 }
 
@@ -2835,9 +2958,9 @@ static void patch_jump(Compiler* compiler, size_t position)
 }
 
 static void store_conditional_value(
-    Compiler* compiler, DataType type, int destination, Operand value)
+    Compiler* compiler, Type type, int destination, Operand value)
 {
-    if (type == TypeVoid) {
+    if (type.kind == TypeVoid) {
         return;
     }
 
@@ -2849,7 +2972,7 @@ static void store_conditional_value(
 }
 
 static Operand compile_conditional_branch(
-    Compiler* compiler, ASTNode* branch, DataType type, int destination, bool reference)
+    Compiler* compiler, ASTNode* branch, Type type, int destination, bool reference)
 {
     if (branch->type == ASTConditional) {
         Operand value = compile_converted_expression(compiler, branch, type, reference);
@@ -2862,7 +2985,7 @@ static Operand compile_conditional_branch(
     size_t count = count_vector(&branch->compound.statements);
 
     for (size_t i = 0; i < count; i++) {
-        bool discard = type == TypeVoid || i + 1 < count;
+        bool discard = type.kind == TypeVoid || i + 1 < count;
         ASTNode* statement = get_vector_at(&branch->compound.statements, i);
 
         if (discard) {
@@ -2881,13 +3004,13 @@ static Operand compile_conditional_branch(
     return no_operand();
 }
 
-static Operand allocate_branch_result(Compiler* compiler, DataType type)
+static Operand allocate_branch_result(Compiler* compiler, Type type)
 {
-    if (type == TypeVoid) {
+    if (type.kind == TypeVoid) {
         return no_operand();
     }
 
-    size_t slots = get_type_slot_count(type);
+    size_t slots = get_type_slot_count(type.kind);
     int reg = allocate_registers(compiler, slots);
     Operand result = {reg, true, slots};
     compiler->local_position_offset += slots;
@@ -2896,7 +3019,7 @@ static Operand allocate_branch_result(Compiler* compiler, DataType type)
 }
 
 static void compile_scoped_conditional_branch(
-    Compiler* compiler, ASTNode* branch, DataType type, int destination, bool reference)
+    Compiler* compiler, ASTNode* branch, Type type, int destination, bool reference)
 {
     if (!branch) {
         return;
@@ -2913,7 +3036,7 @@ static void compile_conditional_branches(
     Compiler* compiler, ASTNode* ast, int destination, bool reference, size_t else_jump)
 {
     ASTNode* condition = ast->conditional.condition;
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
 
     if (condition->type == ASTBoolean) {
         ASTNode* branch = condition->boolean_literal.value ? ast->conditional.then_branch : ast->conditional.else_branch;
@@ -2951,7 +3074,7 @@ static Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool refere
         release_operand(compiler, condition);
     }
 
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
     Operand result = allocate_branch_result(compiler, type);
 
     compile_conditional_branches(compiler, ast, result.reg, reference, else_jump);
@@ -2985,7 +3108,7 @@ static void compile_while(Compiler* compiler, ASTNode* ast)
     size_t exit_jump = emit_condition_jump(compiler, condition);
 
     release_operand(compiler, condition);
-    compile_scoped_conditional_branch(compiler, ast->while_statement.body, TypeVoid, 0, false);
+    compile_scoped_conditional_branch(compiler, ast->while_statement.body, (Type){.kind = TypeVoid}, 0, false);
     emit_loop_jump(compiler, start);
     patch_jump(compiler, exit_jump);
 
@@ -2994,7 +3117,7 @@ static void compile_while(Compiler* compiler, ASTNode* ast)
 
 static Operand compile_match_subject(Compiler* compiler, ASTNode* subject)
 {
-    DataType type = get_node_data_type(subject);
+    Type type = get_node_data_type(subject);
     Operand value = compile_comparison_operand(compiler, subject, type);
     value.temporary = false;
 
@@ -3009,7 +3132,7 @@ static bool is_match_alternative(ASTNode* pattern)
 static Operand compile_subject_match_condition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
     if (!is_match_alternative(pattern)) {
-        DataType type = get_node_data_type(pattern);
+        Type type = get_node_data_type(pattern);
         Operand value = compile_comparison_operand(compiler, pattern, type);
 
         return emit_numeric_comparison(compiler, TokenEqualEqual, type, subject, value);
@@ -3047,36 +3170,6 @@ static void mark_match_join(Compiler* compiler, Vector* jumps)
     }
 
     patch_match_jumps(compiler, jumps);
-}
-
-static bool are_simple_match_values(Vector* values)
-{
-    size_t count = count_vector(values);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* value = get_vector_at(values, i);
-        if (!is_simple_match_value(value)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static bool is_simple_match_value(ASTNode* ast)
-{
-    switch (ast->type) {
-        case ASTBoolean:
-        case ASTCharacter:
-        case ASTInteger:
-        case ASTFloat:
-        case ASTVariable:
-            return true;
-        case ASTBuiltinCall:
-            return are_simple_match_values(&ast->builtin_call.args);
-        default:
-            return false;
-    }
 }
 
 static bool can_use_direct_match_branch(MatchArm* arm)
@@ -3126,7 +3219,7 @@ static size_t compile_match_alternative_jumps(
         operator_type = TokenEqualEqual;
     }
 
-    DataType type = get_node_data_type(pattern);
+    Type type = get_node_data_type(pattern);
     Operand condition = emit_numeric_comparison(compiler, operator_type, type, subject, value);
     size_t jump = emit_condition_jump(compiler, condition);
 
@@ -3159,16 +3252,16 @@ static size_t compile_match_arm_condition(Compiler* compiler, ASTNode* ast, Matc
         return 0;
     }
 
-    DataType subject_type = get_node_data_type(ast->match.subject);
-    size_t subject_size = get_integer_type_size(subject_type);
+    Type subject_type = get_node_data_type(ast->match.subject);
+    size_t subject_size = get_integer_type_size(subject_type.kind);
 
     if (ast->match.subject && subject.slots == 1 && is_match_alternative(arm->pattern)
         && is_literal_match_pattern(arm->pattern) && subject_size != 8) {
         return compile_match_alternative_condition(compiler, arm->pattern, subject);
     }
 
-    DataType pattern_type = get_node_data_type(arm->pattern);
-    bool numeric_compare = get_integer_type_size(pattern_type) == 8 || is_float_type(pattern_type);
+    Type pattern_type = get_node_data_type(arm->pattern);
+    bool numeric_compare = get_integer_type_size(pattern_type.kind) == 8 || is_float_type(pattern_type.kind);
 
     if (!ast->match.subject || is_match_alternative(arm->pattern) || !can_use_direct_match_branch(arm) || numeric_compare) {
         Operand condition = compile_match_condition(compiler, ast, arm, subject);
@@ -3214,8 +3307,8 @@ static void store_match_binding(Compiler* compiler, ASTNode* binding, Operand su
 
     emit_operand_mov(compiler, position, subject);
 
-    DataType binding_type = get_node_data_type(binding);
-    int binding_register_count = position + get_type_slot_count(binding_type);
+    Type binding_type = get_node_data_type(binding);
+    int binding_register_count = position + get_type_slot_count(binding_type.kind);
 
     compiler->register_count = MAX(compiler->register_count, binding_register_count);
 }
@@ -3239,7 +3332,7 @@ static size_t compile_match_arm(Compiler* compiler, ASTNode* ast, MatchArm* arm,
 {
     int branch_register_count = compiler->register_count;
     size_t next_jump = compile_match_arm_condition(compiler, ast, arm, subject);
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
 
     store_match_binding(compiler, arm->binding, subject);
 
@@ -3290,13 +3383,13 @@ static void compile_match_arms(
     }
 }
 
-static Operand match_result_operand(DataType type, int destination)
+static Operand match_result_operand(Type type, int destination)
 {
-    if (type == TypeVoid) {
+    if (type.kind == TypeVoid) {
         return no_operand();
     }
 
-    if (get_type_slot_count(type) == 2) {
+    if (get_type_slot_count(type.kind) == 2) {
         return make_wide_operand(destination, true);
     }
 
@@ -3323,7 +3416,7 @@ static bool get_literal_match_value(ASTNode* ast, uint64_t* value)
 
     *value = ast->integer_literal.value;
 
-    if (ast->integer_literal.type_id == TypeI32) {
+    if (ast->integer_literal.type_id.kind == TypeI32) {
         *value = (uint64_t)(int64_t)(int32_t)*value;
     }
 
@@ -3434,7 +3527,7 @@ static bool find_literal_match_branch(ASTNode* ast, ASTNode** branch, ASTNode** 
 }
 
 static bool compile_literal_match(
-    Compiler* compiler, ASTNode* ast, DataType type, int destination, bool reference)
+    Compiler* compiler, ASTNode* ast, Type type, int destination, bool reference)
 {
     ASTNode* branch;
     ASTNode* binding;
@@ -3456,14 +3549,14 @@ static bool compile_literal_match(
     return true;
 }
 
-static void restore_match_compiler_state(Compiler* compiler, DataType type, int previous_local_position_offset,
+static void restore_match_compiler_state(Compiler* compiler, Type type, int previous_local_position_offset,
     int previous_register_count)
 {
     compiler->local_position_offset = previous_local_position_offset;
     compiler->register_count = previous_register_count;
 
-    if (type != TypeVoid) {
-        compiler->register_count += get_type_slot_count(type);
+    if (type.kind != TypeVoid) {
+        compiler->register_count += get_type_slot_count(type.kind);
     }
 }
 
@@ -3471,7 +3564,7 @@ static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference)
 {
     int previous_local_position_offset = compiler->local_position_offset;
     int previous_register_count = compiler->register_count;
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
     Operand result = allocate_branch_result(compiler, type);
     int destination = result.reg;
 
@@ -3500,6 +3593,15 @@ static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference)
     return match_result_operand(type, destination);
 }
 
+static bool compile_discarded_array(Compiler* compiler, ASTNode* ast)
+{
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        compile_expression(compiler, ast->array.elements.data[i], true);
+    }
+
+    return true;
+}
+
 static bool compile_discarded_prefix(Compiler* compiler, ASTNode* ast)
 {
     if (ast->prefix.operator.type == TokenKeywordConst) {
@@ -3511,9 +3613,30 @@ static bool compile_discarded_prefix(Compiler* compiler, ASTNode* ast)
     return true;
 }
 
+static bool compile_discarded_array_binary(Compiler* compiler, ASTNode* ast)
+{
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    TokenType operator_type = ast->binary.operator.type;
+    bool division = operator_type == TokenSlash || operator_type == TokenPercent;
+    Type operand_type = ast->binary.operand_type;
+
+    if (!is_array_type(left_type.kind) || (division && is_integer_type(operand_type.kind))) {
+        return false;
+    }
+
+    compile_expression(compiler, ast->binary.left_expr, true);
+    compile_expression(compiler, ast->binary.right_expr, true);
+
+    return true;
+}
+
 static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTBinary:
+            return compile_discarded_array_binary(compiler, ast);
+        case ASTArray:
+            return compile_discarded_array(compiler, ast);
         case ASTBoolean:
         case ASTCharacter:
         case ASTFloat:
@@ -3528,6 +3651,772 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
     }
 }
 
+static Operand compile_array_new(Compiler* compiler, Type type)
+{
+    static const Builtin builtin = {
+        .name = "create_array",
+        .entry = builtin_create_array,
+        .param_count = 1,
+        .params = {TypeUsize},
+        .return_type_id = TypeArray,
+        .constant_evaluable = true
+    };
+
+    size_t size = get_array_storage_size(type);
+    uint16_t position = get_builtin_function_position(compiler, &builtin);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+    CallArea call = open_call_area(compiler);
+
+    compile_usize_literal(compiler, size);
+
+    return close_call_area(compiler, function, position, call, false);
+}
+
+static Operand compile_usize_literal(Compiler* compiler, size_t value)
+{
+    Type type = {.kind = TypeUsize};
+
+    return compile_integer_value(compiler, value, type);
+}
+
+static void reserve_pointer_padding(Compiler* compiler)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        allocate_register(compiler);
+    }
+}
+
+static void release_pointer_padding(Compiler* compiler)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        release_register(compiler);
+    }
+}
+
+static Opcode get_pointer_add_opcode(void)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        return OpAddI64;
+    }
+
+    return OpAddI32;
+}
+
+static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
+{
+    if (!offset) {
+        return buffer;
+    }
+
+    buffer = materialize_operand(compiler, buffer);
+
+    reserve_pointer_padding(compiler);
+
+    Operand index = compile_usize_literal(compiler, offset);
+    Opcode opcode = get_pointer_add_opcode();
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, buffer.reg, buffer.reg, index.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, index);
+    release_pointer_padding(compiler);
+
+    return buffer;
+}
+
+static Opcode get_memory_load_opcode(Type type)
+{
+    size_t size = get_array_storage_size(type);
+
+    switch (size) {
+        case 1:
+            return OpLdm8;
+        case 2:
+            return OpLdm16;
+        case 4:
+            return OpLdm32;
+        default:
+            return OpLdm64;
+    }
+}
+
+static Opcode get_memory_store_opcode(Type type)
+{
+    size_t size = get_array_storage_size(type);
+
+    switch (size) {
+        case 1:
+            return OpStm8;
+        case 2:
+            return OpStm16;
+        case 4:
+            return OpStm32;
+        default:
+            return OpStm64;
+    }
+}
+
+static Opcode get_memory_immediate_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpLdm8:    return OpLdmi8;
+        case OpLdm16:   return OpLdmi16;
+        case OpLdm32:   return OpLdmi32;
+        case OpLdm64:   return OpLdmi64;
+        case OpStm8:    return OpStmi8;
+        case OpStm16:   return OpStmi16;
+        case OpStm32:   return OpStmi32;
+        case OpStm64:   return OpStmi64;
+        default:
+            return opcode;
+    }
+}
+
+static void emit_memory_access(Compiler* compiler, Opcode opcode, int value, int buffer, size_t offset)
+{
+    if (offset <= UINT8_MAX) {
+        Opcode immediate = get_memory_immediate_opcode(opcode);
+
+        emit_instruction(compiler, immediate, value, buffer, offset);
+
+        return;
+    }
+
+    Operand index = compile_usize_literal(compiler, offset);
+
+    emit_instruction(compiler, opcode, value, buffer, index.reg);
+    release_operand(compiler, index);
+}
+
+static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
+    size_t position, Type type)
+{
+    size_t slots = get_type_slot_count(type.kind);
+    int destination = allocate_registers(compiler, slots);
+    Opcode load = get_memory_load_opcode(type);
+    Opcode store = get_memory_store_opcode(type);
+
+    emit_memory_access(compiler, load, destination, source.reg, position);
+    emit_memory_access(compiler, store, destination, buffer.reg, offset + position);
+
+    Operand value = {destination, true, slots};
+
+    release_operand(compiler, value);
+}
+
+static Operand create_array_binary_offset(Compiler* compiler, size_t stride,
+    size_t shared_stride, Operand shared_offset)
+{
+    if (stride == shared_stride) {
+        return shared_offset;
+    }
+
+    Operand offset = compile_usize_literal(compiler, 0);
+    offset.temporary = false;
+
+    return offset;
+}
+
+static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const ArrayBinaryOperation* operation)
+{
+    Type left_leaf = get_array_leaf_type(operation->left_type);
+    Type right_leaf = get_array_leaf_type(operation->right_type);
+    Type result_leaf = get_array_leaf_type(operation->result_type);
+    ArrayBinaryOffsets offsets;
+    offsets.left_stride = get_array_storage_size(left_leaf);
+    offsets.right_stride = get_array_storage_size(right_leaf);
+    offsets.result_stride = get_array_storage_size(result_leaf);
+    offsets.left = create_array_binary_offset(compiler, offsets.left_stride, 0, (Operand){0});
+    offsets.right = create_array_binary_offset(compiler, offsets.right_stride, offsets.left_stride, offsets.left);
+    offsets.result = offsets.left;
+
+    if (is_equality_token(operation->operator_type)) {
+        offsets.result_stride = offsets.left_stride;
+
+        return offsets;
+    }
+
+    if (offsets.result_stride == offsets.right_stride) {
+        offsets.result = offsets.right;
+
+        return offsets;
+    }
+
+    offsets.result = create_array_binary_offset(compiler, offsets.result_stride, offsets.left_stride, offsets.left);
+
+    return offsets;
+}
+
+static void advance_array_binary_offset(Compiler* compiler, Operand offset, size_t stride)
+{
+    Type type = {.kind = TypeUsize};
+    Opcode opcode = get_width_opcode(type, OpAddiI64, OpAddiI32, OpAddiI16, OpAddiI8);
+
+    emit_instruction(compiler, opcode, offset.reg, offset.reg, stride);
+}
+
+static void advance_array_binary_offsets(Compiler* compiler, const ArrayBinaryOffsets* offsets)
+{
+    advance_array_binary_offset(compiler, offsets->left, offsets->left_stride);
+
+    if (offsets->right.reg != offsets->left.reg) {
+        advance_array_binary_offset(compiler, offsets->right, offsets->right_stride);
+    }
+
+    if (offsets->result.reg != offsets->left.reg && offsets->result.reg != offsets->right.reg) {
+        advance_array_binary_offset(compiler, offsets->result, offsets->result_stride);
+    }
+}
+
+static Operand load_array_binary_element(Compiler* compiler, Operand buffer, Operand offset, Type type)
+{
+    size_t slots = get_type_slot_count(type.kind);
+    int reg = allocate_registers(compiler, slots);
+    Opcode opcode = get_memory_load_opcode(type);
+
+    emit_instruction(compiler, opcode, reg, buffer.reg, offset.reg);
+
+    Operand value = {reg, true, slots};
+    value = normalize_integer_operand(compiler, value, type);
+    value.temporary = false;
+
+    return value;
+}
+
+static void compile_array_prefix_loop(Compiler* compiler, ASTNode* ast, Operand source, Operand result, Type type)
+{
+    Type leaf = get_array_leaf_type(type);
+    size_t stride = get_array_storage_size(leaf);
+    size_t size = get_array_storage_size(type);
+    Operand offset = compile_usize_literal(compiler, 0);
+    offset.temporary = false;
+    Operand end = compile_usize_literal(compiler, size);
+    int condition = allocate_register(compiler);
+    Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
+    Opcode store = get_memory_store_opcode(leaf);
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    emit_instruction(compiler, compare, condition, offset.reg, end.reg);
+
+    size_t exit_jump = emit_jump(compiler, OpBz, condition);
+    Operand element = load_array_binary_element(compiler, source, offset, leaf);
+    Operand value = emit_prefix_operand(compiler, ast->prefix.operator.type, leaf, element);
+
+    emit_instruction(compiler, store, value.reg, result.reg, offset.reg);
+    advance_array_binary_offset(compiler, offset, stride);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
+}
+
+static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast);
+    Operand result = compile_array_new(compiler, type);
+    int previous_register_count = compiler->register_count;
+    Operand source = compile_expression(compiler, ast->prefix.expr, false);
+    source = materialize_operand(compiler, source);
+
+    compile_array_prefix_loop(compiler, ast, source, result, type);
+
+    compiler->register_count = previous_register_count;
+
+    return result;
+}
+
+static Operand compile_array_leaf_binary(Compiler* compiler, const ArrayBinaryOperation* operation,
+    Operand left, Operand right, Type left_type, Type right_type)
+{
+    // Bind loaded elements to local registers so scalar operators share the same compilation path
+    TokenType operator_type = operation->operator_type;
+    Type result_type = get_array_leaf_type(operation->result_type);
+    Type operand_type = operation->operand_type;
+
+    if (is_equality_token(operator_type)) {
+        operator_type = TokenEqualEqual;
+    }
+
+    if (operator_type == TokenPower || result_type.kind == TypeString) {
+        return emit_binary_builtin(compiler, operator_type, left_type, right_type, left, right);
+    }
+
+    left = convert_operand(compiler, left, left_type, operand_type);
+    right = convert_operand(compiler, right, right_type, operand_type);
+
+    return emit_binary_operator(compiler, operator_type, operand_type, left, right);
+}
+
+static void compile_array_binary_body(Compiler* compiler, const ArrayBinaryOperation* operation,
+    Operand left, Operand right, Operand result, const ArrayBinaryOffsets* offsets)
+{
+    Type left_type = operation->left_type;
+    Type right_type = operation->right_type;
+    Type left_leaf = get_array_leaf_type(left_type);
+    Type right_leaf = get_array_leaf_type(right_type);
+    Operand left_value = load_array_binary_element(compiler, left, offsets->left, left_leaf);
+    Operand right_value = load_array_binary_element(compiler, right, offsets->right, right_leaf);
+    Operand value = compile_array_leaf_binary(compiler, operation, left_value, right_value, left_leaf, right_leaf);
+    bool equality = is_equality_token(operation->operator_type);
+
+    if (equality) {
+        emit_operand_mov(compiler, result.reg, value);
+
+        return;
+    }
+
+    Type result_leaf = get_array_leaf_type(operation->result_type);
+    Opcode store = get_memory_store_opcode(result_leaf);
+
+    emit_instruction(compiler, store, value.reg, result.reg, offsets->result.reg);
+}
+
+static void compile_array_binary_loop(Compiler* compiler, const ArrayBinaryOperation* operation,
+    Operand left, Operand right, Operand result)
+{
+    Type left_type = operation->left_type;
+    size_t size = get_array_storage_size(left_type);
+    int previous_register_count = compiler->register_count;
+    ArrayBinaryOffsets offsets = create_array_binary_offsets(compiler, operation);
+    Operand end = compile_usize_literal(compiler, size);
+    int condition = allocate_register(compiler);
+    int body_register_count = compiler->register_count;
+    Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    emit_instruction(compiler, compare, condition, offsets.left.reg, end.reg);
+
+    size_t exit_jump = emit_jump(compiler, OpBz, condition);
+
+    compile_array_binary_body(compiler, operation, left, right, result, &offsets);
+
+    compiler->register_count = body_register_count;
+    bool equality = is_equality_token(operation->operator_type);
+    size_t unequal_jump = 0;
+
+    if (equality) {
+        unequal_jump = emit_jump(compiler, OpBz, result.reg);
+    }
+
+    advance_array_binary_offsets(compiler, &offsets);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
+
+    if (equality) {
+        patch_jump(compiler, unequal_jump);
+    }
+
+    compiler->register_count = previous_register_count;
+}
+
+static Operand compile_array_binary(Compiler* compiler, ASTNode* ast)
+{
+    bool equality = is_equality_token(ast->binary.operator.type);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+    bool same_shape = array_shapes_equal(left_type, right_type);
+    Operand result;
+
+    if (equality) {
+        int reg = emit_ldi(compiler, same_shape);
+        result = make_operand(reg, true);
+    } else {
+        result = compile_array_new(compiler, ast->binary.type_id);
+    }
+
+    int previous_register_count = compiler->register_count;
+    Operand left = compile_expression(compiler, ast->binary.left_expr, false);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->binary.right_expr, false);
+    right = materialize_operand(compiler, right);
+
+    ArrayBinaryOperation operation = {
+        ast->binary.operator.type, left_type, right_type, ast->binary.type_id, ast->binary.operand_type
+    };
+
+    if (same_shape) {
+        compile_array_binary_loop(compiler, &operation, left, right, result);
+    }
+
+    compiler->register_count = previous_register_count;
+    TokenType operator_type = ast->binary.operator.type;
+
+    if (operator_type == TokenNotEqual || operator_type == TokenNotEqualEqual) {
+        emit_instruction(compiler, OpNot, result.reg, result.reg, 0);
+    }
+
+    return result;
+}
+
+static void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast)
+{
+    Type left_type = get_node_data_type(ast->assignment.symbol);
+    Type right_type = get_node_data_type(ast->assignment.expr);
+    Type operand_type = get_array_leaf_type(left_type);
+    TokenType operator_type = get_assignment_binary_token(ast->assignment.operator.type);
+    ArrayBinaryOperation operation = {operator_type, left_type, right_type, left_type, operand_type};
+    int previous_register_count = compiler->register_count;
+    Operand left = load_variable_value(compiler, ast->assignment.symbol);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->assignment.expr, false);
+    right = materialize_operand(compiler, right);
+
+    compile_array_binary_loop(compiler, &operation, left, right, left);
+
+    compiler->register_count = previous_register_count;
+}
+
+static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
+{
+    if (!is_array_type(type.kind)) {
+        Opcode opcode = get_memory_store_opcode(type);
+
+        emit_memory_access(compiler, opcode, value.reg, buffer.reg, offset);
+
+        return;
+    }
+
+    Type leaf = get_array_leaf_type(type);
+    size_t size = get_array_storage_size(leaf);
+    size_t total_size = get_array_storage_size(type);
+
+    for (size_t position = 0; position < total_size; position += size) {
+        copy_array_element(compiler, buffer, value, offset, position, leaf);
+    }
+}
+
+static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand array, size_t position, size_t offset)
+{
+    const ArrayType* info = ast->array.type_id.array;
+    Type type = info->element_type;
+
+    if (ast->array.flat) {
+        type = get_array_leaf_type(ast->array.type_id);
+    }
+
+    size_t stride = get_array_storage_size(type);
+    offset += position * stride;
+    ASTNode* element = ast->array.elements.data[position];
+
+    if (element->type == ASTArray) {
+        compile_array_into(compiler, element, array, offset);
+
+        return;
+    }
+
+    Operand value = compile_converted_expression(compiler, element, type, false);
+
+    store_array_value(compiler, array, value, offset, type);
+    release_operand(compiler, value);
+}
+
+static void compile_array_fill_loop(Compiler* compiler, Operand array, Operand value, Type type, size_t offset,
+    size_t size)
+{
+    size_t stride = get_array_storage_size(type);
+    Operand index = compile_usize_literal(compiler, offset);
+    Operand end = compile_usize_literal(compiler, offset + size);
+    Operand step = compile_usize_literal(compiler, stride);
+    int condition = allocate_register(compiler);
+    Opcode compare = OpCmpU32;
+    Opcode add = get_pointer_add_opcode();
+    Opcode store = get_memory_store_opcode(type);
+
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        compare = OpCmpU64;
+    }
+
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    emit_instruction(compiler, compare, condition, index.reg, end.reg);
+
+    size_t exit_jump = emit_jump(compiler, OpBz, condition);
+
+    emit_instruction(compiler, store, value.reg, array.reg, index.reg);
+    emit_instruction(compiler, add, index.reg, index.reg, step.reg);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
+    release_register(compiler);
+    release_operand(compiler, step);
+    release_operand(compiler, end);
+    release_operand(compiler, index);
+}
+
+static void compile_array_fill_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset)
+{
+    Type type = ast->array.type_id;
+    Type leaf = get_array_leaf_type(type);
+    ASTNode* expression = ast->array.elements.data[0];
+    Operand value = compile_converted_expression(compiler, expression, leaf, false);
+    size_t size = get_array_storage_size(type);
+
+    compile_array_fill_loop(compiler, array, value, leaf, offset, size);
+    release_operand(compiler, value);
+}
+
+static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset)
+{
+    if (ast->array.fill) {
+        compile_array_fill_into(compiler, ast, array, offset);
+
+        return;
+    }
+
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        compile_array_element(compiler, ast, array, i, offset);
+    }
+}
+
+static Operand compile_array(Compiler* compiler, ASTNode* ast)
+{
+    Operand array = compile_array_new(compiler, ast->array.type_id);
+
+    compile_array_into(compiler, ast, array, 0);
+
+    return array;
+}
+
+static void scale_array_index(Compiler* compiler, Operand index, size_t stride)
+{
+    if (stride == 1) {
+        return;
+    }
+
+    Type type = {.kind = TypeUsize};
+
+    if (stride <= INT8_MAX) {
+        Opcode opcode = get_width_opcode(type, OpMuliI64, OpMuliI32, OpMuliI16, OpMuliI8);
+
+        emit_instruction(compiler, opcode, index.reg, index.reg, stride);
+
+        return;
+    }
+
+    Operand step = compile_usize_literal(compiler, stride);
+    Opcode opcode = get_integer_opcode(type, IntMul);
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, index.reg, index.reg, step.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, step);
+}
+
+static uint64_t read_compiled_integer_constant(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast);
+    size_t position = ast->prefix.constant_position;
+    const Value* constants = compiler->module->constants.data;
+    size_t size = get_integer_type_size(type.kind);
+
+    if (size == sizeof(uint64_t)) {
+        return read_u64(constants, position);
+    }
+
+    if (is_signed_integer_type(type.kind)) {
+        return (uint64_t)read_signed_value(constants[position], type);
+    }
+
+    return read_unsigned_value(constants[position], type);
+}
+
+static void resolve_index_constant(Compiler* compiler, ASTNode* ast)
+{
+    if (ast->index.constant) {
+        return;
+    }
+
+    ASTNode* expression = get_index_constant_expression(ast->index.index);
+
+    if (!expression) {
+        return;
+    }
+
+    if (!expression->prefix.evaluated) {
+        evaluate_constant_expression(compiler, expression);
+    }
+
+    uint64_t value = read_compiled_integer_constant(compiler, expression);
+    Type type = get_node_data_type(ast->index.array);
+
+    if (value > SIZE_MAX || value >= type.array->count) {
+        Token token = ast->index.token;
+
+        fatal_source_error(token.line, token.column, "Array index is out of bounds");
+    }
+
+    ast->index.constant = true;
+    ast->index.position = (size_t)value;
+}
+
+static void compile_index_panic(Compiler* compiler)
+{
+    static const char message[] = "Array index is out of bounds";
+    size_t constant = add_string_constant(compiler->module, message, sizeof(message) - 1);
+    Type argument_types[] = {{.kind = TypeString}};
+    const Builtin* builtin = resolve_builtin("panic", argument_types, 1);
+    uint16_t position = get_builtin_function_position(compiler, builtin);
+    FunctionObject* function = get_vector_at(&compiler->module->functions, position);
+
+    int reg = emit_ldc(compiler, constant);
+    Operand argument = make_operand(reg, true);
+
+    compile_call_with_argument(compiler, function, position, argument, true);
+}
+
+static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count)
+{
+    Type type = {.kind = TypeUsize};
+    index.temporary = false;
+    Operand length = compile_usize_literal(compiler, count);
+    Operand condition = emit_numeric_comparison(compiler, TokenGreaterEqual, type, index, length);
+    size_t valid_jump = emit_condition_jump(compiler, condition);
+
+    release_operand(compiler, condition);
+    compile_index_panic(compiler);
+    patch_jump(compiler, valid_jump);
+}
+
+static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast->index.array);
+    const ArrayType* info = type.array;
+    size_t stride = get_array_storage_size(info->element_type);
+    Type index_type = {.kind = TypeUsize};
+    Operand index = compile_converted_expression(compiler, ast->index.index, index_type, false);
+
+    index = materialize_operand(compiler, index);
+
+    reserve_pointer_padding(compiler);
+    compile_index_bounds_check(compiler, index, info->count);
+    scale_array_index(compiler, index, stride);
+    release_pointer_padding(compiler);
+
+    return index;
+}
+
+static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, ASTNode* ast)
+{
+    reserve_pointer_padding(compiler);
+
+    Operand offset = compile_runtime_index_offset(compiler, ast);
+    Opcode add = get_pointer_add_opcode();
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, add, buffer.reg, buffer.reg, offset.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, offset);
+    release_pointer_padding(compiler);
+}
+
+static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast)
+{
+    Operand buffer = compile_expression(compiler, ast->index.array, false);
+    buffer = materialize_operand(compiler, buffer);
+    offset_buffer_by_runtime_index(compiler, buffer, ast);
+
+    return buffer;
+}
+
+static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
+{
+    ASTNode* base = ast;
+    *offset = 0;
+
+    while (is_constant_index(base)) {
+        Type type = get_node_data_type(base->index.array);
+        const ArrayType* info = type.array;
+        size_t stride = get_array_storage_size(info->element_type);
+        *offset += base->index.position * stride;
+        base = base->index.array;
+    }
+
+    return base;
+}
+
+static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* offset)
+{
+    resolve_index_constant(compiler, ast);
+
+    ASTNode* base = get_index_base(ast, offset);
+    if (base == ast) {
+        return compile_runtime_index_address(compiler, ast);
+    }
+
+    return compile_expression(compiler, base, false);
+}
+
+static Operand compile_index_address(Compiler* compiler, ASTNode* ast)
+{
+    size_t offset;
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
+
+    return offset_buffer(compiler, buffer, offset);
+}
+
+static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int destination)
+{
+    Operand buffer = compile_expression(compiler, ast->index.array, false);
+
+    buffer = materialize_operand(compiler, buffer);
+
+    Operand offset = compile_runtime_index_offset(compiler, ast);
+    Opcode opcode = get_memory_load_opcode(ast->index.type_id);
+
+    emit_instruction(compiler, opcode, destination, buffer.reg, offset.reg);
+    release_operand(compiler, offset);
+    release_operand(compiler, buffer);
+}
+
+static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination)
+{
+    resolve_index_constant(compiler, ast);
+
+    if (!ast->index.constant) {
+        compile_runtime_index_load(compiler, ast, destination);
+
+        return;
+    }
+
+    size_t offset;
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
+    Opcode opcode = get_memory_load_opcode(ast->index.type_id);
+
+    emit_memory_access(compiler, opcode, destination, buffer.reg, offset);
+    release_operand(compiler, buffer);
+}
+
+static Operand compile_index(Compiler* compiler, ASTNode* ast)
+{
+    if (is_array_type(ast->index.type_id.kind)) {
+        return compile_index_address(compiler, ast);
+    }
+
+    size_t slots = get_type_slot_count(ast->index.type_id.kind);
+    int destination = allocate_registers(compiler, slots);
+
+    compile_index_load(compiler, ast, destination);
+
+    Operand result = {destination, true, slots};
+
+    return normalize_integer_operand(compiler, result, ast->index.type_id);
+}
+
+static void compile_index_assignment(Compiler* compiler, ASTNode* ast)
+{
+    size_t offset;
+    Operand buffer = compile_index_buffer(compiler, ast, &offset);
+    buffer = materialize_operand(compiler, buffer);
+    Operand value = compile_converted_expression(compiler, ast->index.value, ast->index.type_id, false);
+
+    store_array_value(compiler, buffer, value, offset, ast->index.type_id);
+    release_operand(compiler, value);
+    release_operand(compiler, buffer);
+}
+
 static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard)
 {
     if (discard && compile_discarded_expression(compiler, ast)) {
@@ -3537,6 +4426,12 @@ static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard
     Operand result;
 
     switch (ast->type) {
+        case ASTArray:
+            result = compile_array(compiler, ast);
+            break;
+        case ASTIndex:
+            result = compile_index(compiler, ast);
+            break;
         case ASTBinary:
             result = compile_binary(compiler, ast);
             break;
@@ -3566,7 +4461,7 @@ static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard
             result = compile_float(compiler, ast);
             break;
         case ASTInteger:
-            result = compile_number(compiler, ast);
+            result = compile_integer_value(compiler, ast->integer_literal.value, ast->integer_literal.type_id);
             break;
         case ASTPrefix:
             result = compile_prefix(compiler, ast);
@@ -3590,6 +4485,9 @@ static Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard
 static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
 {
     switch (ast->type) {
+        case ASTIndexAssignment:
+            compile_index_assignment(compiler, ast);
+            return no_operand();
         case ASTAssignment:
             compile_assignment(compiler, ast);
             return no_operand();
@@ -3602,7 +4500,6 @@ static Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
             return no_operand();
         case ASTWhile:
             compile_while(compiler, ast);
-
             return no_operand();
         case ASTReturn:
             compile_return_statement(compiler, ast);
@@ -3656,9 +4553,9 @@ static void compile_top_level_statements(Compiler* compiler, Vector* nodes)
 
 static void compile_repl_statement(Compiler* compiler, ASTNode* ast, bool is_last)
 {
-    bool display = is_last && is_expression_statement(ast) && get_node_data_type(ast) != TypeVoid;
+    bool display = is_last && is_expression_statement(ast) && get_node_data_type(ast).kind != TypeVoid;
 
-    if (display && get_node_data_type(ast) == TypeUnknown) {
+    if (display && get_node_data_type(ast).kind == TypeUnknown) {
         unresolved_repl_expression_type_error();
     }
 
@@ -3668,7 +4565,7 @@ static void compile_repl_statement(Compiler* compiler, ASTNode* ast, bool is_las
         return;
     }
 
-    DataType argument_type = get_node_data_type(ast);
+    Type argument_type = get_node_data_type(ast);
     void* items[] = {ast};
     Vector args = {.data = items, .capacity = 1, .count = 1};
     const Builtin* builtin = resolve_builtin("print", &argument_type, 1);
@@ -3731,6 +4628,12 @@ void free_compiler(Compiler* compiler)
 
     free_vector(&compiler->omitted_statements);
     free_ast_node(compiler->ast);
+
+    for (size_t i = 0; i < compiler->analyzer.array_types.count; i++) {
+        free_memory(compiler->analyzer.array_types.data[i]);
+    }
+
+    free_vector(&compiler->analyzer.array_types);
 }
 
 static void compile_statement_bytecode(Compiler* compiler, CompileStatements compile_statements)

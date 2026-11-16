@@ -1,0 +1,20 @@
+let matrix: i32[2][3] = [[1, 2, 3], [4, 5, 9]]
+let matrix_length: usize = len(matrix)
+let row_length = len(matrix[1])
+let literal_length = len([10, 20, 30])
+
+assert(matrix_length == 2 and row_length == 3 and literal_length == 3)
+assert(matrix[1][2] == 9)
+
+const LENGTH = len([10, 20, 30])
+let sized_from_length: i32[matrix_length] = [7, 8]
+
+assert(LENGTH == 3 and sized_from_length[1] == 8)
+
+let empty: i32[0] = []
+let rows: i32[2][0] = [[], []]
+let empty_length = len(empty)
+let outer_length = len(rows)
+let empty_row_length = len(rows[1])
+
+assert(empty_length == 0 and outer_length == 2 and empty_row_length == 0)

@@ -11,6 +11,7 @@ typedef struct LoopPath LoopPath;
 typedef struct Analyzer
 {
     ASTNode* top_level;
+    Vector array_types;
     ASTNode* function;
     Scope* current_scope;
     Scope* constant_scope;

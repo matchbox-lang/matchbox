@@ -1,0 +1,10 @@
+let values = [10, 20]
+var index: usize = 1
+values[index] = 30
+
+assert(values[index] == 30 and values[0] == 10)
+
+index = 0
+values[index] = values[1] + 10
+
+assert(values[0] == 40 and index == 0)

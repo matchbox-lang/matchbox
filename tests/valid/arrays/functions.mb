@@ -1,0 +1,44 @@
+func read(values: &i32[2]) -> i32 {
+    return values[1]
+}
+
+func mutate(values: ^i32[2]) {
+    values[0] = 7
+}
+
+let numbers = [1, 2]
+let read_back = read(&numbers)
+
+assert(read_back == 2)
+mutate(^numbers)
+assert(numbers[0] == 7)
+
+func make() -> u8[2] {
+    return [10, 20]
+}
+
+let made = make()
+
+assert(made[1] == 20)
+
+func make_matrix() {
+    return [[1, 2], [3, 4]]
+}
+
+let matrix = make_matrix()
+
+assert(matrix[1][1] == 4)
+
+func duplicate(values: &i32[2]) -> i32[2] {
+    return copy(values)
+}
+
+let duplicate_numbers = duplicate(&numbers)
+let literal_copy = copy([30, 40])
+let returned_copy = copy(made)
+
+numbers[0] = 8
+
+assert(duplicate_numbers[0] == 7 and duplicate_numbers[1] == 2)
+assert(literal_copy[0] == 30 and literal_copy[1] == 40)
+assert(returned_copy[0] == 10 and returned_copy[1] == 20)

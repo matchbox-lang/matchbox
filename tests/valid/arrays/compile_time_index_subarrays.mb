@@ -1,0 +1,20 @@
+func index() -> usize {
+    return 1
+}
+
+func read(values: &i32[2]) -> i32 {
+    let position = const index()
+
+    return values[position]
+}
+
+let matrix: i32[2][2] = [[10, 20], [30, 40]]
+let row = const index()
+let column = 1
+
+matrix[row][column] = 50
+
+let selected = copy(matrix[row])
+let value = read(matrix[row])
+
+assert(matrix[row][column] == 50 and selected[column] == 50 and value == 50)

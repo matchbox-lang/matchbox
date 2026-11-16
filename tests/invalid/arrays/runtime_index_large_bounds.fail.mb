@@ -1,0 +1,4 @@
+let values = [10, 20]
+var index: usize = 4294967295
+
+print(values[index])

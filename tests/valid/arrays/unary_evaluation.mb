@@ -1,0 +1,28 @@
+var calls = 0
+
+func make() -> i32[2] {
+    calls += 1
+
+    return [1, -2]
+}
+
+func negate(values: &i32[2]) -> i32[2] {
+    return -values
+}
+
+let negative = -make()
+
+assert(calls == 1 and negative == [-1, 2])
+(-make())
+(~make())
+assert(calls == 3)
+
+let values = [3, -4]
+let result = negate(&values)
+let matrix = [[1, 2], [3, 4]]
+var index: usize = 1
+
+assert(result == [-3, 4] and values == [3, -4])
+assert((-matrix[index]) == [-3, -4])
+assert((~-values) == [2, -5])
+assert((const -[5, -6]) == [-5, 6])

@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include "common/data_type.h"
+#include "common/type.h"
 #include "common/vector.h"
 #include "compiler/token.h"
 #include <stdbool.h>
@@ -30,6 +30,9 @@ typedef enum ReferenceType
 
 typedef enum ASTNodeType
 {
+    ASTArray,
+    ASTIndex,
+    ASTIndexAssignment,
     ASTAssignment,
     ASTBinary,
     ASTBuiltinCall,
@@ -59,9 +62,28 @@ typedef struct ASTNode
 
     union {
         struct {
+            Token token;
+            Vector elements;
+            Type type_id;
+            bool flat;
+            bool fill;
+        } array;
+
+        struct {
+            Token token;
+            ASTNode* array;
+            ASTNode* index;
+            ASTNode* value;
+            Token operator;
+            Type type_id;
+            size_t position;
+            bool constant;
+        } index;
+
+        struct {
             ASTNode* expr;
             Token token;
-            DataType type_id;
+            Type type_id;
         } conversion;
 
         struct {
@@ -83,8 +105,8 @@ typedef struct ASTNode
             Token operator;
             ASTNode* left_expr;
             ASTNode* right_expr;
-            DataType type_id;
-            DataType operand_type;
+            Type type_id;
+            Type operand_type;
         } binary;
 
         struct {
@@ -113,7 +135,7 @@ typedef struct ASTNode
             ASTNode* condition;
             ASTNode* then_branch;
             ASTNode* else_branch;
-            DataType type_id;
+            Type type_id;
             ReferenceType reference_type;
             Vector reference_origins;
             bool expression;
@@ -122,7 +144,7 @@ typedef struct ASTNode
         struct {
             double value;
             Token token;
-            DataType type_id;
+            Type type_id;
         } float_literal;
 
         struct {
@@ -139,11 +161,15 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             Vector params;
+            Vector array_moves;
+            Vector array_initializations;
+            Vector array_possible_initializations;
+            Vector array_uninitialized_returns;
             bool is_test;
             bool is_test_skipped;
             Token test_name;
             bool has_explicit_return_type;
-            DataType return_type_id;
+            Type return_type_id;
             ReferenceType return_reference_type;
             ASTNode* return_reference_origin;
             ASTNode* body;
@@ -153,14 +179,14 @@ typedef struct ASTNode
         struct {
             uint64_t value;
             Token token;
-            DataType type_id;
+            Type type_id;
         } integer_literal;
 
         struct {
             Token token;
             ASTNode* subject;
             Vector arms;
-            DataType type_id;
+            Type type_id;
             ReferenceType reference_type;
             Vector reference_origins;
             bool expression;
@@ -170,7 +196,7 @@ typedef struct ASTNode
             Scope* scope;
             StringObject* id;
             Token token;
-            DataType type_id;
+            Type type_id;
             ReferenceType reference_type;
             Vector reference_origins;
             size_t shared_access_count;
@@ -212,7 +238,8 @@ typedef struct ASTNode
             bool fixed;
             bool constant;
             bool initialized;
-            DataType type_id;
+            bool possibly_initialized;
+            Type type_id;
             ReferenceType reference_type;
             Vector reference_origins;
             size_t shared_access_count;
@@ -231,18 +258,22 @@ typedef struct ASTNode
 } ASTNode;
 
 ASTNode* create_ast_node(ASTNodeType type);
+ASTNode* create_array_node(Token token, Type type, bool flat);
+ASTNode* copy_literal_node(const ASTNode* literal);
+void replace_ast_node(ASTNode* ast, ASTNode* replacement);
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
 ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token);
+ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type);
 ASTNode* create_boolean_node(Token token, bool value);
 ASTNode* create_builtin_call_node(Token token, const Builtin* builtin);
 ASTNode* create_character_node(Token token, uint32_t value);
 ASTNode* create_compound_node(Scope* scope);
 ASTNode* create_conditional_node(Token token, ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch);
-ASTNode* create_conversion_node(Token token, ASTNode* expr, DataType type_id);
-ASTNode* create_float_node(Token token, double value, DataType type_id);
+ASTNode* create_conversion_node(Token token, ASTNode* expr, Type type_id);
+ASTNode* create_float_node(Token token, double value, Type type_id);
 ASTNode* create_function_call_node(Token token);
 ASTNode* create_function_definition_node(Token token, StringObject* id);
-ASTNode* create_integer_node(Token token, uint64_t value, DataType type_id);
+ASTNode* create_integer_node(Token token, uint64_t value, Type type_id);
 ASTNode* create_match_node(Token token);
 ASTNode* create_parameter_node(Token token, StringObject* id);
 ASTNode* create_prefix_node(Token token, ASTNode* expr);
@@ -253,11 +284,15 @@ ASTNode* create_variable_node(Token token);
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
 void free_ast_node(ASTNode* ast);
 Scope* get_scope(const ASTNode* ast);
-DataType get_node_data_type(const ASTNode* ast);
+Type get_node_data_type(const ASTNode* ast);
+ASTNode* get_index_constant_expression(ASTNode* ast);
 ASTNode* get_reference_origin(const ASTNode* ast);
 Vector* get_reference_origins(ASTNode* ast);
 ReferenceType get_reference_type(const ASTNode* ast);
 bool is_expression_statement(const ASTNode* ast);
+bool is_index(const ASTNode* ast);
+bool is_constant_index(const ASTNode* ast);
+bool is_simple_match_value(const ASTNode* ast);
 bool is_literal(const ASTNode* ast);
 bool is_text_literal(const ASTNode* ast);
 bool is_function_call(const ASTNode* ast);

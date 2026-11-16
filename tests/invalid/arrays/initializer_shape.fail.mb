@@ -1,0 +1,2 @@
+let values: i32[0][2] = []
+let matrix: i32[2][0] = values

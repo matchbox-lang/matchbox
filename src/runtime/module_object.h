@@ -17,5 +17,7 @@ typedef struct ModuleObject
 
 ModuleObject* create_module_object();
 void free_module_object(ModuleObject* module);
+size_t find_string_constant(const ModuleObject* module, const char* chars, size_t length);
+size_t add_string_constant(ModuleObject* module, const char* chars, size_t length);
 
 #endif

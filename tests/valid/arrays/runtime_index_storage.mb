@@ -1,0 +1,25 @@
+var index: u8 = 1
+let bytes: i8[2] = [-128, 127]
+let wide: i64[2] = [5000000000, 6000000000]
+let floats: f64[2] = [1.5, 2.5]
+let strings = ["first", "last"]
+let flags = [false, true]
+
+assert(bytes[index] == 127 and wide[index] == 6000000000)
+assert(floats[index] == 2.5 and flags[index])
+print(strings[index])
+
+bytes[index] = -1
+wide[index] = 7000000000
+floats[index] = 3.5
+strings[index] = "changed"
+flags[index] = false
+
+assert(bytes[index] == -1 and wide[index] == 7000000000)
+assert(floats[index] == 3.5 and not flags[index])
+print(strings[index])
+
+let rows: i32[2][0] = [[], []]
+let length = len(rows[index])
+
+assert(length == 0 and index == 1)

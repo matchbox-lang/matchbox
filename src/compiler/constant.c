@@ -1,22 +1,27 @@
 #include "compiler/constant.h"
+#include "builtin/builtin.h"
+#include "common/array_type.h"
 #include "common/unicode.h"
+#include "common/math.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include <limits.h>
 #include <math.h>
 
 static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
+static bool can_discard_length_argument(const ASTNode* ast);
+static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type);
 
-static _Noreturn void invalid_constant_conversion_error(Token token, DataType destination)
+static _Noreturn void invalid_constant_conversion_error(Token token, Type destination)
 {
     const char* name = get_data_type_name(destination);
 
     fatal_source_error(token.line, token.column, "Constant is outside the supported domain of conversion to %s", name);
 }
 
-static uint64_t normalize_integer_constant(uint64_t value, DataType type)
+static uint64_t normalize_integer_constant(uint64_t value, Type type)
 {
-    size_t bits = get_integer_type_size(type) * CHAR_BIT;
+    size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
 
     if (bits == 64 || !bits) {
         return value;
@@ -24,7 +29,7 @@ static uint64_t normalize_integer_constant(uint64_t value, DataType type)
 
     uint64_t mask = (UINT64_C(1) << bits) - 1;
     uint64_t result = value & mask;
-    bool negative = is_signed_integer_type(type) && (result & (UINT64_C(1) << (bits - 1)));
+    bool negative = is_signed_integer_type(type.kind) && (result & (UINT64_C(1) << (bits - 1)));
 
     if (negative) {
         result |= ~mask;
@@ -33,19 +38,19 @@ static uint64_t normalize_integer_constant(uint64_t value, DataType type)
     return result;
 }
 
-static double rounded_float_constant(double value, DataType type)
+static double rounded_float_constant(double value, Type type)
 {
-    if (type == TypeF32) {
+    if (type.kind == TypeF32) {
         return (float)value;
     }
 
     return value;
 }
 
-static uint64_t float_constant_to_integer(double value, DataType destination, Token token)
+static uint64_t float_constant_to_integer(double value, Type destination, Token token)
 {
-    bool signed_type = is_signed_integer_type(destination);
-    size_t bits = get_integer_type_size(destination) * CHAR_BIT;
+    bool signed_type = is_signed_integer_type(destination.kind);
+    size_t bits = get_integer_type_size(destination.kind) * CHAR_BIT;
     double upper = ldexp(1.0, bits - signed_type);
     double lower = 0.0;
     double truncated = trunc(value);
@@ -65,38 +70,38 @@ static uint64_t float_constant_to_integer(double value, DataType destination, To
     return (uint64_t)truncated;
 }
 
-static double integer_constant_to_float(uint64_t value, DataType source, DataType destination)
+static double integer_constant_to_float(uint64_t value, Type source, Type destination)
 {
-    if (is_signed_integer_type(source) && destination == TypeF32) {
+    if (is_signed_integer_type(source.kind) && destination.kind == TypeF32) {
         return (float)(int64_t)value;
     }
 
-    if (is_signed_integer_type(source)) {
+    if (is_signed_integer_type(source.kind)) {
         return (double)(int64_t)value;
     }
 
-    if (destination == TypeF32) {
+    if (destination.kind == TypeF32) {
         return (float)value;
     }
 
     return (double)value;
 }
 
-static ConstantValue convert_constant_value(ConstantValue value, DataType source, DataType destination, Token token)
+static ConstantValue convert_constant_value(ConstantValue value, Type source, Type destination, Token token)
 {
-    if (is_float_type(source) && is_integer_type(destination)) {
+    if (is_float_type(source.kind) && is_integer_type(destination.kind)) {
         value.integer = float_constant_to_integer(value.floating, destination, token);
 
         return value;
     }
 
-    if (is_integer_type(destination)) {
+    if (is_integer_type(destination.kind)) {
         value.integer = normalize_integer_constant(value.integer, destination);
 
         return value;
     }
 
-    if (is_integer_type(source)) {
+    if (is_integer_type(source.kind)) {
         value.floating = integer_constant_to_float(value.integer, source, destination);
 
         return value;
@@ -144,6 +149,21 @@ static bool fold_remainder(uint32_t left, uint32_t right, uint64_t* value)
     return true;
 }
 
+static bool fold_power(uint32_t left, uint32_t right, uint64_t* value)
+{
+    int64_t base = signed_i32_value(left);
+    int64_t exponent = signed_i32_value(right);
+
+    if (base == 0 && exponent < 0) {
+        return false;
+    }
+
+    int64_t result = ipow(base, exponent);
+    *value = (uint64_t)result;
+
+    return true;
+}
+
 static bool fold_binary_value(TokenType operator, uint32_t left, uint32_t right, uint64_t* value)
 {
     switch (operator) {
@@ -161,8 +181,7 @@ static bool fold_binary_value(TokenType operator, uint32_t left, uint32_t right,
         case TokenPercent:
             return fold_remainder(left, right, value);
         case TokenPower:
-            *value = (int)pow(left, right);
-            return true;
+            return fold_power(left, right, value);
         case TokenAmpersand:
             *value = left & right;
             return true;
@@ -177,15 +196,15 @@ static bool fold_binary_value(TokenType operator, uint32_t left, uint32_t right,
     }
 }
 
-static bool get_constant_comparison_operand(DataType type, uint64_t integer, int64_t* value)
+static bool get_constant_comparison_operand(Type type, uint64_t integer, int64_t* value)
 {
-    if (type == TypeBool) {
+    if (type.kind == TypeBool) {
         *value = integer != 0;
 
         return true;
     }
 
-    switch (type) {
+    switch (type.kind) {
         case TypeI8:
             *value = (int8_t)integer;
             break;
@@ -245,17 +264,17 @@ static bool fold_boolean_value(TokenType operator, int64_t left, int64_t right, 
     return true;
 }
 
-ASTNode* create_constant_node(ConstantValue value, DataType type, Token token)
+ASTNode* create_constant_node(ConstantValue value, Type type, Token token)
 {
-    if (type == TypeBool) {
+    if (type.kind == TypeBool) {
         return create_boolean_node(token, value.integer != 0);
     }
 
-    if (type == TypeChar) {
+    if (type.kind == TypeChar) {
         return create_character_node(token, value.integer);
     }
 
-    if (is_float_type(type)) {
+    if (is_float_type(type.kind)) {
         return create_float_node(token, value.floating, type);
     }
 
@@ -271,16 +290,16 @@ static bool evaluate_conversion(const ASTNode* ast, ConstantValue* value)
         return false;
     }
 
-    DataType source = get_node_data_type(expression);
-    DataType destination = ast->conversion.type_id;
+    Type source = get_node_data_type(expression);
+    Type destination = ast->conversion.type_id;
     Token token = ast->conversion.token;
     bool scalar = value->integer <= UINT32_MAX && is_unicode_scalar((uint32_t)value->integer);
 
-    if (destination == TypeChar && !scalar) {
+    if (destination.kind == TypeChar && !scalar) {
         invalid_constant_conversion_error(token, destination);
     }
 
-    if (destination != TypeChar) {
+    if (destination.kind != TypeChar) {
         *value = convert_constant_value(*value, source, destination, token);
     }
 
@@ -305,7 +324,7 @@ static bool evaluate_prefix(const ASTNode* ast, ConstantValue* value)
         return false;
     }
 
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
     uint64_t negated = 0 - value->integer;
 
     value->integer = normalize_integer_constant(negated, type);
@@ -319,8 +338,8 @@ static bool evaluate_boolean_binary(
 {
     int64_t left;
     int64_t right;
-    DataType left_type = get_node_data_type(ast->binary.left_expr);
-    DataType right_type = get_node_data_type(ast->binary.right_expr);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
     bool comparable_left = get_constant_comparison_operand(left_type, left_value.integer, &left);
     bool comparable_right = get_constant_comparison_operand(right_type, right_value.integer, &right);
     bool result = false;
@@ -347,21 +366,21 @@ static bool evaluate_binary(const ASTNode* ast, ConstantValue* value)
         return false;
     }
 
-    DataType left_type = get_node_data_type(ast->binary.left_expr);
-    DataType right_type = get_node_data_type(ast->binary.right_expr);
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
 
-    if (ast->binary.type_id == TypeBool) {
+    if (ast->binary.type_id.kind == TypeBool) {
         return evaluate_boolean_binary(ast, left, right, value);
     }
 
-    if (left_type != TypeI32 || right_type != TypeI32) {
+    if (left_type.kind != TypeI32 || right_type.kind != TypeI32) {
         return false;
     }
 
     bool folded = fold_binary_value(ast->binary.operator.type, left.integer, right.integer, &value->integer);
 
-    value->integer = normalize_integer_constant(value->integer, TypeI32);
-    value->floating = integer_constant_to_float(value->integer, TypeI32, TypeF64);
+    value->integer = normalize_integer_constant(value->integer, (Type){.kind = TypeI32});
+    value->floating = integer_constant_to_float(value->integer, (Type){.kind = TypeI32}, (Type){.kind = TypeF64});
 
     return folded;
 }
@@ -386,9 +405,9 @@ static bool evaluate_variable(const ASTNode* ast, ConstantValue* value)
     }
 
     const ASTNode* initializer = symbol->variable_definition.expr;
-    DataType type = symbol->variable_definition.type_id;
+    Type type = symbol->variable_definition.type_id;
 
-    if (!initializer || type == TypeChar) {
+    if (!initializer || type.kind == TypeChar) {
         return false;
     }
 
@@ -424,9 +443,9 @@ static bool evaluate_branch(const ASTNode* branch, ConstantValue* value)
     }
 
     const ASTNode* result = branch->compound.statements.data[0];
-    DataType type = get_node_data_type(result);
+    Type type = get_node_data_type(result);
 
-    if (type == TypeChar || type == TypeString) {
+    if (type.kind == TypeChar || type.kind == TypeString) {
         return false;
     }
 
@@ -442,18 +461,69 @@ static bool evaluate_conditional(const ASTNode* ast, ConstantValue* value)
     return evaluate_selected_branch(ast, value);
 }
 
+static bool can_discard_length_prefix(const ASTNode* ast)
+{
+    bool reference = ast->prefix.operator.type == TokenAmpersand || ast->prefix.operator.type == TokenCircumflex;
+
+    return reference && can_discard_length_argument(ast->prefix.expr);
+}
+
+static bool can_discard_length_argument(const ASTNode* ast)
+{
+    if (ast->type == ASTVariable || is_literal(ast)) {
+        return true;
+    }
+
+    if (ast->type == ASTPrefix) {
+        return can_discard_length_prefix(ast);
+    }
+
+    if (ast->type != ASTArray) {
+        return false;
+    }
+
+    bool discard = true;
+
+    for (size_t i = 0; i < ast->array.elements.count && discard; i++) {
+        discard = can_discard_length_argument(ast->array.elements.data[i]);
+    }
+
+    return discard;
+}
+
+static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
+{
+    if (ast->builtin_call.builtin->entry) {
+        return false;
+    }
+
+    const ASTNode* argument = ast->builtin_call.args.data[0];
+    bool discard = can_discard_length_argument(argument);
+
+    if (!discard) {
+        return false;
+    }
+
+    Type type = get_node_data_type(argument);
+    value->integer = type.array->count;
+
+    return true;
+}
+
 bool evaluate_constant(const ASTNode* ast, ConstantValue* value)
 {
     if (!ast) {
         return false;
     }
 
-    DataType type = get_node_data_type(ast);
+    Type type = get_node_data_type(ast);
 
     switch (ast->type) {
+        case ASTBuiltinCall:
+            return evaluate_builtin_call(ast, value);
         case ASTInteger:
             value->integer = normalize_integer_constant(ast->integer_literal.value, type);
-            value->floating = integer_constant_to_float(value->integer, type, TypeF64);
+            value->floating = integer_constant_to_float(value->integer, type, (Type){.kind = TypeF64});
             return true;
         case ASTFloat:
             value->floating = rounded_float_constant(ast->float_literal.value, type);
@@ -477,4 +547,181 @@ bool evaluate_constant(const ASTNode* ast, ConstantValue* value)
         default:
             return false;
     }
+}
+
+static bool evaluate_count_variable(const ASTNode* ast, uint64_t* value)
+{
+    const ASTNode* symbol = ast->variable.symbol;
+
+    if (!symbol || symbol->type != ASTVariableDefinition) {
+        return false;
+    }
+
+    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+        || symbol->variable_definition.reference_type != RefNone) {
+        return false;
+    }
+
+    return evaluate_integer_constant(symbol->variable_definition.expr, value);
+}
+
+static bool divide_count_values(uint64_t left, uint64_t right, Type type, bool remainder, uint64_t* value)
+{
+    if (!right) {
+        return false;
+    }
+
+    if (!is_signed_integer_type(type.kind)) {
+        *value = remainder ? left % right : left / right;
+
+        return true;
+    }
+
+    int64_t signed_left = (int64_t)left;
+    int64_t signed_right = (int64_t)right;
+
+    if (signed_left == INT64_MIN && signed_right == -1) {
+        *value = remainder ? 0 : left;
+
+        return true;
+    }
+
+    *value = remainder ? signed_left % signed_right : signed_left / signed_right;
+
+    return true;
+}
+
+static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
+{
+    uint64_t left = 0;
+    uint64_t right = 0;
+    bool left_constant = evaluate_integer_constant(ast->binary.left_expr, &left);
+    bool right_constant = evaluate_integer_constant(ast->binary.right_expr, &right);
+
+    if (!left_constant || !right_constant) {
+        return false;
+    }
+
+    Type type = ast->binary.operand_type;
+    size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
+
+    switch (ast->binary.operator.type) {
+        case TokenPlus:
+            *value = left + right;
+            break;
+        case TokenMinus:
+            *value = left - right;
+            break;
+        case TokenStar:
+            *value = left * right;
+            break;
+        case TokenSlash:
+            return divide_count_values(left, right, type, false, value);
+        case TokenPercent:
+            return divide_count_values(left, right, type, true, value);
+        case TokenAmpersand:
+            *value = left & right;
+            break;
+        case TokenPipe:
+            *value = left | right;
+            break;
+        case TokenCircumflex:
+            *value = left ^ right;
+            break;
+        case TokenLshift:
+            *value = left << (right % bits);
+            break;
+        case TokenRshift:
+            *value = shift_count_right(left, right % bits, type);
+            break;
+        default:
+            return false;
+    }
+
+    return true;
+}
+
+static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
+{
+    bool evaluated = evaluate_integer_constant(ast->prefix.expr, value);
+
+    if (!evaluated) {
+        return false;
+    }
+
+    switch (ast->prefix.operator.type) {
+        case TokenMinus:
+            *value = 0 - *value;
+            return true;
+        case TokenTilde:
+            *value = ~*value;
+            return true;
+        case TokenKeywordConst:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type)
+{
+    if (is_signed_integer_type(type.kind)) {
+        return (uint64_t)((int64_t)value >> shift);
+    }
+
+    return value >> shift;
+}
+
+static bool evaluate_count_conversion(const ASTNode* ast, uint64_t* value)
+{
+    ConstantValue constant = {0};
+    bool evaluated = evaluate_constant(ast, &constant);
+
+    if (evaluated) {
+        *value = constant.integer;
+
+        return true;
+    }
+
+    return evaluate_integer_constant(ast->conversion.expr, value);
+}
+
+static bool evaluate_count_expression(const ASTNode* ast, uint64_t* value)
+{
+    if (ast->type == ASTVariable) {
+        return evaluate_count_variable(ast, value);
+    }
+
+    if (ast->type == ASTBinary) {
+        return evaluate_count_binary(ast, value);
+    }
+
+    if (ast->type == ASTConversion) {
+        return evaluate_count_conversion(ast, value);
+    }
+
+    if (ast->type == ASTPrefix) {
+        return evaluate_count_prefix(ast, value);
+    }
+
+    ConstantValue constant = {0};
+    bool evaluated = evaluate_constant(ast, &constant);
+    *value = constant.integer;
+
+    return evaluated;
+}
+
+bool evaluate_integer_constant(const ASTNode* ast, uint64_t* value)
+{
+    Type type = get_node_data_type(ast);
+    ReferenceType reference = get_reference_type(ast);
+
+    if (!is_integer_type(type.kind) || reference != RefNone) {
+        return false;
+    }
+
+    bool evaluated = evaluate_count_expression(ast, value);
+    *value = normalize_integer_constant(*value, type);
+
+    return evaluated;
 }

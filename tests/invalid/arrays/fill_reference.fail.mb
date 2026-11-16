@@ -1,0 +1,2 @@
+let value = 0
+let values = i32[3](&value)

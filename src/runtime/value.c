@@ -1,7 +1,7 @@
 #include "runtime/value.h"
 #include "common/errors.h"
+#include "common/math.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include <string.h>
 
 void init_value_array(ValueArray* array)

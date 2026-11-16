@@ -1,7 +1,7 @@
 #include "common/vector.h"
 #include "common/errors.h"
+#include "common/math.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include <stdint.h>
 
 void init_vector(Vector* vector)

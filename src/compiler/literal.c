@@ -1,9 +1,18 @@
 #include "compiler/literal.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include "compiler/diagnostics.h"
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
+
+static char* copy_string_literal(const char* source, size_t length)
+{
+    char* destination = allocate_memory(length + 1);
+    memcpy(destination, source, length);
+    destination[length] = '\0';
+
+    return destination;
+}
 
 static bool decode_hex_digit(char c, uint32_t* value)
 {
@@ -174,7 +183,7 @@ static void strip_underscores(char* str, size_t* length)
 static uint64_t parse_integer_literal_in_base(Token token, size_t offset, int base)
 {
     size_t length = token.length - offset;
-    char* tmp = strndup(token.chars + offset, length);
+    char* tmp = copy_string_literal(token.chars + offset, length);
 
     strip_underscores(tmp, &length);
 
@@ -213,7 +222,7 @@ uint64_t parse_octal_literal(Token token)
 double parse_float_literal(Token token)
 {
     size_t length = token.length;
-    char* tmp = strndup(token.chars, length);
+    char* tmp = copy_string_literal(token.chars, length);
 
     strip_underscores(tmp, &length);
 

@@ -1,6 +1,5 @@
 #include "builtin/math.h"
 #include "common/math.h"
-#include "common/util.h"
 #include <math.h>
 
 void builtin_abs_f32(VM* vm, const FunctionObject* function, Value* frame)

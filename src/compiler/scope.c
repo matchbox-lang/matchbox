@@ -1,7 +1,7 @@
 #include "compiler/scope.h"
+#include "common/math.h"
 #include "common/memory.h"
 #include "common/table.h"
-#include "common/util.h"
 #include "compiler/ast.h"
 #include <stdbool.h>
 #include <stddef.h>

@@ -100,6 +100,7 @@ static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 static Operand compile_array(Compiler* compiler, ASTNode* ast);
 static Operand compile_array_binary(Compiler* compiler, ASTNode* ast);
+static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast);
 static Operand compile_usize_literal(Compiler* compiler, size_t value);
 static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
@@ -1538,6 +1539,27 @@ static Operand compile_constant(Compiler* compiler, ASTNode* ast)
     return make_operand(reg, true);
 }
 
+static Operand emit_prefix_operand(Compiler* compiler, TokenType operator_type, Type type, Operand operand)
+{
+    Opcode opcode;
+
+    switch (operator_type) {
+        case TokenKeywordNot:
+            opcode = OpNot;
+            break;
+        case TokenTilde:
+            opcode = get_integer_opcode(type, IntBnot);
+            break;
+        case TokenMinus:
+            opcode = get_negation_opcode(type);
+            break;
+        default:
+            return no_operand();
+    }
+
+    return emit_unary_operand(compiler, opcode, operand);
+}
+
 static Operand compile_prefix(Compiler* compiler, ASTNode* ast)
 {
     if (ast->prefix.operator.type == TokenKeywordConst) {
@@ -1549,22 +1571,15 @@ static Operand compile_prefix(Compiler* compiler, ASTNode* ast)
             compiler, compile_reference_expression(compiler, ast), get_type_slot_count(get_node_data_type(ast).kind));
     }
 
+    Type type = get_node_data_type(ast);
+
+    if (is_array_type(type.kind)) {
+        return compile_array_prefix(compiler, ast);
+    }
+
     Operand operand = compile_expression(compiler, ast->prefix.expr, false);
 
-    switch (ast->prefix.operator.type) {
-        case TokenKeywordNot:
-            return emit_unary_operand(compiler, OpNot, operand);
-        case TokenTilde:
-            return emit_unary_operand(compiler, get_integer_opcode(get_node_data_type(ast), IntBnot), operand);
-        case TokenMinus: {
-            Type type = get_node_data_type(ast);
-            Opcode opcode = get_negation_opcode(type);
-
-            return emit_unary_operand(compiler, opcode, operand);
-        }
-        default:
-            return no_operand();
-    }
+    return emit_prefix_operand(compiler, ast->prefix.operator.type, type, operand);
 }
 
 static Operand compile_variable(Compiler* compiler, ASTNode* ast)
@@ -3850,6 +3865,48 @@ static Operand load_array_binary_element(Compiler* compiler, Operand buffer, Ope
     value.temporary = false;
 
     return value;
+}
+
+static void compile_array_prefix_loop(Compiler* compiler, ASTNode* ast, Operand source, Operand result, Type type)
+{
+    Type leaf = get_array_leaf_type(type);
+    size_t stride = get_array_storage_size(leaf);
+    size_t size = get_array_storage_size(type);
+    Operand offset = compile_usize_literal(compiler, 0);
+    offset.temporary = false;
+    Operand end = compile_usize_literal(compiler, size);
+    int condition = allocate_register(compiler);
+    Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
+    Opcode store = get_memory_store_opcode(leaf);
+    CodeObject* code = current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    emit_instruction(compiler, compare, condition, offset.reg, end.reg);
+
+    size_t exit_jump = emit_jump(compiler, OpBz, condition);
+    Operand element = load_array_binary_element(compiler, source, offset, leaf);
+    Operand value = emit_prefix_operand(compiler, ast->prefix.operator.type, leaf, element);
+
+    emit_instruction(compiler, store, value.reg, result.reg, offset.reg);
+    advance_array_binary_offset(compiler, offset, stride);
+    emit_loop_jump(compiler, start);
+    patch_jump(compiler, exit_jump);
+}
+
+static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast);
+    Operand result = compile_array_new(compiler, type);
+    int previous_register_count = compiler->register_count;
+    Operand source = compile_expression(compiler, ast->prefix.expr, false);
+    source = materialize_operand(compiler, source);
+
+    compile_array_prefix_loop(compiler, ast, source, result, type);
+
+    compiler->register_count = previous_register_count;
+
+    return result;
 }
 
 static Operand compile_array_leaf_binary(Compiler* compiler, ASTNode* ast, Operand left, Operand right,

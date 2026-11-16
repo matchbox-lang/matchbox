@@ -1,0 +1,3 @@
+let values = u8[2](1)
+
+print(-values)

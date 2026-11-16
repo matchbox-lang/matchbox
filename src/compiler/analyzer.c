@@ -3700,7 +3700,11 @@ static void analyze_prefix(Analyzer* analyzer, ASTNode* ast)
     Type type = get_node_data_type(ast->prefix.expr);
 
     if (is_array_type(type.kind)) {
-        semantic_error("Invalid prefix operator for array operands", ast->prefix.operator);
+        type = get_array_leaf_type(type);
+    }
+
+    if (ast->prefix.operator.type == TokenTilde && !is_integer_type(type.kind)) {
+        semantic_error("Bitwise complement requires an integer operand", ast->prefix.operator);
     }
 
     if (type.kind == TypeString) {

@@ -1,0 +1,18 @@
+let both: i32[][] = [[1, 2, 3], [4, 5, 6]]
+let outer: i32[][3] = [[1, 2, 3], [4, 5, 6]]
+let inner: i32[2][] = [[1, 2, 3], [4, 5, 6]]
+let expected: &i32[2][3] = &both
+
+assert(expected[1][2] == 6 and outer == both and inner == both)
+
+let narrow: i8[][] = [[1, 2], [3, 4]]
+let narrow_expected: &i8[2][2] = &narrow
+let cube: i32[][1][] = [[[1, 2]], [[3, 4]]]
+let empty_rows: i32[][0] = [[], []]
+
+assert(narrow_expected[1][1] == 4 and cube[1][0][1] == 4)
+
+let row_count = len(empty_rows)
+let column_count = len(empty_rows[0])
+
+assert(row_count == 2 and column_count == 0)

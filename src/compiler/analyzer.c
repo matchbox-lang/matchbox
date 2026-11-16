@@ -30,7 +30,9 @@ static Type analyze_binary_operand_types(Token operator, Type left_type, Type ri
 static void consume_array(ASTNode* ast);
 static void resolve_dimensions(Analyzer* analyzer, Type* type);
 static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast);
-static size_t infer_initializer_array_count(Analyzer* analyzer, ASTNode* ast, bool* analyzed);
+static void set_inferred_array_count(Vector* dimensions, size_t index, size_t count, Token token);
+static bool infer_literal_array_counts(ASTNode* initializer, Vector* dimensions, size_t index, size_t depth, Token token);
+static void infer_typed_array_counts(Type type, Vector* dimensions, size_t index, size_t depth, Token token);
 static void apply_array_type(ASTNode* ast, Type type);
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
 static void activate_reference_access(ASTNode* ast);
@@ -3792,33 +3794,52 @@ static void apply_array_type(ASTNode* ast, Type type)
     ast->array.type_id = type;
 }
 
-static size_t infer_initializer_array_count(Analyzer* analyzer, ASTNode* ast, bool* analyzed)
+static void set_inferred_array_count(Vector* dimensions, size_t index, size_t count, Token token)
 {
-    ASTNode* initializer = ast->variable_definition.expr;
-    Token token = ast->variable_definition.token;
-
-    if (!initializer || is_none(initializer)) {
-        semantic_error("Cannot infer array length without an initializer", token);
+    if (dimensions->data[index]) {
+        return;
     }
 
-    if (initializer->type == ASTArray && !initializer->array.elements.count) {
+    Type count_type = {.kind = TypeUsize};
+
+    dimensions->data[index] = create_integer_node(token, count, count_type);
+}
+
+static bool infer_literal_array_counts(ASTNode* initializer, Vector* dimensions, size_t index, size_t depth, Token token)
+{
+    if (index == depth) {
+        return true;
+    }
+
+    if (initializer->type != ASTArray || initializer->array.fill) {
+        return false;
+    }
+
+    size_t count = initializer->array.elements.count;
+
+    if (!count) {
         semantic_error("Cannot infer array length from empty array initializer", token);
     }
 
-    if (initializer->type == ASTArray && !initializer->array.fill) {
-        return initializer->array.elements.count;
+    set_inferred_array_count(dimensions, index, count, token);
+
+    ASTNode* first = initializer->array.elements.data[0];
+
+    return infer_literal_array_counts(first, dimensions, index + 1, depth, token);
+}
+
+static void infer_typed_array_counts(Type type, Vector* dimensions, size_t index, size_t depth, Token token)
+{
+    if (index == depth) {
+        return;
     }
-
-    analyze_node(analyzer, initializer);
-
-    *analyzed = true;
-    Type type = get_node_data_type(initializer);
 
     if (type.kind != TypeArray) {
         semantic_error("Cannot infer array length from a non-array initializer", token);
     }
 
-    return type.array->count;
+    set_inferred_array_count(dimensions, index, type.array->count, token);
+    infer_typed_array_counts(type.array->element_type, dimensions, index + 1, depth, token);
 }
 
 static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast)
@@ -3830,25 +3851,42 @@ static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast)
     }
 
     Vector* dimensions = type.array->dimensions;
+    size_t depth = dimensions->count;
 
-    if (dimensions->count != 1 || dimensions->data[0]) {
+    while (depth && dimensions->data[depth - 1]) {
+        depth--;
+    }
+
+    if (!depth) {
         return false;
     }
 
-    bool analyzed = false;
-    size_t count = infer_initializer_array_count(analyzer, ast, &analyzed);
+    ASTNode* initializer = ast->variable_definition.expr;
     Token token = ast->variable_definition.token;
-    Type count_type = {.kind = TypeUsize};
 
-    dimensions->data[0] = create_integer_node(token, count, count_type);
+    if (!initializer || is_none(initializer)) {
+        semantic_error("Cannot infer array length without an initializer", token);
+    }
 
-    return analyzed;
+    bool inferred = infer_literal_array_counts(initializer, dimensions, 0, depth, token);
+
+    if (inferred) {
+        return false;
+    }
+
+    analyze_node(analyzer, initializer);
+
+    type = get_node_data_type(initializer);
+
+    infer_typed_array_counts(type, dimensions, 0, depth, token);
+
+    return true;
 }
 
 static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
 {
     if (!expression) {
-        fatal_error("Array count must be explicit outside a one-dimensional array declaration");
+        fatal_error("Array count must be explicit outside an array declaration");
     }
 
     analyze_node(analyzer, expression);

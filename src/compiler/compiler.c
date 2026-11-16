@@ -1123,32 +1123,19 @@ static Opcode get_float_opcode(Type type, TokenType operator_type)
 {
     switch (operator_type) {
         case TokenPlus:
+        case TokenPlusEqual:
             return type.kind == TypeF64 ? OpAddF64 : OpAddF32;
         case TokenMinus:
+        case TokenMinusEqual:
             return type.kind == TypeF64 ? OpSubF64 : OpSubF32;
         case TokenStar:
+        case TokenStarEqual:
             return type.kind == TypeF64 ? OpMulF64 : OpMulF32;
         case TokenSlash:
+        case TokenSlashEqual:
             return type.kind == TypeF64 ? OpDivF64 : OpDivF32;
         case TokenPercent:
-            return type.kind == TypeF64 ? OpRemF64 : OpRemF32;
-        default:
-            return OpHlt;
-    }
-}
-
-static Opcode get_float_operation_opcode(Type type, IntegerOperation operation)
-{
-    switch (operation) {
-        case IntAdd:
-            return type.kind == TypeF64 ? OpAddF64 : OpAddF32;
-        case IntSub:
-            return type.kind == TypeF64 ? OpSubF64 : OpSubF32;
-        case IntMul:
-            return type.kind == TypeF64 ? OpMulF64 : OpMulF32;
-        case IntDiv:
-            return type.kind == TypeF64 ? OpDivF64 : OpDivF32;
-        case IntRem:
+        case TokenPercentEqual:
             return type.kind == TypeF64 ? OpRemF64 : OpRemF32;
         default:
             return OpHlt;
@@ -1636,7 +1623,8 @@ static void compile_compound_assignment(
     Operand result;
 
     if (is_float_type(type.kind)) {
-        Opcode opcode = get_float_operation_opcode(type, operation);
+        Opcode opcode = get_float_opcode(type, ast->assignment.operator.type);
+
         result = emit_float_operands(compiler, opcode, type, left, right);
     } else {
         result = emit_binary_operands(compiler, operation, type, left, right);

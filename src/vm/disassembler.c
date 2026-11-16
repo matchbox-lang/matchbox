@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #define READ_INT8() ((int8_t)*(ptr++))
 #define READ_UINT8() ((uint8_t)*(ptr++))

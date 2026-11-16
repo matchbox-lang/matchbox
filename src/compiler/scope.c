@@ -5,7 +5,6 @@
 #include "compiler/ast.h"
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 
 static Scope* get_frame_scope(Scope* scope, Scope* parent)
 {

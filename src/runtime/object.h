@@ -2,7 +2,7 @@
 #define OBJECT_H
 
 #include "runtime/value.h"
-#include <stdlib.h>
+#include <stddef.h>
 
 #define ALLOCATE_OBJECT(type, object_type) (type*)allocate_object(sizeof(type), object_type)
 #define AS_OBJECT(value) ((Object*)AS_POINTER(value))

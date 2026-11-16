@@ -3,7 +3,6 @@
 #include "builtin/string.h"
 #include "common/array_type.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include "common/vector.h"
 #include "compiler/ast.h"
 #include "compiler/builtin_constant.h"
@@ -17,7 +16,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef struct StringReader

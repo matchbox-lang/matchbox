@@ -2,7 +2,6 @@
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/util.h"
-#include <stdlib.h>
 #include <string.h>
 
 void init_value_array(ValueArray* array)

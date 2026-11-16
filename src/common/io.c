@@ -1,8 +1,6 @@
 #include "common/io.h"
 #include "common/memory.h"
-#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 static char* read_file_contents(FILE* file)

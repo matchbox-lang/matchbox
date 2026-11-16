@@ -5,7 +5,6 @@
 #include "runtime/object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
-#include <stdlib.h>
 
 static StringObject* get_string_object(ModuleObject* module, const char* chars, size_t length);
 

@@ -4,7 +4,6 @@
 #include "common/util.h"
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 void init_code_object(CodeObject* code)
 {

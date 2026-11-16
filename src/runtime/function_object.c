@@ -2,7 +2,6 @@
 #include "common/memory.h"
 #include "runtime/code_object.h"
 #include "runtime/object.h"
-#include <stdlib.h>
 
 FunctionObject* create_function_object()
 {

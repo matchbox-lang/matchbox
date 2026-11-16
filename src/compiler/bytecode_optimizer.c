@@ -1,11 +1,9 @@
 #include "compiler/bytecode_optimizer.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include "runtime/function_object.h"
 #include "vm/opcode.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef struct OptimizationWord

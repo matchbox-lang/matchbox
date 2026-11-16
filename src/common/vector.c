@@ -3,7 +3,6 @@
 #include "common/memory.h"
 #include "common/util.h"
 #include <stdint.h>
-#include <stdlib.h>
 
 void init_vector(Vector* vector)
 {

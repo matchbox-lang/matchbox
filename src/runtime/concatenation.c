@@ -1,6 +1,5 @@
 #include "runtime/concatenation.h"
 #include "common/errors.h"
-#include "common/util.h"
 #include "runtime/object.h"
 #include <stdint.h>
 

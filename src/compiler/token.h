@@ -3,7 +3,7 @@
 
 #include "common/type.h"
 #include <stdbool.h>
-#include <stdio.h>
+#include <stddef.h>
 
 typedef enum TokenType
 {

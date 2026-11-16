@@ -1,6 +1,6 @@
 #include "cli/options.h"
 #include <stdbool.h>
-#include <stdio.h>
+#include <stddef.h>
 
 void init_options(Options* options)
 {

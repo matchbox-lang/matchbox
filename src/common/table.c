@@ -1,9 +1,7 @@
 #include "common/table.h"
 #include "common/memory.h"
 #include "common/string_view.h"
-#include "common/util.h"
 #include <stdbool.h>
-#include <stdlib.h>
 
 TableItem* create_table_item(StringView key, void* value, TableItem* next)
 {

@@ -1,12 +1,10 @@
 #include "runtime/string_object.h"
 #include "common/errors.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include "runtime/object.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 StringObject* create_string_object(const char* chars, size_t length, size_t hash)

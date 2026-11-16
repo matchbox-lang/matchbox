@@ -2,13 +2,11 @@
 #include "builtin/builtin.h"
 #include "common/array_type.h"
 #include "common/memory.h"
-#include "common/util.h"
 #include "common/vector.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
 #include "runtime/string_object.h"
 #include <stdbool.h>
-#include <stdlib.h>
 
 static void free_type_dimensions(Type type);
 static Type get_builtin_return_type(const ASTNode* ast);

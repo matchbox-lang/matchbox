@@ -2,7 +2,6 @@
 #include "common/memory.h"
 #include <limits.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 
 char* strndup(const char* source, size_t length)

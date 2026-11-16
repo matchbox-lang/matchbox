@@ -1,4 +1,0 @@
-let a = [8, 9]
-let b = [2, 3]
-
-print(a + b)

@@ -26,6 +26,7 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions);
 static void analyze_node(Analyzer* analyzer, ASTNode* ast);
 static void analyze_array(Analyzer* analyzer, ASTNode* ast);
 static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type);
+static Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type);
 static void consume_array(ASTNode* ast);
 static void resolve_dimensions(Analyzer* analyzer, Type* type);
 static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast);
@@ -1792,66 +1793,72 @@ static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
 
 static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type)
 {
-    TokenType operator_type = ast->binary.operator.type;
+    ast->binary.type_id = analyze_binary_operand_types(
+        ast->binary.operator, left_type, right_type, &ast->binary.operand_type);
+}
+
+static Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type)
+{
+    TokenType operator_type = operator.type;
 
     bool left_text = left_type.kind == TypeChar || left_type.kind == TypeString;
     bool right_text = right_type.kind == TypeChar || right_type.kind == TypeString;
 
     if (operator_type == TokenPlus && left_text && right_text) {
-        ast->binary.type_id = (Type){.kind = TypeString};
-
-        return;
+        return (Type){.kind = TypeString};
     }
 
     Type common_type = {.kind = get_common_numeric_type(left_type.kind, right_type.kind)};
     bool float_operands = is_float_type(common_type.kind);
 
     if (!types_equal(left_type, right_type) && common_type.kind == TypeUnknown) {
-        binary_type_error(ast->binary.operator, left_type, right_type);
+        binary_type_error(operator, left_type, right_type);
     }
 
     if (common_type.kind == TypeUnknown) {
         common_type = left_type;
     }
 
-    ast->binary.operand_type = common_type;
+    *operand_type = common_type;
 
     if (left_type.kind == TypeString) {
-        semantic_error("Invalid operator for string operands", ast->binary.operator);
+        semantic_error("Invalid operator for string operands", operator);
     }
 
     if (left_type.kind == TypeChar && !is_character_comparison_token(operator_type)) {
-        semantic_error("Invalid operator for char operands", ast->binary.operator);
+        semantic_error("Invalid operator for char operands", operator);
     }
 
     if (is_logical_token(operator_type) && left_type.kind != TypeBool) {
-        semantic_error("Logical operators require bool operands", ast->binary.operator);
+        semantic_error("Logical operators require bool operands", operator);
     }
 
     if (is_comparison_token(operator_type) && !is_integer_type(left_type.kind)
         && !float_operands && left_type.kind != TypeChar) {
-        semantic_error("Comparison operators require compatible operand types", ast->binary.operator);
+        semantic_error("Comparison operators require compatible operand types", operator);
     }
 
     if (operator_type == TokenPower && left_type.kind != TypeI32) {
-        semantic_error("Invalid operands for binary operator", ast->binary.operator);
+        semantic_error("Invalid operands for binary operator", operator);
     }
 
     if (float_operands && !is_term_token(operator_type)
         && !is_factor_token(operator_type) && !is_comparison_token(operator_type)
         && !is_equality_token(operator_type)) {
-        semantic_error("Invalid operands for binary operator", ast->binary.operator);
+        semantic_error("Invalid operands for binary operator", operator);
     }
 
-    ast->binary.type_id = common_type;
+    Type result_type = common_type;
 
     if (operator_type == TokenSpaceship) {
-        ast->binary.type_id = (Type){.kind = TypeI32};
+        result_type = (Type){.kind = TypeI32};
     }
 
     if (is_bool_operator_token(operator_type)) {
-        ast->binary.type_id = (Type){.kind = TypeBool};
+        result_type = (Type){.kind = TypeBool};
     }
+
+    return result_type;
 }
 
 static void track_variable_read(ASTNode* symbol)
@@ -3236,7 +3243,10 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
         binding_access_error("Cannot mutate binding ", token, " while shared access is active");
     }
 
-    if (get_reference_type(symbol) == RefNone && is_variable_definition(symbol)
+    Type type = get_node_data_type(symbol);
+    bool mutates_array = is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual;
+
+    if (!mutates_array && get_reference_type(symbol) == RefNone && is_variable_definition(symbol)
         && symbol->variable_definition.fixed && symbol->variable_definition.possibly_initialized) {
         semantic_token_error("Cannot reassign fixed binding ", token);
     }
@@ -3286,6 +3296,38 @@ static void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initial
     ast->assignment.initializes_binding = initializes_binding;
 }
 
+static void analyze_array_compound_assignment(ASTNode* ast, ASTNode* symbol)
+{
+    Type left = get_node_data_type(symbol);
+    Type right = get_node_data_type(ast->assignment.expr);
+    Token operator = ast->assignment.operator;
+    operator.type = get_assignment_binary_token(operator.type);
+
+    if (!is_array_type(right.kind) || !array_shapes_equal(left, right)) {
+        semantic_error("Array compound assignment requires matching array shapes", ast->assignment.operator);
+    }
+
+    Type left_leaf = get_array_leaf_type(left);
+    Type right_leaf = get_array_leaf_type(right);
+    bool numeric = is_integer_type(left_leaf.kind) || is_float_type(left_leaf.kind);
+    bool compatible = types_equal(left_leaf, right_leaf)
+        || can_implicitly_widen_type(right_leaf.kind, left_leaf.kind);
+
+    if (!numeric || !compatible) {
+        semantic_error("Array compound assignment requires compatible numeric elements", ast->assignment.operator);
+    }
+
+    Type operand_type;
+    Type result_type = analyze_binary_operand_types(operator, left_leaf, right_leaf, &operand_type);
+
+    if (!types_equal(result_type, left_leaf)) {
+        semantic_error("Array compound assignment cannot change element type", ast->assignment.operator);
+    }
+
+    validate_assignment_target(ast, symbol);
+    validate_compound_assignment_target(ast, symbol);
+}
+
 static void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = find_assignment_symbol(analyzer, ast);
@@ -3305,14 +3347,20 @@ static void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
 
     apply_literal_type(ast->assignment.expr, destination_type);
     analyze_node(analyzer, ast->assignment.expr);
+
+    if (is_array_type(destination_type.kind) && ast->assignment.operator.type != TokenEqual) {
+        analyze_array_compound_assignment(ast, symbol);
+
+        ast->assignment.scope = analyzer->current_scope;
+        ast->assignment.symbol = symbol;
+
+        return;
+    }
+
     validate_assignment_type(ast, symbol);
     consume_array(ast->assignment.expr);
 
     Type binding_type = get_node_data_type(symbol);
-
-    if (is_array_type(binding_type.kind) && ast->assignment.operator.type != TokenEqual) {
-        semantic_error("Invalid operator for array assignment", ast->assignment.operator);
-    }
 
     if (binding_type.kind == TypeString && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for string assignment", ast->assignment.operator);

@@ -1,0 +1,19 @@
+let values = [8, 9]
+let other = [2, 3]
+
+values += other
+assert(values == [10, 12])
+values -= other
+assert(values == [8, 9])
+values *= other
+assert(values == [16, 27])
+values /= other
+assert(values == [8, 9])
+values %= other
+assert(values == [0, 0])
+values += [2, 3]
+values **= other
+assert(values == [4, 27])
+assert(other == [2, 3])
+values += values
+assert(values == [8, 54])

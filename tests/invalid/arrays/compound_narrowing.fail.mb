@@ -1,0 +1,4 @@
+let values = u8[2](1)
+let other = u16[2](2)
+
+values += other

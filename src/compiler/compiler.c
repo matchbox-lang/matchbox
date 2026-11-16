@@ -34,6 +34,15 @@ typedef struct Operand
     size_t slots;
 } Operand;
 
+typedef struct ArrayBinaryOperation
+{
+    TokenType operator_type;
+    Type left_type;
+    Type right_type;
+    Type result_type;
+    Type operand_type;
+} ArrayBinaryOperation;
+
 typedef struct ArrayBinaryOffsets
 {
     Operand left;
@@ -100,6 +109,7 @@ static void patch_jump(Compiler* compiler, size_t position);
 static Operand compile_constant(Compiler* compiler, ASTNode* ast);
 static Operand compile_array(Compiler* compiler, ASTNode* ast);
 static Operand compile_array_binary(Compiler* compiler, ASTNode* ast);
+static void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast);
 static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast);
 static Operand compile_usize_literal(Compiler* compiler, size_t value);
 static Operand compile_array_new(Compiler* compiler, Type type);
@@ -1652,6 +1662,14 @@ static void compile_simple_assignment(Compiler* compiler, ASTNode* ast)
 
 static void compile_assignment(Compiler* compiler, ASTNode* ast)
 {
+    Type type = get_node_data_type(ast->assignment.symbol);
+
+    if (is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual) {
+        compile_array_compound_assignment(compiler, ast);
+
+        return;
+    }
+
     switch (ast->assignment.operator.type) {
         case TokenPlusEqual:
             return compile_compound_assignment(compiler, ast, IntAdd);
@@ -3799,13 +3817,11 @@ static Operand create_array_binary_offset(Compiler* compiler, size_t stride,
     return offset;
 }
 
-static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, ASTNode* ast)
+static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const ArrayBinaryOperation* operation)
 {
-    Type left_type = get_node_data_type(ast->binary.left_expr);
-    Type right_type = get_node_data_type(ast->binary.right_expr);
-    Type left_leaf = get_array_leaf_type(left_type);
-    Type right_leaf = get_array_leaf_type(right_type);
-    Type result_leaf = get_array_leaf_type(ast->binary.type_id);
+    Type left_leaf = get_array_leaf_type(operation->left_type);
+    Type right_leaf = get_array_leaf_type(operation->right_type);
+    Type result_leaf = get_array_leaf_type(operation->result_type);
     ArrayBinaryOffsets offsets;
     offsets.left_stride = get_array_storage_size(left_leaf);
     offsets.right_stride = get_array_storage_size(right_leaf);
@@ -3814,7 +3830,7 @@ static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, ASTNod
     offsets.right = create_array_binary_offset(compiler, offsets.right_stride, offsets.left_stride, offsets.left);
     offsets.result = offsets.left;
 
-    if (is_equality_token(ast->binary.operator.type)) {
+    if (is_equality_token(operation->operator_type)) {
         offsets.result_stride = offsets.left_stride;
 
         return offsets;
@@ -3909,13 +3925,13 @@ static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast)
     return result;
 }
 
-static Operand compile_array_leaf_binary(Compiler* compiler, ASTNode* ast, Operand left, Operand right,
-    Type left_type, Type right_type)
+static Operand compile_array_leaf_binary(Compiler* compiler, const ArrayBinaryOperation* operation,
+    Operand left, Operand right, Type left_type, Type right_type)
 {
     // Bind loaded elements to local registers so scalar operators share the same compilation path
-    TokenType operator_type = ast->binary.operator.type;
-    Type result_type = get_array_leaf_type(ast->binary.type_id);
-    Type operand_type = ast->binary.operand_type;
+    TokenType operator_type = operation->operator_type;
+    Type result_type = get_array_leaf_type(operation->result_type);
+    Type operand_type = operation->operand_type;
 
     if (is_equality_token(operator_type)) {
         operator_type = TokenEqualEqual;
@@ -3931,17 +3947,17 @@ static Operand compile_array_leaf_binary(Compiler* compiler, ASTNode* ast, Opera
     return emit_binary_operator(compiler, operator_type, operand_type, left, right);
 }
 
-static void compile_array_binary_body(Compiler* compiler, ASTNode* ast, Operand left, Operand right,
-    Operand result, const ArrayBinaryOffsets* offsets)
+static void compile_array_binary_body(Compiler* compiler, const ArrayBinaryOperation* operation,
+    Operand left, Operand right, Operand result, const ArrayBinaryOffsets* offsets)
 {
-    Type left_type = get_node_data_type(ast->binary.left_expr);
-    Type right_type = get_node_data_type(ast->binary.right_expr);
+    Type left_type = operation->left_type;
+    Type right_type = operation->right_type;
     Type left_leaf = get_array_leaf_type(left_type);
     Type right_leaf = get_array_leaf_type(right_type);
     Operand left_value = load_array_binary_element(compiler, left, offsets->left, left_leaf);
     Operand right_value = load_array_binary_element(compiler, right, offsets->right, right_leaf);
-    Operand value = compile_array_leaf_binary(compiler, ast, left_value, right_value, left_leaf, right_leaf);
-    bool equality = is_equality_token(ast->binary.operator.type);
+    Operand value = compile_array_leaf_binary(compiler, operation, left_value, right_value, left_leaf, right_leaf);
+    bool equality = is_equality_token(operation->operator_type);
 
     if (equality) {
         emit_operand_mov(compiler, result.reg, value);
@@ -3949,18 +3965,19 @@ static void compile_array_binary_body(Compiler* compiler, ASTNode* ast, Operand 
         return;
     }
 
-    Type result_leaf = get_array_leaf_type(ast->binary.type_id);
+    Type result_leaf = get_array_leaf_type(operation->result_type);
     Opcode store = get_memory_store_opcode(result_leaf);
 
     emit_instruction(compiler, store, value.reg, result.reg, offsets->result.reg);
 }
 
-static void compile_array_binary_loop(Compiler* compiler, ASTNode* ast, Operand left, Operand right, Operand result)
+static void compile_array_binary_loop(Compiler* compiler, const ArrayBinaryOperation* operation,
+    Operand left, Operand right, Operand result)
 {
-    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type left_type = operation->left_type;
     size_t size = get_array_storage_size(left_type);
     int previous_register_count = compiler->register_count;
-    ArrayBinaryOffsets offsets = create_array_binary_offsets(compiler, ast);
+    ArrayBinaryOffsets offsets = create_array_binary_offsets(compiler, operation);
     Operand end = compile_usize_literal(compiler, size);
     int condition = allocate_register(compiler);
     int body_register_count = compiler->register_count;
@@ -3973,10 +3990,10 @@ static void compile_array_binary_loop(Compiler* compiler, ASTNode* ast, Operand 
 
     size_t exit_jump = emit_jump(compiler, OpBz, condition);
 
-    compile_array_binary_body(compiler, ast, left, right, result, &offsets);
+    compile_array_binary_body(compiler, operation, left, right, result, &offsets);
 
     compiler->register_count = body_register_count;
-    bool equality = is_equality_token(ast->binary.operator.type);
+    bool equality = is_equality_token(operation->operator_type);
     size_t unequal_jump = 0;
 
     if (equality) {
@@ -4015,8 +4032,12 @@ static Operand compile_array_binary(Compiler* compiler, ASTNode* ast)
     Operand right = compile_expression(compiler, ast->binary.right_expr, false);
     right = materialize_operand(compiler, right);
 
+    ArrayBinaryOperation operation = {
+        ast->binary.operator.type, left_type, right_type, ast->binary.type_id, ast->binary.operand_type
+    };
+
     if (same_shape) {
-        compile_array_binary_loop(compiler, ast, left, right, result);
+        compile_array_binary_loop(compiler, &operation, left, right, result);
     }
 
     compiler->register_count = previous_register_count;
@@ -4027,6 +4048,24 @@ static Operand compile_array_binary(Compiler* compiler, ASTNode* ast)
     }
 
     return result;
+}
+
+static void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast)
+{
+    Type left_type = get_node_data_type(ast->assignment.symbol);
+    Type right_type = get_node_data_type(ast->assignment.expr);
+    Type operand_type = get_array_leaf_type(left_type);
+    TokenType operator_type = get_assignment_binary_token(ast->assignment.operator.type);
+    ArrayBinaryOperation operation = {operator_type, left_type, right_type, left_type, operand_type};
+    int previous_register_count = compiler->register_count;
+    Operand left = load_variable_value(compiler, ast->assignment.symbol);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->assignment.expr, false);
+    right = materialize_operand(compiler, right);
+
+    compile_array_binary_loop(compiler, &operation, left, right, left);
+
+    compiler->register_count = previous_register_count;
 }
 
 static void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)

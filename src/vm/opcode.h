@@ -1,6 +1,7 @@
 #ifndef OPCODE_H
 #define OPCODE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef uint32_t Instruction;
@@ -30,16 +31,14 @@ typedef uint32_t Instruction;
 typedef enum OpcodeFlag
 {
     OpFlagNone = 0,
-    OpFlagWritesA = 1 << 0
+    OpFlagRegA = 1 << 0,
+    OpFlagRegB = 1 << 1,
+    OpFlagRegC = 1 << 2,
+    OpFlagWritesA = 1 << 3,
+    OpFlagRegAB = OpFlagRegA | OpFlagRegB,
+    OpFlagRegBC = OpFlagRegB | OpFlagRegC,
+    OpFlagRegABC = OpFlagRegA | OpFlagRegB | OpFlagRegC
 } OpcodeFlag;
-
-typedef enum OpcodeRegisterFlag
-{
-    OpRegisterNone = 0,
-    OpRegisterA = 1 << 0,
-    OpRegisterB = 1 << 1,
-    OpRegisterC = 1 << 2
-} OpcodeRegisterFlag;
 
 typedef enum Opcode
 {
@@ -328,7 +327,7 @@ typedef enum Opcode
     OpCount
 } Opcode;
 
-OpcodeFlag get_opcode_flags(Opcode opcode);
-OpcodeRegisterFlag get_opcode_register_flag(Opcode opcode);
+uint8_t opcode_registers(Opcode opcode);
+bool opcode_writes_a(Opcode opcode);
 
 #endif

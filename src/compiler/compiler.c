@@ -281,7 +281,7 @@ static void emit_instruction_word(Compiler* compiler, Opcode opcode, int a, int 
     push_byte(code, (uint8_t)c);
 }
 
-static int get_register_high_byte(Compiler* compiler, int operand, OpcodeRegisterFlag flag, OpcodeRegisterFlag field)
+static int get_register_high_byte(Compiler* compiler, int operand, uint8_t flag, uint8_t field)
 {
     if (!(flag & field)) {
         return 0;
@@ -294,11 +294,11 @@ static int get_register_high_byte(Compiler* compiler, int operand, OpcodeRegiste
 
 static void emit_instruction(Compiler* compiler, Opcode opcode, int a, int b, int c)
 {
-    OpcodeRegisterFlag flag = get_opcode_register_flag(opcode);
+    uint8_t flag = opcode_registers(opcode);
     
-    int high_a = get_register_high_byte(compiler, a, flag, OpRegisterA);
-    int high_b = get_register_high_byte(compiler, b, flag, OpRegisterB);
-    int high_c = get_register_high_byte(compiler, c, flag, OpRegisterC);
+    int high_a = get_register_high_byte(compiler, a, flag, OpFlagRegA);
+    int high_b = get_register_high_byte(compiler, b, flag, OpFlagRegB);
+    int high_c = get_register_high_byte(compiler, c, flag, OpFlagRegC);
 
     if (high_a || high_b || high_c) {
         emit_instruction_word(compiler, OpWide, high_a, high_b, high_c);
@@ -751,7 +751,7 @@ static bool retarget_temporary(Compiler* compiler, Operand value, int destinatio
         return false;
     }
 
-    if (!(get_opcode_flags(previous.opcode) & OpFlagWritesA)) {
+    if (!opcode_writes_a(previous.opcode)) {
         return false;
     }
 

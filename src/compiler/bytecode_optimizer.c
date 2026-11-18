@@ -264,7 +264,7 @@ static int64_t read_constant(const ModuleObject* module, Opcode opcode, size_t p
 static void track_constant(const ModuleObject* module, const OptimizationWord* word, KnownConstant* known)
 {
     KnownConstant value = {0};
-    OpcodeFlag flags = get_opcode_flags(word->opcode);
+    bool writes_a = opcode_writes_a(word->opcode);
     bool pairs = uses_register_pairs(word->opcode);
 
     if (word->opcode == OpLdi) {
@@ -290,7 +290,7 @@ static void track_constant(const ModuleObject* module, const OptimizationWord* w
         value.known = value.known && value.wide == pairs;
     }
 
-    if (!(flags & OpFlagWritesA)) {
+    if (!writes_a) {
         return;
     }
 
@@ -466,8 +466,8 @@ static void update_liveness(const ModuleObject* module, OptimizationWord* word, 
         return;
     }
 
-    OpcodeRegisterFlag registers = get_opcode_register_flag(word->opcode);
-    OpcodeFlag flags = get_opcode_flags(word->opcode);
+    uint8_t registers = opcode_registers(word->opcode);
+    bool writes_a = opcode_writes_a(word->opcode);
     bool pairs = uses_register_pairs(word->opcode);
     bool barrier = invalidates_constants(word->opcode);
     bool terminal = word->opcode == OpHlt || word->opcode == OpRet || word->opcode == OpRetv;
@@ -488,19 +488,19 @@ static void update_liveness(const ModuleObject* module, OptimizationWord* word, 
 
     word->removed = word->opcode == OpNop || (load && !word->target && !live[word->a]);
 
-    if (flags & OpFlagWritesA) {
+    if (writes_a) {
         live[word->a] = false;
     }
 
-    if ((registers & OpRegisterA) && !(flags & OpFlagWritesA)) {
+    if ((registers & OpFlagRegA) && !writes_a) {
         live[word->a] = true;
     }
 
-    if (registers & OpRegisterB) {
+    if (registers & OpFlagRegB) {
         live[word->b] = true;
     }
 
-    if (registers & OpRegisterC) {
+    if (registers & OpFlagRegC) {
         live[word->c] = true;
     }
 }
@@ -835,9 +835,9 @@ static void fuse_instructions(const ModuleObject* module, OptimizationWord* word
 
 static bool is_duplicate_instruction(const OptimizationWord* previous, const OptimizationWord* word)
 {
-    OpcodeFlag flags = get_opcode_flags(word->opcode);
-    OpcodeRegisterFlag registers = get_opcode_register_flag(word->opcode);
-    bool independent = (flags & OpFlagWritesA) && !(registers & (OpRegisterB | OpRegisterC));
+    uint8_t registers = opcode_registers(word->opcode);
+    bool writes_a = opcode_writes_a(word->opcode);
+    bool independent = writes_a && !(registers & OpFlagRegBC);
 
     return independent && previous && previous->opcode == word->opcode
         && previous->a == word->a && previous->b == word->b && previous->c == word->c

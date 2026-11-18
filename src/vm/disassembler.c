@@ -160,15 +160,6 @@ static void print_signed_load_call(const char* name)
     printf("%-15s R%d, #%d, #%u\n", name, a, LOAD_CALL_SIGNED_OPERAND(operands), LOAD_CALL_FUNCTION(operands));
 }
 
-static void print_opcode_branch(const char* name)
-{
-    uint16_t a = read_register(0);
-    uint16_t b = read_register(1);
-    int8_t offset = READ_INT8();
-
-    printf("%-15s R%d, R%d, #%d\n", name, a, b, offset);
-}
-
 static void print_opcode_int24(const char* name)
 {
     int32_t imm = READ_INT24();
@@ -362,14 +353,14 @@ static void print_instruction(uint8_t c)
         case OpCmpgF64:     print_opcode_registers3("CMPG_F64"); break;
         case OpBz:          print_opcode_register_int16("BZ"); break;
         case OpBnz:         print_opcode_register_int16("BNZ"); break;
-        case OpBeq:         print_opcode_branch("BEQ"); break;
+        case OpBeq:         print_opcode_registers2_int8("BEQ"); break;
         case OpBeqi:        print_opcode_register_int8_int8("BEQI"); break;
-        case OpBne:         print_opcode_branch("BNE"); break;
+        case OpBne:         print_opcode_registers2_int8("BNE"); break;
         case OpBnei:        print_opcode_register_int8_int8("BNEI"); break;
-        case OpBltI32:      print_opcode_branch("BLT_I32"); break;
-        case OpBltU32:      print_opcode_branch("BLT_U32"); break;
-        case OpBleI32:      print_opcode_branch("BLE_I32"); break;
-        case OpBleU32:      print_opcode_branch("BLE_U32"); break;
+        case OpBltI32:      print_opcode_registers2_int8("BLT_I32"); break;
+        case OpBltU32:      print_opcode_registers2_int8("BLT_U32"); break;
+        case OpBleI32:      print_opcode_registers2_int8("BLE_I32"); break;
+        case OpBleU32:      print_opcode_registers2_int8("BLE_U32"); break;
         case OpJmp:         print_opcode_int24("JMP"); break;
         case OpCall:        print_opcode_register_uint16("CALL"); break;
         case OpRet:         print_opcode("RET"); break;

@@ -372,23 +372,9 @@ Operand compile_comparison_operand(Compiler* compiler, ASTNode* ast, Type type)
     return normalize_integer_operand(compiler, value, type);
 }
 
-Operand emit_binary_operator(Compiler* compiler, TokenType operator_type, Type type, Operand left, Operand right)
+static Operand emit_integer_binary_operator(
+    Compiler* compiler, TokenType operator_type, Type type, Operand left, Operand right)
 {
-    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
-
-    if (comparison) {
-        left = normalize_integer_operand(compiler, left, type);
-        right = normalize_integer_operand(compiler, right, type);
-
-        return emit_numeric_comparison(compiler, operator_type, type, left, right);
-    }
-
-    if (is_float_type(type.kind)) {
-        Opcode opcode = get_float_opcode(type, operator_type);
-
-        return emit_float_operands(compiler, opcode, type, left, right);
-    }
-
     switch (operator_type) {
         case TokenPlus:
             return emit_binary_operands(compiler, IntAdd, type, left, right);
@@ -415,6 +401,26 @@ Operand emit_binary_operator(Compiler* compiler, TokenType operator_type, Type t
         default:
             return no_operand();
     }
+}
+
+Operand emit_binary_operator(Compiler* compiler, TokenType operator_type, Type type, Operand left, Operand right)
+{
+    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
+
+    if (comparison) {
+        left = normalize_integer_operand(compiler, left, type);
+        right = normalize_integer_operand(compiler, right, type);
+
+        return emit_numeric_comparison(compiler, operator_type, type, left, right);
+    }
+
+    if (is_float_type(type.kind)) {
+        Opcode opcode = get_float_opcode(type, operator_type);
+
+        return emit_float_operands(compiler, opcode, type, left, right);
+    }
+
+    return emit_integer_binary_operator(compiler, operator_type, type, left, right);
 }
 
 Operand compile_binary(Compiler* compiler, ASTNode* ast)

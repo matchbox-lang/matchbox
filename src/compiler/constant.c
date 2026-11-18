@@ -599,21 +599,11 @@ static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type)
     return value >> shift;
 }
 
-static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
+static bool fold_count_binary_value(TokenType operator_type, Type type, uint64_t left, uint64_t right, uint64_t* value)
 {
-    uint64_t left = 0;
-    uint64_t right = 0;
-    bool left_constant = evaluate_integer_constant(ast->binary.left_expr, &left);
-    bool right_constant = evaluate_integer_constant(ast->binary.right_expr, &right);
-
-    if (!left_constant || !right_constant) {
-        return false;
-    }
-
-    Type type = ast->binary.operand_type;
     size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
 
-    switch (ast->binary.operator.type) {
+    switch (operator_type) {
         case TokenPlus:
             *value = left + right;
             break;
@@ -647,6 +637,22 @@ static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
     }
 
     return true;
+}
+
+static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
+{
+    uint64_t left = 0;
+    uint64_t right = 0;
+    bool left_constant = evaluate_integer_constant(ast->binary.left_expr, &left);
+    bool right_constant = evaluate_integer_constant(ast->binary.right_expr, &right);
+
+    if (!left_constant || !right_constant) {
+        return false;
+    }
+
+    Type type = ast->binary.operand_type;
+
+    return fold_count_binary_value(ast->binary.operator.type, type, left, right, value);
 }
 
 static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)

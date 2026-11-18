@@ -26,22 +26,27 @@ bool array_shapes_equal(Type left, Type right)
     return array_shapes_equal(left.array->element_type, right.array->element_type);
 }
 
+static size_t get_scalar_storage_size(TypeKind kind)
+{
+    switch (kind) {
+        case TypeBool:
+            return sizeof(uint8_t);
+        case TypeChar:
+        case TypeF32:
+            return sizeof(uint32_t);
+        case TypeF64:
+            return sizeof(uint64_t);
+        case TypeString:
+            return sizeof(void*);
+        default:
+            return get_integer_type_size(kind);
+    }
+}
+
 size_t get_array_storage_size(Type type)
 {
     if (!is_array_type(type.kind)) {
-        switch (type.kind) {
-            case TypeBool:
-                return sizeof(uint8_t);
-            case TypeChar:
-            case TypeF32:
-                return sizeof(uint32_t);
-            case TypeF64:
-                return sizeof(uint64_t);
-            case TypeString:
-                return sizeof(void*);
-            default:
-                return get_integer_type_size(type.kind);
-        }
+        return get_scalar_storage_size(type.kind);
     }
 
     const ArrayType* info = type.array;

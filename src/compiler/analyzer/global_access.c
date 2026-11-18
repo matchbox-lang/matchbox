@@ -72,7 +72,7 @@ static void apply_function_array_moves(ASTNode* function)
     Vector* moves = &function->function_definition.array_moves;
 
     for (size_t i = 0; i < moves->count; i++) {
-        set_moved(moves->data[i]);
+        set_moved_state(moves->data[i], true);
     }
 }
 

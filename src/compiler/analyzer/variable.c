@@ -415,16 +415,7 @@ static void track_variable_reference(ASTNode* ast)
         return;
     }
 
-    ASTNode* expression = ast->variable_definition.expr;
-    bool transfers_exclusive = ast->variable_definition.reference_type == RefExclusive && is_variable(expression);
-
-    if (transfers_exclusive) {
-        transfer_exclusive_reference(expression);
-    } else {
-        activate_reference_access(ast);
-    }
-
-    ast->variable_definition.reference_access_active = true;
+    establish_reference_access(ast, ast->variable_definition.expr);
 }
 
 void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)

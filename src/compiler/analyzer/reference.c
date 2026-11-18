@@ -100,11 +100,8 @@ void copy_reference_origins(Vector* destination, Vector* source)
     }
 
     destination->count = 0;
-    size_t count = count_vector(source);
 
-    for (size_t i = 0; i < count; i++) {
-        add_reference_origin(destination, get_vector_at(source, i));
-    }
+    merge_reference_origins(destination, source);
 }
 
 void merge_reference_origins(Vector* destination, Vector* source)
@@ -236,6 +233,17 @@ static bool reference_argument_requires_binding(ReferenceType type)
     return type == RefExclusive;
 }
 
+static ASTNode* get_argument_reference_origin(ASTNode* argument)
+{
+    ASTNode* origin = reference_origin_from_expression(argument);
+
+    if (origin || !is_variable(argument)) {
+        return origin;
+    }
+
+    return get_reference_origin_or_self(argument->variable.symbol);
+}
+
 void validate_call_argument_access(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = count_vector(&caller->function_call.args);
@@ -254,11 +262,7 @@ void validate_call_argument_access(Analyzer* analyzer, ASTNode* caller, ASTNode*
             continue;
         }
 
-        ASTNode* origin = reference_origin_from_expression(arg);
-
-        if (!origin && is_variable(arg)) {
-            origin = get_reference_origin_or_self(arg->variable.symbol);
-        }
+        ASTNode* origin = get_argument_reference_origin(arg);
 
         if (!origin && reference_argument_requires_binding(type)) {
             semantic_token_error("Reference access requires a binding for ", token);
@@ -286,17 +290,6 @@ static ReferenceType get_argument_reference_type(ASTNode* argument, ASTNode* par
     }
 
     return parameter_type;
-}
-
-static ASTNode* get_argument_reference_origin(ASTNode* argument)
-{
-    ASTNode* origin = reference_origin_from_expression(argument);
-
-    if (origin || !is_variable(argument)) {
-        return origin;
-    }
-
-    return get_reference_origin_or_self(argument->variable.symbol);
 }
 
 static bool reference_access_conflicts(ASTNode* left_origin, ReferenceType left_type,
@@ -402,7 +395,7 @@ void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 void transfer_exclusive_reference(ASTNode* expression)
 {
     ASTNode* source = expression->variable.symbol;
-    set_moved(source);
+    set_moved_state(source, true);
 
     if (!is_variable_definition(source)) {
         return;
@@ -427,6 +420,19 @@ void activate_reference_access(ASTNode* ast)
     }
 }
 
+void establish_reference_access(ASTNode* binding, ASTNode* expression)
+{
+    bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression);
+
+    if (transfers_exclusive) {
+        transfer_exclusive_reference(expression);
+    } else {
+        activate_reference_access(binding);
+    }
+
+    binding->variable_definition.reference_access_active = true;
+}
+
 void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_binding)
 {
     if (ast->assignment.operator.type != TokenEqual || get_reference_type(symbol) == RefNone) {
@@ -435,12 +441,7 @@ void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_bi
 
     set_reference_origins_from_expression(symbol, ast->assignment.expr);
 
-    if (get_reference_type(symbol) == RefExclusive && is_variable(ast->assignment.expr)) {
-        transfer_exclusive_reference(ast->assignment.expr);
-    } else {
-        activate_reference_access(symbol);
-    }
+    establish_reference_access(symbol, ast->assignment.expr);
 
-    symbol->variable_definition.reference_access_active = true;
     ast->assignment.initializes_binding = initializes_binding;
 }

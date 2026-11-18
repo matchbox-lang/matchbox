@@ -20,18 +20,7 @@ bool is_moved(ASTNode* symbol)
     return symbol->variable_definition.moved;
 }
 
-void set_moved(ASTNode* symbol)
-{
-    if (is_parameter(symbol)) {
-        symbol->parameter.moved = true;
-
-        return;
-    }
-
-    symbol->variable_definition.moved = true;
-}
-
-static void set_moved_state(ASTNode* symbol, bool moved)
+void set_moved_state(ASTNode* symbol, bool moved)
 {
     if (is_parameter(symbol)) {
         symbol->parameter.moved = moved;
@@ -53,7 +42,7 @@ static void consume_array_variable(ASTNode* ast)
         semantic_error("Cannot move an unavailable array", ast->variable.token);
     }
 
-    set_moved(symbol);
+    set_moved_state(symbol, true);
 }
 
 void consume_array(ASTNode* ast)
@@ -127,6 +116,14 @@ void capture_ownership_state(Vector* states, Scope* scope)
     }
 }
 
+static void init_ownership_state_copy(OwnershipState* destination, OwnershipState* source)
+{
+    *destination = *source;
+
+    init_vector(&destination->reference_origins);
+    copy_reference_origins(&destination->reference_origins, &source->reference_origins);
+}
+
 void copy_ownership_state(Vector* destination, Vector* source)
 {
     init_vector(destination);
@@ -135,9 +132,7 @@ void copy_ownership_state(Vector* destination, Vector* source)
         OwnershipState* source_state = get_vector_at(source, i);
         OwnershipState* destination_state = allocate_memory(sizeof(OwnershipState));
 
-        *destination_state = *source_state;
-        init_vector(&destination_state->reference_origins);
-        copy_reference_origins(&destination_state->reference_origins, &source_state->reference_origins);
+        init_ownership_state_copy(destination_state, source_state);
         push_vector_item(destination, destination_state);
     }
 }
@@ -218,10 +213,11 @@ void analyze_ownership_branch(
 
 static void merge_ownership_state(OwnershipState* then_state, OwnershipState* else_state)
 {
-    OwnershipState merged = *then_state;
-    init_vector(&merged.reference_origins);
-    copy_reference_origins(&merged.reference_origins, &then_state->reference_origins);
+    OwnershipState merged;
+
+    init_ownership_state_copy(&merged, then_state);
     merge_reference_origins(&merged.reference_origins, &else_state->reference_origins);
+
     merged.shared_access_count = MAX(then_state->shared_access_count, else_state->shared_access_count);
     merged.exclusive_access_active = then_state->exclusive_access_active || else_state->exclusive_access_active;
     merged.initialized = then_state->initialized && else_state->initialized;

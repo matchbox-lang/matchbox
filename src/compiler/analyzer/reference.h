@@ -22,6 +22,7 @@ void validate_argument_accesses(ASTNode* caller, ASTNode* callee);
 void set_call_reference_origins(ASTNode* caller, ASTNode* callee);
 void transfer_exclusive_reference(ASTNode* expression);
 void activate_reference_access(ASTNode* ast);
+void establish_reference_access(ASTNode* binding, ASTNode* expression);
 void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_binding);
 
 #endif

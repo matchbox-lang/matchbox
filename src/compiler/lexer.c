@@ -703,34 +703,8 @@ void init_lexer(Lexer* lexer, const char* source)
     lexer->current.column = 1;
 }
 
-Token scan_token(Lexer* lexer)
+static Token scan_symbol(Lexer* lexer, char c)
 {
-    if (!skip_whitespace(lexer)) {
-        return make_token(lexer, TokenIncompleteInput);
-    }
-
-    lexer->start.chars = lexer->current.chars;
-    lexer->start.line = lexer->current.line;
-    lexer->start.column = lexer->current.column;
-
-    if (is_end_of_file(lexer)) {
-        return make_token(lexer, TokenEof);
-    }
-
-    char c = advance(lexer);
-
-    if (c == '0') {
-        return scan_zero_literal(lexer);
-    }
-
-    if (is_digit(c)) {
-        return scan_integer_literal(lexer);
-    }
-
-    if (is_alpha(c)) {
-        return scan_identifier(lexer);
-    }
-
     switch (c) {
         case '"':
         case '`':
@@ -830,6 +804,37 @@ Token scan_token(Lexer* lexer)
         default:
             return make_token(lexer, TokenUnknown);
     }
+}
+
+Token scan_token(Lexer* lexer)
+{
+    if (!skip_whitespace(lexer)) {
+        return make_token(lexer, TokenIncompleteInput);
+    }
+
+    lexer->start.chars = lexer->current.chars;
+    lexer->start.line = lexer->current.line;
+    lexer->start.column = lexer->current.column;
+
+    if (is_end_of_file(lexer)) {
+        return make_token(lexer, TokenEof);
+    }
+
+    char c = advance(lexer);
+
+    if (c == '0') {
+        return scan_zero_literal(lexer);
+    }
+
+    if (is_digit(c)) {
+        return scan_integer_literal(lexer);
+    }
+
+    if (is_alpha(c)) {
+        return scan_identifier(lexer);
+    }
+
+    return scan_symbol(lexer, c);
 }
 
 static bool scan_discovery_literal_end(Lexer* lexer, char delimiter, size_t width)

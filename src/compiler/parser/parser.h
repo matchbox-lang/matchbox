@@ -2,8 +2,8 @@
 #define COMPILER_PARSER_H
 
 #include "compiler/ast.h"
-#include "compiler/lexer.h"
-#include "compiler/token.h"
+#include "compiler/lexer/lexer.h"
+#include "compiler/lexer/token.h"
 
 typedef struct Parser
 {

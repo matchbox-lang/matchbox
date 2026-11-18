@@ -4,7 +4,7 @@
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/scope.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include "runtime/string_object.h"
 #include <stdbool.h>
 

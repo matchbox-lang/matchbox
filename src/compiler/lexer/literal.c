@@ -1,4 +1,4 @@
-#include "compiler/literal.h"
+#include "compiler/lexer/literal.h"
 #include "common/memory.h"
 #include "compiler/diagnostics.h"
 #include <errno.h>

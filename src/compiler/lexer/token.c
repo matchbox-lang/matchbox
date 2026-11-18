@@ -1,4 +1,4 @@
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include <stdbool.h>
 #include <stdio.h>
 

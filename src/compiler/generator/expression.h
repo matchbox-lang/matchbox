@@ -2,7 +2,7 @@
 #define GENERATOR_EXPRESSION_H
 
 #include "compiler/generator/operand.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include "vm/opcode.h"
 
 typedef enum IntegerOperation

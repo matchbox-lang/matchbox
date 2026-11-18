@@ -3,7 +3,7 @@
 
 #include "common/type.h"
 #include "common/vector.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include <stdbool.h>
 #include <stdint.h>
 

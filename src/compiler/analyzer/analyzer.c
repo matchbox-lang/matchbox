@@ -9,7 +9,7 @@
 #include "compiler/analyzer/match.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/variable.h"
-#include "compiler/validation.h"
+#include "compiler/analyzer/validation.h"
 
 static void analyze_nodes(Analyzer* analyzer, Vector* nodes, size_t start)
 {

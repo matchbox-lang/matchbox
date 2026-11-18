@@ -2,7 +2,7 @@
 #define LITERAL_H
 
 #include "common/unicode.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 
 #define LITERAL_SCALAR_MAX_LENGTH 10
 

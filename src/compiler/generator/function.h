@@ -3,7 +3,7 @@
 
 #include "builtin/builtin.h"
 #include "compiler/generator/operand.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include "runtime/function_object.h"
 #include <stdint.h>
 

@@ -4,7 +4,7 @@
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/diagnostics.h"
-#include "compiler/literal.h"
+#include "compiler/lexer/literal.h"
 #include "compiler/parser/expression.h"
 #include "compiler/source_position.h"
 #include "runtime/string_object.h"

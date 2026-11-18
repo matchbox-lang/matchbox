@@ -1,4 +1,4 @@
-#include "compiler/bytecode_optimizer.h"
+#include "compiler/optimizer/bytecode_optimizer.h"
 #include "common/memory.h"
 #include "runtime/function_object.h"
 #include "vm/opcode.h"

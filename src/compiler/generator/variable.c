@@ -10,7 +10,7 @@
 #include "compiler/generator/operand.h"
 #include "compiler/ast.h"
 #include "compiler/scope.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include <stddef.h>
 #include <stdint.h>
 

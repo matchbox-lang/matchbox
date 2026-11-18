@@ -8,7 +8,7 @@
 #include "compiler/analyzer/reference.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include "runtime/string_object.h"
 
 static _Noreturn void float_literal_requires_type_error(Token token)

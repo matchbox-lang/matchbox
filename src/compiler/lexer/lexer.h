@@ -2,7 +2,7 @@
 #define LEXER_H
 
 #include "compiler/source_position.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 
 typedef struct Lexer
 {

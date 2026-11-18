@@ -1,4 +1,4 @@
-#include "compiler/ast_optimizer.h"
+#include "compiler/optimizer/ast_optimizer.h"
 #include "builtin/builtin.h"
 #include "builtin/string.h"
 #include "common/array_type.h"
@@ -6,7 +6,7 @@
 #include "common/vector.h"
 #include "compiler/constant.h"
 #include "compiler/scope.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 #include "runtime/concatenation.h"
 #include "runtime/string_object.h"
 #include <stdint.h>

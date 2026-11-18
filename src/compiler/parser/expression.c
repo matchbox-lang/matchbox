@@ -7,7 +7,7 @@
 #include "compiler/parser/string.h"
 #include "compiler/parser/type.h"
 #include "compiler/parser/variable.h"
-#include "compiler/token.h"
+#include "compiler/lexer/token.h"
 
 typedef ASTNode* (*ParseOperand)(Parser* parser);
 typedef bool (*IsBinaryOperator)(TokenType type);

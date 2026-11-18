@@ -1,5 +1,5 @@
 #include "compiler/parser/literal.h"
-#include "compiler/literal.h"
+#include "compiler/lexer/literal.h"
 #include <float.h>
 #include <stdint.h>
 

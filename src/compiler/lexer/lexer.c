@@ -1,7 +1,7 @@
-#include "compiler/lexer.h"
+#include "compiler/lexer/lexer.h"
 #include "compiler/diagnostics.h"
-#include "compiler/literal.h"
-#include "compiler/token.h"
+#include "compiler/lexer/literal.h"
+#include "compiler/lexer/token.h"
 #include <stdbool.h>
 #include <string.h>
 

@@ -10,7 +10,7 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "compiler/ast.h"
-#include "compiler/bytecode_optimizer.h"
+#include "compiler/optimizer/bytecode_optimizer.h"
 #include "compiler/scope.h"
 #include "runtime/argument_format.h"
 #include "runtime/function_object.h"

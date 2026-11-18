@@ -1,4 +1,4 @@
-#include "compiler/validation.h"
+#include "compiler/analyzer/validation.h"
 #include "compiler/constant.h"
 #include "compiler/diagnostics.h"
 

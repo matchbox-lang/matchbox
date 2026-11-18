@@ -1,5 +1,5 @@
-#ifndef ANALYZER_H
-#define ANALYZER_H
+#ifndef COMPILER_ANALYZER_H
+#define COMPILER_ANALYZER_H
 
 #include "compiler/ast.h"
 #include <stddef.h>
@@ -23,8 +23,9 @@ typedef struct Analyzer
     LoopPath* loop_path;
 } Analyzer;
 
+void analyze_expression_nodes(Analyzer* analyzer, Vector* nodes);
+void analyze_node(Analyzer* analyzer, ASTNode* ast);
 void init_analyzer(Analyzer* analyzer, ASTNode* ast);
 bool analyze(Analyzer* analyzer, size_t start);
-void rebuild_analyzer(Analyzer* analyzer, Vector* functions);
 
 #endif

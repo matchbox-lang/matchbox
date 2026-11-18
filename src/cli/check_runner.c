@@ -4,12 +4,11 @@
 #include "common/errors.h"
 #include "common/io.h"
 #include "common/memory.h"
-#include "compiler/analyzer.h"
+#include "compiler/analyzer/analyzer.h"
 #include "compiler/diagnostics.h"
 #include "compiler/parser.h"
 #include "compiler/scope.h"
 #include <dirent.h>
-#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>

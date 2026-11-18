@@ -1,0 +1,271 @@
+#include "compiler/analyzer/conversion.h"
+#include "common/array_type.h"
+#include "common/errors.h"
+#include "common/vector.h"
+#include "compiler/diagnostics.h"
+#include "runtime/string_object.h"
+#include <float.h>
+#include <limits.h>
+#include <stdint.h>
+
+static _Noreturn void float_literal_out_of_range_error(Token token, Type type)
+{
+    const char* type_name = get_data_type_name(type);
+
+    fatal_source_error(token.line, token.column, "Float literal is outside the range of %s", type_name);
+}
+
+static _Noreturn void integer_literal_not_representable_error(Token token, Type type)
+{
+    const char* type_name = get_data_type_name(type);
+
+    fatal_source_error(token.line, token.column, "Integer literal cannot be represented as %s", type_name);
+}
+
+static _Noreturn void integer_literal_out_of_range_error(Token token, Type type)
+{
+    const char* type_name = get_data_type_name(type);
+
+    fatal_source_error(token.line, token.column, "Integer literal is outside the range of %s", type_name);
+}
+
+static _Noreturn void negative_unsigned_integer_error(Token token)
+{
+    fatal_source_error(token.line, token.column, "Negative integer literal cannot have an unsigned type");
+}
+
+static _Noreturn void unsupported_explicit_conversion_error(Token token, Type source, Type destination)
+{
+    const char* source_name = get_data_type_name(source);
+    const char* destination_name = get_data_type_name(destination);
+
+    fatal_source_error(token.line, token.column, "Unsupported explicit conversion from %s to %s",
+        source_name, destination_name);
+}
+
+ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
+{
+    *negative = false;
+
+    if (expression->type == ASTInteger && is_signed_integer_type(expression->integer_literal.type_id.kind)
+        && expression->integer_literal.value > INT64_MAX) {
+        return NULL;
+    }
+
+    if (expression->type == ASTInteger) {
+        return expression;
+    }
+
+    if (expression->type != ASTPrefix || expression->prefix.operator.type != TokenMinus
+        || expression->prefix.expr->type != ASTInteger) {
+        return NULL;
+    }
+
+    *negative = true;
+
+    return expression->prefix.expr;
+}
+
+bool integer_literal_fits_type(uint64_t value, bool negative, Type type)
+{
+    size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
+
+    if (!bits || (!is_signed_integer_type(type.kind) && negative)) {
+        return false;
+    }
+
+    if (!is_signed_integer_type(type.kind)) {
+        return bits == 64 || value <= (UINT64_C(1) << bits) - 1;
+    }
+
+    uint64_t limit = UINT64_C(1) << (bits - 1);
+
+    return negative ? value <= limit : value < limit;
+}
+
+bool integer_literal_fits_float(uint64_t value, Type type)
+{
+    size_t precision;
+
+    if (type.kind == TypeF32) {
+        precision = FLT_MANT_DIG;
+    } else if (type.kind == TypeF64) {
+        precision = DBL_MANT_DIG;
+    } else {
+        return false;
+    }
+
+    size_t bits = 0;
+    uint64_t remaining = value;
+
+    while (remaining) {
+        bits++;
+        remaining >>= 1;
+    }
+
+    if (bits <= precision) {
+        return true;
+    }
+
+    size_t discarded_bits = bits - precision;
+    uint64_t mask = (UINT64_C(1) << discarded_bits) - 1;
+
+    return (value & mask) == 0;
+}
+
+bool apply_integer_literal_type(ASTNode* expression, Type type)
+{
+    bool negative;
+    ASTNode* literal = get_integer_literal(expression, &negative);
+
+    if (!literal) {
+        return false;
+    }
+
+    if (negative && is_integer_type(type.kind) && !is_signed_integer_type(type.kind)) {
+        negative_unsigned_integer_error(literal->integer_literal.token);
+    }
+
+    bool fits_integer = integer_literal_fits_type(literal->integer_literal.value, negative, type);
+    bool fits_float = integer_literal_fits_float(literal->integer_literal.value, type);
+
+    if (is_float_type(type.kind) && !fits_float) {
+        integer_literal_not_representable_error(literal->integer_literal.token, type);
+    }
+
+    if (is_integer_type(type.kind) && !fits_integer) {
+        integer_literal_out_of_range_error(literal->integer_literal.token, type);
+    }
+
+    literal->integer_literal.type_id = type;
+
+    return true;
+}
+
+ASTNode* get_float_literal(ASTNode* expression)
+{
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenMinus) {
+        expression = expression->prefix.expr;
+    }
+
+    if (expression->type != ASTFloat) {
+        return NULL;
+    }
+
+    return expression;
+}
+
+static void apply_array_type(ASTNode* ast, Type type)
+{
+    if (ast->array.fill) {
+        return;
+    }
+
+    ast->array.type_id = type;
+}
+
+void apply_literal_type(ASTNode* expression, Type type)
+{
+    if (expression->type == ASTArray && is_array_type(type.kind)) {
+        apply_array_type(expression, type);
+
+        return;
+    }
+
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
+        apply_literal_type(expression->prefix.expr, type);
+
+        return;
+    }
+
+    if (is_integer_type(type.kind) || is_float_type(type.kind)) {
+        apply_integer_literal_type(expression, type);
+    }
+
+    expression = get_float_literal(expression);
+
+    if (!expression || !is_float_type(type.kind)) {
+        return;
+    }
+
+    if (type.kind == TypeF32 && expression->float_literal.value > FLT_MAX) {
+        float_literal_out_of_range_error(expression->float_literal.token, type);
+    }
+
+    expression->float_literal.type_id = type;
+}
+
+void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
+{
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
+        apply_declared_type(expression->prefix.expr, type, reference_type);
+
+        return;
+    }
+
+    if (type.kind == TypeUnknown) {
+        return;
+    }
+
+    apply_literal_type(expression, type);
+
+    if (expression->type == ASTConditional) {
+        expression->conditional.type_id = type;
+        expression->conditional.reference_type = reference_type;
+    }
+
+    if (expression->type == ASTMatch) {
+        expression->match.type_id = type;
+        expression->match.reference_type = reference_type;
+    }
+}
+
+void infer_conversion_literal(ASTNode* ast)
+{
+    TypeKind kind = get_token_data_type(ast->function_call.token.type);
+    size_t count = count_vector(&ast->function_call.args);
+
+    if ((!is_integer_type(kind) && !is_float_type(kind) && kind != TypeChar) || count != 1) {
+        return;
+    }
+
+    ASTNode* expression = ast->function_call.args.data[0];
+    Type source = get_node_data_type(expression);
+
+    if (source.kind == TypeUnknown && expression->type == ASTInteger) {
+        apply_integer_literal_type(expression, (Type){.kind = TypeU64});
+    }
+}
+
+void analyze_type_conversion(ASTNode* ast)
+{
+    Token token = ast->function_call.token;
+    Type destination = {.kind = get_token_data_type(token.type)};
+    size_t count = count_vector(&ast->function_call.args);
+
+    if (count != 1) {
+        semantic_error("Explicit type conversion requires exactly one argument", token);
+    }
+
+    ASTNode* expression = ast->function_call.args.data[0];
+    Type source = get_node_data_type(expression);
+    bool supported = can_explicitly_convert_type(source.kind, destination.kind);
+    ReferenceType reference = get_reference_type(expression);
+
+    if (!supported) {
+        unsupported_explicit_conversion_error(token, source, destination);
+    }
+
+    if (reference != RefNone) {
+        semantic_error("Explicit type conversions require a value", token);
+    }
+
+    free_string_object(ast->function_call.id);
+    free_vector(&ast->function_call.args);
+    free_vector(&ast->function_call.reference_origins);
+
+    ast->type = ASTConversion;
+    ast->conversion.expr = expression;
+    ast->conversion.token = token;
+    ast->conversion.type_id = destination;
+}

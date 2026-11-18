@@ -30,3 +30,28 @@ _Noreturn void unexpected_end_of_input_error(Token token)
 {
     fatal_source_error(token.line, token.column, "Unexpected end of input");
 }
+
+_Noreturn void binding_access_error(char* message, Token token, char* detail)
+{
+    fatal_token_error(token, detail, "%s", message);
+}
+
+_Noreturn void redefinition_error(char* kind, Token token)
+{
+    fatal_token_error(token, " is already defined", "%s ", kind);
+}
+
+_Noreturn void semantic_error(char* message, Token token)
+{
+    fatal_source_error(token.line, token.column, "%s", message);
+}
+
+_Noreturn void semantic_token_error(char* message, Token token)
+{
+    fatal_token_error(token, "", "%s", message);
+}
+
+_Noreturn void symbol_error(const char* detail, Token token)
+{
+    fatal_token_error(token, detail, "");
+}

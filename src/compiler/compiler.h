@@ -2,7 +2,7 @@
 #define COMPILER_H
 
 #include "common/vector.h"
-#include "compiler/analyzer.h"
+#include "compiler/analyzer/analyzer.h"
 #include "compiler/ast.h"
 #include "compiler/parser.h"
 #include "runtime/function_object.h"

@@ -5,14 +5,13 @@
 #include "common/errors.h"
 #include "common/io.h"
 #include "common/memory.h"
-#include "compiler/analyzer.h"
+#include "compiler/analyzer/analyzer.h"
 #include "compiler/compiler.h"
 #include "compiler/diagnostics.h"
 #include "compiler/parser.h"
 #include "compiler/scope.h"
 #include "runtime/module_object.h"
 #include "vm/vm.h"
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

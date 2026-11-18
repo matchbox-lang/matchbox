@@ -53,15 +53,6 @@ static bool run_source(Matchbox* mb, const char* source)
     return true;
 }
 
-int matchbox_exit_status(const Matchbox* mb)
-{
-    if (!mb) {
-        return EXIT_SUCCESS;
-    }
-
-    return mb->exit_status;
-}
-
 Matchbox* matchbox_create(void)
 {
     Matchbox* mb = calloc(1, sizeof(Matchbox));
@@ -108,4 +99,13 @@ bool matchbox_run(Matchbox* mb, const char* source)
     }
 
     return success;
+}
+
+int matchbox_exit_status(const Matchbox* mb)
+{
+    if (!mb) {
+        return EXIT_SUCCESS;
+    }
+
+    return mb->exit_status;
 }

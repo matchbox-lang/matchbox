@@ -13,7 +13,6 @@
 #include "runtime/module_object.h"
 #include "vm/disassembler.h"
 #include "vm/vm.h"
-#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>

@@ -9,7 +9,7 @@
 #include "compiler/ast.h"
 #include "compiler/ast_optimizer.h"
 #include "compiler/bytecode_optimizer.h"
-#include "compiler/parser.h"
+#include "compiler/parser/parser.h"
 #include "compiler/scope.h"
 #include "runtime/code_object.h"
 #include "runtime/function_object.h"

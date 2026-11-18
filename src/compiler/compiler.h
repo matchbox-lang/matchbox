@@ -4,7 +4,7 @@
 #include "common/vector.h"
 #include "compiler/analyzer/analyzer.h"
 #include "compiler/ast.h"
-#include "compiler/parser.h"
+#include "compiler/parser/parser.h"
 #include "runtime/function_object.h"
 #include "runtime/module_object.h"
 #include <stddef.h>

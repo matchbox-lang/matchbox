@@ -8,7 +8,7 @@
 #include "compiler/analyzer/analyzer.h"
 #include "compiler/compiler.h"
 #include "compiler/diagnostics.h"
-#include "compiler/parser.h"
+#include "compiler/parser/parser.h"
 #include "compiler/scope.h"
 #include "runtime/module_object.h"
 #include "vm/vm.h"

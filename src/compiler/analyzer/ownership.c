@@ -74,6 +74,23 @@ void consume_array(ASTNode* ast)
     }
 }
 
+static void update_ownership_state(OwnershipState* state)
+{
+    ASTNode* symbol = state->symbol;
+    Vector* origins = get_reference_origins(symbol);
+
+    copy_reference_origins(&state->reference_origins, origins);
+
+    state->shared_access_count = *get_shared_access_count(symbol);
+    state->exclusive_access_active = has_exclusive_access(symbol);
+    state->initialized = is_initialized(symbol);
+    state->possibly_initialized = state->initialized
+        || (is_variable_definition(symbol) && symbol->variable_definition.possibly_initialized);
+    state->moved = is_moved(symbol);
+    state->reference_access_active = is_variable_definition(symbol)
+        && symbol->variable_definition.reference_access_active;
+}
+
 static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
 {
     if (!is_variable_type(symbol)) {
@@ -82,17 +99,9 @@ static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
 
     OwnershipState* state = allocate_memory(sizeof(OwnershipState));
     state->symbol = symbol;
-    init_vector(&state->reference_origins);
-    Vector* origins = get_reference_origins(symbol);
-    copy_reference_origins(&state->reference_origins, origins);
-    state->shared_access_count = *get_shared_access_count(symbol);
-    state->exclusive_access_active = has_exclusive_access(symbol);
-    state->initialized = is_initialized(symbol);
-    state->possibly_initialized = state->initialized
-        || (is_variable_definition(symbol) && symbol->variable_definition.possibly_initialized);
-    state->moved = is_moved(symbol);
-    state->reference_access_active = is_variable_definition(symbol) && symbol->variable_definition.reference_access_active;
 
+    init_vector(&state->reference_origins);
+    update_ownership_state(state);
     push_vector_item(states, state);
 }
 
@@ -163,18 +172,8 @@ void update_ownership_states(Vector* states)
 {
     for (size_t i = 0; i < count_vector(states); i++) {
         OwnershipState* state = get_vector_at(states, i);
-        ASTNode* symbol = state->symbol;
 
-        Vector* origins = get_reference_origins(symbol);
-        copy_reference_origins(&state->reference_origins, origins);
-        state->shared_access_count = *get_shared_access_count(symbol);
-        state->exclusive_access_active = has_exclusive_access(symbol);
-        state->initialized = is_initialized(symbol);
-        state->possibly_initialized = state->initialized
-            || (is_variable_definition(symbol) && symbol->variable_definition.possibly_initialized);
-        state->moved = is_moved(symbol);
-        state->reference_access_active = is_variable_definition(symbol)
-            && symbol->variable_definition.reference_access_active;
+        update_ownership_state(state);
     }
 }
 

@@ -26,7 +26,6 @@ typedef uint32_t Instruction;
     ((int16_t)((int32_t)((LOAD_CALL_OPERAND(operands) ^ 0x200u)) - 0x200))
 
 #define INSTRUCTION_SIZE 4
-#define OPERAND_A_OFFSET 1
 
 typedef enum OpcodeFlag
 {

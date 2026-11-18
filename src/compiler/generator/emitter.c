@@ -196,7 +196,7 @@ bool retarget_temporary(Compiler* compiler, Operand value, int destination)
         return false;
     }
 
-    set_byte_at(previous.code, previous.start + OPERAND_A_OFFSET, destination);
+    set_byte_at(previous.code, previous.start + 1, destination);
 
     return true;
 }

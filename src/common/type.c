@@ -3,15 +3,9 @@
 #include <float.h>
 #include <limits.h>
 
-const char* get_data_type_name(Type type)
+static const char* get_type_kind_name(TypeKind kind)
 {
-    if (is_array_type(type.kind)) {
-        const ArrayType* info = type.array;
-
-        return info->name;
-    }
-
-    switch (type.kind) {
+    switch (kind) {
         case TypeI8:       return "i8";
         case TypeI16:      return "i16";
         case TypeI32:      return "i32";
@@ -31,6 +25,17 @@ const char* get_data_type_name(Type type)
         default:
             return "unknown token";
     }
+}
+
+const char* get_data_type_name(Type type)
+{
+    if (is_array_type(type.kind)) {
+        const ArrayType* info = type.array;
+
+        return info->name;
+    }
+
+    return get_type_kind_name(type.kind);
 }
 
 bool is_float_type(TypeKind kind)

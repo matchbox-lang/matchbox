@@ -11,7 +11,6 @@
 ASTNode* create_ast_node(ASTNodeType type)
 {
     ASTNode* ast = allocate_zeroed_memory(1, sizeof(ASTNode));
-
     ast->type = type;
 
     switch (type) {

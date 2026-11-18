@@ -191,7 +191,8 @@ static Opcode immediate_opcode(Opcode opcode)
         case OpAsrI32:    return OpAsriI32;
         case OpAsrI16:    return OpAsriI16;
         case OpAsrI8:     return OpAsriI8;
-        default:            return OpHlt;
+        default:
+            return OpHlt;
     }
 }
 
@@ -360,7 +361,8 @@ static bool is_wide_immediate_arithmetic(Opcode opcode)
         case OpLsriI64:
         case OpAsriI64:
             return true;
-        default: return false;
+        default:
+            return false;
     }
 }
 
@@ -556,7 +558,8 @@ static bool is_immediate_arithmetic(Opcode opcode)
         case OpAsriI16:
         case OpAsriI8:
             return true;
-        default: return false;
+        default:
+            return false;
     }
 }
 

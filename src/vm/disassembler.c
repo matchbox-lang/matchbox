@@ -11,7 +11,8 @@
 #define READ_UINT8() ((uint8_t)*(ptr++))
 #define READ_INT16() (ptr += 2, (int16_t)((ptr[-2] << 8) | ptr[-1]))
 #define READ_UINT16() (ptr += 2, (uint16_t)((ptr[-2] << 8) | ptr[-1]))
-#define READ_INT24() (ptr += 3, (int32_t)((ptr[-3] << 24) | (ptr[-2] << 16) | (ptr[-1] << 8)) >> 8)
+#define READ_INT24() \
+    (ptr += 3, (int32_t)((((uint32_t)ptr[-3] << 16) | (ptr[-2] << 8) | ptr[-1]) ^ 0x800000u) - 0x800000)
 
 static const uint8_t* ptr;
 static uint16_t register_high[3];

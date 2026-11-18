@@ -9,6 +9,9 @@
 #include "compiler/parser/variable.h"
 #include "compiler/token.h"
 
+typedef ASTNode* (*ParseOperand)(Parser* parser);
+typedef bool (*IsBinaryOperator)(TokenType type);
+
 static ASTNode* parse_prefix(Parser* parser);
 
 static _Noreturn void expected_operand_error(Token token)
@@ -175,144 +178,95 @@ static ASTNode* parse_exponent(Parser* parser)
     return expr;
 }
 
-static ASTNode* parse_factor(Parser* parser)
+static ASTNode* parse_binary_expression(Parser* parser, ParseOperand parse_operand, IsBinaryOperator is_operator)
 {
-    ASTNode* expr = parse_exponent(parser);
+    ASTNode* expression = parse_operand(parser);
     Token token = parser->current_token;
 
-    while (is_factor_token(token.type)) {
+    while (is_operator(token.type)) {
         consume(parser, token.type);
-        expr = create_binary_node(expr, parse_exponent(parser), token);
+
+        ASTNode* right = parse_operand(parser);
+        expression = create_binary_node(expression, right, token);
         token = parser->current_token;
     }
 
-    return expr;
+    return expression;
+}
+
+static ASTNode* parse_factor(Parser* parser)
+{
+    return parse_binary_expression(parser, parse_exponent, is_factor_token);
 }
 
 static ASTNode* parse_term(Parser* parser)
 {
-    ASTNode* expr = parse_factor(parser);
-    Token token = parser->current_token;
-
-    while (is_term_token(token.type)) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_factor(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+    return parse_binary_expression(parser, parse_factor, is_term_token);
 }
 
 static ASTNode* parse_shift(Parser* parser)
 {
-    ASTNode* expr = parse_term(parser);
-    Token token = parser->current_token;
-
-    while (is_shift_token(token.type)) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_term(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+    return parse_binary_expression(parser, parse_term, is_shift_token);
 }
 
 static ASTNode* parse_comparison(Parser* parser)
 {
-    ASTNode* expr = parse_shift(parser);
-    Token token = parser->current_token;
-
-    while (is_comparison_token(token.type)) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_shift(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+    return parse_binary_expression(parser, parse_shift, is_comparison_token);
 }
 
 static ASTNode* parse_equality(Parser* parser)
 {
-    ASTNode* expr = parse_comparison(parser);
-    Token token = parser->current_token;
+    return parse_binary_expression(parser, parse_comparison, is_equality_token);
+}
 
-    while (is_equality_token(token.type)) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_comparison(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+static bool is_bitwise_and_operator(TokenType type)
+{
+    return type == TokenAmpersand;
 }
 
 static ASTNode* parse_bitwise_and(Parser* parser)
 {
-    ASTNode* expr = parse_equality(parser);
-    Token token = parser->current_token;
+    return parse_binary_expression(parser, parse_equality, is_bitwise_and_operator);
+}
 
-    while (token.type == TokenAmpersand) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_equality(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+static bool is_bitwise_xor_operator(TokenType type)
+{
+    return type == TokenCircumflex;
 }
 
 static ASTNode* parse_bitwise_xor(Parser* parser)
 {
-    ASTNode* expr = parse_bitwise_and(parser);
-    Token token = parser->current_token;
+    return parse_binary_expression(parser, parse_bitwise_and, is_bitwise_xor_operator);
+}
 
-    while (token.type == TokenCircumflex) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_bitwise_and(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+static bool is_bitwise_or_operator(TokenType type)
+{
+    return type == TokenPipe;
 }
 
 static ASTNode* parse_bitwise_or(Parser* parser)
 {
-    ASTNode* expr = parse_bitwise_xor(parser);
-    Token token = parser->current_token;
+    return parse_binary_expression(parser, parse_bitwise_xor, is_bitwise_or_operator);
+}
 
-    while (token.type == TokenPipe) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_bitwise_xor(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+static bool is_boolean_and_operator(TokenType type)
+{
+    return type == TokenKeywordAnd;
 }
 
 static ASTNode* parse_boolean_and(Parser* parser)
 {
-    ASTNode* expr = parse_bitwise_or(parser);
-    Token token = parser->current_token;
+    return parse_binary_expression(parser, parse_bitwise_or, is_boolean_and_operator);
+}
 
-    while (token.type == TokenKeywordAnd) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_bitwise_or(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+static bool is_boolean_or_operator(TokenType type)
+{
+    return type == TokenKeywordOr;
 }
 
 static ASTNode* parse_boolean_or(Parser* parser)
 {
-    ASTNode* expr = parse_boolean_and(parser);
-    Token token = parser->current_token;
-
-    while (token.type == TokenKeywordOr) {
-        consume(parser, token.type);
-        expr = create_binary_node(expr, parse_boolean_and(parser), token);
-        token = parser->current_token;
-    }
-
-    return expr;
+    return parse_binary_expression(parser, parse_boolean_and, is_boolean_or_operator);
 }
 
 ASTNode* parse_expression(Parser* parser)

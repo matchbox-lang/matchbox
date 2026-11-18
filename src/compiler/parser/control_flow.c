@@ -4,17 +4,13 @@
 
 static ASTNode* parse_conditional_branch(Parser* parser)
 {
-    consume(parser, TokenLbrace);
+    ASTNode* branch;
 
-    ASTNode* branch = create_compound_node(NULL);
-
-    if (!parse_blocklevel_statements(parser, &branch->compound.statements)) {
+    if (!parse_braced_block(parser, &branch)) {
         free_ast_node(branch);
 
         return NULL;
     }
-
-    consume(parser, TokenRbrace);
 
     return branch;
 }

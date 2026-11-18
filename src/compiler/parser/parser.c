@@ -91,9 +91,20 @@ static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
     return true;
 }
 
-bool parse_blocklevel_statements(Parser* parser, Vector* nodes)
+bool parse_braced_block(Parser* parser, ASTNode** block)
 {
-    return parse_statements(parser, nodes, TokenRbrace);
+    consume(parser, TokenLbrace);
+
+    *block = create_compound_node(NULL);
+    bool complete = parse_statements(parser, &(*block)->compound.statements, TokenRbrace);
+
+    if (!complete) {
+        return false;
+    }
+
+    consume(parser, TokenRbrace);
+
+    return true;
 }
 
 static bool parse_top_level_statements(Parser* parser)

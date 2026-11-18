@@ -4,6 +4,8 @@
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"
 
+typedef bool (*ParseListItem)(Parser* parser, Vector* items);
+
 ASTNode* parse_return_statement(Parser* parser)
 {
     Token token = parser->current_token;
@@ -17,14 +19,9 @@ ASTNode* parse_return_statement(Parser* parser)
     return create_return_node(token, expr);
 }
 
-static ASTNode* parse_argument(Parser* parser)
-{
-    return parse_expression(parser);
-}
-
 static bool parse_argument_list_item(Parser* parser, Vector* args)
 {
-    ASTNode* expr = parse_argument(parser);
+    ASTNode* expr = parse_expression(parser);
 
     if (!expr && (parser->current_token.type == TokenComma || parser->current_token.type == TokenRparen)) {
         expected_expression_error(parser->current_token);
@@ -43,7 +40,7 @@ static bool parse_argument_list_item(Parser* parser, Vector* args)
     return true;
 }
 
-bool parse_argument_list(Parser* parser, Vector* args)
+static bool parse_parenthesized_list(Parser* parser, Vector* items, ParseListItem parse_item)
 {
     consume(parser, TokenLparen);
 
@@ -51,19 +48,24 @@ bool parse_argument_list(Parser* parser, Vector* args)
         return false;
     }
 
-    while (parser->current_token.type != TokenRparen) {
-        if (!parse_argument_list_item(parser, args)) {
-            return false;
-        }
+    bool complete = true;
+
+    while (complete && parser->current_token.type != TokenRparen) {
+        complete = parse_item(parser, items);
     }
 
-    if (is_end_of_file(parser)) {
+    if (!complete || is_end_of_file(parser)) {
         return false;
     }
 
     consume(parser, TokenRparen);
 
     return true;
+}
+
+bool parse_argument_list(Parser* parser, Vector* args)
+{
+    return parse_parenthesized_list(parser, args, parse_argument_list_item);
 }
 
 static bool parse_parameter_default(Parser* parser, ASTNode* ast)
@@ -133,23 +135,9 @@ static bool parse_parameter_list_item(Parser* parser, Vector* params)
 
 static bool parse_parameter_list(Parser* parser, Vector* params)
 {
-    consume(parser, TokenLparen);
-
-    if (is_end_of_file(parser)) {
+    if (!parse_parenthesized_list(parser, params, parse_parameter_list_item)) {
         return false;
     }
-
-    while (parser->current_token.type != TokenRparen) {
-        if (!parse_parameter_list_item(parser, params)) {
-            return false;
-        }
-    }
-
-    if (is_end_of_file(parser)) {
-        return false;
-    }
-
-    consume(parser, TokenRparen);
 
     size_t count = count_vector(params);
 
@@ -205,18 +193,7 @@ bool parse_function_body(Parser* parser, ASTNode* ast)
         return parse_function_expression_body(parser, ast);
     }
 
-    consume(parser, TokenLbrace);
-
-    ASTNode* body = create_compound_node(NULL);
-    ast->function_definition.body = body;
-
-    if (!parse_blocklevel_statements(parser, &body->compound.statements)) {
-        return false;
-    }
-
-    consume(parser, TokenRbrace);
-
-    return true;
+    return parse_braced_block(parser, &ast->function_definition.body);
 }
 
 ASTNode* parse_function_definition(Parser* parser)

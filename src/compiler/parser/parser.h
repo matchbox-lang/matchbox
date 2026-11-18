@@ -19,7 +19,7 @@ void advance(Parser* parser);
 void consume(Parser* parser, TokenType type);
 bool is_end_of_file(Parser* parser);
 ASTNode* parse_statement(Parser* parser);
-bool parse_blocklevel_statements(Parser* parser, Vector* nodes);
+bool parse_braced_block(Parser* parser, ASTNode** block);
 void init_parser(Parser* parser, ASTNode* ast);
 bool parse(Parser* parser, const char* source);
 

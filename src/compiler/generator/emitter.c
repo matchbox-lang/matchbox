@@ -1,6 +1,5 @@
 #include "compiler/generator/emitter.h"
 #include "common/errors.h"
-#include "common/vector.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "runtime/code_object.h"

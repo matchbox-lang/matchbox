@@ -15,7 +15,6 @@
 #include "runtime/module_object.h"
 #include "runtime/string_object.h"
 #include <stddef.h>
-#include <stdint.h>
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
 

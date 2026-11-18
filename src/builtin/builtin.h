@@ -3,7 +3,6 @@
 
 #include "common/type.h"
 #include "runtime/function_object.h"
-#include "runtime/value.h"
 
 #define BUILTINS_MAX 101
 #define BUILTIN_PARAMS_MAX 4

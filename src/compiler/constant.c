@@ -1,8 +1,8 @@
 #include "compiler/constant.h"
 #include "builtin/builtin.h"
 #include "common/array_type.h"
-#include "common/unicode.h"
 #include "common/math.h"
+#include "common/unicode.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include <limits.h>

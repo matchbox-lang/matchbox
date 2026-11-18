@@ -6,7 +6,6 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include <stddef.h>
-#include <stdint.h>
 
 Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)
 {

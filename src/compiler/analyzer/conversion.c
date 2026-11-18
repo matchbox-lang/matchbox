@@ -1,6 +1,5 @@
 #include "compiler/analyzer/conversion.h"
 #include "common/array_type.h"
-#include "common/errors.h"
 #include "common/vector.h"
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"

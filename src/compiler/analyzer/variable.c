@@ -1,6 +1,5 @@
 #include "compiler/analyzer/variable.h"
 #include "common/array_type.h"
-#include "common/errors.h"
 #include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/expression.h"

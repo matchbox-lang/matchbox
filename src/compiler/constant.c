@@ -15,7 +15,7 @@ static _Noreturn void invalid_conversion_error(Token token, Type destination)
 {
     const char* name = get_data_type_name(destination);
 
-    fatal_source_error(token.line, token.column, "Cannot convert valuex to %s", name);
+    fatal_source_error(token.line, token.column, "Cannot convert value to %s", name);
 }
 
 static uint64_t normalize_integer_constant(uint64_t value, Type type)

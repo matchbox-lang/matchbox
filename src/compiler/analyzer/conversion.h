@@ -1,7 +1,7 @@
 #ifndef ANALYZER_CONVERSION_H
 #define ANALYZER_CONVERSION_H
 
-#include "compiler/analyzer/analyzer.h"
+#include "compiler/ast.h"
 
 ASTNode* get_integer_literal(ASTNode* expression, bool* negative);
 bool integer_literal_fits_type(uint64_t value, bool negative, Type type);

@@ -42,12 +42,13 @@ Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
 {
     ASTNode* argument = ast->builtin_call.args.data[0];
     Type type = get_node_data_type(argument);
-
+    Type types[] = {type, {.kind = TypeUsize}};
     size_t size = get_array_storage_size(type);
+
     Builtin builtin = *ast->builtin_call.builtin;
     builtin.param_count = 2;
     builtin.params[1] = TypeUsize;
-    Type types[] = {type, {.kind = TypeUsize}};
+
     Operand arguments[2];
     arguments[0] = compile_expression(compiler, argument, false);
     arguments[1] = compile_usize_literal(compiler, size);
@@ -233,6 +234,7 @@ static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const 
     Type left_leaf = get_array_leaf_type(operation->left_type);
     Type right_leaf = get_array_leaf_type(operation->right_type);
     Type result_leaf = get_array_leaf_type(operation->result_type);
+
     ArrayBinaryOffsets offsets;
     offsets.left_stride = get_array_storage_size(left_leaf);
     offsets.right_stride = get_array_storage_size(right_leaf);
@@ -301,14 +303,15 @@ static void compile_array_prefix_loop(Compiler* compiler, ASTNode* ast, Operand 
     size_t size = get_array_storage_size(type);
     Operand offset = compile_usize_literal(compiler, 0);
     offset.temporary = false;
+
     Operand end = compile_usize_literal(compiler, size);
     int condition = allocate_register(compiler);
     Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
     Opcode store = get_memory_store_opcode(leaf);
     CodeObject* code = current_code_object(compiler);
     size_t start = count_code_object(code);
-    compiler->peephole_barrier = start;
 
+    compiler->peephole_barrier = start;
     emit_instruction(compiler, compare, condition, offset.reg, end.reg);
 
     size_t exit_jump = emit_jump(compiler, OpBz, condition);
@@ -330,7 +333,6 @@ Operand compile_array_prefix(Compiler* compiler, ASTNode* ast)
     source = materialize_operand(compiler, source);
 
     compile_array_prefix_loop(compiler, ast, source, result, type);
-
     compiler->register_count = previous_register_count;
 
     return result;
@@ -339,7 +341,6 @@ Operand compile_array_prefix(Compiler* compiler, ASTNode* ast)
 static Operand compile_array_leaf_binary(Compiler* compiler, const ArrayBinaryOperation* operation,
     Operand left, Operand right, Type left_type, Type right_type)
 {
-    // Bind loaded elements to local registers so scalar operators share the same compilation path
     TokenType operator_type = operation->operator_type;
     Type result_type = get_array_leaf_type(operation->result_type);
     Type operand_type = operation->operand_type;
@@ -398,7 +399,6 @@ static void compile_array_binary_loop(Compiler* compiler, const ArrayBinaryOpera
     compiler->peephole_barrier = start;
 
     emit_instruction(compiler, compare, condition, offsets.left.reg, end.reg);
-
     size_t exit_jump = emit_jump(compiler, OpBz, condition);
 
     compile_array_binary_body(compiler, operation, left, right, result, &offsets);
@@ -771,7 +771,6 @@ static Operand compile_index_address(Compiler* compiler, ASTNode* ast)
 static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int destination)
 {
     Operand buffer = compile_expression(compiler, ast->index.array, false);
-
     buffer = materialize_operand(compiler, buffer);
 
     Operand offset = compile_runtime_index_offset(compiler, ast);

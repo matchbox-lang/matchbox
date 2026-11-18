@@ -119,8 +119,7 @@ static Operand compile_integer_cast(Compiler* compiler, Operand operand, Type so
     return operand;
 }
 
-static Operand widen_integer_operand(Compiler* compiler, Operand operand,
-    Type source, Type destination)
+static Operand widen_integer_operand(Compiler* compiler, Operand operand, Type source, Type destination)
 {
     if (!can_implicitly_widen_integer(source.kind, destination.kind)
         || get_type_slot_count(destination.kind) == operand.slots) {
@@ -130,8 +129,7 @@ static Operand widen_integer_operand(Compiler* compiler, Operand operand,
     return compile_integer_cast(compiler, operand, source, destination);
 }
 
-static Operand widen_float_operand(Compiler* compiler, Operand operand,
-    Type source, Type destination)
+static Operand widen_float_operand(Compiler* compiler, Operand operand, Type source, Type destination)
 {
     if (source.kind != TypeF32 || destination.kind != TypeF64) {
         return operand;
@@ -151,8 +149,7 @@ static Operand widen_float_operand(Compiler* compiler, Operand operand,
     return make_wide_operand(destination_register, true);
 }
 
-static Operand convert_integer_to_float_operand(Compiler* compiler, Operand operand,
-    Type source, Type destination)
+static Operand convert_integer_to_float_operand(Compiler* compiler, Operand operand, Type source, Type destination)
 {
     if (!can_implicitly_convert_integer_to_float(source.kind, destination.kind)) {
         return operand;
@@ -244,8 +241,7 @@ Operand convert_operand(Compiler* compiler, Operand operand, Type source, Type d
     return widen_float_operand(compiler, operand, source, destination);
 }
 
-Operand compile_converted_expression(Compiler* compiler, ASTNode* ast,
-    Type destination, bool reference)
+Operand compile_converted_expression(Compiler* compiler, ASTNode* ast, Type destination, bool reference)
 {
     Type source = get_node_data_type(ast);
     bool integer_to_float = can_implicitly_convert_integer_to_float(source.kind, destination.kind);
@@ -280,6 +276,7 @@ static Opcode get_float_to_integer_opcode(Type source, Type destination)
         {OpF32ToI32, OpF32ToU32, OpF32ToI64, OpF32ToU64},
         {OpF64ToI32, OpF64ToU32, OpF64ToI64, OpF64ToU64}
     };
+
     int index = 0;
 
     if (!is_signed_integer_type(destination.kind)) {
@@ -299,10 +296,12 @@ static Opcode get_integer_to_float_opcode(Type source, Type destination)
         {OpI32ToF32, OpI32ToF64},
         {OpI64ToF32, OpI64ToF64}
     };
+
     static const Opcode unsigned_opcodes[2][2] = {
         {OpU32ToF32, OpU32ToF64},
         {OpU64ToF32, OpU64ToF64}
     };
+
     bool wide_source = get_integer_type_size(source.kind) == 8;
     bool wide_destination = destination.kind == TypeF64;
 
@@ -348,7 +347,6 @@ static Operand compile_character_conversion(Compiler* compiler, ASTNode* ast)
     ASTNode* expression = ast->conversion.expr;
     Type source = get_node_data_type(expression);
     Type destination = ast->conversion.type_id;
-
     Operand operand = compile_expression(compiler, expression, false);
 
     if (destination.kind == TypeChar) {
@@ -361,7 +359,6 @@ static Operand compile_character_conversion(Compiler* compiler, ASTNode* ast)
 static Operand compile_boolean_to_integer(Compiler* compiler, ASTNode* expression, Type destination)
 {
     Operand operand = compile_expression(compiler, expression, false);
-
     operand = materialize_operand(compiler, operand);
 
     emit_instruction(compiler, OpBandiI32, operand.reg, operand.reg, 1);

@@ -67,6 +67,7 @@ static bool get_instruction_before(Compiler* compiler, size_t count, PreviousIns
     }
 
     size_t start = count - INSTRUCTION_SIZE;
+    
     if (start < compiler->peephole_barrier) {
         return false;
     }
@@ -188,8 +189,7 @@ bool retarget_temporary(Compiler* compiler, Operand value, int destination)
         return false;
     }
 
-    if (!get_previous_instruction(compiler, &previous)
-        || previous.a != value.reg) {
+    if (!get_previous_instruction(compiler, &previous) || previous.a != value.reg) {
         return false;
     }
 

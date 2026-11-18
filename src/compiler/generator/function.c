@@ -58,18 +58,13 @@ static void relocate_call_area(Compiler* compiler, CallArea* call, size_t argume
     call->frame_register = relocated.frame_register;
 }
 
-static void allocate_call_area_register(Compiler* compiler)
-{
-    emit_ldi(compiler, 0);
-}
-
-Operand close_call_area(Compiler* compiler, FunctionObject* function,
-    uint16_t function_position, CallArea call, bool discard)
+Operand close_call_area(
+    Compiler* compiler, FunctionObject* function, uint16_t function_position, CallArea call, bool discard)
 {
     int end = call.frame_register + get_call_area_count(function);
 
     while (compiler->register_count < end) {
-        allocate_call_area_register(compiler);
+        emit_ldi(compiler, 0);
     }
 
     emit_call_instruction(compiler, call.frame_register, function_position);
@@ -78,7 +73,6 @@ Operand close_call_area(Compiler* compiler, FunctionObject* function,
         Operand result = {call.frame_register - 2, true, function->return_count};
 
         emit_operand_mov(compiler, call.result_register, result);
-
         result.reg = call.result_register;
         compiler->register_count = call.result_register + function->return_count;
 
@@ -410,8 +404,10 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
 
     for (size_t i = 0; i < count_vector(&ast->function_definition.params); i++) {
         function->param_count += get_node_slot_count(
-            get_vector_at(&ast->function_definition.params, i));
+            get_vector_at(&ast->function_definition.params, i)
+        );
     }
+
     function->return_count = get_type_slot_count(ast->function_definition.return_type_id.kind);
 
     if (ast->function_definition.return_type_id.kind == TypeVoid) {
@@ -635,8 +631,7 @@ void compile_return_statement(Compiler* compiler, ASTNode* ast)
     bool reference = get_reference_type(ast->return_statement.expr) != RefNone;
     ASTNode* function = get_current_function_definition(compiler);
     Type return_type = function->function_definition.return_type_id;
-    Operand value = compile_converted_expression(
-        compiler, ast->return_statement.expr, return_type, reference);
+    Operand value = compile_converted_expression(compiler, ast->return_statement.expr, return_type, reference);
 
     emit_retv(compiler, value);
     release_operand(compiler, value);

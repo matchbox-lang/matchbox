@@ -29,8 +29,7 @@ Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)
     return result;
 }
 
-static void store_conditional_value(
-    Compiler* compiler, Type type, int destination, Operand value)
+static void store_conditional_value(Compiler* compiler, Type type, int destination, Operand value)
 {
     if (type.kind == TypeVoid) {
         return;
@@ -43,8 +42,7 @@ static void store_conditional_value(
     emit_operand_mov(compiler, destination, value);
 }
 
-Operand compile_conditional_branch(
-    Compiler* compiler, ASTNode* branch, Type type, int destination, bool reference)
+Operand compile_conditional_branch(Compiler* compiler, ASTNode* branch, Type type, int destination, bool reference)
 {
     if (branch->type == ASTConditional) {
         Operand value = compile_converted_expression(compiler, branch, type, reference);
@@ -85,6 +83,7 @@ Operand allocate_branch_result(Compiler* compiler, Type type)
     size_t slots = get_type_slot_count(type.kind);
     int reg = allocate_registers(compiler, slots);
     Operand result = {reg, true, slots};
+    
     compiler->local_position_offset += slots;
 
     return result;
@@ -142,7 +141,7 @@ Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool reference)
     if (condition_node->type != ASTBoolean) {
         Operand condition = compile_expression(compiler, condition_node, false);
         else_jump = emit_condition_jump(compiler, condition);
-
+        
         release_operand(compiler, condition);
     }
 

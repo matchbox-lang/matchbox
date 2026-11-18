@@ -92,8 +92,7 @@ Opcode get_integer_opcode(Type type, IntegerOperation operation)
     return OpHlt;
 }
 
-Operand emit_binary_operands(
-    Compiler* compiler, IntegerOperation operation, Type type, Operand left, Operand right)
+Operand emit_binary_operands(Compiler* compiler, IntegerOperation operation, Type type, Operand left, Operand right)
 {
     int destination = select_binary_destination(compiler, left, right, left.slots);
     Opcode opcode = get_integer_opcode(type, operation);
@@ -223,8 +222,7 @@ Opcode get_float_opcode(Type type, TokenType operator_type)
     }
 }
 
-Operand emit_float_operands(Compiler* compiler, Opcode opcode,
-    Type type, Operand left, Operand right)
+Operand emit_float_operands(Compiler* compiler, Opcode opcode, Type type, Operand left, Operand right)
 {
     size_t slots = get_type_slot_count(type.kind);
     int destination = select_binary_destination(compiler, left, right, slots);
@@ -321,8 +319,7 @@ static Operand emit_integer_comparison(Compiler* compiler, TokenType operator_ty
     }
 }
 
-Operand emit_numeric_comparison(Compiler* compiler, TokenType operator_type,
-    Type type, Operand left, Operand right)
+Operand emit_numeric_comparison(Compiler* compiler, TokenType operator_type, Type type, Operand left, Operand right)
 {
     bool floating = is_float_type(type.kind);
     bool wide = get_integer_type_size(type.kind) == 8;
@@ -375,8 +372,7 @@ Operand compile_comparison_operand(Compiler* compiler, ASTNode* ast, Type type)
     return normalize_integer_operand(compiler, value, type);
 }
 
-Operand emit_binary_operator(Compiler* compiler, TokenType operator_type,
-    Type type, Operand left, Operand right)
+Operand emit_binary_operator(Compiler* compiler, TokenType operator_type, Type type, Operand left, Operand right)
 {
     bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
 

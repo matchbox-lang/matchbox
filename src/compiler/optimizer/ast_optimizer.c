@@ -4,9 +4,9 @@
 #include "common/array_type.h"
 #include "common/errors.h"
 #include "common/vector.h"
+#include "compiler/lexer/token.h"
 #include "compiler/constant.h"
 #include "compiler/scope.h"
-#include "compiler/lexer/token.h"
 #include "runtime/concatenation.h"
 #include "runtime/string_object.h"
 #include <stdint.h>

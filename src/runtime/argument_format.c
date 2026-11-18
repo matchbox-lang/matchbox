@@ -1,7 +1,7 @@
 #include "runtime/argument_format.h"
 #include "common/array_type.h"
-#include "runtime/array_format.h"
 #include "common/errors.h"
+#include "runtime/array_format.h"
 #include "runtime/concatenation.h"
 #include "runtime/module_object.h"
 #include <stdint.h>

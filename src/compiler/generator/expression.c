@@ -9,8 +9,8 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/variable.h"
-#include "compiler/ast.h"
 #include "compiler/lexer/token.h"
+#include "compiler/ast.h"
 #include "runtime/code_object.h"
 #include <stddef.h>
 #include <stdint.h>

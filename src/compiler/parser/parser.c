@@ -1,12 +1,12 @@
 #include "compiler/parser/parser.h"
 #include "common/vector.h"
-#include "compiler/diagnostics.h"
 #include "compiler/parser/control_flow.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/match.h"
 #include "compiler/parser/test_block.h"
 #include "compiler/parser/variable.h"
+#include "compiler/diagnostics.h"
 
 _Noreturn void expected_expression_error(Token token)
 {

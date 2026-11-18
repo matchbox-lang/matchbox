@@ -1,7 +1,7 @@
 #include "compiler/parser/test_block.h"
-#include "compiler/diagnostics.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/string.h"
+#include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <stdio.h>
 #include <string.h>

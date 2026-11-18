@@ -2,11 +2,11 @@
 #include "common/array_type.h"
 #include "common/memory.h"
 #include "common/vector.h"
-#include "compiler/builtin_constant.h"
-#include "compiler/diagnostics.h"
 #include "compiler/parser/array.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
+#include "compiler/builtin_constant.h"
+#include "compiler/diagnostics.h"
 
 static _Noreturn void expected_type_error(Token token)
 {

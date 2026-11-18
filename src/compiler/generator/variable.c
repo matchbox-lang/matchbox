@@ -8,9 +8,9 @@
 #include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/lexer/token.h"
 #include "compiler/ast.h"
 #include "compiler/scope.h"
-#include "compiler/lexer/token.h"
 #include <stddef.h>
 #include <stdint.h>
 

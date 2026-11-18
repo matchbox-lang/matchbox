@@ -3,8 +3,8 @@
 #include "common/array_type.h"
 #include "common/memory.h"
 #include "common/vector.h"
-#include "compiler/scope.h"
 #include "compiler/lexer/token.h"
+#include "compiler/scope.h"
 #include "runtime/string_object.h"
 #include <stdbool.h>
 

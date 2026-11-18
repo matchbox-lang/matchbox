@@ -1,9 +1,9 @@
 #include "compiler/parser/match.h"
 #include "common/memory.h"
 #include "common/vector.h"
-#include "compiler/diagnostics.h"
 #include "compiler/parser/control_flow.h"
 #include "compiler/parser/expression.h"
+#include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 
 static bool is_match_branch_end(Parser* parser)

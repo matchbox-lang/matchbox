@@ -1,8 +1,8 @@
 #ifndef ANALYZER_LIFETIME_H
 #define ANALYZER_LIFETIME_H
 
-#include "compiler/analyzer/analyzer.h"
 #include "common/table.h"
+#include "compiler/analyzer/analyzer.h"
 
 typedef struct ReferenceLifetimes
 {

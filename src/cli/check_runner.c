@@ -5,8 +5,8 @@
 #include "common/io.h"
 #include "common/memory.h"
 #include "compiler/analyzer/analyzer.h"
-#include "compiler/diagnostics.h"
 #include "compiler/parser/parser.h"
+#include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "config.h"
 #include <dirent.h>

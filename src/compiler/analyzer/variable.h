@@ -1,8 +1,8 @@
 #ifndef ANALYZER_VARIABLE_H
 #define ANALYZER_VARIABLE_H
 
-#include "compiler/analyzer/analyzer.h"
 #include "common/string_view.h"
+#include "compiler/analyzer/analyzer.h"
 
 ASTNode* find_symbol(Analyzer* analyzer, StringView id);
 void track_variable_read(ASTNode* symbol);

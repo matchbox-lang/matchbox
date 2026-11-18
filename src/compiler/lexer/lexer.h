@@ -1,8 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "compiler/source_position.h"
 #include "compiler/lexer/token.h"
+#include "compiler/source_position.h"
 
 typedef struct Lexer
 {

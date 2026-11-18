@@ -1,9 +1,9 @@
 #include "cli/path.h"
 #include "common/memory.h"
+#include <sys/stat.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 
 static char* create_path(size_t length)
 {

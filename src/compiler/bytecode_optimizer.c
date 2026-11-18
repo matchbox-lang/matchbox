@@ -661,28 +661,30 @@ static bool fuse_loads(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
+static Opcode move_load_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpLdi:
+            return OpMovLdi;
+        case OpLdc:
+            return OpMovLdc;
+        case OpLdg:
+            return OpMovLdg;
+        default:
+            return OpHlt;
+    }
+}
+
 static bool fuse_move_load(OptimizationWord* first, OptimizationWord* second)
 {
     bool small = small_load(second);
+    Opcode opcode = move_load_opcode(second->opcode);
 
-    if (first->opcode != OpMov || first->a + 1 != second->a || !small) {
+    if (first->opcode != OpMov || first->a + 1 != second->a || !small || opcode == OpHlt) {
         return false;
     }
 
-    switch (second->opcode) {
-        case OpLdi:
-            first->opcode = OpMovLdi;
-            break;
-        case OpLdc:
-            first->opcode = OpMovLdc;
-            break;
-        case OpLdg:
-            first->opcode = OpMovLdg;
-            break;
-        default:
-            return false;
-    }
-
+    first->opcode = opcode;
     first->c = second->c;
 
     return true;

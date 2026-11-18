@@ -427,6 +427,7 @@ static bool compile_literal_match(Compiler* compiler, ASTNode* ast, Type type, i
 {
     ASTNode* branch;
     ASTNode* binding;
+
     if (!find_literal_match_branch(ast, &branch, &binding)) {
         return false;
     }

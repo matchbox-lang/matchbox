@@ -15,11 +15,7 @@ typedef struct ArgumentFormat ArgumentFormat;
 typedef struct VM VM;
 typedef struct FunctionObject FunctionObject;
 
-typedef void (*FunctionEntry)(
-    VM* vm,
-    const FunctionObject* function,
-    Value* frame
-);
+typedef void (*FunctionEntry)(VM* vm, const FunctionObject* function, Value* frame);
 
 typedef struct FunctionObject
 {

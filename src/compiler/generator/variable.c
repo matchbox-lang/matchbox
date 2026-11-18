@@ -207,8 +207,7 @@ static void store_assignment_value(Compiler* compiler, ASTNode* symbol, Operand 
     release_operand(compiler, reference);
 }
 
-static void compile_compound_assignment(
-    Compiler* compiler, ASTNode* ast, IntegerOperation operation)
+static void compile_compound_assignment(Compiler* compiler, ASTNode* ast, IntegerOperation operation)
 {
     Type type = get_node_data_type(ast->assignment.symbol);
 

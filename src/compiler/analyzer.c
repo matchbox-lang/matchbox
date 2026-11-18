@@ -860,8 +860,7 @@ static void set_expression_reference_type(ASTNode* ast, ReferenceType type)
     ast->match.reference_type = type;
 }
 
-static void merge_branch_reference(
-    ASTNode* ast, ASTNode* result, bool first, bool has_expected_type, Token token)
+static void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_expected_type, Token token)
 {
     ReferenceType type = get_reference_type(result);
 
@@ -956,8 +955,7 @@ static Type analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Type ty
     return result_type;
 }
 
-static Type analyze_scoped_branch(
-    Analyzer* analyzer, ASTNode* branch, ASTNode* binding, Type type, bool moves_result)
+static Type analyze_scoped_branch(Analyzer* analyzer, ASTNode* branch, ASTNode* binding, Type type, bool moves_result)
 {
     Scope* previous_scope = enter_branch_scope(analyzer, branch, binding);
     Type result_type = analyze_branch_contents(analyzer, branch, type, moves_result);
@@ -2822,8 +2820,7 @@ static void validate_argument_origin_access(Vector* arguments, Vector* parameter
     }
 }
 
-static void validate_argument_access(Vector* arguments, Vector* parameters,
-    size_t position, Token token)
+static void validate_argument_access(Vector* arguments, Vector* parameters, size_t position, Token token)
 {
     ASTNode* left = get_vector_at(arguments, position);
     ASTNode* left_parameter = get_vector_at(parameters, position);

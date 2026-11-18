@@ -166,8 +166,7 @@ static Type get_builtin_argument_type(const Builtin* builtin, Type type)
     return type;
 }
 
-static void set_builtin_argument_format(
-    Compiler* compiler, FunctionObject* function, Type type, size_t index)
+static void set_builtin_argument_format(Compiler* compiler, FunctionObject* function, Type type, size_t index)
 {
     if (!function->argument_formats) {
         return;
@@ -322,8 +321,7 @@ static ASTNode* get_argument_expression(Vector* args, ASTNode* parameter, size_t
     return parameter->parameter.default_value;
 }
 
-static Operand compile_argument_expression(Compiler* compiler, Vector* args, Vector* params,
-    size_t position)
+static Operand compile_argument_expression(Compiler* compiler, Vector* args, Vector* params, size_t position)
 {
     ASTNode* parameter = NULL;
 

@@ -424,8 +424,7 @@ static bool find_literal_match_branch(ASTNode* ast, ASTNode** branch, ASTNode** 
     return true;
 }
 
-static bool compile_literal_match(
-    Compiler* compiler, ASTNode* ast, Type type, int destination, bool reference)
+static bool compile_literal_match(Compiler* compiler, ASTNode* ast, Type type, int destination, bool reference)
 {
     ASTNode* branch;
     ASTNode* binding;

@@ -445,8 +445,8 @@ static bool update_global_store_liveness(const OptimizationWord* word, bool* liv
     return true;
 }
 
-static void update_liveness(const ModuleObject* module, OptimizationWord* word, bool* live,
-    size_t persistent_registers)
+static void update_liveness(
+    const ModuleObject* module, OptimizationWord* word, bool* live, size_t persistent_registers)
 {
     bool wide = update_wide_liveness(word, live);
 

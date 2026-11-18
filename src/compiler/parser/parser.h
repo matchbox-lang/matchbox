@@ -1,5 +1,5 @@
-#ifndef COMPILER_PARSER_H
-#define COMPILER_PARSER_H
+#ifndef PARSER_H
+#define PARSER_H
 
 #include "compiler/ast.h"
 #include "compiler/lexer/lexer.h"

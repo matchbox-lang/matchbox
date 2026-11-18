@@ -1,5 +1,5 @@
-#ifndef COMPILER_ANALYZER_H
-#define COMPILER_ANALYZER_H
+#ifndef ANALYZER_H
+#define ANALYZER_H
 
 #include "compiler/ast.h"
 #include <stddef.h>

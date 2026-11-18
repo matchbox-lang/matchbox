@@ -6,8 +6,6 @@
 #include "runtime/string_object.h"
 #include "runtime/value.h"
 
-static StringObject* get_string_object(ModuleObject* module, const char* chars, size_t length);
-
 ModuleObject* create_module_object()
 {
     ModuleObject* module = ALLOCATE_OBJECT(ModuleObject, ObjModule);

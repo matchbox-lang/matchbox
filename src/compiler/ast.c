@@ -8,10 +8,6 @@
 #include "runtime/string_object.h"
 #include <stdbool.h>
 
-static void free_type_dimensions(Type type);
-static Type get_builtin_return_type(const ASTNode* ast);
-static bool are_simple_match_values(const Vector* values);
-
 ASTNode* create_ast_node(ASTNodeType type)
 {
     ASTNode* ast = allocate_zeroed_memory(1, sizeof(ASTNode));

@@ -92,41 +92,21 @@ static Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool refere
 static Operand compile_match(Compiler* compiler, ASTNode* ast, bool reference);
 static Operand compile_converted_expression(Compiler* compiler, ASTNode* ast, Type destination, bool reference);
 static void compile_blocklevel_statements(Compiler* compiler, Vector* nodes);
-static void compile_top_level_statements(Compiler* compiler, Vector* nodes);
 static size_t get_node_slot_count(ASTNode* ast);
 static Operand compile_integer_cast(Compiler* compiler, Operand operand, Type source, Type destination);
 static Operand emit_binary_builtin(Compiler* compiler, TokenType operator_type,
     Type left_type, Type right_type, Operand left, Operand right);
 static Operand convert_operand(Compiler* compiler, Operand operand, Type source, Type destination);
 static void compile_power_assignment(Compiler* compiler, ASTNode* ast);
-static Operand emit_unary_operand(Compiler* compiler, Opcode opcode, Operand operand);
-static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast);
 static ASTNode* get_current_function_definition(Compiler* compiler);
-static bool is_match_alternative(ASTNode* pattern);
 static bool get_literal_match_value(ASTNode* ast, uint64_t* value);
 static size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
 static void patch_jump(Compiler* compiler, size_t position);
-static Operand compile_constant(Compiler* compiler, ASTNode* ast);
-static Operand compile_array(Compiler* compiler, ASTNode* ast);
 static Operand compile_array_binary(Compiler* compiler, ASTNode* ast);
 static void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast);
 static Operand compile_array_prefix(Compiler* compiler, ASTNode* ast);
 static Operand compile_usize_literal(Compiler* compiler, size_t value);
-static Operand compile_array_new(Compiler* compiler, Type type);
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
-static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int destination);
-static void compile_index_load(Compiler* compiler, ASTNode* ast, int destination);
-static Operand compile_index(Compiler* compiler, ASTNode* ast);
-static void compile_index_assignment(Compiler* compiler, ASTNode* ast);
-static void scale_array_index(Compiler* compiler, Operand index, size_t stride);
-static uint64_t read_compiled_integer_constant(Compiler* compiler, ASTNode* ast);
-static void resolve_index_constant(Compiler* compiler, ASTNode* ast);
-static void compile_index_panic(Compiler* compiler);
-static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count);
-static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast);
-static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, ASTNode* ast);
-static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast);
-static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* offset);
 
 static _Noreturn void branch_offset_overflow_error(void)
 {

@@ -18,7 +18,6 @@ static void remove_discarded_statement_reads(ASTNode* ast);
 static void mark_called_functions(ASTNode* ast);
 static void reset_function_call_counts(ASTNode* ast);
 static void optimize_node(ASTNode* ast);
-static void optimize_match_pattern(ASTNode* pattern);
 static void optimize_conditional(ASTNode* ast, bool fold);
 
 static void write_text_literal(Writer* writer, ASTNode* ast)

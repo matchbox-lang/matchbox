@@ -3,9 +3,6 @@
 #include <float.h>
 #include <limits.h>
 
-static bool accepts_numeric_type(TypeKind source, TypeKind destination);
-static bool accepts_both_numeric_types(TypeKind left, TypeKind right, TypeKind destination);
-
 const char* get_data_type_name(Type type)
 {
     if (is_array_type(type.kind)) {

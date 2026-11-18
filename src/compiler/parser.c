@@ -29,7 +29,6 @@ typedef struct StringReader
 } StringReader;
 
 static ASTNode* parse_expression(Parser* parser);
-static ASTNode* parse_postfix(Parser* parser);
 static ASTNode* parse_identifier(Parser* parser);
 static ASTNode* parse_function_call(Parser* parser);
 static ASTNode* parse_prefix(Parser* parser);

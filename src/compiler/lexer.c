@@ -13,7 +13,6 @@ typedef struct Keyword
 } Keyword;
 
 static bool skip_whitespace(Lexer* lexer);
-static Token scan_discovery_token(Lexer* lexer);
 static void skip_discovery_interpolation(Lexer* lexer);
 
 static const Keyword keywords[] = {

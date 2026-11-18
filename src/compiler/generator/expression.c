@@ -264,28 +264,28 @@ static Opcode get_float64_three_way_opcode(TokenType operator_type)
     return OpCmplF64;
 }
 
-Opcode get_three_way_opcode(Type type, TokenType operator_type)
+static Opcode get_integer_three_way_opcode(Type type)
 {
     size_t size = get_integer_type_size(type.kind);
+    bool signed_type = is_signed_integer_type(type.kind);
 
     if (size == 8) {
-        bool signed_type = is_signed_integer_type(type.kind);
-
         return signed_type ? OpCmpI64 : OpCmpU64;
     }
 
+    return signed_type ? OpCmpI32 : OpCmpU32;
+}
+
+Opcode get_three_way_opcode(Type type, TokenType operator_type)
+{
     switch (type.kind) {
         case TypeF32:
             return get_float32_three_way_opcode(operator_type);
         case TypeF64:
             return get_float64_three_way_opcode(operator_type);
         default:
-            break;
+            return get_integer_three_way_opcode(type);
     }
-
-    bool signed_type = is_signed_integer_type(type.kind);
-
-    return signed_type ? OpCmpI32 : OpCmpU32;
 }
 
 static Operand emit_three_way_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
@@ -485,22 +485,26 @@ static Opcode get_negation_opcode(Type type)
     return get_integer_opcode(type, IntNeg);
 }
 
-Operand emit_prefix_operand(Compiler* compiler, TokenType operator_type, Type type, Operand operand)
+static Opcode get_prefix_opcode(TokenType operator_type, Type type)
 {
-    Opcode opcode;
-
     switch (operator_type) {
         case TokenKeywordNot:
-            opcode = OpNot;
-            break;
+            return OpNot;
         case TokenTilde:
-            opcode = get_integer_opcode(type, IntBnot);
-            break;
+            return get_integer_opcode(type, IntBnot);
         case TokenMinus:
-            opcode = get_negation_opcode(type);
-            break;
+            return get_negation_opcode(type);
         default:
-            return no_operand();
+            return OpHlt;
+    }
+}
+
+Operand emit_prefix_operand(Compiler* compiler, TokenType operator_type, Type type, Operand operand)
+{
+    Opcode opcode = get_prefix_opcode(operator_type, type);
+
+    if (opcode == OpHlt) {
+        return no_operand();
     }
 
     return emit_unary_operand(compiler, opcode, operand);

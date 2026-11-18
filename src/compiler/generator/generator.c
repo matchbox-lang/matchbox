@@ -125,61 +125,55 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
     }
 }
 
+static Operand compile_value_expression(Compiler* compiler, ASTNode* ast)
+{
+    switch (ast->type) {
+        case ASTArray:
+            return compile_array(compiler, ast);
+        case ASTIndex:
+            return compile_index(compiler, ast);
+        case ASTBinary:
+            return compile_binary(compiler, ast);
+        case ASTString:
+            return compile_string(compiler, ast);
+        case ASTCharacter:
+            return compile_character(compiler, ast);
+        case ASTBoolean:
+            return compile_boolean(compiler, ast);
+        case ASTConditional:
+            return compile_conditional(compiler, ast, false);
+        case ASTMatch:
+            return compile_match(compiler, ast, false);
+        case ASTConversion:
+            return compile_explicit_conversion(compiler, ast);
+        case ASTFloat:
+            return compile_float(compiler, ast);
+        case ASTInteger:
+            return compile_integer_value(compiler, ast->integer_literal.value, ast->integer_literal.type_id);
+        case ASTPrefix:
+            return compile_prefix(compiler, ast);
+        case ASTVariable:
+            return compile_variable(compiler, ast);
+        default:
+            return no_operand();
+    }
+}
+
 Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard)
 {
     if (discard && compile_discarded_expression(compiler, ast)) {
         return no_operand();
     }
 
-    Operand result;
-
-    switch (ast->type) {
-        case ASTArray:
-            result = compile_array(compiler, ast);
-            break;
-        case ASTIndex:
-            result = compile_index(compiler, ast);
-            break;
-        case ASTBinary:
-            result = compile_binary(compiler, ast);
-            break;
-        case ASTString:
-            result = compile_string(compiler, ast);
-            break;
-        case ASTCharacter:
-            result = compile_character(compiler, ast);
-            break;
-        case ASTBoolean:
-            result = compile_boolean(compiler, ast);
-            break;
-        case ASTBuiltinCall:
-            return compile_builtin_call(compiler, ast, discard);
-        case ASTConditional:
-            result = compile_conditional(compiler, ast, false);
-            break;
-        case ASTMatch:
-            result = compile_match(compiler, ast, false);
-            break;
-        case ASTConversion:
-            result = compile_explicit_conversion(compiler, ast);
-            break;
-        case ASTFunctionCall:
-            return compile_function_call(compiler, ast, discard);
-        case ASTFloat:
-            result = compile_float(compiler, ast);
-            break;
-        case ASTInteger:
-            result = compile_integer_value(compiler, ast->integer_literal.value, ast->integer_literal.type_id);
-            break;
-        case ASTPrefix:
-            result = compile_prefix(compiler, ast);
-            break;
-        case ASTVariable:
-            result = compile_variable(compiler, ast);
-            break;
-        default:
-            return no_operand();
+    if (ast->type == ASTBuiltinCall) {
+        return compile_builtin_call(compiler, ast, discard);
     }
+
+    if (ast->type == ASTFunctionCall) {
+        return compile_function_call(compiler, ast, discard);
+    }
+
+    Operand result = compile_value_expression(compiler, ast);
 
     if (discard) {
         release_operand(compiler, result);

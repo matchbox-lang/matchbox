@@ -655,15 +655,9 @@ static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
     return fold_count_binary_value(ast->binary.operator.type, type, left, right, value);
 }
 
-static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
+static bool fold_count_prefix_value(TokenType operator_type, uint64_t* value)
 {
-    bool evaluated = evaluate_integer_constant(ast->prefix.expr, value);
-
-    if (!evaluated) {
-        return false;
-    }
-
-    switch (ast->prefix.operator.type) {
+    switch (operator_type) {
         case TokenMinus:
             *value = 0 - *value;
             return true;
@@ -675,6 +669,17 @@ static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
         default:
             return false;
     }
+}
+
+static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
+{
+    bool evaluated = evaluate_integer_constant(ast->prefix.expr, value);
+
+    if (!evaluated) {
+        return false;
+    }
+
+    return fold_count_prefix_value(ast->prefix.operator.type, value);
 }
 
 static bool evaluate_count_conversion(const ASTNode* ast, uint64_t* value)

@@ -242,16 +242,8 @@ static void compile_simple_assignment(Compiler* compiler, ASTNode* ast)
     store_assignment_value(compiler, ast->assignment.symbol, value);
 }
 
-void compile_assignment(Compiler* compiler, ASTNode* ast)
+static void compile_assignment_operator(Compiler* compiler, ASTNode* ast)
 {
-    Type type = get_node_data_type(ast->assignment.symbol);
-
-    if (is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual) {
-        compile_array_compound_assignment(compiler, ast);
-
-        return;
-    }
-
     switch (ast->assignment.operator.type) {
         case TokenPlusEqual:
             return compile_compound_assignment(compiler, ast, IntAdd);
@@ -280,6 +272,19 @@ void compile_assignment(Compiler* compiler, ASTNode* ast)
         default:
             return;
     }
+}
+
+void compile_assignment(Compiler* compiler, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast->assignment.symbol);
+
+    if (is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual) {
+        compile_array_compound_assignment(compiler, ast);
+
+        return;
+    }
+
+    compile_assignment_operator(compiler, ast);
 }
 
 static void compile_power_assignment(Compiler* compiler, ASTNode* ast)

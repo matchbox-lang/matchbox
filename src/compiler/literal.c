@@ -72,36 +72,48 @@ static bool decode_unicode_escape(const char* chars, size_t length, DecodedScala
     return true;
 }
 
+static bool decode_simple_escape(char c, uint32_t* value)
+{
+    switch (c) {
+        case 'n':
+            *value = '\n';
+            break;
+        case 'r':
+            *value = '\r';
+            break;
+        case 't':
+            *value = '\t';
+            break;
+        case '0':
+            *value = 0;
+            break;
+        case '\\':
+        case '\'':
+        case '"':
+            *value = (unsigned char)c;
+            break;
+        default:
+            return false;
+    }
+
+    return true;
+}
+
 static bool decode_escape(const char* chars, size_t length, DecodedScalar* scalar)
 {
     if (length < 2) {
         return false;
     }
 
-    uint32_t value;
+    if (chars[1] == 'u') {
+        return decode_unicode_escape(chars, length, scalar);
+    }
 
-    switch (chars[1]) {
-        case 'n':
-            value = '\n';
-            break;
-        case 'r':
-            value = '\r';
-            break;
-        case 't':
-            value = '\t';
-            break;
-        case '0':
-            value = 0;
-            break;
-        case '\\':
-        case '\'':
-        case '"':
-            value = (unsigned char)chars[1];
-            break;
-        case 'u':
-            return decode_unicode_escape(chars, length, scalar);
-        default:
-            return false;
+    uint32_t value;
+    bool valid = decode_simple_escape(chars[1], &value);
+
+    if (!valid) {
+        return false;
     }
 
     scalar->value = value;

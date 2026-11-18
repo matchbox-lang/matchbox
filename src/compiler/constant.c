@@ -10,7 +10,6 @@
 
 static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
 static bool can_discard_length_argument(const ASTNode* ast);
-static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type);
 
 static _Noreturn void invalid_conversion_error(Token token, Type destination)
 {
@@ -591,6 +590,15 @@ static bool divide_count_values(uint64_t left, uint64_t right, Type type, bool r
     return true;
 }
 
+static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type)
+{
+    if (is_signed_integer_type(type.kind)) {
+        return (uint64_t)((int64_t)value >> shift);
+    }
+
+    return value >> shift;
+}
+
 static bool evaluate_count_binary(const ASTNode* ast, uint64_t* value)
 {
     uint64_t left = 0;
@@ -661,15 +669,6 @@ static bool evaluate_count_prefix(const ASTNode* ast, uint64_t* value)
         default:
             return false;
     }
-}
-
-static uint64_t shift_count_right(uint64_t value, uint64_t shift, Type type)
-{
-    if (is_signed_integer_type(type.kind)) {
-        return (uint64_t)((int64_t)value >> shift);
-    }
-
-    return value >> shift;
 }
 
 static bool evaluate_count_conversion(const ASTNode* ast, uint64_t* value)

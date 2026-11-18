@@ -22,18 +22,11 @@ typedef bool (*VisitId)(StringView id, void* context);
 static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context);
 static void clear_node_analysis(ASTNode* ast, Vector* functions);
 static void analyze_node(Analyzer* analyzer, ASTNode* ast);
-static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type);
-static Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type);
-static void consume_array(ASTNode* ast);
 static void resolve_dimensions(Analyzer* analyzer, Type* type);
 static bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast);
-static void apply_array_type(ASTNode* ast, Type type);
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast);
-static void activate_reference_access(ASTNode* ast);
-static void transfer_exclusive_reference(ASTNode* expression);
 static void update_boolean_match_coverage(MatchArm* arm, bool* covers_false, bool* covers_true);
 static ASTNode* find_node_return(ASTNode* ast);
-static void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type);
 
 typedef struct FunctionPath
 {
@@ -284,6 +277,15 @@ static ASTNode* get_float_literal(ASTNode* expression)
     }
 
     return expression;
+}
+
+static void apply_array_type(ASTNode* ast, Type type)
+{
+    if (ast->array.fill) {
+        return;
+    }
+
+    ast->array.type_id = type;
 }
 
 static void apply_literal_type(ASTNode* expression, Type type)
@@ -890,6 +892,38 @@ static Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* b
     }
 
     return previous_scope;
+}
+
+static void consume_array_variable(ASTNode* ast)
+{
+    ASTNode* symbol = ast->variable.symbol;
+    bool moved = is_moved(symbol);
+    bool exclusive = has_exclusive_access(symbol);
+    size_t shared = *get_shared_access_count(symbol);
+
+    if (moved || exclusive || shared) {
+        semantic_error("Cannot move an unavailable array", ast->variable.token);
+    }
+
+    set_moved(symbol);
+}
+
+static void consume_array(ASTNode* ast)
+{
+    Type type = get_node_data_type(ast);
+    ReferenceType reference = get_reference_type(ast);
+
+    if (!is_array_type(type.kind) || reference != RefNone) {
+        return;
+    }
+
+    if (ast->type == ASTIndex) {
+        semantic_error("Cannot move an array element out of its owner", ast->index.token);
+    }
+
+    if (ast->type == ASTVariable) {
+        consume_array_variable(ast);
+    }
 }
 
 static Type analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Type type, bool moves_result)
@@ -1725,74 +1759,6 @@ static Type array_binary_result_type(Analyzer* analyzer, Type shape, Type leaf)
     return get_array_type(&analyzer->array_types, element, shape.array->count);
 }
 
-static void analyze_array_binary(Analyzer* analyzer, ASTNode* ast, Type left, Type right)
-{
-    TokenType operator_type = ast->binary.operator.type;
-    bool equality = is_equality_token(operator_type);
-    bool same_shape = array_shapes_equal(left, right);
-
-    if (!is_array_type(left.kind) || !is_array_type(right.kind)) {
-        semantic_error("Array binary operators require two arrays", ast->binary.operator);
-    }
-
-    if (!same_shape && !equality) {
-        semantic_error("Array binary operators require matching shapes", ast->binary.operator);
-    }
-
-    if (!same_shape) {
-        ast->binary.type_id = (Type){.kind = TypeBool};
-
-        return;
-    }
-
-    Type left_leaf = get_array_leaf_type(left);
-    Type right_leaf = get_array_leaf_type(right);
-
-    analyze_binary_types(ast, left_leaf, right_leaf);
-
-    Type result = ast->binary.type_id;
-    ast->binary.type_id = (Type){.kind = TypeBool};
-
-    if (!equality) {
-        ast->binary.type_id = array_binary_result_type(analyzer, left, result);
-    }
-}
-
-static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
-{
-    analyze_node(analyzer, ast->binary.left_expr);
-    analyze_node(analyzer, ast->binary.right_expr);
-
-    Type left_type = get_node_data_type(ast->binary.left_expr);
-    Type right_type = get_node_data_type(ast->binary.right_expr);
-
-    if (is_array_type(left_type.kind) || is_array_type(right_type.kind)) {
-        analyze_array_binary(analyzer, ast, left_type, right_type);
-
-        return;
-    }
-
-    TokenType operator_type = ast->binary.operator.type;
-    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
-
-    if (comparison) {
-        apply_binary_float_literal_types(ast->binary.left_expr, ast->binary.right_expr);
-    }
-
-    apply_binary_integer_literal_types(ast->binary.left_expr, ast->binary.right_expr);
-
-    left_type = get_node_data_type(ast->binary.left_expr);
-    right_type = get_node_data_type(ast->binary.right_expr);
-
-    analyze_binary_types(ast, left_type, right_type);
-}
-
-static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type)
-{
-    ast->binary.type_id = analyze_binary_operand_types(
-        ast->binary.operator, left_type, right_type, &ast->binary.operand_type);
-}
-
 static Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type)
 {
     TokenType operator_type = operator.type;
@@ -1855,6 +1821,74 @@ static Type analyze_binary_operand_types(Token operator, Type left_type, Type ri
     }
 
     return result_type;
+}
+
+static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type)
+{
+    ast->binary.type_id = analyze_binary_operand_types(
+        ast->binary.operator, left_type, right_type, &ast->binary.operand_type);
+}
+
+static void analyze_array_binary(Analyzer* analyzer, ASTNode* ast, Type left, Type right)
+{
+    TokenType operator_type = ast->binary.operator.type;
+    bool equality = is_equality_token(operator_type);
+    bool same_shape = array_shapes_equal(left, right);
+
+    if (!is_array_type(left.kind) || !is_array_type(right.kind)) {
+        semantic_error("Array binary operators require two arrays", ast->binary.operator);
+    }
+
+    if (!same_shape && !equality) {
+        semantic_error("Array binary operators require matching shapes", ast->binary.operator);
+    }
+
+    if (!same_shape) {
+        ast->binary.type_id = (Type){.kind = TypeBool};
+
+        return;
+    }
+
+    Type left_leaf = get_array_leaf_type(left);
+    Type right_leaf = get_array_leaf_type(right);
+
+    analyze_binary_types(ast, left_leaf, right_leaf);
+
+    Type result = ast->binary.type_id;
+    ast->binary.type_id = (Type){.kind = TypeBool};
+
+    if (!equality) {
+        ast->binary.type_id = array_binary_result_type(analyzer, left, result);
+    }
+}
+
+static void analyze_binary(Analyzer* analyzer, ASTNode* ast)
+{
+    analyze_node(analyzer, ast->binary.left_expr);
+    analyze_node(analyzer, ast->binary.right_expr);
+
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+
+    if (is_array_type(left_type.kind) || is_array_type(right_type.kind)) {
+        analyze_array_binary(analyzer, ast, left_type, right_type);
+
+        return;
+    }
+
+    TokenType operator_type = ast->binary.operator.type;
+    bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
+
+    if (comparison) {
+        apply_binary_float_literal_types(ast->binary.left_expr, ast->binary.right_expr);
+    }
+
+    apply_binary_integer_literal_types(ast->binary.left_expr, ast->binary.right_expr);
+
+    left_type = get_node_data_type(ast->binary.left_expr);
+    right_type = get_node_data_type(ast->binary.right_expr);
+
+    analyze_binary_types(ast, left_type, right_type);
 }
 
 static void track_variable_read(ASTNode* symbol)
@@ -2021,6 +2055,31 @@ static void analyze_reference(Analyzer* analyzer, ASTNode* ast)
     
     add_reference_origin(origins, symbol);
     track_variable_read(symbol);
+}
+
+static void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
+{
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
+        apply_declared_type(expression->prefix.expr, type, reference_type);
+
+        return;
+    }
+
+    if (type.kind == TypeUnknown) {
+        return;
+    }
+
+    apply_literal_type(expression, type);
+
+    if (expression->type == ASTConditional) {
+        expression->conditional.type_id = type;
+        expression->conditional.reference_type = reference_type;
+    }
+
+    if (expression->type == ASTMatch) {
+        expression->match.type_id = type;
+        expression->match.reference_type = reference_type;
+    }
 }
 
 static void analyze_parameter_default(Analyzer* analyzer, ASTNode* ast)
@@ -3274,6 +3333,34 @@ static void validate_assignment_type(ASTNode* ast, ASTNode* symbol)
     semantic_token_error("Assignment type does not match binding ", ast->assignment.token);
 }
 
+static void transfer_exclusive_reference(ASTNode* expression)
+{
+    ASTNode* source = expression->variable.symbol;
+    set_moved(source);
+
+    if (!is_variable_definition(source)) {
+        return;
+    }
+
+    source->variable_definition.reference_access_active = false;
+}
+
+static void activate_reference_access(ASTNode* ast)
+{
+    Vector* origins = get_reference_origins(ast);
+    size_t count = count_vector(origins);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* origin = get_vector_at(origins, i);
+
+        if (ast->variable_definition.reference_type == RefShared) {
+            (*get_shared_access_count(origin))++;
+        } else {
+            set_exclusive_access(origin, true);
+        }
+    }
+}
+
 static void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_binding)
 {
     if (ast->assignment.operator.type != TokenEqual || get_reference_type(symbol) == RefNone) {
@@ -3382,65 +3469,12 @@ static void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     initialize_variable(symbol);
 }
 
-static void transfer_exclusive_reference(ASTNode* expression)
-{
-    ASTNode* source = expression->variable.symbol;
-    set_moved(source);
-
-    if (!is_variable_definition(source)) {
-        return;
-    }
-
-    source->variable_definition.reference_access_active = false;
-}
-
-static void activate_reference_access(ASTNode* ast)
-{
-    Vector* origins = get_reference_origins(ast);
-    size_t count = count_vector(origins);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* origin = get_vector_at(origins, i);
-
-        if (ast->variable_definition.reference_type == RefShared) {
-            (*get_shared_access_count(origin))++;
-        } else {
-            set_exclusive_access(origin, true);
-        }
-    }
-}
-
 static void initialize_variable_definition(Analyzer* analyzer, ASTNode* ast)
 {
     ast->variable_definition.scope = analyzer->current_scope;
     ast->variable_definition.position = get_next_local_position(analyzer->current_scope);
     ast->variable_definition.initialized = false;
     ast->variable_definition.possibly_initialized = false;
-}
-
-static void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
-{
-    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
-        apply_declared_type(expression->prefix.expr, type, reference_type);
-
-        return;
-    }
-
-    if (type.kind == TypeUnknown) {
-        return;
-    }
-
-    apply_literal_type(expression, type);
-
-    if (expression->type == ASTConditional) {
-        expression->conditional.type_id = type;
-        expression->conditional.reference_type = reference_type;
-    }
-
-    if (expression->type == ASTMatch) {
-        expression->match.type_id = type;
-        expression->match.reference_type = reference_type;
-    }
 }
 
 static bool variable_types_match(ASTNode* ast, Type type, ReferenceType reference_type)
@@ -3779,15 +3813,6 @@ static void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
     validate_variadic_arguments(&ast->builtin_call.args, ast->builtin_call.builtin, token);
 }
 
-static void apply_array_type(ASTNode* ast, Type type)
-{
-    if (ast->array.fill) {
-        return;
-    }
-
-    ast->array.type_id = type;
-}
-
 static void set_inferred_array_count(Vector* dimensions, size_t index, size_t count, Token token)
 {
     if (dimensions->data[index]) {
@@ -3935,38 +3960,6 @@ static void resolve_dimensions(Analyzer* analyzer, Type* type)
     free_memory((void*)array_type);
 
     *type = resolved_type;
-}
-
-static void consume_array_variable(ASTNode* ast)
-{
-    ASTNode* symbol = ast->variable.symbol;
-    bool moved = is_moved(symbol);
-    bool exclusive = has_exclusive_access(symbol);
-    size_t shared = *get_shared_access_count(symbol);
-
-    if (moved || exclusive || shared) {
-        semantic_error("Cannot move an unavailable array", ast->variable.token);
-    }
-
-    set_moved(symbol);
-}
-
-static void consume_array(ASTNode* ast)
-{
-    Type type = get_node_data_type(ast);
-    ReferenceType reference = get_reference_type(ast);
-
-    if (!is_array_type(type.kind) || reference != RefNone) {
-        return;
-    }
-
-    if (ast->type == ASTIndex) {
-        semantic_error("Cannot move an array element out of its owner", ast->index.token);
-    }
-
-    if (ast->type == ASTVariable) {
-        consume_array_variable(ast);
-    }
 }
 
 static void analyze_array_element(Analyzer* analyzer, ASTNode* element, Type expected, Token token)

@@ -5,11 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static ArrayType* find_array_type(const Vector* array_types, Type element_type, size_t count);
-static bool matches_array_type(const ArrayType* info, Type element_type, size_t count);
-static ArrayType* create_array_type(Type element_type, size_t count);
-static void format_array_type_name(ArrayType* info, const char* element_name, size_t length);
-
 bool is_array_type(TypeKind kind)
 {
     return kind == TypeArray;
@@ -65,19 +60,9 @@ Type get_array_leaf_type(Type type)
     return get_array_leaf_type(info->element_type);
 }
 
-Type get_array_type(Vector* array_types, Type element_type, size_t count)
+static bool matches_array_type(const ArrayType* info, Type element_type, size_t count)
 {
-    ArrayType* info = find_array_type(array_types, element_type, count);
-
-    if (info) {
-        return (Type){.kind = TypeArray, .array = info};
-    }
-
-    info = create_array_type(element_type, count);
-
-    push_vector_item(array_types, info);
-
-    return (Type){.kind = TypeArray, .array = info};
+    return info->count == count && types_equal(info->element_type, element_type);
 }
 
 static ArrayType* find_array_type(const Vector* array_types, Type element_type, size_t count)
@@ -95,9 +80,19 @@ static ArrayType* find_array_type(const Vector* array_types, Type element_type, 
     return array_types->data[index];
 }
 
-static bool matches_array_type(const ArrayType* info, Type element_type, size_t count)
+static void format_array_type_name(ArrayType* info, const char* element_name, size_t length)
 {
-    return info->count == count && types_equal(info->element_type, element_type);
+    if (!is_array_type(info->element_type.kind)) {
+        snprintf(info->name, length, "%s[%" PRIu64 "]", element_name, (uint64_t)info->count);
+
+        return;
+    }
+
+    const char* dimensions = strchr(element_name, '[');
+    int prefix_length = (int)(dimensions - element_name);
+
+    snprintf(info->name, length, "%.*s[%" PRIu64 "]%s", prefix_length,
+        element_name, (uint64_t)info->count, dimensions);
 }
 
 static ArrayType* create_array_type(Type element_type, size_t count)
@@ -121,17 +116,17 @@ static ArrayType* create_array_type(Type element_type, size_t count)
     return info;
 }
 
-static void format_array_type_name(ArrayType* info, const char* element_name, size_t length)
+Type get_array_type(Vector* array_types, Type element_type, size_t count)
 {
-    if (!is_array_type(info->element_type.kind)) {
-        snprintf(info->name, length, "%s[%" PRIu64 "]", element_name, (uint64_t)info->count);
+    ArrayType* info = find_array_type(array_types, element_type, count);
 
-        return;
+    if (info) {
+        return (Type){.kind = TypeArray, .array = info};
     }
 
-    const char* dimensions = strchr(element_name, '[');
-    int prefix_length = (int)(dimensions - element_name);
+    info = create_array_type(element_type, count);
 
-    snprintf(info->name, length, "%.*s[%" PRIu64 "]%s", prefix_length,
-        element_name, (uint64_t)info->count, dimensions);
+    push_vector_item(array_types, info);
+
+    return (Type){.kind = TypeArray, .array = info};
 }

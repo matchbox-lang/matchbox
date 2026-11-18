@@ -15,7 +15,19 @@ typedef struct FormattedArguments
 } FormattedArguments;
 
 static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data);
-static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format);
+
+static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format)
+{
+    if (!format->array) {
+        format->formatter(writer, argument);
+
+        return;
+    }
+
+    const uint8_t* data = AS_POINTER(argument[0]);
+
+    format_array_data(writer, format->array, data);
+}
 
 void format_arguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count)
 {
@@ -216,19 +228,6 @@ static void format_array_data(Writer* writer, const ArrayFormat* format, const u
     }
 
     write_bytes(writer, "]", 1);
-}
-
-static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format)
-{
-    if (!format->array) {
-        format->formatter(writer, argument);
-
-        return;
-    }
-
-    const uint8_t* data = AS_POINTER(argument[0]);
-
-    format_array_data(writer, format->array, data);
 }
 
 static ArgumentFormat get_scalar_argument_format(TypeKind kind)

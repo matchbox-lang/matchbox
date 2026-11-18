@@ -1,10 +1,10 @@
 #include "compiler/generator/control_flow.h"
 #include "common/vector.h"
-#include "compiler/ast.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/ast.h"
 #include <stddef.h>
 
 Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)

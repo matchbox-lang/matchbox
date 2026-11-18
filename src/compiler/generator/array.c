@@ -2,8 +2,6 @@
 #include "builtin/memory.h"
 #include "common/array_type.h"
 #include "common/vector.h"
-#include "compiler/ast.h"
-#include "compiler/diagnostics.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
@@ -12,6 +10,8 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/variable.h"
+#include "compiler/ast.h"
+#include "compiler/diagnostics.h"
 #include "runtime/function_object.h"
 #include "runtime/value.h"
 #include <stddef.h>

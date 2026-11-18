@@ -1,13 +1,13 @@
 #include "compiler/generator/match.h"
 #include "common/math.h"
 #include "common/vector.h"
-#include "compiler/ast.h"
 #include "compiler/generator/control_flow.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/variable.h"
+#include "compiler/ast.h"
 #include "runtime/code_object.h"
 #include <stddef.h>
 #include <stdint.h>

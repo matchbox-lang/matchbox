@@ -1,6 +1,5 @@
 #include "compiler/generator/variable.h"
 #include "common/array_type.h"
-#include "compiler/ast.h"
 #include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
@@ -9,6 +8,7 @@
 #include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/ast.h"
 #include "compiler/scope.h"
 #include "compiler/token.h"
 #include <stddef.h>

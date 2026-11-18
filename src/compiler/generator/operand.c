@@ -2,8 +2,8 @@
 #include "common/errors.h"
 #include "common/math.h"
 #include "common/vector.h"
-#include "compiler/ast.h"
 #include "compiler/generator/emitter.h"
+#include "compiler/ast.h"
 #include "runtime/string_object.h"
 #include <stddef.h>
 #include <stdint.h>

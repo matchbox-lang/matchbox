@@ -5,6 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+static _Noreturn void float_outside_supported_range_error(Token token)
+{
+    fatal_source_error(token.line, token.column, "Float is outside the supported range");
+}
+
+static _Noreturn void integer_exceeds_maximum_size_error(Token token)
+{
+    fatal_source_error(token.line, token.column, "Integer exceeds the maximum supported size");
+}
+
 static char* copy_string_literal(const char* source, size_t length)
 {
     char* destination = allocate_memory(length + 1);
@@ -154,16 +164,6 @@ bool decode_string_contents(const char* chars, size_t length, char* bytes, size_
     }
 
     return true;
-}
-
-static _Noreturn void float_outside_supported_range_error(Token token)
-{
-    fatal_source_error(token.line, token.column, "Float is outside the supported range");
-}
-
-static _Noreturn void integer_exceeds_maximum_size_error(Token token)
-{
-    fatal_source_error(token.line, token.column, "Integer exceeds the maximum supported size");
 }
 
 static void copy_literal_digit(char c, char** destination, size_t* length)

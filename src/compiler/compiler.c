@@ -47,6 +47,15 @@ static bool contains_function(Vector* functions, ASTNode* ast)
     return i < functions->count;
 }
 
+static void truncate_compiled_functions(Vector* functions, size_t count)
+{
+    while (functions->count > count) {
+        FunctionObject* function = pop_vector_item(functions);
+
+        free_function_object(function);
+    }
+}
+
 static void discard_abandoned_functions(Compiler* compiler, Vector* functions)
 {
     Vector* references = &compiler->function_references;
@@ -56,11 +65,7 @@ static void discard_abandoned_functions(Compiler* compiler, Vector* functions)
         count++;
     }
 
-    while (compiler->module->functions.count > count) {
-        FunctionObject* function = pop_vector_item(&compiler->module->functions);
-
-        free_function_object(function);
-    }
+    truncate_compiled_functions(&compiler->module->functions, count);
 
     references->count = count;
 }
@@ -156,11 +161,7 @@ static bool has_unused_compiled_functions(Compiler* compiler)
 
 static void discard_compiled_functions(Compiler* compiler)
 {
-    while (compiler->module->functions.count > 1) {
-        FunctionObject* function = pop_vector_item(&compiler->module->functions);
-
-        free_function_object(function);
-    }
+    truncate_compiled_functions(&compiler->module->functions, 1);
 
     compiler->function_references.count = 1;
     compiler->module->global_count = 0;

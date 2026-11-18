@@ -148,11 +148,7 @@ static void store_local_variable(Compiler* compiler, ASTNode* ast, Operand value
 {
     int position = get_local_position(compiler, ast);
 
-    if (retarget_temporary(compiler, value, position)) {
-        return;
-    }
-
-    emit_operand_mov(compiler, position, value);
+    emit_operand_to_register(compiler, position, value);
 }
 
 static void store_variable(Compiler* compiler, ASTNode* ast, Operand value)

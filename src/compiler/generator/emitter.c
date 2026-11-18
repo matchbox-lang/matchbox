@@ -201,6 +201,15 @@ bool retarget_temporary(Compiler* compiler, Operand value, int destination)
     return true;
 }
 
+void emit_operand_to_register(Compiler* compiler, int destination, Operand value)
+{
+    if (retarget_temporary(compiler, value, destination)) {
+        return;
+    }
+
+    emit_operand_mov(compiler, destination, value);
+}
+
 size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register)
 {
     size_t position = count_code_object(current_code_object(compiler));

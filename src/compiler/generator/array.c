@@ -114,6 +114,16 @@ static Opcode get_pointer_add_opcode(void)
     return OpAddI32;
 }
 
+static void emit_buffer_offset(Compiler* compiler, Operand buffer, Operand offset)
+{
+    Opcode opcode = get_pointer_add_opcode();
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, buffer.reg, buffer.reg, offset.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, offset);
+}
+
 static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
 {
     if (!offset) {
@@ -125,12 +135,8 @@ static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
     reserve_pointer_padding(compiler);
 
     Operand index = compile_usize_literal(compiler, offset);
-    Opcode opcode = get_pointer_add_opcode();
 
-    reserve_pointer_padding(compiler);
-    emit_instruction(compiler, opcode, buffer.reg, buffer.reg, index.reg);
-    release_pointer_padding(compiler);
-    release_operand(compiler, index);
+    emit_buffer_offset(compiler, buffer, index);
     release_pointer_padding(compiler);
 
     return buffer;
@@ -714,12 +720,8 @@ static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, A
     reserve_pointer_padding(compiler);
 
     Operand offset = compile_runtime_index_offset(compiler, ast);
-    Opcode add = get_pointer_add_opcode();
 
-    reserve_pointer_padding(compiler);
-    emit_instruction(compiler, add, buffer.reg, buffer.reg, offset.reg);
-    release_pointer_padding(compiler);
-    release_operand(compiler, offset);
+    emit_buffer_offset(compiler, buffer, offset);
     release_pointer_padding(compiler);
 }
 

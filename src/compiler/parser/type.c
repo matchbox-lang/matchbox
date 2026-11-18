@@ -114,6 +114,16 @@ void parse_dimensions(Parser* parser, Type* type)
     }
 }
 
+void parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_type)
+{
+    *reference_type = parse_reference_type(parser);
+    TypeKind kind = get_token_data_type(parser->current_token.type);
+    *type = (Type){.kind = kind};
+
+    consume_type(parser);
+    parse_dimensions(parser, type);
+}
+
 void parse_function_return_type(Parser* parser, ASTNode* ast)
 {
     if (parser->current_token.type != TokenArrow) {
@@ -122,11 +132,8 @@ void parse_function_return_type(Parser* parser, ASTNode* ast)
 
     consume(parser, TokenArrow);
 
-    ast->function_definition.return_reference_type = parse_reference_type(parser);
-    ast->function_definition.return_type_id = (Type){.kind = get_token_data_type(parser->current_token.type)};
-
-    consume_type(parser);
-    parse_dimensions(parser, &ast->function_definition.return_type_id);
+    parse_declared_type(parser, &ast->function_definition.return_type_id,
+        &ast->function_definition.return_reference_type);
 
     ast->function_definition.has_explicit_return_type = true;
 }
@@ -136,11 +143,7 @@ void parse_variable_type(Parser* parser, ASTNode* ast)
     if (parser->current_token.type == TokenColon) {
         consume(parser, TokenColon);
 
-        ast->variable_definition.reference_type = parse_reference_type(parser);
-        ast->variable_definition.type_id = (Type){.kind = get_token_data_type(parser->current_token.type)};
-
-        consume_type(parser);
-        parse_dimensions(parser, &ast->variable_definition.type_id);
+        parse_declared_type(parser, &ast->variable_definition.type_id, &ast->variable_definition.reference_type);
 
         return;
     }

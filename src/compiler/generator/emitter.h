@@ -33,6 +33,7 @@ void emit_call_instruction(Compiler* compiler, int frame_register, uint16_t func
 void emit_ret(Compiler* compiler);
 void emit_retv(Compiler* compiler, Operand operand);
 bool retarget_temporary(Compiler* compiler, Operand value, int destination);
+void emit_operand_to_register(Compiler* compiler, int destination, Operand value);
 size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
 void patch_jump(Compiler* compiler, size_t position);
 size_t emit_condition_jump(Compiler* compiler, Operand condition);

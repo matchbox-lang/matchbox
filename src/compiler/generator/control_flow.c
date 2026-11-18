@@ -34,11 +34,7 @@ static void store_conditional_value(Compiler* compiler, Type type, int destinati
         return;
     }
 
-    if (retarget_temporary(compiler, value, destination)) {
-        return;
-    }
-
-    emit_operand_mov(compiler, destination, value);
+    emit_operand_to_register(compiler, destination, value);
 }
 
 Operand compile_conditional_branch(Compiler* compiler, ASTNode* branch, Type type, int destination, bool reference)

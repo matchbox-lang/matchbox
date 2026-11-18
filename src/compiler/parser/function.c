@@ -102,11 +102,7 @@ static ASTNode* parse_parameter(Parser* parser)
     if (parser->current_token.type == TokenColon) {
         consume(parser, TokenColon);
 
-        ast->parameter.reference_type = parse_reference_type(parser);
-        ast->parameter.type_id = (Type){.kind = get_token_data_type(parser->current_token.type)};
-
-        consume_type(parser);
-        parse_dimensions(parser, &ast->parameter.type_id);
+        parse_declared_type(parser, &ast->parameter.type_id, &ast->parameter.reference_type);
     }
 
     if (!parse_parameter_default(parser, ast)) {

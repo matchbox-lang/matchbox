@@ -8,6 +8,7 @@
 #include "compiler/diagnostics.h"
 #include "compiler/parser/parser.h"
 #include "compiler/scope.h"
+#include "config.h"
 #include <dirent.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -134,7 +135,7 @@ static bool check_path(const char* path)
         return check_directory(path);
     }
 
-    if (!path_has_extension(path, ".mb")) {
+    if (!path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
         return true;
     }
 
@@ -151,8 +152,8 @@ int run_checks(const Options* options)
         return EXIT_FAILURE;
     }
 
-    if (!path_is_directory(path) && !path_has_extension(path, ".mb")) {
-        report_error("Expected .mb file but found %s", path);
+    if (!path_is_directory(path) && !path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
+        report_error("Expected %s file but found %s", PROGRAM_FILE_EXTENSION, path);
 
         return EXIT_FAILURE;
     }

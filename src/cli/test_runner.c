@@ -10,6 +10,7 @@
 #include "compiler/diagnostics.h"
 #include "compiler/parser/parser.h"
 #include "compiler/scope.h"
+#include "config.h"
 #include "runtime/module_object.h"
 #include "vm/vm.h"
 #include <stdio.h>
@@ -194,7 +195,7 @@ static bool discover_test_file_with_context(TestRun* run, const char* path, Memo
 
 static void discover_test_file(TestRun* run, const char* path)
 {
-    if (path_has_extension(path, ".fail.mb")) {
+    if (path_has_extension(path, ".fail" PROGRAM_FILE_EXTENSION)) {
         return;
     }
 
@@ -325,8 +326,8 @@ static bool validate_test_path(const char* path)
         return false;
     }
 
-    if (!path_is_directory(path) && !path_has_extension(path, ".mb")) {
-        report_error("Expected .mb file but found %s", path);
+    if (!path_is_directory(path) && !path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
+        report_error("Expected %s file but found %s", PROGRAM_FILE_EXTENSION, path);
 
         return false;
     }

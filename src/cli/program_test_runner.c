@@ -170,7 +170,7 @@ static bool run_program_test_file(const ProgramTestRun* run, const char* path)
 
     bool read_success = read_process_output(stream, &output);
     int status = PCLOSE(stream);
-    bool expects_failure = path_has_extension(path, ".fail.mb");
+    bool expects_failure = path_has_extension(path, ".fail" PROGRAM_FILE_EXTENSION);
     bool passed = read_success && check_process_result(status, expects_failure);
 
     print_program_test_result(run, path, &output, passed);
@@ -211,8 +211,8 @@ static bool validate_program_test_path(const char* path)
         return false;
     }
 
-    if (!path_is_directory(path) && !path_has_extension(path, ".mb")) {
-        report_error("Expected .mb file but found %s", path);
+    if (!path_is_directory(path) && !path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
+        report_error("Expected %s file but found %s", PROGRAM_FILE_EXTENSION, path);
 
         return false;
     }

@@ -2,6 +2,7 @@
 #include "cli/path.h"
 #include "common/errors.h"
 #include "common/memory.h"
+#include "config.h"
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,7 +61,7 @@ static int discover_test_path(Vector* paths, const char* path)
         return discover_test_directory(paths, path);
     }
 
-    if (!path_has_extension(path, ".mb")) {
+    if (!path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
         return 0;
     }
 

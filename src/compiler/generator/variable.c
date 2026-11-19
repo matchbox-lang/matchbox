@@ -327,7 +327,7 @@ static bool compile_unused_variable_definition(
     return true;
 }
 
-static void finish_global_definition(Compiler* compiler, ASTNode* ast, Operand value)
+static void initialize_global_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     if (!is_top_level_scope(ast->variable_definition.scope)) {
         return;
@@ -367,5 +367,5 @@ void compile_variable_definition(Compiler* compiler, ASTNode* ast)
         value.temporary = true;
     }
 
-    finish_global_definition(compiler, ast, value);
+    initialize_global_variable(compiler, ast, value);
 }

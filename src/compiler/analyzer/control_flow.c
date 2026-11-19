@@ -329,7 +329,7 @@ static void collect_for_origins(ASTNode* array, Vector* origins)
     }
 }
 
-static void adjust_for_borrows(Vector* origins, int change)
+static void adjust_for_shared_access_counts(Vector* origins, int change)
 {
     for (size_t i = 0; i < origins->count; i++) {
         ASTNode* origin = origins->data[i];
@@ -406,9 +406,9 @@ void analyze_for(Analyzer* analyzer, ASTNode* ast)
     Vector origins = {0};
 
     collect_for_origins(ast->for_statement.array, &origins);
-    adjust_for_borrows(&origins, 1);
+    adjust_for_shared_access_counts(&origins, 1);
     analyze_for_ownership(analyzer, ast, type.array->element_type);
-    adjust_for_borrows(&origins, -1);
+    adjust_for_shared_access_counts(&origins, -1);
     free_vector(&origins);
 }
 

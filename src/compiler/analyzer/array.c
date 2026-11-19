@@ -223,7 +223,7 @@ static bool array_has_nested_elements(Analyzer* analyzer, ASTNode* ast)
     return is_array_type(type.kind);
 }
 
-static Type get_array_initializer_type(Analyzer* analyzer, ASTNode* ast, size_t* count)
+static Type resolve_array_initializer_type(Analyzer* analyzer, ASTNode* ast, size_t* count)
 {
     Type declared = ast->array.type_id;
 
@@ -295,7 +295,7 @@ void analyze_array(Analyzer* analyzer, ASTNode* ast)
 
     size_t count = ast->array.elements.count;
     size_t expected_count = count;
-    Type expected = get_array_initializer_type(analyzer, ast, &expected_count);
+    Type expected = resolve_array_initializer_type(analyzer, ast, &expected_count);
 
     if (count != expected_count || (!count && expected.kind == TypeUnknown)) {
         semantic_error("Array initializer count does not match its type", ast->array.token);

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static char* read_file_contents(FILE* file)
+static char* read_stream(FILE* file)
 {
     if (fseek(file, 0, SEEK_END) != 0) {
         return NULL;
@@ -30,14 +30,14 @@ static char* read_file_contents(FILE* file)
     return source;
 }
 
-char* get_file_contents(const char* filename)
+char* read_file_contents(const char* filename)
 {
     FILE* file = fopen(filename, "rb");
     if (!file) {
         return NULL;
     }
 
-    char* source = read_file_contents(file);
+    char* source = read_stream(file);
     int closed = fclose(file);
 
     if (closed != 0) {

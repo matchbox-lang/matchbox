@@ -128,12 +128,6 @@ static StringObject* add_string_object(ModuleObject* module, const char* chars, 
 
 size_t add_string_constant(ModuleObject* module, const char* chars, size_t length)
 {
-    size_t constant = find_string_constant(module, chars, length);
-
-    if (constant != SIZE_MAX) {
-        return constant;
-    }
-
     if (module->constants.count > UINT16_MAX) {
         fatal_error("Cannot create more than %u constants", UINT16_MAX + 1u);
     }

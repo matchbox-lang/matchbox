@@ -677,7 +677,12 @@ static void resolve_index_constant(Compiler* compiler, ASTNode* ast)
 static void compile_index_panic(Compiler* compiler)
 {
     static const char message[] = "Array index is out of bounds";
-    size_t constant = add_string_constant(compiler->module, message, sizeof(message) - 1);
+    size_t constant = find_string_constant(compiler->module, message, sizeof(message) - 1);
+
+    if (constant == SIZE_MAX) {
+        constant = add_string_constant(compiler->module, message, sizeof(message) - 1);
+    }
+
     Type argument_types[] = {{.kind = TypeString}};
     const Builtin* builtin = resolve_builtin("panic", argument_types, 1);
     size_t position = find_builtin_function_position(compiler, builtin);

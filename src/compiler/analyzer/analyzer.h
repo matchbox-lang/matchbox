@@ -23,9 +23,9 @@ typedef struct Analyzer
     LoopPath* loop_path;
 } Analyzer;
 
+void init_analyzer(Analyzer* analyzer, ASTNode* ast);
 void analyze_expression_nodes(Analyzer* analyzer, Vector* nodes);
 void analyze_node(Analyzer* analyzer, ASTNode* ast);
-void init_analyzer(Analyzer* analyzer, ASTNode* ast);
 bool analyze(Analyzer* analyzer, size_t start);
 
 #endif

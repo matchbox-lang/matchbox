@@ -11,6 +11,22 @@
 #include "compiler/analyzer/validation.h"
 #include "compiler/analyzer/variable.h"
 
+void init_analyzer(Analyzer* analyzer, ASTNode* ast)
+{
+    init_vector(&analyzer->array_types);
+
+    analyzer->top_level = ast;
+    analyzer->function = NULL;
+    analyzer->current_scope = ast->compound.scope;
+    analyzer->constant_scope = NULL;
+    analyzer->current_nodes = NULL;
+    analyzer->next_node = 0;
+    analyzer->reference_lifetimes = NULL;
+    analyzer->function_path = NULL;
+    analyzer->constant_functions = NULL;
+    analyzer->loop_path = NULL;
+}
+
 static void analyze_nodes(Analyzer* analyzer, Vector* nodes, size_t start)
 {
     size_t count = count_vector(nodes);
@@ -113,22 +129,6 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
         default:
             break;
     }
-}
-
-void init_analyzer(Analyzer* analyzer, ASTNode* ast)
-{
-    init_vector(&analyzer->array_types);
-
-    analyzer->top_level = ast;
-    analyzer->function = NULL;
-    analyzer->current_scope = ast->compound.scope;
-    analyzer->constant_scope = NULL;
-    analyzer->current_nodes = NULL;
-    analyzer->next_node = 0;
-    analyzer->reference_lifetimes = NULL;
-    analyzer->function_path = NULL;
-    analyzer->constant_functions = NULL;
-    analyzer->loop_path = NULL;
 }
 
 bool analyze(Analyzer* analyzer, size_t start)

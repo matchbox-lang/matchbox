@@ -246,7 +246,7 @@ static Operand emit_ordered_comparison(Compiler* compiler, Type type,
     return emit_comparison(compiler, opcode, left, right);
 }
 
-static Opcode get_float32_three_way_opcode(TokenType operator_type)
+static Opcode get_f32_three_way_opcode(TokenType operator_type)
 {
     if (operator_type == TokenLess || operator_type == TokenLessEqual) {
         return OpCmpgF32;
@@ -255,7 +255,7 @@ static Opcode get_float32_three_way_opcode(TokenType operator_type)
     return OpCmplF32;
 }
 
-static Opcode get_float64_three_way_opcode(TokenType operator_type)
+static Opcode get_f64_three_way_opcode(TokenType operator_type)
 {
     if (operator_type == TokenLess || operator_type == TokenLessEqual) {
         return OpCmpgF64;
@@ -280,9 +280,9 @@ Opcode get_three_way_opcode(Type type, TokenType operator_type)
 {
     switch (type.kind) {
         case TypeF32:
-            return get_float32_three_way_opcode(operator_type);
+            return get_f32_three_way_opcode(operator_type);
         case TypeF64:
-            return get_float64_three_way_opcode(operator_type);
+            return get_f64_three_way_opcode(operator_type);
         default:
             return get_integer_three_way_opcode(type);
     }

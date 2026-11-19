@@ -50,7 +50,7 @@ void free_string_object(StringObject* string)
     free_memory(string);
 }
 
-bool compare_string_object_chars(const StringObject* string, const char* chars, size_t length)
+bool string_object_chars_equal(const StringObject* string, const char* chars, size_t length)
 {
     if (string->length != length) {
         return false;
@@ -59,12 +59,12 @@ bool compare_string_object_chars(const StringObject* string, const char* chars, 
     return memcmp(string->chars, chars, length) == 0;
 }
 
-bool compare_string_object(const StringObject* a, const StringObject* b)
+bool string_objects_equal(const StringObject* a, const StringObject* b)
 {
     StringView left = get_string_view(a);
     StringView right = get_string_view(b);
 
-    return compare_string_view(left, right);
+    return string_views_equal(left, right);
 }
 
 void print_string_object(const StringObject* string)

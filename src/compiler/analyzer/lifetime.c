@@ -26,7 +26,7 @@ static bool matches_shadowed_id(StringObject* shadowed, StringView id)
 {
     StringView view = get_string_view(shadowed);
 
-    return compare_string_view(view, id);
+    return string_views_equal(view, id);
 }
 
 static bool visit_unshadowed_use(StringView id, void* context)
@@ -217,7 +217,7 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
 
 static bool matches_reference_id(StringView id, void* context)
 {
-    return compare_string_view(id, *(StringView*)context);
+    return string_views_equal(id, *(StringView*)context);
 }
 
 static bool record_reference_use(StringView id, void* context)

@@ -129,8 +129,8 @@ void analyze_while(Analyzer* analyzer, ASTNode* ast)
     LoopPath path = {ast, analyzer->loop_path};
     analyzer->loop_path = &path;
 
-    capture_ownership_state(&entry_states, analyzer->current_scope);
-    copy_ownership_state(&body_states, &entry_states);
+    capture_ownership_states(&entry_states, analyzer->current_scope);
+    copy_ownership_states(&body_states, &entry_states);
     analyze_node(analyzer, ast->while_statement.condition);
 
     Type type = get_node_data_type(ast->while_statement.condition);
@@ -195,8 +195,8 @@ void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     Vector then_states;
     Vector else_states;
 
-    capture_ownership_state(&then_states, analyzer->current_scope);
-    copy_ownership_state(&else_states, &then_states);
+    capture_ownership_states(&then_states, analyzer->current_scope);
+    copy_ownership_states(&else_states, &then_states);
 
     analyzer->current_nodes = continuation_nodes;
     analyzer->next_node = continuation_start;

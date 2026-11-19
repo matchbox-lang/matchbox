@@ -352,7 +352,7 @@ void analyze_function(Analyzer* analyzer, ASTNode* ast)
 
     Vector array_states;
 
-    capture_ownership_state(&array_states, analyzer->current_scope);
+    capture_ownership_states(&array_states, analyzer->current_scope);
 
     Scope* parent = analyzer->current_scope;
     ASTNode* previous_function = analyzer->function;

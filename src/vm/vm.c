@@ -24,7 +24,7 @@ static _Noreturn void stack_overflow_error(void)
     fatal_error("Stack overflow");
 }
 
-static void test_frame_overflow(const VM* vm, const Value* frame, int max_stack_count)
+static void check_frame_capacity(const VM* vm, const Value* frame, int max_stack_count)
 {
     if (frame - vm->stack - 2 + max_stack_count > STACK_MAX) {
         stack_overflow_error();
@@ -33,7 +33,7 @@ static void test_frame_overflow(const VM* vm, const Value* frame, int max_stack_
 
 void enter_bytecode_function(VM* vm, const FunctionObject* function, Value* frame)
 {
-    test_frame_overflow(vm, frame, function->max_stack_count);
+    check_frame_capacity(vm, frame, function->max_stack_count);
 
     frame[-2] = POINTER_VALUE(vm->ip);
     frame[-1] = POINTER_VALUE(vm->fp);

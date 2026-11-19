@@ -595,7 +595,7 @@ void compile_function_definition(Compiler* compiler, ASTNode* ast)
 
     push_vector_item(&compiler->module->functions, function);
     push_vector_item(&compiler->function_references, ast);
-    compile_blocklevel_statements(compiler, &body->compound.statements);
+    compile_block_level_statements(compiler, &body->compound.statements);
 
     size_t statement_count = count_vector(&body->compound.statements);
     ASTNode* last = NULL;

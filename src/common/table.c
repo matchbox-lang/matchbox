@@ -60,7 +60,7 @@ void* get_table_at(const Table* table, StringView key)
     size_t index = key.hash % table->capacity;
     const TableItem* current = table->data[index];
 
-    while (current && !compare_string_view(current->key, key)) {
+    while (current && !string_views_equal(current->key, key)) {
         current = current->next;
     }
 
@@ -77,7 +77,7 @@ bool set_table_at(Table* table, StringView key, void* value)
     TableItem* current = table->data[index];
 
     while (current) {
-        if (compare_string_view(current->key, key)) {
+        if (string_views_equal(current->key, key)) {
             return false;
         }
 
@@ -97,7 +97,7 @@ bool delete_table_at(Table* table, StringView key)
     TableItem* prev = NULL;
     TableItem* current = table->data[index];
 
-    while (current && !compare_string_view(current->key, key)) {
+    while (current && !string_views_equal(current->key, key)) {
         prev = current;
         current = current->next;
     }

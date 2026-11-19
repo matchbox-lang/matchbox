@@ -106,7 +106,7 @@ static void capture_scope_ownership(Vector* states, Scope* scope)
     }
 }
 
-void capture_ownership_state(Vector* states, Scope* scope)
+void capture_ownership_states(Vector* states, Scope* scope)
 {
     init_vector(states);
 
@@ -124,7 +124,7 @@ static void init_ownership_state_copy(OwnershipState* destination, OwnershipStat
     copy_reference_origins(&destination->reference_origins, &source->reference_origins);
 }
 
-void copy_ownership_state(Vector* destination, Vector* source)
+void copy_ownership_states(Vector* destination, Vector* source)
 {
     init_vector(destination);
 
@@ -287,7 +287,7 @@ void validate_loop_ownership(Vector* entry_states, Token token)
 void merge_ownership_outcome(Vector* merged_states, Vector* states, bool* initialized)
 {
     if (!*initialized) {
-        copy_ownership_state(merged_states, states);
+        copy_ownership_states(merged_states, states);
         *initialized = true;
 
         return;
@@ -362,7 +362,7 @@ static void record_uninitialized_array_return(ASTNode* function, OwnershipState*
 void record_array_return_initializations(Analyzer* analyzer)
 {
     Vector states;
-    capture_ownership_state(&states, analyzer->current_scope);
+    capture_ownership_states(&states, analyzer->current_scope);
 
     for (size_t i = 0; i < states.count; i++) {
         record_uninitialized_array_return(analyzer->function, states.data[i]);

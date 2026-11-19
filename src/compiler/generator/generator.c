@@ -214,7 +214,7 @@ Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
     }
 }
 
-void compile_blocklevel_statements(Compiler* compiler, Vector* nodes)
+void compile_block_level_statements(Compiler* compiler, Vector* nodes)
 {
     size_t count = count_vector(nodes);
 

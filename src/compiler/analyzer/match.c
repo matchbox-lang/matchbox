@@ -183,7 +183,7 @@ static void analyze_match_guard(Analyzer* analyzer, MatchArm* arm, Vector* fallt
 
     Vector guard_states;
 
-    copy_ownership_state(&guard_states, fallthrough_states);
+    copy_ownership_states(&guard_states, fallthrough_states);
     update_ownership_states(&guard_states);
 
     if (arm->pattern) {
@@ -223,7 +223,7 @@ static void analyze_match_arm_ownership(Analyzer* analyzer, ASTNode* ast, MatchA
     Vector* initial_states, Vector* merged_states, bool* merged_initialized)
 {
     Vector states;
-    copy_ownership_state(&states, initial_states);
+    copy_ownership_states(&states, initial_states);
     apply_ownership_states(&states);
 
     if (!arm->guard) {
@@ -309,7 +309,7 @@ void analyze_match(Analyzer* analyzer, ASTNode* ast)
 
     validate_match_expression(ast);
     analyze_match_subject(analyzer, ast);
-    capture_ownership_state(&initial_states, analyzer->current_scope);
+    capture_ownership_states(&initial_states, analyzer->current_scope);
     analyze_match_arms(analyzer, ast, continuation_nodes, continuation_start, &result_type,
         &initial_states, &merged_states, &merged_initialized);
     restore_match_continuation(analyzer, continuation_nodes, continuation_start);

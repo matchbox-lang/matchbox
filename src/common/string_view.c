@@ -11,7 +11,7 @@ StringView create_string_view(const char* chars, size_t length)
     return view;
 }
 
-bool compare_string_view(StringView a, StringView b)
+bool string_views_equal(StringView a, StringView b)
 {
     if (a.length != b.length) {
         return false;

@@ -78,7 +78,7 @@ static size_t find_string_object_constant(const ModuleObject* module, const Obje
     }
 
     const StringObject* string = (const StringObject*)object;
-    bool matches = compare_string_object_chars(string, chars, length);
+    bool matches = string_object_chars_equal(string, chars, length);
 
     if (!matches) {
         return SIZE_MAX;
@@ -106,7 +106,7 @@ static StringObject* get_string_object(ModuleObject* module, const char* chars, 
 
     while (index < module->objects.count &&
         (((const Object*)module->objects.data[index])->type != ObjString ||
-        !compare_string_object_chars((const StringObject*)module->objects.data[index], chars, length))) {
+        !string_object_chars_equal((const StringObject*)module->objects.data[index], chars, length))) {
         index++;
     }
 

@@ -468,7 +468,7 @@ static void update_liveness(
         return;
     }
 
-    uint8_t registers = opcode_registers(word->opcode);
+    uint8_t registers = get_opcode_register_flags(word->opcode);
     bool writes_a = opcode_writes_a(word->opcode);
     bool pairs = uses_register_pairs(word->opcode);
     bool barrier = invalidates_constants(word->opcode);
@@ -840,7 +840,7 @@ static void fuse_instructions(const ModuleObject* module, OptimizationWord* word
 
 static bool is_duplicate_instruction(const OptimizationWord* previous, const OptimizationWord* word)
 {
-    uint8_t registers = opcode_registers(word->opcode);
+    uint8_t registers = get_opcode_register_flags(word->opcode);
     bool writes_a = opcode_writes_a(word->opcode);
     bool independent = writes_a && !(registers & OpFlagRegBC);
 

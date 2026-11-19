@@ -47,7 +47,7 @@ ASTNode* get_reference_origin_or_self(ASTNode* symbol)
     return symbol;
 }
 
-ASTNode* reference_origin_from_expression(ASTNode* ast)
+ASTNode* get_reference_origin_from_expression(ASTNode* ast)
 {
     if (ast->type == ASTPrefix && is_variable(ast->prefix.expr)) {
         ASTNode* symbol = ast->prefix.expr->variable.symbol;
@@ -58,7 +58,7 @@ ASTNode* reference_origin_from_expression(ASTNode* ast)
     return get_reference_origin(ast);
 }
 
-Vector* reference_origins_from_expression(ASTNode* ast)
+Vector* get_reference_origins_from_expression(ASTNode* ast)
 {
     Vector* origins = get_reference_origins(ast);
 
@@ -116,7 +116,7 @@ void merge_reference_origins(Vector* destination, Vector* source)
 void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expression)
 {
     Vector* destination_origins = get_reference_origins(destination);
-    Vector* origins = reference_origins_from_expression(expression);
+    Vector* origins = get_reference_origins_from_expression(expression);
     copy_reference_origins(destination_origins, origins);
 }
 
@@ -235,7 +235,7 @@ static bool reference_argument_requires_binding(ReferenceType type)
 
 static ASTNode* get_argument_reference_origin(ASTNode* argument)
 {
-    ASTNode* origin = reference_origin_from_expression(argument);
+    ASTNode* origin = get_reference_origin_from_expression(argument);
 
     if (origin || !is_variable(argument)) {
         return origin;
@@ -301,7 +301,7 @@ static bool reference_access_conflicts(ASTNode* left_origin, ReferenceType left_
         return false;
     }
 
-    Vector* right_origins = reference_origins_from_expression(right);
+    Vector* right_origins = get_reference_origins_from_expression(right);
     if (contains_reference_origin(right_origins, left_origin)) {
         return true;
     }
@@ -338,7 +338,7 @@ static void validate_argument_access(Vector* arguments, Vector* parameters, size
         return;
     }
 
-    Vector* origins = reference_origins_from_expression(left);
+    Vector* origins = get_reference_origins_from_expression(left);
     size_t count = count_vector(origins);
 
     for (size_t i = 0; i < count; i++) {

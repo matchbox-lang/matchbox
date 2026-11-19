@@ -18,7 +18,7 @@ typedef struct PreviousInstruction
     uint8_t c;
 } PreviousInstruction;
 
-CodeObject* current_code_object(Compiler* compiler);
+CodeObject* get_current_code_object(Compiler* compiler);
 void emit_instruction(Compiler* compiler, Opcode opcode, int a, int b, int c);
 void emit_hlt(Compiler* compiler);
 bool get_previous_instruction(Compiler* compiler, PreviousInstruction* instruction);

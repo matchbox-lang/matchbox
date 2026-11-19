@@ -52,7 +52,7 @@ static bool should_print_result(TestOutput output, bool passed)
 
 static void print_test_location(FILE* stream, const TestCase* test)
 {
-    const char* path = path_for_display(test->path);
+    const char* path = strip_relative_path_prefix(test->path);
 
     fprintf(stream, "%s", path);
 
@@ -207,7 +207,7 @@ static void discover_test_file(TestRun* run, const char* path)
     if (!valid) {
         run->validation_failed++;
 
-        const char* display_path = path_for_display(path);
+        const char* display_path = strip_relative_path_prefix(path);
 
         report_error("Validation failed for %s", display_path);
     }

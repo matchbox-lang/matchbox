@@ -46,7 +46,7 @@ static void write_argument_parts(Writer* writer, const void* context)
     format_arguments(writer, arguments->frame, arguments->formats, arguments->count);
 }
 
-static size_t argument_capacity(const Value* frame, const ArgumentFormat* format)
+static size_t get_argument_capacity(const Value* frame, const ArgumentFormat* format)
 {
     if (format->capacity) {
         return format->capacity;
@@ -68,7 +68,7 @@ static size_t argument_capacity(const Value* frame, const ArgumentFormat* format
 
 static size_t add_argument_capacity(size_t capacity, const Value* frame, const ArgumentFormat* format)
 {
-    size_t length = argument_capacity(frame, format);
+    size_t length = get_argument_capacity(frame, format);
 
     if (length > SIZE_MAX - capacity) {
         out_of_memory_error();

@@ -212,7 +212,7 @@ static const uint8_t opcode_flags[OpCount] = {
     [OpMovLdg] = OpFlagRegAB
 };
 
-uint8_t opcode_registers(Opcode opcode)
+uint8_t get_opcode_register_flags(Opcode opcode)
 {
     if ((unsigned)opcode >= OpCount) {
         return 0;

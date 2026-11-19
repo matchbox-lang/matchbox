@@ -117,7 +117,7 @@ static void print_program_test_result(const ProgramTestRun* run, const char* pat
         return;
     }
 
-    const char* display_path = path_for_display(path);
+    const char* display_path = strip_relative_path_prefix(path);
 
     if (passed) {
         printf("PASS %s\n", display_path);

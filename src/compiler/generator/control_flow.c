@@ -152,7 +152,7 @@ Operand compile_conditional(Compiler* compiler, ASTNode* ast, bool reference)
 
 void compile_while(Compiler* compiler, ASTNode* ast)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     size_t start = count_code_object(code);
     int register_count = compiler->register_count;
     compiler->peephole_barrier = start;

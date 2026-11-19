@@ -319,7 +319,7 @@ static void compile_array_prefix_loop(Compiler* compiler, ASTNode* ast, Operand 
     int condition = allocate_register(compiler);
     Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
     Opcode store = get_memory_store_opcode(leaf);
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     size_t start = count_code_object(code);
 
     compiler->peephole_barrier = start;
@@ -405,7 +405,7 @@ static void compile_array_binary_loop(Compiler* compiler, const ArrayBinaryOpera
     int condition = allocate_register(compiler);
     int body_register_count = compiler->register_count;
     Opcode compare = get_three_way_opcode((Type){.kind = TypeUsize}, TokenEqualEqual);
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     size_t start = count_code_object(code);
     compiler->peephole_barrier = start;
 
@@ -550,7 +550,7 @@ static void compile_array_fill_loop(Compiler* compiler, Operand array, Operand v
         compare = OpCmpU64;
     }
 
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     size_t start = count_code_object(code);
     compiler->peephole_barrier = start;
 

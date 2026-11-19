@@ -199,7 +199,7 @@ static void validate_match_global_access(Analyzer* analyzer, ASTNode* ast)
 
 static void validate_prefix_global_access(Analyzer* analyzer, ASTNode* ast)
 {
-    ASTNode* origin = reference_origin_from_expression(ast);
+    ASTNode* origin = get_reference_origin_from_expression(ast);
     ReferenceType type = get_reference_type(ast);
 
     if (type != RefNone) {

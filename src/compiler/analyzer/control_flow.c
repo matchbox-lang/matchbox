@@ -44,7 +44,7 @@ void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_
         semantic_token_error("Expression branches have incompatible reference types ", token);
     }
 
-    Vector* origins = reference_origins_from_expression(result);
+    Vector* origins = get_reference_origins_from_expression(result);
     Vector* expression_origins = get_reference_origins(ast);
     merge_reference_origins(expression_origins, origins);
 }

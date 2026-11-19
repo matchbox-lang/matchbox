@@ -138,7 +138,7 @@ void free_compiler(Compiler* compiler)
 
 static void compile_statement_bytecode(Compiler* compiler, CompileStatements compile_statements)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     clear_code_object(code);
 
     compiler->peephole_barrier = 0;

@@ -326,7 +326,7 @@ typedef enum Opcode
     OpCount
 } Opcode;
 
-uint8_t opcode_registers(Opcode opcode);
+uint8_t get_opcode_register_flags(Opcode opcode);
 bool opcode_writes_a(Opcode opcode);
 
 #endif

@@ -11,14 +11,14 @@ static _Noreturn void branch_offset_overflow_error(void)
     fatal_error("Branch offset exceeds instruction range");
 }
 
-CodeObject* current_code_object(Compiler* compiler)
+CodeObject* get_current_code_object(Compiler* compiler)
 {
     return &compiler->function->code;
 }
 
 static void emit_instruction_word(Compiler* compiler, Opcode opcode, int a, int b, int c)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
 
     push_byte(code, opcode);
     push_byte(code, (uint8_t)a);
@@ -39,7 +39,7 @@ static int get_register_high_byte(Compiler* compiler, int operand, uint8_t flag,
 
 void emit_instruction(Compiler* compiler, Opcode opcode, int a, int b, int c)
 {
-    uint8_t flag = opcode_registers(opcode);
+    uint8_t flag = get_opcode_register_flags(opcode);
 
     int high_a = get_register_high_byte(compiler, a, flag, OpFlagRegA);
     int high_b = get_register_high_byte(compiler, b, flag, OpFlagRegB);
@@ -59,7 +59,7 @@ void emit_hlt(Compiler* compiler)
 
 static bool get_instruction_before(Compiler* compiler, size_t count, PreviousInstruction* instruction)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
 
     if (count < INSTRUCTION_SIZE) {
         return false;
@@ -87,7 +87,7 @@ static bool get_instruction_before(Compiler* compiler, size_t count, PreviousIns
 
 bool get_previous_instruction(Compiler* compiler, PreviousInstruction* instruction)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     size_t count = count_code_object(code);
 
     return get_instruction_before(compiler, count, instruction);
@@ -212,7 +212,9 @@ void emit_operand_to_register(Compiler* compiler, int destination, Operand value
 
 size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register)
 {
-    size_t position = count_code_object(current_code_object(compiler));
+    CodeObject* code = get_current_code_object(compiler);
+    size_t position = count_code_object(code);
+
     emit_instruction(compiler, opcode, condition_register, 0, 0);
 
     return position;
@@ -269,7 +271,7 @@ static void check_jump_offset(Opcode opcode, size_t offset)
 
 void patch_jump(Compiler* compiler, size_t position)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
 
     if (code->data[position] == OpWide) {
         position += INSTRUCTION_SIZE;
@@ -350,7 +352,7 @@ size_t emit_condition_jump(Compiler* compiler, Operand condition)
 
 void emit_loop_jump(Compiler* compiler, size_t target)
 {
-    CodeObject* code = current_code_object(compiler);
+    CodeObject* code = get_current_code_object(compiler);
     size_t position = count_code_object(code);
     size_t distance = (position + INSTRUCTION_SIZE - target) / INSTRUCTION_SIZE;
 

@@ -444,11 +444,11 @@ static void track_return_origin(Analyzer* analyzer, ASTNode* ast, ASTNode* origi
 
 static void track_return_reference_origin(Analyzer* analyzer, ASTNode* ast)
 {
-    Vector* origins = reference_origins_from_expression(ast->return_statement.expr);
+    Vector* origins = get_reference_origins_from_expression(ast->return_statement.expr);
     size_t count = count_vector(origins);
 
     if (!count) {
-        ASTNode* origin = reference_origin_from_expression(ast->return_statement.expr);
+        ASTNode* origin = get_reference_origin_from_expression(ast->return_statement.expr);
         track_return_origin(analyzer, ast, origin);
 
         return;

@@ -219,7 +219,9 @@ static size_t compile_match_arm_condition(Compiler* compiler, ASTNode* ast, Matc
         return next_jump;
     }
 
-    size_t next_jump = count_code_object(current_code_object(compiler));
+    CodeObject* code = get_current_code_object(compiler);
+    size_t next_jump = count_code_object(code);
+
     emit_instruction(compiler, OpBne, subject.reg, pattern.reg, 0);
     release_operand(compiler, pattern);
 

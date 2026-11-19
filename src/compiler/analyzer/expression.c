@@ -81,7 +81,13 @@ static Type array_binary_result_type(Analyzer* analyzer, Type shape, Type leaf)
 
     Type element = array_binary_result_type(analyzer, shape.array->element_type, leaf);
 
-    return get_array_type(&analyzer->array_types, element, shape.array->count);
+    Type result = find_array_type(&analyzer->array_types, element, shape.array->count);
+
+    if (result.kind != TypeUnknown) {
+        return result;
+    }
+
+    return add_array_type(&analyzer->array_types, element, shape.array->count);
 }
 
 Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type)

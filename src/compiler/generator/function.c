@@ -114,18 +114,30 @@ static FunctionObject* create_builtin_function_object(const Builtin* builtin)
     return function;
 }
 
-uint16_t get_builtin_function_position(Compiler* compiler, const Builtin* builtin)
+static bool matches_builtin_function(const FunctionObject* function, const Builtin* builtin)
 {
-    size_t function_count = count_vector(&compiler->module->functions);
+    return function->type == FuncBuiltin && function->entry == builtin->entry;
+}
 
-    for (size_t i = 0; i < function_count; i++) {
-        FunctionObject* function = get_vector_at(&compiler->module->functions, i);
+size_t find_builtin_function_position(const Compiler* compiler, const Builtin* builtin)
+{
+    const Vector* functions = &compiler->module->functions;
+    size_t position = 0;
 
-        if (function->type == FuncBuiltin && function->entry == builtin->entry) {
-            return make_function_position(i);
-        }
+    while (position < functions->count && !matches_builtin_function(functions->data[position], builtin)) {
+        position++;
     }
 
+    if (position == functions->count) {
+        return SIZE_MAX;
+    }
+
+    return position;
+}
+
+uint16_t add_builtin_function(Compiler* compiler, const Builtin* builtin)
+{
+    size_t function_count = count_vector(&compiler->module->functions);
     uint16_t position = make_function_position(function_count);
     FunctionObject* function = create_builtin_function_object(builtin);
 
@@ -205,24 +217,36 @@ static FunctionObject* create_variadic_builtin_function(Compiler* compiler, cons
     return function;
 }
 
-static uint16_t get_typed_builtin_call_position(Compiler* compiler, const Builtin* builtin,
+static size_t find_typed_builtin_call_position(const Compiler* compiler, const Builtin* builtin,
     const Type* types, size_t argument_count)
 {
     if (builtin->param_count >= 0) {
-        return get_builtin_function_position(compiler, builtin);
+        return find_builtin_function_position(compiler, builtin);
+    }
+
+    const Vector* functions = &compiler->module->functions;
+    size_t position = 0;
+
+    while (position < functions->count
+        && !matches_builtin_arguments(functions->data[position], builtin, types, argument_count)) {
+        position++;
+    }
+
+    if (position == functions->count) {
+        return SIZE_MAX;
+    }
+
+    return position;
+}
+
+static uint16_t add_typed_builtin_call(Compiler* compiler, const Builtin* builtin,
+    const Type* types, size_t argument_count)
+{
+    if (builtin->param_count >= 0) {
+        return add_builtin_function(compiler, builtin);
     }
 
     size_t count = compiler->module->functions.count;
-
-    for (size_t i = 0; i < count; i++) {
-        FunctionObject* function = compiler->module->functions.data[i];
-        bool matches = matches_builtin_arguments(function, builtin, types, argument_count);
-
-        if (matches) {
-            return make_function_position(i);
-        }
-    }
-
     uint16_t position = make_function_position(count);
     FunctionObject* function = create_variadic_builtin_function(compiler, builtin, types, argument_count);
 
@@ -235,7 +259,12 @@ static uint16_t get_typed_builtin_call_position(Compiler* compiler, const Builti
 Operand emit_builtin_operands(Compiler* compiler, const Builtin* builtin,
     const Type* types, const Operand* arguments, size_t count, bool discard)
 {
-    uint16_t position = get_typed_builtin_call_position(compiler, builtin, types, count);
+    size_t position = find_typed_builtin_call_position(compiler, builtin, types, count);
+
+    if (position == SIZE_MAX) {
+        position = add_typed_builtin_call(compiler, builtin, types, count);
+    }
+
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
     CallArea call = open_call_area(compiler);
 
@@ -424,19 +453,39 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
     return function;
 }
 
-uint16_t get_builtin_call_position(Compiler* compiler, const Builtin* builtin, const Vector* args)
+static Type* create_builtin_argument_types(const Vector* args)
 {
-    if (builtin->param_count >= 0) {
-        return get_builtin_function_position(compiler, builtin);
-    }
-
     Type* types = allocate_memory(args->count * sizeof(Type));
 
     for (size_t i = 0; i < args->count; i++) {
         types[i] = get_node_data_type(args->data[i]);
     }
 
-    uint16_t position = get_typed_builtin_call_position(compiler, builtin, types, args->count);
+    return types;
+}
+
+size_t find_builtin_call_position(const Compiler* compiler, const Builtin* builtin, const Vector* args)
+{
+    if (builtin->param_count >= 0) {
+        return find_builtin_function_position(compiler, builtin);
+    }
+
+    Type* types = create_builtin_argument_types(args);
+    size_t position = find_typed_builtin_call_position(compiler, builtin, types, args->count);
+
+    free_memory(types);
+
+    return position;
+}
+
+uint16_t add_builtin_call(Compiler* compiler, const Builtin* builtin, const Vector* args)
+{
+    if (builtin->param_count >= 0) {
+        return add_builtin_function(compiler, builtin);
+    }
+
+    Type* types = create_builtin_argument_types(args);
+    uint16_t position = add_typed_builtin_call(compiler, builtin, types, args->count);
 
     free_memory(types);
 
@@ -545,7 +594,12 @@ Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
         return compile_array_copy(compiler, ast, discard);
     }
 
-    uint16_t position = get_builtin_call_position(compiler, builtin, &ast->builtin_call.args);
+    size_t position = find_builtin_call_position(compiler, builtin, &ast->builtin_call.args);
+
+    if (position == SIZE_MAX) {
+        position = add_builtin_call(compiler, builtin, &ast->builtin_call.args);
+    }
+
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
     if (builtin->param_count == BUILTIN_VARIADIC) {

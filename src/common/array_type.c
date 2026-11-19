@@ -70,7 +70,7 @@ static bool matches_array_type(const ArrayType* info, Type element_type, size_t 
     return info->count == count && types_equal(info->element_type, element_type);
 }
 
-static ArrayType* find_array_type(const Vector* array_types, Type element_type, size_t count)
+Type find_array_type(const Vector* array_types, Type element_type, size_t count)
 {
     size_t index = 0;
 
@@ -79,10 +79,10 @@ static ArrayType* find_array_type(const Vector* array_types, Type element_type, 
     }
 
     if (index == array_types->count) {
-        return NULL;
+        return (Type){.kind = TypeUnknown};
     }
 
-    return array_types->data[index];
+    return (Type){.kind = TypeArray, .array = array_types->data[index]};
 }
 
 static void format_array_type_name(ArrayType* info, const char* element_name, size_t length)
@@ -121,15 +121,9 @@ static ArrayType* create_array_type(Type element_type, size_t count)
     return info;
 }
 
-Type get_array_type(Vector* array_types, Type element_type, size_t count)
+Type add_array_type(Vector* array_types, Type element_type, size_t count)
 {
-    ArrayType* info = find_array_type(array_types, element_type, count);
-
-    if (info) {
-        return (Type){.kind = TypeArray, .array = info};
-    }
-
-    info = create_array_type(element_type, count);
+    ArrayType* info = create_array_type(element_type, count);
 
     push_vector_item(array_types, info);
 

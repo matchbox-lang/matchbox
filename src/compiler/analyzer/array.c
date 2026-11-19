@@ -120,6 +120,16 @@ static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
     return (size_t)value;
 }
 
+static void resolve_array_dimension(Analyzer* analyzer, Type* type, size_t count)
+{
+    Type element_type = *type;
+    *type = find_array_type(&analyzer->array_types, element_type, count);
+
+    if (type->kind == TypeUnknown) {
+        *type = add_array_type(&analyzer->array_types, element_type, count);
+    }
+}
+
 void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
     if (type->kind != TypeArray || !type->array->dimensions) {
@@ -145,7 +155,8 @@ void resolve_dimensions(Analyzer* analyzer, Type* type)
 
     for (size_t i = counts.count; i > 0; i--) {
         size_t count = (size_t)(uintptr_t)counts.data[i - 1];
-        resolved_type = get_array_type(&analyzer->array_types, resolved_type, count);
+
+        resolve_array_dimension(analyzer, &resolved_type, count);
     }
 
     free_vector(&counts);
@@ -292,8 +303,14 @@ void analyze_array(Analyzer* analyzer, ASTNode* ast)
 
     expected = analyze_array_elements(analyzer, ast, expected);
 
+    if (ast->array.type_id.kind != TypeUnknown) {
+        return;
+    }
+
+    ast->array.type_id = find_array_type(&analyzer->array_types, expected, count);
+
     if (ast->array.type_id.kind == TypeUnknown) {
-        ast->array.type_id = get_array_type(&analyzer->array_types, expected, count);
+        ast->array.type_id = add_array_type(&analyzer->array_types, expected, count);
     }
 }
 

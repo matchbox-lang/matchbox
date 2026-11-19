@@ -100,7 +100,7 @@ size_t find_string_constant(const ModuleObject* module, const char* chars, size_
     return position;
 }
 
-static StringObject* get_string_object(ModuleObject* module, const char* chars, size_t length)
+static StringObject* find_string_object(const ModuleObject* module, const char* chars, size_t length)
 {
     size_t index = 0;
 
@@ -110,11 +110,17 @@ static StringObject* get_string_object(ModuleObject* module, const char* chars, 
         index++;
     }
 
-    if (index < module->objects.count) {
-        return module->objects.data[index];
+    if (index == module->objects.count) {
+        return NULL;
     }
 
+    return module->objects.data[index];
+}
+
+static StringObject* add_string_object(ModuleObject* module, const char* chars, size_t length)
+{
     StringObject* string = copy_string_object(chars, length);
+
     push_vector_item(&module->objects, string);
 
     return string;
@@ -132,7 +138,12 @@ size_t add_string_constant(ModuleObject* module, const char* chars, size_t lengt
         fatal_error("Cannot create more than %u constants", UINT16_MAX + 1u);
     }
 
-    StringObject* string = get_string_object(module, chars, length);
+    StringObject* string = find_string_object(module, chars, length);
+
+    if (!string) {
+        string = add_string_object(module, chars, length);
+    }
+
     Value value = POINTER_VALUE(string);
     size_t position = push_value(&module->constants, value);
 

@@ -82,7 +82,12 @@ static Operand compile_array_new(Compiler* compiler, Type type)
     };
 
     size_t size = get_array_storage_size(type);
-    uint16_t position = get_builtin_function_position(compiler, &builtin);
+    size_t position = find_builtin_function_position(compiler, &builtin);
+
+    if (position == SIZE_MAX) {
+        position = add_builtin_function(compiler, &builtin);
+    }
+
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
     CallArea call = open_call_area(compiler);
 
@@ -675,7 +680,12 @@ static void compile_index_panic(Compiler* compiler)
     size_t constant = add_string_constant(compiler->module, message, sizeof(message) - 1);
     Type argument_types[] = {{.kind = TypeString}};
     const Builtin* builtin = resolve_builtin("panic", argument_types, 1);
-    uint16_t position = get_builtin_function_position(compiler, builtin);
+    size_t position = find_builtin_function_position(compiler, builtin);
+
+    if (position == SIZE_MAX) {
+        position = add_builtin_function(compiler, builtin);
+    }
+
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
     int reg = emit_ldc(compiler, constant);

@@ -271,7 +271,12 @@ static void compile_repl_statement(Compiler* compiler, ASTNode* ast, bool is_las
     void* items[] = {ast};
     Vector args = {.data = items, .capacity = 1, .count = 1};
     const Builtin* builtin = resolve_builtin("print", &argument_type, 1);
-    uint16_t position = get_builtin_call_position(compiler, builtin, &args);
+    size_t position = find_builtin_call_position(compiler, builtin, &args);
+
+    if (position == SIZE_MAX) {
+        position = add_builtin_call(compiler, builtin, &args);
+    }
+
     FunctionObject* function = get_vector_at(&compiler->module->functions, position);
 
     compile_call_with_argument(compiler, function, position, value, true);

@@ -37,11 +37,14 @@ typedef enum ASTNodeType
     ASTBinary,
     ASTBuiltinCall,
     ASTBoolean,
+    ASTBreak,
     ASTCharacter,
     ASTCompound,
     ASTConditional,
+    ASTContinue,
     ASTConversion,
     ASTFloat,
+    ASTFor,
     ASTFunctionCall,
     ASTFunctionDefinition,
     ASTInteger,
@@ -91,6 +94,18 @@ typedef struct ASTNode
             ASTNode* condition;
             ASTNode* body;
         } while_statement;
+
+        struct {
+            Token token;
+            ASTNode* array;
+            ASTNode* index;
+            ASTNode* value;
+            ASTNode* body;
+        } for_statement;
+
+        struct {
+            Token token;
+        } loop_control;
 
         struct {
             Scope* scope;
@@ -282,6 +297,8 @@ ASTNode* create_string_node(Token token, StringObject* value);
 ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed);
 ASTNode* create_variable_node(Token token);
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
+ASTNode* create_for_node(Token token);
+ASTNode* create_loop_control_node(Token token);
 void free_ast_node(ASTNode* ast);
 Scope* get_scope(const ASTNode* ast);
 Type get_node_data_type(const ASTNode* ast);

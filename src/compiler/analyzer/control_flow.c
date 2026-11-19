@@ -1,5 +1,7 @@
 #include "compiler/analyzer/control_flow.h"
+#include "common/array_type.h"
 #include "common/vector.h"
+#include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
@@ -126,7 +128,7 @@ void analyze_while(Analyzer* analyzer, ASTNode* ast)
 {
     Vector entry_states;
     Vector body_states;
-    LoopPath path = {ast, analyzer->loop_path};
+    LoopPath path = {ast, analyzer->loop_path, &entry_states};
     analyzer->loop_path = &path;
 
     capture_ownership_states(&entry_states, analyzer->current_scope);
@@ -266,4 +268,157 @@ void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     merge_conditional_references(ast);
 
     ast->conditional.type_id = then_type;
+}
+
+static void resolve_for_binding_type(ASTNode* binding, Type type)
+{
+    Type declared = binding->variable_definition.type_id;
+
+    if (declared.kind == TypeUnknown) {
+        binding->variable_definition.type_id = type;
+    } else if (!types_equal(type, declared) && !can_implicitly_widen_type(type.kind, declared.kind)) {
+        semantic_error("For binding type is incompatible with the element type", binding->variable_definition.token);
+    }
+
+    if (binding->variable_definition.reference_type != RefNone) {
+        semantic_error("For bindings require value types", binding->variable_definition.token);
+    }
+}
+
+static void define_for_binding(Analyzer* analyzer, ASTNode* binding, StringView id)
+{
+    binding->variable_definition.scope = analyzer->current_scope;
+    binding->variable_definition.position = get_next_local_position(analyzer->current_scope);
+
+    initialize_variable(binding);
+    set_local_variable_symbol(analyzer->current_scope, id, binding);
+}
+
+static void analyze_for_binding(Analyzer* analyzer, ASTNode* binding, Type type)
+{
+    if (!binding) {
+        return;
+    }
+
+    resolve_dimensions(analyzer, &binding->variable_definition.type_id);
+
+    StringView id = get_string_view(binding->variable_definition.id);
+
+    if (get_local_symbol(analyzer->current_scope, id)) {
+        redefinition_error("Variable", binding->variable_definition.token);
+    }
+
+    resolve_for_binding_type(binding, type);
+    define_for_binding(analyzer, binding, id);
+}
+
+static void collect_for_origins(ASTNode* array, Vector* origins)
+{
+    if (array->type == ASTIndex) {
+        collect_for_origins(array->index.array, origins);
+
+        return;
+    }
+
+    Vector* references = get_reference_origins_from_expression(array);
+
+    merge_reference_origins(origins, references);
+
+    if (array->type == ASTVariable) {
+        add_reference_origin(origins, array->variable.symbol);
+    }
+}
+
+static void adjust_for_borrows(Vector* origins, int change)
+{
+    for (size_t i = 0; i < origins->count; i++) {
+        ASTNode* origin = origins->data[i];
+        size_t* count = get_shared_access_count(origin);
+        *count += change;
+    }
+}
+
+static Type analyze_for_array(Analyzer* analyzer, ASTNode* ast)
+{
+    ASTNode* array = ast->for_statement.array;
+
+    analyze_node(analyzer, array);
+
+    Type type = get_node_data_type(array);
+
+    if (!is_array_type(type.kind)) {
+        semantic_error("For iteration requires an array", ast->for_statement.token);
+    }
+
+    return type;
+}
+
+static void analyze_for_index(Analyzer* analyzer, ASTNode* index)
+{
+    if (!index) {
+        return;
+    }
+
+    Type type = get_node_data_type(index);
+
+    if (type.kind != TypeUnknown && type.kind != TypeUsize) {
+        semantic_error("For index binding requires usize", index->variable_definition.token);
+    }
+
+    analyze_for_binding(analyzer, index, (Type){.kind = TypeUsize});
+}
+
+static void analyze_for_body(Analyzer* analyzer, ASTNode* ast, Type element_type)
+{
+    ASTNode* body = ast->for_statement.body;
+    Scope* previous_scope = enter_branch_scope(analyzer, body, NULL);
+
+    analyze_for_index(analyzer, ast->for_statement.index);
+    analyze_for_binding(analyzer, ast->for_statement.value, element_type);
+    analyze_branch_contents(analyzer, body, (Type){.kind = TypeVoid}, false);
+
+    analyzer->current_scope = previous_scope;
+}
+
+static void analyze_for_ownership(Analyzer* analyzer, ASTNode* ast, Type element_type)
+{
+    Vector entry_states;
+    Vector body_states;
+    LoopPath path = {ast, analyzer->loop_path, &entry_states};
+    analyzer->loop_path = &path;
+
+    capture_ownership_states(&entry_states, analyzer->current_scope);
+    copy_ownership_states(&body_states, &entry_states);
+    analyze_for_body(analyzer, ast, element_type);
+    validate_loop_ownership(&entry_states, ast->for_statement.token);
+    update_ownership_states(&body_states);
+
+    analyzer->loop_path = path.previous;
+
+    merge_ownership_states(&entry_states, &body_states);
+    free_ownership_states(&entry_states);
+    free_ownership_states(&body_states);
+}
+
+void analyze_for(Analyzer* analyzer, ASTNode* ast)
+{
+    Type type = analyze_for_array(analyzer, ast);
+    Vector origins = {0};
+
+    collect_for_origins(ast->for_statement.array, &origins);
+    adjust_for_borrows(&origins, 1);
+    analyze_for_ownership(analyzer, ast, type.array->element_type);
+    adjust_for_borrows(&origins, -1);
+    free_vector(&origins);
+}
+
+void analyze_loop_control(Analyzer* analyzer, ASTNode* ast)
+{
+    LoopPath* path = analyzer->loop_path;
+
+    if (!path) {
+        semantic_error("Loop control requires an enclosing loop", ast->loop_control.token);
+    }
+
+    validate_loop_ownership(path->entry_states, ast->loop_control.token);
 }

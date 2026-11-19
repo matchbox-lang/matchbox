@@ -1,0 +1,16 @@
+let values: i16[3] = [-2, 4, 7]
+var total = 0
+
+for (value: i32 in values) {
+    total += value
+}
+
+assert(total == 9 and values[0] == -2)
+
+for value in [10, 20] {
+    total += value
+}
+
+values[0] = 5
+
+assert(total == 39 and values[0] == 5)

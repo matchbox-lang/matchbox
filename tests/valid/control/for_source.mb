@@ -1,0 +1,20 @@
+var calls = 0
+
+func values() -> i32[2] {
+    calls += 1
+
+    return [5, 8]
+}
+
+func sum() -> i32 {
+    var total = 0
+
+    for value in values() {
+        let doubled = value * 2
+        total += doubled
+    }
+
+    return total
+}
+
+assert(sum() == 26 and calls == 1)

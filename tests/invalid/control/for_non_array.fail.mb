@@ -1,0 +1,3 @@
+for value in 3 {
+    print(value)
+}

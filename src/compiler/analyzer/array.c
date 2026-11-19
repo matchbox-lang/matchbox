@@ -390,7 +390,7 @@ void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast)
     ASTNode* owner = get_index_owner(ast->index.array);
     ReferenceType reference = get_reference_type(owner);
     bool constant = owner && is_variable_definition(owner) && owner->variable_definition.constant;
-    bool borrowed = owner && reference == RefNone && *get_shared_access_count(owner);
+    bool borrowed = owner && *get_shared_access_count(owner);
 
     if (!owner || reference == RefShared || constant || borrowed) {
         semantic_error("Cannot mutate this array", ast->index.token);

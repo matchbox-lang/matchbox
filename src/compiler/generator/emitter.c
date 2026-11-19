@@ -236,9 +236,9 @@ static Opcode get_jump_comparison_opcode(Opcode opcode)
     }
 }
 
-static Opcode expand_condition_jump(CodeObject* code, size_t position, Opcode opcode, size_t offset)
+static Opcode expand_condition_jump(CodeObject* code, size_t position, Opcode opcode, ptrdiff_t offset)
 {
-    if (opcode < OpBeq || opcode > OpBleU32 || offset <= INT8_MAX) {
+    if (opcode < OpBeq || opcode > OpBleU32 || (offset >= INT8_MIN && offset <= INT8_MAX)) {
         return opcode;
     }
 
@@ -252,9 +252,9 @@ static Opcode expand_condition_jump(CodeObject* code, size_t position, Opcode op
     return OpBz;
 }
 
-static void check_jump_offset(Opcode opcode, size_t offset)
+static void check_jump_offset(Opcode opcode, ptrdiff_t offset)
 {
-    size_t maximum = INT32_MAX >> 8;
+    ptrdiff_t maximum = INT32_MAX >> 8;
 
     if (opcode == OpBz || opcode == OpBnz) {
         maximum = INT16_MAX;
@@ -264,12 +264,12 @@ static void check_jump_offset(Opcode opcode, size_t offset)
         maximum = INT8_MAX;
     }
 
-    if (offset > maximum) {
+    if (offset > maximum || offset < -maximum - 1) {
         branch_offset_overflow_error();
     }
 }
 
-void patch_jump(Compiler* compiler, size_t position)
+void patch_jump_to(Compiler* compiler, size_t position, size_t target)
 {
     CodeObject* code = get_current_code_object(compiler);
 
@@ -278,7 +278,7 @@ void patch_jump(Compiler* compiler, size_t position)
     }
 
     size_t count = count_code_object(code);
-    size_t word_offset = (count - position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
+    ptrdiff_t word_offset = ((ptrdiff_t)target - (ptrdiff_t)position - INSTRUCTION_SIZE) / INSTRUCTION_SIZE;
     Opcode opcode = (Opcode)code->data[position];
     compiler->peephole_barrier = count;
     opcode = expand_condition_jump(code, position, opcode, word_offset);
@@ -303,6 +303,14 @@ void patch_jump(Compiler* compiler, size_t position)
     set_byte_at(code, position + 1, offset >> 16);
     set_byte_at(code, position + 2, offset >> 8);
     set_byte_at(code, position + 3, offset);
+}
+
+void patch_jump(Compiler* compiler, size_t position)
+{
+    CodeObject* code = get_current_code_object(compiler);
+    size_t target = count_code_object(code);
+
+    patch_jump_to(compiler, position, target);
 }
 
 static Opcode get_condition_jump_opcode(Opcode comparison)

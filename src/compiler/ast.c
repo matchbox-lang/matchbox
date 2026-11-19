@@ -315,6 +315,28 @@ ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body)
     return ast;
 }
 
+ASTNode* create_for_node(Token token)
+{
+    ASTNode* ast = create_ast_node(ASTFor);
+    ast->for_statement.token = token;
+
+    return ast;
+}
+
+ASTNode* create_loop_control_node(Token token)
+{
+    ASTNodeType type = ASTBreak;
+
+    if (token.type == TokenKeywordContinue) {
+        type = ASTContinue;
+    }
+
+    ASTNode* ast = create_ast_node(type);
+    ast->loop_control.token = token;
+
+    return ast;
+}
+
 static void free_ast_node_vector(Vector* nodes)
 {
     size_t count = count_vector(nodes);
@@ -427,6 +449,12 @@ void free_ast_node(ASTNode* ast)
         case ASTPrefix:
             free_ast_node(ast->prefix.expr);
             free_vector(&ast->prefix.reference_origins);
+            break;
+        case ASTFor:
+            free_ast_node(ast->for_statement.array);
+            free_ast_node(ast->for_statement.index);
+            free_ast_node(ast->for_statement.value);
+            free_ast_node(ast->for_statement.body);
             break;
         case ASTWhile:
             free_ast_node(ast->while_statement.condition);

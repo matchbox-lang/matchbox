@@ -638,6 +638,7 @@ void compile_function_definition(Compiler* compiler, ASTNode* ast)
     int previous_register_count = compiler->register_count;
     size_t previous_peephole_barrier = compiler->peephole_barrier;
     FunctionObject* previous_function = compiler->function;
+    LoopJumps* previous_loop_jumps = compiler->loop_jumps;
     FunctionObject* function = create_defined_function_object(ast);
     ASTNode* body = ast->function_definition.body;
 
@@ -645,6 +646,7 @@ void compile_function_definition(Compiler* compiler, ASTNode* ast)
     compiler->local_position_offset = 0;
     compiler->register_count = compiler->frame_base_count;
     compiler->function = function;
+    compiler->loop_jumps = NULL;
     compiler->peephole_barrier = 0;
 
     push_vector_item(&compiler->module->functions, function);
@@ -666,6 +668,7 @@ void compile_function_definition(Compiler* compiler, ASTNode* ast)
     optimize_bytecode(compiler->module, &function->code, 0);
 
     compiler->function = previous_function;
+    compiler->loop_jumps = previous_loop_jumps;
     compiler->frame_base_count = previous_frame_base_count;
     compiler->local_position_offset = previous_local_position_offset;
     compiler->register_count = previous_register_count;

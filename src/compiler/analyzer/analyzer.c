@@ -93,6 +93,13 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
         case ASTBuiltinCall:
             analyze_resolved_builtin_call(analyzer, ast);
             break;
+        case ASTFor:
+            analyze_for(analyzer, ast);
+            break;
+        case ASTBreak:
+        case ASTContinue:
+            analyze_loop_control(analyzer, ast);
+            break;
         case ASTWhile:
             analyze_while(analyzer, ast);
             break;

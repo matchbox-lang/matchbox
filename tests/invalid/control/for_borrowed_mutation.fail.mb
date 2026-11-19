@@ -1,0 +1,5 @@
+let values = [1, 2]
+
+for value in values {
+    values[0] = value
+}

@@ -1,0 +1,6 @@
+let values = [1, 2]
+let reference = ^values
+
+for value in reference {
+    reference[0] = value
+}

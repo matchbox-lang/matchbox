@@ -161,6 +161,35 @@ static bool visit_assignment_uses(ASTNode* ast, VisitId visit, void* context)
     return visit(id, context) || visit_node_uses(ast->assignment.expr, visit, context);
 }
 
+static void add_for_shadowed_bindings(ASTNode* ast, ScopedUses* scope)
+{
+    ASTNode* index = ast->for_statement.index;
+    ASTNode* value = ast->for_statement.value;
+
+    if (index) {
+        push_vector_item(&scope->shadowed, index->variable_definition.id);
+    }
+
+    push_vector_item(&scope->shadowed, value->variable_definition.id);
+}
+
+static bool visit_for_uses(ASTNode* ast, VisitId visit, void* context)
+{
+    if (visit_node_uses(ast->for_statement.array, visit, context)) {
+        return true;
+    }
+
+    ScopedUses scope = {.visit = visit, .context = context};
+
+    add_for_shadowed_bindings(ast, &scope);
+
+    bool found = visit_node_uses(ast->for_statement.body, visit_unshadowed_use, &scope);
+
+    free_vector(&scope.shadowed);
+
+    return found;
+}
+
 static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
 {
     if (!ast) {
@@ -184,6 +213,8 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
             return visit_node_list_uses(&ast->builtin_call.args, visit, context);
         case ASTCompound:
             return visit_scoped_block_uses(&ast->compound.statements, visit, context);
+        case ASTFor:
+            return visit_for_uses(ast, visit, context);
         case ASTWhile:
             return visit_node_uses(ast->while_statement.condition, visit, context)
                 || visit_node_uses(ast->while_statement.body, visit, context);

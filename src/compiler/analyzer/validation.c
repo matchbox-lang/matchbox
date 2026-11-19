@@ -169,6 +169,10 @@ static void validate_node(const ASTNode* ast, bool check_zero)
         case ASTVariableDefinition:
             validate_node(ast->variable_definition.expr, check_zero);
             break;
+        case ASTFor:
+            validate_node(ast->for_statement.array, check_zero);
+            validate_node(ast->for_statement.body, check_zero);
+            break;
         case ASTWhile:
             validate_node(ast->while_statement.condition, check_zero);
             validate_node(ast->while_statement.body, check_zero);

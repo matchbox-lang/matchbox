@@ -1,0 +1,5 @@
+let values: i64[1] = [1]
+
+for value: i32 in values {
+    print(value)
+}

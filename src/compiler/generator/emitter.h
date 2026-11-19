@@ -35,6 +35,7 @@ void emit_retv(Compiler* compiler, Operand operand);
 bool retarget_temporary(Compiler* compiler, Operand value, int destination);
 void emit_operand_to_register(Compiler* compiler, int destination, Operand value);
 size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register);
+void patch_jump_to(Compiler* compiler, size_t position, size_t target);
 void patch_jump(Compiler* compiler, size_t position);
 size_t emit_condition_jump(Compiler* compiler, Operand condition);
 void emit_loop_jump(Compiler* compiler, size_t target);

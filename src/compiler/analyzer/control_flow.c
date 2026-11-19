@@ -180,51 +180,50 @@ static void validate_conditional_expression(ASTNode* ast)
     }
 }
 
-void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
+static void analyze_conditional_condition(Analyzer* analyzer, ASTNode* ast)
+{
+    analyze_node(analyzer, ast->conditional.condition);
+
+    Type type = get_node_data_type(ast->conditional.condition);
+
+    if (type.kind != TypeBool) {
+        semantic_error("Condition must have type bool", ast->conditional.token);
+    }
+}
+
+static void analyze_conditional_branches(Analyzer* analyzer, ASTNode* ast, Type* then_type, Type* else_type)
 {
     Vector* continuation_nodes = analyzer->current_nodes;
     size_t continuation_start = analyzer->next_node;
-
-    validate_conditional_expression(ast);
-    analyze_node(analyzer, ast->conditional.condition);
-
-    if (get_node_data_type(ast->conditional.condition).kind != TypeBool) {
-        semantic_error("Condition must have type bool", ast->conditional.token);
-    }
-
     Vector then_states;
     Vector else_states;
 
+    analyze_conditional_condition(analyzer, ast);
     capture_ownership_states(&then_states, analyzer->current_scope);
     copy_ownership_states(&else_states, &then_states);
 
     analyzer->current_nodes = continuation_nodes;
     analyzer->next_node = continuation_start;
+
     release_references_dead_on_branch(analyzer, &then_states, ast->conditional.then_branch, NULL);
 
     Type type = ast->conditional.type_id;
-    Type then_type = analyze_scoped_branch(
-        analyzer, ast->conditional.then_branch, NULL, type, ast->conditional.expression);
+    *then_type = analyze_scoped_branch(analyzer, ast->conditional.then_branch, NULL, type, ast->conditional.expression);
 
     update_ownership_states(&then_states);
 
     analyzer->current_nodes = continuation_nodes;
     analyzer->next_node = continuation_start;
 
-    Type else_type;
-
-    analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, &else_type,
+    analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, else_type,
         ast->conditional.expression);
     merge_ownership_states(&then_states, &else_states);
     free_ownership_states(&then_states);
     free_ownership_states(&else_states);
+}
 
-    if (!ast->conditional.expression) {
-        ast->conditional.type_id = (Type){.kind = TypeVoid};
-
-        return;
-    }
-
+static void validate_conditional_result(ASTNode* ast, Type then_type, Type else_type)
+{
     if (!ast->conditional.else_branch) {
         semantic_token_error("If expression requires an else branch ", ast->conditional.token);
     }
@@ -236,15 +235,35 @@ void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     if (!types_equal(then_type, else_type)) {
         semantic_token_error("Conditional expression branches have incompatible types ", ast->conditional.token);
     }
+}
 
+static void merge_conditional_references(ASTNode* ast)
+{
     bool has_expected_type = ast->conditional.type_id.kind != TypeUnknown
         && ast->conditional.type_id.kind != TypeVoid;
-
     ASTNode* then_result = get_branch_result(ast->conditional.then_branch);
     ASTNode* else_result = get_branch_result(ast->conditional.else_branch);
-    
+
     merge_branch_reference(ast, then_result, true, has_expected_type, ast->conditional.token);
     merge_branch_reference(ast, else_result, false, has_expected_type, ast->conditional.token);
+}
+
+void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
+{
+    Type then_type;
+    Type else_type;
+
+    validate_conditional_expression(ast);
+    analyze_conditional_branches(analyzer, ast, &then_type, &else_type);
+
+    if (!ast->conditional.expression) {
+        ast->conditional.type_id = (Type){.kind = TypeVoid};
+
+        return;
+    }
+
+    validate_conditional_result(ast, then_type, else_type);
+    merge_conditional_references(ast);
 
     ast->conditional.type_id = then_type;
 }

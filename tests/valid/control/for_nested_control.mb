@@ -1,0 +1,19 @@
+var total = 0
+var outer_total = 0
+
+for outer in [1, 2, 3] {
+    for inner in [1, 2, 3, 4] {
+        match inner {
+            case 2:
+                continue
+            case 4:
+                break
+            case _:
+                total += outer * inner
+        }
+    }
+
+    outer_total += outer
+}
+
+assert(total == 24 and outer_total == 6)

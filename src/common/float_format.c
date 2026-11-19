@@ -71,7 +71,7 @@ static void append_float_fraction(char* buffer, size_t size)
     snprintf(buffer + length, size - length, ".0");
 }
 
-static bool same_f64_bits(double left, double right)
+static bool has_same_f64_bits(double left, double right)
 {
     uint64_t left_bits;
     uint64_t right_bits;
@@ -92,7 +92,7 @@ static bool round_trips_float(const char* text, double value, int digits)
         parsed = strtod(text, NULL);
     }
 
-    return same_f64_bits(value, parsed);
+    return has_same_f64_bits(value, parsed);
 }
 
 static size_t select_shortest_float(char* buffer, size_t size, char* candidate, bool round_trip, size_t shortest)

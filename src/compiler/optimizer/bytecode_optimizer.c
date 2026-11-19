@@ -602,7 +602,7 @@ static void remove_immediate_operand_moves(OptimizationWord* words, size_t count
     }
 }
 
-static bool small_load(const OptimizationWord* word)
+static bool load_operand_fits_byte(const OptimizationWord* word)
 {
     int operand = word->b << 8 | word->c;
 
@@ -646,8 +646,8 @@ static Opcode load_pair_opcode(Opcode first, Opcode second)
 
 static bool fuse_loads(OptimizationWord* first, OptimizationWord* second)
 {
-    bool first_small = small_load(first);
-    bool second_small = small_load(second);
+    bool first_small = load_operand_fits_byte(first);
+    bool second_small = load_operand_fits_byte(second);
     Opcode opcode = load_pair_opcode(first->opcode, second->opcode);
 
     if (first->a + 1 != second->a || !first_small || !second_small || opcode == OpNop) {
@@ -677,7 +677,7 @@ static Opcode move_load_opcode(Opcode opcode)
 
 static bool fuse_move_load(OptimizationWord* first, OptimizationWord* second)
 {
-    bool small = small_load(second);
+    bool small = load_operand_fits_byte(second);
     Opcode opcode = move_load_opcode(second->opcode);
 
     if (first->opcode != OpMov || first->a + 1 != second->a || !small || opcode == OpHlt) {
@@ -782,7 +782,7 @@ static bool fuse_pair(const ModuleObject* module, OptimizationWord* first, Optim
         return true;
     }
 
-    bool small = small_load(first);
+    bool small = load_operand_fits_byte(first);
 
     if (first->opcode == OpLdi && second->opcode == OpStg && first->a == second->a
         && second->b == 0 && small) {

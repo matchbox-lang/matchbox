@@ -38,13 +38,13 @@ void validate_global_binding_access(Analyzer* analyzer, ASTNode* origin, Referen
     }
 }
 
-static bool function_in_path(FunctionPath* path, ASTNode* function)
+static bool is_function_in_path(FunctionPath* path, ASTNode* function)
 {
     if (!path || path->function == function) {
         return path != NULL;
     }
 
-    return function_in_path(path->previous, function);
+    return is_function_in_path(path->previous, function);
 }
 
 static void validate_global_access_in_nodes(Analyzer* analyzer, Vector* nodes)
@@ -128,11 +128,11 @@ static void apply_function_array_initializations(ASTNode* function)
 
 void validate_function_global_access(Analyzer* analyzer, ASTNode* function, bool moves_arrays)
 {
-    if (analyzer->constant_scope && function_in_path(analyzer->constant_functions, function)) {
+    if (analyzer->constant_scope && is_function_in_path(analyzer->constant_functions, function)) {
         semantic_token_error("Cannot evaluate incomplete function ", function->function_definition.token);
     }
 
-    bool recursive = function_in_path(analyzer->function_path, function);
+    bool recursive = is_function_in_path(analyzer->function_path, function);
 
     validate_function_array_initializations(function, recursive);
 

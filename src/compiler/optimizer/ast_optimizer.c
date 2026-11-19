@@ -39,7 +39,7 @@ static void write_concatenation_literals(Writer* writer, const void* context)
     write_text_literal(writer, ast->binary.right_expr);
 }
 
-static size_t compute_text_literal_capacity(const ASTNode* ast)
+static size_t text_literal_capacity(const ASTNode* ast)
 {
     if (ast->type == ASTString) {
         return ast->string_literal.value->length;
@@ -48,10 +48,10 @@ static size_t compute_text_literal_capacity(const ASTNode* ast)
     return 4;
 }
 
-static size_t compute_concatenation_literal_capacity(const ASTNode* ast)
+static size_t concatenation_literal_capacity(const ASTNode* ast)
 {
-    size_t left = compute_text_literal_capacity(ast->binary.left_expr);
-    size_t right = compute_text_literal_capacity(ast->binary.right_expr);
+    size_t left = text_literal_capacity(ast->binary.left_expr);
+    size_t right = text_literal_capacity(ast->binary.right_expr);
 
     if (right > SIZE_MAX - left) {
         out_of_memory_error();
@@ -71,7 +71,7 @@ static bool fold_concatenation(ASTNode* ast)
     }
 
     Token token = ast->binary.operator;
-    size_t capacity = compute_concatenation_literal_capacity(ast);
+    size_t capacity = concatenation_literal_capacity(ast);
     StringObject* string = concatenate_string_parts(capacity, write_concatenation_literals, ast);
 
     free_ast_node(ast->binary.left_expr);

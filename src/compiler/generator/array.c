@@ -907,7 +907,14 @@ static void compile_for_index(Compiler* compiler, ASTNode* index, ForOperands* l
         loop->index.temporary = false;
     }
 
-    index->variable_definition.register_position = loop->index.reg;
+    int reg = loop->index.reg;
+
+    if (index->variable_definition.address_taken) {
+        size_t slots = get_node_slot_count(index);
+        reg = allocate_registers(compiler, slots);
+    }
+
+    index->variable_definition.register_position = reg;
 }
 
 static ForOperands compile_for_operands(Compiler* compiler, ASTNode* ast, Type type)
@@ -980,6 +987,17 @@ static void compile_for_value(Compiler* compiler, ASTNode* binding, const ForOpe
     release_operand(compiler, value);
 }
 
+static void compile_for_index_value(Compiler* compiler, ASTNode* index, const ForOperands* loop)
+{
+    if (!index || !index->variable_definition.address_taken) {
+        return;
+    }
+
+    int reg = index->variable_definition.register_position;
+
+    emit_operand_to_register(compiler, reg, loop->index);
+}
+
 static void advance_for(Compiler* compiler, const ForOperands* loop)
 {
     advance_array_binary_offset(compiler, loop->offset, loop->step);
@@ -1024,6 +1042,7 @@ static void compile_for_body(Compiler* compiler, ASTNode* ast, const ForOperands
     size_t start = count_code_object(code);
     compiler->peephole_barrier = start;
 
+    compile_for_index_value(compiler, ast->for_statement.index, operands);
     compile_for_value(compiler, ast->for_statement.value, operands, element_type);
     compile_block_level_statements(compiler, &ast->for_statement.body->compound.statements);
 

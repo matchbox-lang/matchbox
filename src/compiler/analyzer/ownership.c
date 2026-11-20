@@ -248,7 +248,7 @@ static void validate_loop_reference_origins(OwnershipState* entry, Token token)
         bool existing = contains_reference_origin(&entry->reference_origins, origin);
 
         if (!existing) {
-            semantic_error("While loop cannot change the origin of an outer reference", token);
+            semantic_error("Cannot change origin of an outer reference", token);
         }
     }
 }
@@ -262,7 +262,7 @@ static void validate_loop_initialization(OwnershipState* entry, Token token)
     }
 
     if (symbol->variable_definition.possibly_initialized) {
-        semantic_error("While loop cannot initialize a fixed outer binding across iterations", token);
+        semantic_error("Cannot initialize fixed outer binding across iterations", token);
     }
 }
 
@@ -276,7 +276,7 @@ void validate_loop_ownership(Vector* entry_states, Token token)
         bool moved = is_moved(symbol);
 
         if (moved && !entry->moved) {
-            semantic_error("While loop cannot move an outer reference across iterations", token);
+            semantic_error("Cannot move outer reference across iterations", token);
         }
 
         validate_loop_reference_origins(entry, token);

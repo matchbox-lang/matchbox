@@ -84,6 +84,7 @@ static void recover_compiler(Compiler* compiler)
     compiler->register_count = 0;
     compiler->frame_base_count = 0;
     compiler->peephole_barrier = 0;
+    compiler->loop_jumps = NULL;
     compiler->local_position_offset = -(int)compiler->module->global_count;
     compiler->function->max_stack_count = 0;
 }
@@ -108,6 +109,7 @@ void init_compiler(Compiler* compiler, ModuleObject* module)
     compiler->ast = ast;
     compiler->statement_index = 0;
     compiler->peephole_barrier = 0;
+    compiler->loop_jumps = NULL;
     compiler->register_count = 0;
     compiler->frame_base_count = 0;
     compiler->local_position_offset = 0;
@@ -142,6 +144,7 @@ static void compile_statement_bytecode(Compiler* compiler, CompileStatements com
     clear_code_object(code);
 
     compiler->peephole_barrier = 0;
+    compiler->loop_jumps = NULL;
     compile_statements(compiler, &compiler->ast->compound.statements);
     emit_hlt(compiler);
     optimize_bytecode(compiler->module, code, compiler->register_count);

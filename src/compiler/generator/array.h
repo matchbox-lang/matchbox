@@ -10,6 +10,7 @@ Operand compile_array_binary(Compiler* compiler, ASTNode* ast);
 void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast);
 Operand compile_array(Compiler* compiler, ASTNode* ast);
 Operand compile_index(Compiler* compiler, ASTNode* ast);
+void compile_for(Compiler* compiler, ASTNode* ast);
 void compile_index_assignment(Compiler* compiler, ASTNode* ast);
 
 #endif

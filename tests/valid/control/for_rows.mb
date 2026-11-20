@@ -1,0 +1,11 @@
+let matrix = i16[2][129](1)
+matrix[1][128] = 3
+
+var total = 0
+
+for row in matrix {
+    total += row[128]
+    row[128] = 0
+}
+
+assert(total == 4 and matrix[1][128] == 3)

@@ -258,6 +258,10 @@ static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
             validate_constant_builtin(analyzer, ast->builtin_call.builtin, ast->builtin_call.token);
             validate_global_access_in_nodes(analyzer, &ast->builtin_call.args);
             break;
+        case ASTFor:
+            validate_node_global_access(analyzer, ast->for_statement.array);
+            validate_branch_global_access(analyzer, ast->for_statement.body);
+            break;
         case ASTWhile:
             validate_node_global_access(analyzer, ast->while_statement.condition);
             validate_branch_global_access(analyzer, ast->while_statement.body);

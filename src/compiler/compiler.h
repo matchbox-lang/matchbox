@@ -9,6 +9,8 @@
 #include "runtime/module_object.h"
 #include <stddef.h>
 
+typedef struct LoopJumps LoopJumps;
+
 typedef enum CompileResult
 {
     CompileError,
@@ -25,6 +27,7 @@ typedef struct Compiler
     ModuleObject* module;
     FunctionObject* function;
     ASTNode* ast;
+    LoopJumps* loop_jumps;
     size_t statement_index;
     size_t peephole_barrier;
     int register_count;

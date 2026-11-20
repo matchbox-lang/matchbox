@@ -126,6 +126,12 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
         case ASTMatch:
             clear_match_analysis(ast, functions);
             break;
+        case ASTFor:
+            clear_node_analysis(ast->for_statement.array, functions);
+            clear_node_analysis(ast->for_statement.index, functions);
+            clear_node_analysis(ast->for_statement.value, functions);
+            clear_node_analysis(ast->for_statement.body, functions);
+            break;
         case ASTWhile:
             clear_node_analysis(ast->while_statement.condition, functions);
             clear_node_analysis(ast->while_statement.body, functions);

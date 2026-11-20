@@ -54,6 +54,11 @@ ASTNode* parse_statement(Parser* parser)
             return parse_variable_definition(parser);
         case TokenKeywordReturn:
             return parse_return_statement(parser);
+        case TokenKeywordFor:
+            return parse_for_statement(parser);
+        case TokenKeywordBreak:
+        case TokenKeywordContinue:
+            return parse_loop_control(parser);
         case TokenKeywordWhile:
             return parse_while_statement(parser);
         case TokenKeywordIf:

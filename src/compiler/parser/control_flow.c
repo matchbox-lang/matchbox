@@ -1,6 +1,8 @@
 #include "compiler/parser/control_flow.h"
 #include "common/vector.h"
 #include "compiler/parser/expression.h"
+#include "compiler/parser/type.h"
+#include "runtime/string_object.h"
 
 static ASTNode* parse_conditional_branch(Parser* parser)
 {
@@ -162,4 +164,100 @@ ASTNode* parse_while_statement(Parser* parser)
     }
 
     return create_while_node(token, condition, body);
+}
+
+static ASTNode* parse_for_binding(Parser* parser)
+{
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
+    Token token = parser->current_token;
+
+    consume(parser, TokenIdentifier);
+
+    StringObject* id = copy_string_object(token.chars, token.length);
+    ASTNode* binding = create_variable_definition_node(token, id, true);
+    binding->variable_definition.expr = create_ast_node(ASTNone);
+
+    if (parser->current_token.type == TokenColon) {
+        parse_variable_type(parser, binding);
+    }
+
+    return binding;
+}
+
+static bool parse_for_bindings(Parser* parser, ASTNode* ast)
+{
+    ast->for_statement.value = parse_for_binding(parser);
+
+    if (parser->current_token.type == TokenComma) {
+        consume(parser, TokenComma);
+
+        ast->for_statement.index = ast->for_statement.value;
+        ast->for_statement.value = parse_for_binding(parser);
+    }
+
+    return ast->for_statement.value && !is_end_of_file(parser);
+}
+
+static bool parse_for_header(Parser* parser, ASTNode* ast)
+{
+    bool parenthesized = parser->current_token.type == TokenLparen;
+
+    if (parenthesized) {
+        consume(parser, TokenLparen);
+    }
+
+    if (is_end_of_file(parser) || !parse_for_bindings(parser, ast)) {
+        return false;
+    }
+
+    consume(parser, TokenKeywordIn);
+
+    ast->for_statement.array = parse_expression(parser);
+
+    if (!ast->for_statement.array || is_end_of_file(parser)) {
+        return false;
+    }
+
+    if (parenthesized) {
+        consume(parser, TokenRparen);
+    }
+
+    return !is_end_of_file(parser);
+}
+
+ASTNode* parse_for_statement(Parser* parser)
+{
+    Token token = parser->current_token;
+
+    consume(parser, TokenKeywordFor);
+
+    ASTNode* ast = create_for_node(token);
+
+    if (!parse_for_header(parser, ast)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    ast->for_statement.body = parse_conditional_branch(parser);
+
+    if (!ast->for_statement.body) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
+}
+
+ASTNode* parse_loop_control(Parser* parser)
+{
+    Token token = parser->current_token;
+
+    advance(parser);
+
+    return create_loop_control_node(token);
 }

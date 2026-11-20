@@ -1,0 +1,5 @@
+for index, value in [1] {
+    print(value)
+}
+
+print(index)

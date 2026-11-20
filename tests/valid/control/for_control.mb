@@ -1,0 +1,14 @@
+var total: usize = 0
+
+for (index, value in [1, 2, 3, 4]) {
+    match value {
+        case 2:
+            continue
+        case 4:
+            break
+        case _:
+            total += index
+    }
+}
+
+assert(total == 2)

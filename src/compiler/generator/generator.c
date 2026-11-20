@@ -200,6 +200,13 @@ Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
         case ASTFunctionDefinition:
             compile_function_definition(compiler, ast);
             return no_operand();
+        case ASTFor:
+            compile_for(compiler, ast);
+            return no_operand();
+        case ASTBreak:
+        case ASTContinue:
+            compile_loop_control(compiler, ast);
+            return no_operand();
         case ASTWhile:
             compile_while(compiler, ast);
             return no_operand();

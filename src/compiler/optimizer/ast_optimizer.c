@@ -528,6 +528,10 @@ static void optimize_node(ASTNode* ast)
         case ASTBuiltinCall:
             optimize_builtin_call(ast);
             break;
+        case ASTFor:
+            optimize_node(ast->for_statement.array);
+            optimize_nodes(&ast->for_statement.body->compound.statements);
+            break;
         case ASTWhile:
             optimize_node(ast->while_statement.condition);
             optimize_nodes(&ast->while_statement.body->compound.statements);
@@ -738,6 +742,10 @@ static void mark_called_functions(ASTNode* ast)
         case ASTBuiltinCall:
             mark_called_functions_in_vector(&ast->builtin_call.args);
             break;
+        case ASTFor:
+            mark_called_functions(ast->for_statement.array);
+            mark_called_functions(ast->for_statement.body);
+            break;
         case ASTWhile:
             mark_called_functions(ast->while_statement.condition);
             mark_called_functions(ast->while_statement.body);
@@ -823,6 +831,13 @@ static void reset_function_call_counts(ASTNode* ast)
     if (ast->type == ASTConditional) {
         reset_function_call_counts(ast->conditional.then_branch);
         reset_function_call_counts(ast->conditional.else_branch);
+
+        return;
+    }
+
+    if (ast->type == ASTFor) {
+        reset_function_call_counts(ast->for_statement.array);
+        reset_function_call_counts(ast->for_statement.body);
 
         return;
     }

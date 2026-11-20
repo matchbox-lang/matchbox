@@ -6,6 +6,7 @@
 #include "compiler/generator/operand.h"
 #include "compiler/ast.h"
 #include <stddef.h>
+#include <stdint.h>
 
 Operand compile_logical_binary(Compiler* compiler, ASTNode* ast)
 {
@@ -157,13 +158,59 @@ void compile_while(Compiler* compiler, ASTNode* ast)
     int register_count = compiler->register_count;
     compiler->peephole_barrier = start;
 
+    LoopJumps loop;
+
+    begin_loop(compiler, &loop);
+
     Operand condition = compile_expression(compiler, ast->while_statement.condition, false);
     size_t exit_jump = emit_condition_jump(compiler, condition);
 
     release_operand(compiler, condition);
     compile_scoped_conditional_branch(compiler, ast->while_statement.body, (Type){.kind = TypeVoid}, 0, false);
+    patch_loop_jumps(compiler, &loop.continues);
     emit_loop_jump(compiler, start);
     patch_jump(compiler, exit_jump);
+    end_loop(compiler, &loop);
 
     compiler->register_count = register_count;
+}
+
+void begin_loop(Compiler* compiler, LoopJumps* loop)
+{
+    init_vector(&loop->breaks);
+    init_vector(&loop->continues);
+
+    loop->previous = compiler->loop_jumps;
+    compiler->loop_jumps = loop;
+}
+
+void patch_loop_jumps(Compiler* compiler, Vector* jumps)
+{
+    for (size_t i = 0; i < jumps->count; i++) {
+        size_t position = (size_t)(uintptr_t)jumps->data[i];
+
+        patch_jump(compiler, position);
+    }
+}
+
+void end_loop(Compiler* compiler, LoopJumps* loop)
+{
+    patch_loop_jumps(compiler, &loop->breaks);
+    free_vector(&loop->breaks);
+    free_vector(&loop->continues);
+
+    compiler->loop_jumps = loop->previous;
+}
+
+void compile_loop_control(Compiler* compiler, ASTNode* ast)
+{
+    Vector* jumps = &compiler->loop_jumps->breaks;
+
+    if (ast->type == ASTContinue) {
+        jumps = &compiler->loop_jumps->continues;
+    }
+
+    size_t position = emit_jump(compiler, OpJmp, 0);
+
+    push_vector_item(jumps, (void*)(uintptr_t)position);
 }

@@ -185,7 +185,7 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
         binding_access_error("Cannot mutate binding ", token, " while exclusive access is active");
     }
 
-    if (get_reference_type(symbol) == RefNone && *get_shared_access_count(symbol)) {
+    if (*get_shared_access_count(symbol)) {
         binding_access_error("Cannot mutate binding ", token, " while shared access is active");
     }
 

@@ -6,5 +6,7 @@
 bool parse_branch_statement(Parser* parser, ASTNode* branch, bool expression);
 ASTNode* parse_conditional(Parser* parser, bool expression);
 ASTNode* parse_while_statement(Parser* parser);
+ASTNode* parse_for_statement(Parser* parser);
+ASTNode* parse_loop_control(Parser* parser);
 
 #endif

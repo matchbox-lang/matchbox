@@ -3,6 +3,7 @@
 #include "common/array_type.h"
 #include "common/vector.h"
 #include "compiler/generator/constant.h"
+#include "compiler/generator/control_flow.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
@@ -36,24 +37,41 @@ typedef struct ArrayBinaryOffsets
     size_t result_stride;
 } ArrayBinaryOffsets;
 
+typedef struct ForOperands
+{
+    Operand source;
+    Operand offset;
+    Operand end;
+    Operand index;
+    size_t stride;
+    size_t step;
+} ForOperands;
+
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
+
+static Operand emit_array_copy(Compiler* compiler, const Builtin* definition, Type type, Operand source, bool discard)
+{
+    Type types[] = {type, {.kind = TypeUsize}};
+    size_t size = get_array_storage_size(type);
+
+    Builtin builtin = *definition;
+    builtin.param_count = 2;
+    builtin.params[1] = TypeUsize;
+
+    Operand arguments[2];
+    arguments[0] = source;
+    arguments[1] = compile_usize_literal(compiler, size);
+
+    return emit_builtin_operands(compiler, &builtin, types, arguments, 2, discard);
+}
 
 Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
 {
     ASTNode* argument = ast->builtin_call.args.data[0];
     Type type = get_node_data_type(argument);
-    Type types[] = {type, {.kind = TypeUsize}};
-    size_t size = get_array_storage_size(type);
+    Operand source = compile_expression(compiler, argument, false);
 
-    Builtin builtin = *ast->builtin_call.builtin;
-    builtin.param_count = 2;
-    builtin.params[1] = TypeUsize;
-
-    Operand arguments[2];
-    arguments[0] = compile_expression(compiler, argument, false);
-    arguments[1] = compile_usize_literal(compiler, size);
-
-    return emit_builtin_operands(compiler, &builtin, types, arguments, 2, discard);
+    return emit_array_copy(compiler, ast->builtin_call.builtin, type, source, discard);
 }
 
 Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool discard)
@@ -271,8 +289,26 @@ static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const 
     return offsets;
 }
 
+static void advance_array_binary_offset_register(Compiler* compiler, Operand offset, size_t stride)
+{
+    Type type = {.kind = TypeUsize};
+    Operand step = compile_usize_literal(compiler, stride);
+    Opcode opcode = get_integer_opcode(type, IntAdd);
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, offset.reg, offset.reg, step.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, step);
+}
+
 static void advance_array_binary_offset(Compiler* compiler, Operand offset, size_t stride)
 {
+    if (stride > INT8_MAX) {
+        advance_array_binary_offset_register(compiler, offset, stride);
+
+        return;
+    }
+
     Type type = {.kind = TypeUsize};
     Opcode opcode = get_width_opcode(type, OpAddiI64, OpAddiI32, OpAddiI16, OpAddiI8);
 
@@ -842,4 +878,197 @@ void compile_index_assignment(Compiler* compiler, ASTNode* ast)
     store_array_value(compiler, buffer, value, offset, ast->index.type_id);
     release_operand(compiler, value);
     release_operand(compiler, buffer);
+}
+
+static size_t get_for_limit(ForOperands* loop, Type type)
+{
+    loop->stride = get_array_storage_size(type.array->element_type);
+    loop->step = loop->stride;
+
+    if (loop->stride) {
+        return get_array_storage_size(type);
+    }
+
+    loop->step = 1;
+
+    return type.array->count;
+}
+
+static void compile_for_index(Compiler* compiler, ASTNode* index, ForOperands* loop)
+{
+    loop->index = loop->offset;
+
+    if (!index) {
+        return;
+    }
+
+    if (loop->step != 1) {
+        loop->index = compile_usize_literal(compiler, 0);
+        loop->index.temporary = false;
+    }
+
+    int reg = loop->index.reg;
+
+    if (index->variable_definition.address_taken) {
+        size_t slots = get_node_slot_count(index);
+        reg = allocate_registers(compiler, slots);
+    }
+
+    index->variable_definition.register_position = reg;
+}
+
+static ForOperands compile_for_operands(Compiler* compiler, ASTNode* ast, Type type)
+{
+    ForOperands loop;
+    loop.source = compile_expression(compiler, ast->for_statement.array, false);
+    loop.source = materialize_operand(compiler, loop.source);
+    size_t limit = get_for_limit(&loop, type);
+    loop.offset = compile_usize_literal(compiler, 0);
+    loop.offset.temporary = false;
+    loop.end = compile_usize_literal(compiler, limit);
+    loop.end.temporary = false;
+
+    compile_for_index(compiler, ast->for_statement.index, &loop);
+
+    return loop;
+}
+
+static Operand compile_for_element_address(Compiler* compiler, const ForOperands* loop)
+{
+    Operand address = loop->source;
+    address.temporary = false;
+    address = materialize_operand(compiler, address);
+
+    if (!loop->stride) {
+        return address;
+    }
+
+    Opcode opcode = get_pointer_add_opcode();
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, address.reg, address.reg, loop->offset.reg);
+    release_pointer_padding(compiler);
+
+    return address;
+}
+
+static Operand compile_for_array_element(Compiler* compiler, const ForOperands* loop, Type type)
+{
+    Operand address = compile_for_element_address(compiler, loop);
+    const Builtin* builtin = resolve_builtin("copy", &type, 1);
+
+    return emit_array_copy(compiler, builtin, type, address, false);
+}
+
+static Operand compile_for_element(Compiler* compiler, const ForOperands* loop, Type type)
+{
+    if (is_array_type(type.kind)) {
+        return compile_for_array_element(compiler, loop, type);
+    }
+
+    Operand value = load_array_binary_element(compiler, loop->source, loop->offset, type);
+    value.temporary = true;
+
+    return value;
+}
+
+static void compile_for_value(Compiler* compiler, ASTNode* binding, const ForOperands* loop, Type type)
+{
+    if (!binding->variable_definition.read_count && !binding->variable_definition.address_taken) {
+        return;
+    }
+
+    Type destination = binding->variable_definition.type_id;
+    Operand value = compile_for_element(compiler, loop, type);
+    value = convert_operand(compiler, value, type, destination);
+    int reg = binding->variable_definition.register_position;
+
+    emit_operand_to_register(compiler, reg, value);
+    release_operand(compiler, value);
+}
+
+static void compile_for_index_value(Compiler* compiler, ASTNode* index, const ForOperands* loop)
+{
+    if (!index || !index->variable_definition.address_taken) {
+        return;
+    }
+
+    int reg = index->variable_definition.register_position;
+
+    emit_operand_to_register(compiler, reg, loop->index);
+}
+
+static void advance_for(Compiler* compiler, const ForOperands* loop)
+{
+    advance_array_binary_offset(compiler, loop->offset, loop->step);
+
+    if (loop->index.reg != loop->offset.reg) {
+        advance_array_binary_offset(compiler, loop->index, 1);
+    }
+}
+
+static void compile_for_backedge(Compiler* compiler, const ForOperands* loop, size_t start)
+{
+    Operand condition;
+    size_t jump;
+
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        condition = emit_comparison(compiler, OpCmpU64, loop->offset, loop->end);
+        jump = emit_jump(compiler, OpBnz, condition.reg);
+    } else {
+        condition = emit_numeric_comparison(
+            compiler, TokenEqualEqual, (Type){.kind = TypeUsize}, loop->offset, loop->end);
+        jump = emit_condition_jump(compiler, condition);
+    }
+
+    patch_jump_to(compiler, jump, start);
+    release_operand(compiler, condition);
+}
+
+static void allocate_for_binding(Compiler* compiler, ASTNode* binding)
+{
+    size_t slots = get_node_slot_count(binding);
+    binding->variable_definition.register_position = allocate_registers(compiler, slots);
+}
+
+static void compile_for_body(Compiler* compiler, ASTNode* ast, const ForOperands* operands, Type element_type)
+{
+    int body_register_count = compiler->register_count;
+    LoopJumps loop;
+
+    begin_loop(compiler, &loop);
+
+    CodeObject* code = get_current_code_object(compiler);
+    size_t start = count_code_object(code);
+    compiler->peephole_barrier = start;
+
+    compile_for_index_value(compiler, ast->for_statement.index, operands);
+    compile_for_value(compiler, ast->for_statement.value, operands, element_type);
+    compile_block_level_statements(compiler, &ast->for_statement.body->compound.statements);
+
+    compiler->register_count = body_register_count;
+
+    patch_loop_jumps(compiler, &loop.continues);
+    advance_for(compiler, operands);
+    compile_for_backedge(compiler, operands, start);
+    end_loop(compiler, &loop);
+}
+
+void compile_for(Compiler* compiler, ASTNode* ast)
+{
+    int previous_register_count = compiler->register_count;
+    Type type = get_node_data_type(ast->for_statement.array);
+
+    if (!type.array->count) {
+        compile_expression(compiler, ast->for_statement.array, true);
+
+        return;
+    }
+
+    ForOperands operands = compile_for_operands(compiler, ast, type);
+
+    allocate_for_binding(compiler, ast->for_statement.value);
+    compile_for_body(compiler, ast, &operands, type.array->element_type);
+
+    compiler->register_count = previous_register_count;
 }

@@ -253,6 +253,8 @@ static ASTNode* find_node_return(ASTNode* ast)
             return ast;
         case ASTCompound:
             return find_function_return(&ast->compound.statements);
+        case ASTFor:
+            return find_node_return(ast->for_statement.body);
         case ASTWhile:
             return find_node_return(ast->while_statement.body);
         case ASTConditional:

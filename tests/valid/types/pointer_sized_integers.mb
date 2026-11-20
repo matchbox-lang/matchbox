@@ -10,54 +10,74 @@ func read(value: &usize) -> usize {
     return value + 0
 }
 
-let negative: isize = -123
-var unsigned: usize = 200
-let returned = preserve(negative, 42, unsigned)
-let read_back = read(&unsigned)
+test "pointer sized bindings and references" {
+    let negative: isize = -123
+    var unsigned: usize = 200
+    let returned = preserve(negative, 42, unsigned)
+    let read_back = read(&unsigned)
 
-unsigned += 2
+    unsigned += 2
 
-if returned != -123 or unsigned != 202 or read_back != 200 {
-    exit(1)
+    if returned != -123 or unsigned != 202 or read_back != 200 {
+        exit(1)
+    }
 }
 
-let doubled = negative * 2
-let quotient = doubled / negative
-let remainder = unsigned % 10
-let shifted = unsigned << 2
-let ordering = negative <=> returned
+test "pointer sized integer arithmetic" {
+    let negative: isize = -123
+    var unsigned: usize = 202
+    let returned: isize = -123
+    let doubled = negative * 2
+    let quotient = doubled / negative
+    let remainder = unsigned % 10
+    let shifted = unsigned << 2
+    let ordering = negative <=> returned
 
-if doubled != -246 or quotient != 2 or remainder != 2 or shifted != 808 or ordering != 0 {
-    exit(1)
+    if doubled != -246 or quotient != 2 or remainder != 2 or shifted != 808 or ordering != 0 {
+        exit(1)
+    }
 }
 
-let maximum = usize(-1)
-let wrapped = maximum + 1
-let half = maximum >> 1
-let positive = isize(half)
-let minimum = -positive - 1
-let negated = -negative
+test "pointer sized integer bounds" {
+    let negative: isize = -123
+    var unsigned: usize = 202
+    let maximum = usize(-1)
+    let wrapped = maximum + 1
+    let half = maximum >> 1
+    let positive = isize(half)
+    let minimum = -positive - 1
+    let negated = -negative
 
-if wrapped != 0 or maximum <= half or minimum >= negative or positive <= 0 or negated != 123 {
-    exit(1)
+    if wrapped != 0 or maximum <= half or minimum >= negative or positive <= 0 or negated != 123 {
+        exit(1)
+    }
+
+    assert(negative == -123)
+    assert(unsigned == 202)
+    assert(maximum == usize.MAX)
+    assert(minimum == isize.MIN)
+    print($"Values: {negative}, {unsigned}")
 }
 
-let branch: isize = if unsigned == 202 {
-    negative
-} else {
-    returned
-}
+test "pointer sized conditional results" {
+    let negative: isize = -123
+    var unsigned: usize = 202
+    let returned: isize = -123
 
-let matched = match unsigned {
-    case 201 | 202:
+    let branch: isize = if unsigned == 202 {
         negative
-    case _:
+    } else {
         returned
-}
+    }
 
-if branch != -123 or matched != -123 {
-    exit(1)
-}
+    let matched = match unsigned {
+        case 201 | 202:
+            negative
+        case _:
+            returned
+    }
 
-print(negative, unsigned, maximum, minimum)
-print($"Values: {negative}, {unsigned}")
+    if branch != -123 or matched != -123 {
+        exit(1)
+    }
+}

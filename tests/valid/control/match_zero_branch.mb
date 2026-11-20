@@ -1,25 +1,31 @@
-func check_zero(value) {
+func check_zero(value, expected: i32) {
     let result = match value {
         case 0: 10
         case 1: 20
         case _: 30
     }
-    print(result)
-    print(value)
+
+    assert(result == expected)
 }
 
-check_zero(0)
-check_zero(1)
-check_zero(2)
-check_zero(-1)
-check_zero(256)
+func check_false(value: bool, expected: i32) {
+    var selected = 0
 
-func check_false(value: bool) {
     match value {
-        case false: print(40)
-        case _: print(50)
+        case false: selected = 40
+        case _: selected = 50
     }
+
+    assert(selected == expected)
 }
 
-check_false(false)
-check_false(true)
+test "match zero branch" {
+    check_zero(0, 10)
+    check_zero(1, 20)
+    check_zero(2, 30)
+    check_zero(-1, 30)
+    check_zero(256, 30)
+
+    check_false(false, 40)
+    check_false(true, 50)
+}

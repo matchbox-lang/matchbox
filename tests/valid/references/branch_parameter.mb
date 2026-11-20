@@ -1,12 +1,14 @@
 func read_reference(choose: bool, value: &i32) {
     if choose {
-        print(value)
+        assert(value == 90)
     }
 
-    print(value)
+    assert(value == 90)
 }
 
-var referenced = 90
+test "branch parameter" {
+    var referenced = 90
 
-read_reference(true, &referenced)
-print(referenced)
+    read_reference(true, &referenced)
+    assert(referenced == 90)
+}

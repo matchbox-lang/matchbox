@@ -1,13 +1,19 @@
+var observed_steps = 0
+
 func guard() -> bool {
-    print(99)
+    observed_steps += 1
     return true
 }
 
-match 10 {
-    case 0 if guard():
-        print(0)
-    case 5 | 10 if guard():
-        print(1)
-    case _:
-        print(0)
+test "match guard pattern" {
+    match 10 {
+        case 0 if guard():
+            assert(false)
+        case 5 | 10 if guard():
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
+
+    assert(observed_steps == 2)
 }

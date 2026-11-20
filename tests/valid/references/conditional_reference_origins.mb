@@ -1,39 +1,57 @@
-var condition = true
-var left = 10
-var right = 20
+test "conditional shared reference initialization" {
+    var condition = true
+    var left = 10
+    var right = 20
 
-let shared: &i32 = if condition {
-    &left
-} else {
-    &right
+    let shared: &i32 = if condition {
+        &left
+    } else {
+        &right
+    }
+
+    assert(shared == 10)
 }
 
-print(shared)
+test "conditional shared reference assignment" {
+    var condition = true
+    var left = 10
+    var right = 20
+    var assigned_shared: &i32
 
-var assigned_shared: &i32
+    if condition {
+        assigned_shared = &left
+    } else {
+        assigned_shared = &right
+    }
 
-if condition {
-    assigned_shared = &left
-} else {
-    assigned_shared = &right
+    assert(assigned_shared == 10)
 }
 
-print(assigned_shared)
+test "conditional exclusive reference initialization" {
+    var condition = true
+    var left = 10
+    var right = 20
 
-let exclusive: ^i32 = if condition {
-    ^left
-} else {
-    ^right
+    let exclusive: ^i32 = if condition {
+        ^left
+    } else {
+        ^right
+    }
+
+    assert(exclusive == 10)
 }
 
-print(exclusive)
+test "conditional exclusive reference assignment" {
+    var condition = true
+    var left = 10
+    var right = 20
+    var assigned_exclusive: ^i32
 
-var assigned_exclusive: ^i32
+    if condition {
+        assigned_exclusive = ^left
+    } else {
+        assigned_exclusive = ^right
+    }
 
-if condition {
-    assigned_exclusive = ^left
-} else {
-    assigned_exclusive = ^right
+    assert(assigned_exclusive == 10)
 }
-
-print(assigned_exclusive)

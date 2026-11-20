@@ -1,19 +1,24 @@
-var checked = false
+test "match guard subjectless" {
+    var observed_steps = 0
+    var checked = false
 
-match {
-    case false if true:
-        print(0)
-    case true if checked:
-        print(0)
-    case true if not checked:
-        print(1)
-    case _:
-        print(0)
-}
+    match {
+        case false if true:
+            assert(false)
+        case true if checked:
+            assert(false)
+        case true if not checked:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
 
-match {
-    case _ if checked:
-        assert(false)
-    case _:
-        assert(not checked)
+    match {
+        case _ if checked:
+            assert(false)
+        case _:
+            assert(not checked)
+    }
+
+    assert(observed_steps == 1)
 }

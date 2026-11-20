@@ -22,5 +22,12 @@ func outer() -> i32 {
     return used_nested()
 }
 
-print(used())
-print(outer())
+test "dead functions" {
+    let used_result = used()
+
+    assert(used_result == 2)
+
+    let outer_result = outer()
+
+    assert(outer_result == 4)
+}

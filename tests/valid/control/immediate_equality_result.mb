@@ -1,19 +1,20 @@
-func check(value) {
+func check(value, expected_equal: bool) {
     let equal = value == 2
     let unequal = value != 2
 
     if equal {
-        print(10)
+        assert(expected_equal)
     }
 
     if unequal {
-        print(20)
+        assert(not expected_equal)
     }
 
-    print(equal)
-    print(unequal)
-    print(value)
+    assert(equal == expected_equal)
+    assert(unequal == not expected_equal)
 }
 
-check(2)
-check(3)
+test "immediate equality result" {
+    check(2, true)
+    check(3, false)
+}

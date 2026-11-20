@@ -1,21 +1,27 @@
-let result = match 9 {
-    case 1 | 2: 10
-    case 3 | 4: 20
-    case _: 30
+test "match literal alternative fallback" {
+    var observed_steps = 0
+
+    let result = match 9 {
+        case 1 | 2: 10
+        case 3 | 4: 20
+        case _: 30
+    }
+
+    assert(result == 30)
+
+    match 9 {
+        case 1 | 2:
+            assert(false)
+        case captured:
+            assert(captured == 9)
+    }
+
+    match 9 {
+        case 1 | 2:
+            assert(false)
+    }
+
+    observed_steps += 1
+
+    assert(observed_steps == 1)
 }
-
-print(result)
-
-match 9 {
-    case 1 | 2:
-        print(40)
-    case captured:
-        print(captured)
-}
-
-match 9 {
-    case 1 | 2:
-        print(50)
-}
-
-print(60)

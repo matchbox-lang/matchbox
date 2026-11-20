@@ -4,12 +4,6 @@ func take() -> i32[2] {
     return a
 }
 
-assert(a[0] == 1)
-
-let b = take()
-
-assert(b[0] == 1)
-
 let c = [3, 4]
 
 func take_c() -> i32[2] {
@@ -24,6 +18,14 @@ func select(condition: bool) -> i32[2] {
     }
 }
 
-let d = select(true)
+test "global ownership" {
+    assert(a[0] == 1)
 
-assert(d[1] == 4)
+    let b = take()
+
+    assert(b[0] == 1)
+
+    let d = select(true)
+
+    assert(d[1] == 4)
+}

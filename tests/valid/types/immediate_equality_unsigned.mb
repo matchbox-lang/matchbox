@@ -1,13 +1,19 @@
-func check(value: u32) {
-    print(value == 127)
-    print(value != 128)
-    print(value == 4294967295)
+func check(value: u32, expected: bool[3]) {
+    var branch_taken = false
+
+    assert((value == 127) == expected[0])
+    assert((value != 128) == expected[1])
+    assert((value == 4294967295) == expected[2])
 
     if value != 127 {
-        print(10)
+        branch_taken = true
     }
+
+    assert(branch_taken == not expected[0])
 }
 
-check(127)
-check(128)
-check(4294967295)
+test "immediate equality unsigned" {
+    check(127, [true, true, false])
+    check(128, [false, false, false])
+    check(4294967295, [false, true, true])
+}

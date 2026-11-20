@@ -1,1 +1,7 @@
-if (true) print(1) else { print(2) }
+test "if shorthand else" {
+    var observed_steps = 0
+
+    if (true) observed_steps += 1 else { assert(false) }
+
+    assert(observed_steps == 1)
+}

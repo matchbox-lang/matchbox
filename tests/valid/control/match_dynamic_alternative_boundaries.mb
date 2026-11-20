@@ -1,18 +1,24 @@
-func check(value) {
+func check(value, expected: i32) {
+    var selected = 0
+
     match value {
         case -128 | 0 | 127:
-            print(10)
+            selected = 10
         case -129 | 128 | 1000:
-            print(20)
+            selected = 20
         case _:
-            print(30)
+            selected = 30
     }
+
+    assert(selected == expected)
 }
 
-check(-128)
-check(0)
-check(127)
-check(-129)
-check(128)
-check(1000)
-check(1)
+test "match dynamic alternative boundaries" {
+    check(-128, 10)
+    check(0, 10)
+    check(127, 10)
+    check(-129, 20)
+    check(128, 20)
+    check(1000, 20)
+    check(1, 30)
+}

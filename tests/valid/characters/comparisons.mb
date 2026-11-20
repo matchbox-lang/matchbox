@@ -1,10 +1,12 @@
-var a: char = 'a'
-var b = '😀'
+test "comparisons" {
+    var a: char = 'a'
+    var b = '😀'
 
-print(a == 'a')
-print(a != b)
-print(a < b)
-print(a <= 'a')
-print(b > a)
-print(b == '😀')
-print(b >= '😀')
+    assert((a == 'a'))
+    assert((a != b))
+    assert((a < b))
+    assert((a <= 'a'))
+    assert((b > a))
+    assert((b == '😀'))
+    assert((b >= '😀'))
+}

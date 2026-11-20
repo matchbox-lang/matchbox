@@ -1,9 +1,11 @@
-var first = 10
-var second = 20
-var shared = &first
+test "shared reassignment releases origin" {
+    var first = 10
+    var second = 20
+    var shared = &first
 
-shared = &second
-first = 11
+    shared = &second
+    first = 11
 
-print(first)
-print(shared)
+    assert(first == 11)
+    assert(shared == 20)
+}

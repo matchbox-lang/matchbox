@@ -1,40 +1,53 @@
-let narrow: f32 = 1.5
-let wide: f64 = 2.25
-let low: f64 = 1.0000000000000002
+test "mixed width float bounds and powers" {
+    let narrow: f32 = 1.5
+    let wide: f64 = 2.25
+    let low: f64 = 1.0000000000000002
+    let clamped: f64 = clamp(narrow, low, wide)
+    let minimum: f64 = min(wide, narrow, low, 1.0, 5.0)
+    let maximum: f64 = max(narrow, wide, 1.0, 4.5, 3.0)
+    let power: f64 = pow(wide, narrow)
+    let upper: f64 = clamp(wide, low, narrow)
 
-let clamped: f64 = clamp(narrow, low, wide)
-let minimum: f64 = min(wide, narrow, low, 1.0, 5.0)
-let maximum: f64 = max(narrow, wide, 1.0, 4.5, 3.0)
-let power: f64 = pow(wide, narrow)
-let upper: f64 = clamp(wide, low, narrow)
+    assert(clamped == 1.5)
+    assert(minimum == 1.0)
+    assert(maximum == 4.5)
+    assert(power >= 3.375 - 0.00001 and power <= 3.375 + 0.00001)
+    assert(upper == 1.5)
+}
 
-print(clamped)
-print(minimum)
-print(maximum)
-print(power)
-print(upper)
+test "mixed width float math functions" {
+    let narrow: f32 = 1.5
+    let wide: f64 = 2.25
+    let absolute: f64 = abs(-narrow)
+    let angle: f64 = atan2(narrow, wide)
+    let hypotenuse: f64 = hypot(wide, narrow)
+    let exponent: i8 = -2
+    let scaled: f64 = ldexp(wide, exponent)
 
-let absolute: f64 = abs(-narrow)
-let angle: f64 = atan2(narrow, wide)
-let hypotenuse: f64 = hypot(wide, narrow)
-let exponent: i8 = -2
-let scaled: f64 = ldexp(wide, exponent)
+    assert(absolute == 1.5)
+    assert(angle >= 0.5880026035475675 - 0.00001 and angle <= 0.5880026035475675 + 0.00001)
+    assert(hypotenuse >= 2.704163456597992 - 0.00001 and hypotenuse <= 2.704163456597992 + 0.00001)
+    assert(scaled == 0.5625)
+}
 
-print(absolute)
-print(angle)
-print(hypotenuse)
-print(scaled)
+test "float aggregate argument promotion" {
+    let narrow: f32 = 1.5
+    let wide: f64 = 2.25
+    let total: f32 = sum(narrow, 1, 2, 3, 4)
+    let mean: f64 = avg(wide, 1, 2, 3, 4)
+    let single: f32 = min(narrow)
 
-let total: f32 = sum(narrow, 1, 2, 3, 4)
-let mean: f64 = avg(wide, 1, 2, 3, 4)
-let single: f32 = min(narrow)
+    assert(total == 11.5)
+    assert(mean == 2.45)
+    assert(single == 1.5)
+}
 
-print(total)
-print(mean)
-print(single)
+test "mixed width float aggregates" {
+    let narrow: f32 = 1.5
+    let wide: f64 = 2.25
+    let mixed_total: f64 = sum(narrow, wide, narrow, wide, 1.0)
+    let mixed_mean: f64 = avg(narrow, wide)
 
-let mixed_total: f64 = sum(narrow, wide, narrow, wide, 1.0)
-let mixed_mean: f64 = avg(narrow, wide)
-
-print(mixed_total)
-print(mixed_mean)
+    assert(mixed_total == 8.5)
+    assert(mixed_mean == 1.875)
+}

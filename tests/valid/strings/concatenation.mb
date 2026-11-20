@@ -1,1 +1,3 @@
-print("a" + "b")
+test "concatenation" {
+    print("a" + "b")
+}

@@ -1,1 +1,7 @@
-if (true) if (true) { print(1) }
+test "if shorthand nested" {
+    var observed_steps = 0
+
+    if (true) if (true) { observed_steps += 1 }
+
+    assert(observed_steps == 1)
+}

@@ -2,12 +2,14 @@ func shadow(value: i32) -> i32 {
     if true {
         let value = 50
 
-        print(value)
+        assert(value == 50)
     }
 
     return value
 }
 
-let result = shadow(80)
+test "branch parameter shadowing" {
+    let result = shadow(80)
 
-print(result)
+    assert(result == 80)
+}

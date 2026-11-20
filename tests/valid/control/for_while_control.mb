@@ -1,30 +1,32 @@
-var inner_total = 0
-var outer_total = 0
+test "for while control" {
+    var inner_total = 0
+    var outer_total = 0
 
-for outer in [1, 2, 3, 4, 5] {
-    var inner = 0
+    for outer in [1, 2, 3, 4, 5] {
+        var inner = 0
 
-    while inner < 5 {
-        inner += 1
+        while inner < 5 {
+            inner += 1
 
-        match inner {
+            match inner {
+                case 2:
+                    continue
+                case 4:
+                    break
+                case _:
+                    inner_total += outer * inner
+            }
+        }
+
+        match outer {
             case 2:
                 continue
             case 4:
                 break
             case _:
-                inner_total += outer * inner
+                outer_total += outer
         }
     }
 
-    match outer {
-        case 2:
-            continue
-        case 4:
-            break
-        case _:
-            outer_total += outer
-    }
+    assert(inner_total == 40 and outer_total == 4)
 }
-
-assert(inner_total == 40 and outer_total == 4)

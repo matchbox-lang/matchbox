@@ -1,17 +1,19 @@
-var condition = false
-var left = 10
-var right = 20
+test "match reference origins" {
+    var condition = false
+    var left = 10
+    var right = 20
 
-let shared: &i32 = match condition {
-    case true: &left
-    case false: &right
+    let shared: &i32 = match condition {
+        case true: &left
+        case false: &right
+    }
+
+    assert(shared == 20)
+
+    let exclusive: ^i32 = match condition {
+        case true: ^left
+        case false: ^right
+    }
+
+    assert(exclusive == 20)
 }
-
-print(shared)
-
-let exclusive: ^i32 = match condition {
-    case true: ^left
-    case false: ^right
-}
-
-print(exclusive)

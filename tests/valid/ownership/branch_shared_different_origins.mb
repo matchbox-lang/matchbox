@@ -1,11 +1,13 @@
-var first = 10
-var second = 20
-var shared = &first
+test "branch shared different origins" {
+    var first = 10
+    var second = 20
+    var shared = &first
 
-if true {
-    shared = &first
-} else {
-    shared = &second
+    if true {
+        shared = &first
+    } else {
+        shared = &second
+    }
+
+    assert(shared == 10)
 }
-
-print(shared)

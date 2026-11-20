@@ -1,14 +1,9 @@
 var first = 10
 var second = 20
 
-print(second + first)
-
 func update() {
     first = second + 3
 }
-
-update()
-print(first)
 
 var wide: i64 = 4294967296
 
@@ -16,19 +11,28 @@ func update_wide() {
     wide += first
 }
 
-update_wide()
-print(wide)
+test "global storage" {
+    assert((second + first) == 30)
 
-first += 1
-print(first)
+    update()
+    assert(first == 23)
 
-if first != 24 {
-    exit(1)
-}
+    update_wide()
+    assert(wide == 4294967319)
 
-wide += 1
-print(wide)
+    first += 1
 
-if wide != 4294967320 {
-    exit(1)
+    assert(first == 24)
+
+    if first != 24 {
+        exit(1)
+    }
+
+    wide += 1
+
+    assert(wide == 4294967320)
+
+    if wide != 4294967320 {
+        exit(1)
+    }
 }

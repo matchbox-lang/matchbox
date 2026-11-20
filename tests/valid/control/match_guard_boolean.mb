@@ -1,10 +1,15 @@
-let value = true
+test "match guard boolean" {
+    var observed_steps = 0
+    let value = true
 
-match value {
-    case true if false:
-        print(0)
-    case true:
-        print(1)
-    case false:
-        print(0)
+    match value {
+        case true if false:
+            assert(false)
+        case true:
+            observed_steps += 1
+        case false:
+            assert(false)
+    }
+
+    assert(observed_steps == 1)
 }

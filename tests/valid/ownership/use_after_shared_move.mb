@@ -1,6 +1,8 @@
-var value = 10
-let first = &value
-let second: &i32 = first
+test "use after shared move" {
+    var value = 10
+    let first = &value
+    let second: &i32 = first
 
-print(first)
-print(second)
+    assert(first == 10)
+    assert(second == 10)
+}

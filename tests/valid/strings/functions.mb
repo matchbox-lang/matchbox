@@ -6,5 +6,7 @@ func inferred() {
     return "\u{1F600}"
 }
 
-print(echo("Hello"))
-print(inferred())
+test "functions" {
+    print(echo("Hello"))
+    print(inferred())
+}

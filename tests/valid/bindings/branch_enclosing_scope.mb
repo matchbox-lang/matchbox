@@ -1,8 +1,6 @@
-let value = 1000
-
 func select(choose: bool, value: i32) -> i32 {
     let local = value + 1
-    
+
     let result = if choose {
         value
     } else {
@@ -12,9 +10,12 @@ func select(choose: bool, value: i32) -> i32 {
     return result
 }
 
-let selected_then = select(true, 10)
-let selected_else = select(false, 20)
+test "branch enclosing scope" {
+    let value = 1000
+    let selected_then = select(true, 10)
+    let selected_else = select(false, 20)
 
-print(selected_then)
-print(selected_else)
-print(value)
+    assert(selected_then == 10)
+    assert(selected_else == 21)
+    assert(value == 1000)
+}

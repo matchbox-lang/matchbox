@@ -1,8 +1,10 @@
-var value: string
-value = "First"
+test "bindings" {
+    var value: string
+    value = "First"
 
-let copy: string = value
-value = "Second"
+    let copy: string = value
+    value = "Second"
 
-print(copy)
-print(value)
+    print(copy)
+    print(value)
+}

@@ -7,3 +7,6 @@ Comment
 */
 
 /** Documentation comment */
+
+test "comments" {
+}

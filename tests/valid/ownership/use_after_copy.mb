@@ -1,8 +1,10 @@
 func consume(value: i32) {
-    print(value)
+    assert(value == 42)
 }
 
-let value = 42
+test "use after copy" {
+    let value = 42
 
-consume(value)
-print(value)
+    consume(value)
+    assert(value == 42)
+}

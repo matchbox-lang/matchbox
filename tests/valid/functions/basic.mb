@@ -2,8 +2,10 @@ func add(a, b) {
     return a + b
 }
 
-let a = 10
-let b = 20
-let result = add(a, b)
+test "basic" {
+    let a = 10
+    let b = 20
+    let result = add(a, b)
 
-print(result)
+    assert(result == 30)
+}

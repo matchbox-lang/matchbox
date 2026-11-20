@@ -1,9 +1,11 @@
-let chars = string('H', 'i')
-let string_char = string("Hell", 'o')
-let char_string = string('H', "ello")
-let strings = string("H", "ello")
+test "string text" {
+    let chars = string('H', 'i')
+    let string_char = string("Hell", 'o')
+    let char_string = string('H', "ello")
+    let strings = string("H", "ello")
 
-print(chars)
-print(string_char)
-print(char_string)
-print(strings)
+    print(chars)
+    print(string_char)
+    print(char_string)
+    print(strings)
+}

@@ -1,23 +1,3 @@
-let inferred = 123
-let signed8: i8 = 127
-let signed16: i16 = 32767
-let signed32: i32 = 2147483647
-let signed64: i64 = 9223372036854775807
-let unsigned8: u8 = 255
-let unsigned16: u16 = 65535
-let unsigned32: u32 = 4294967295
-let unsigned64: u64 = 18446744073709551615
-
-let minimum8: i8 = -128
-let minimum16: i16 = -32768
-let minimum32: i32 = -2147483648
-let minimum64: i64 = -9223372036854775808
-
-let wrapped8: u8 = unsigned8 + 1
-let wrapped16: u16 = unsigned16 + 1
-let wrapped32: u32 = unsigned32 + 1
-let wrapped64: u64 = unsigned64 + 1
-
 func preserve_positions(first: i64, second: i32, third: u64) -> i32 {
     return second
 }
@@ -26,41 +6,78 @@ func preserve_wide(value: u64) -> u64 {
     return value
 }
 
-let returned64 = preserve_wide(unsigned64)
-let preserved = preserve_positions(signed64, inferred, returned64)
+test "integer binding widths and function arguments" {
+    let inferred = 123
+    let signed8: i8 = 127
+    let signed16: i16 = 32767
+    let signed32: i32 = 2147483647
+    let signed64: i64 = 9223372036854775807
+    let unsigned8: u8 = 255
+    let unsigned16: u16 = 65535
+    let unsigned32: u32 = 4294967295
+    let unsigned64: u64 = 18446744073709551615
+    let minimum8: i8 = -128
+    let minimum16: i16 = -32768
+    let minimum32: i32 = -2147483648
+    let minimum64: i64 = -9223372036854775808
+    let wrapped8: u8 = unsigned8 + 1
+    let wrapped16: u16 = unsigned16 + 1
+    let wrapped32: u32 = unsigned32 + 1
+    let wrapped64: u64 = unsigned64 + 1
+    let returned64 = preserve_wide(unsigned64)
+    let preserved = preserve_positions(signed64, inferred, returned64)
 
-print(preserved)
-
-let promoted_sum: i32 = sum(signed8, 1)
-let wide_sum: u64 = sum(unsigned64, 1)
-let lowest: i32 = min(signed8, minimum8, 0)
-let highest: u64 = max(unsigned64, 0, 1)
-
-print(promoted_sum)
-print(wide_sum)
-print(lowest)
-print(highest)
-
-let mixed_sum: i64 = sum(signed8, unsigned32, 1)
-
-print(mixed_sum)
-
-let signed_total32: i32 = sum(minimum32, -1)
-let signed_total64: i64 = sum(minimum64, -1)
-let unsigned_total32: u32 = sum(unsigned32, 0)
-let unsigned_total64: u64 = sum(unsigned64, 0)
-
-if signed_total32 != signed32 or signed_total64 != signed64 {
-    exit(1)
+    assert(preserved == 123)
 }
 
-if unsigned_total32 != unsigned32 or unsigned_total64 != unsigned64 {
-    exit(1)
+test "integer aggregate promotion" {
+    let signed8: i8 = 127
+    let minimum8: i8 = -128
+    let unsigned32: u32 = 4294967295
+    let unsigned64: u64 = 18446744073709551615
+    let promoted_sum: i32 = sum(signed8, 1)
+    let wide_sum: u64 = sum(unsigned64, 1)
+    let lowest: i32 = min(signed8, minimum8, 0)
+    let highest: u64 = max(unsigned64, 0, 1)
+
+    assert(promoted_sum == 128)
+    assert(wide_sum == 0)
+    assert(lowest == -128)
+    assert(highest == 18446744073709551615)
+
+    let mixed_sum: i64 = sum(signed8, unsigned32, 1)
+
+    assert(mixed_sum == 4294967423)
 }
 
-let unsigned_wrap32: u32 = sum(unsigned32, 1, 1)
-let unsigned_wrap64: u64 = sum(unsigned64, 1, 1)
+test "integer aggregate boundary values" {
+    let minimum32: i32 = -2147483648
+    let minimum64: i64 = -9223372036854775808
+    let signed32: i32 = 2147483647
+    let signed64: i64 = 9223372036854775807
+    let unsigned32: u32 = 4294967295
+    let unsigned64: u64 = 18446744073709551615
+    let signed_total32: i32 = sum(minimum32, -1)
+    let signed_total64: i64 = sum(minimum64, -1)
+    let unsigned_total32: u32 = sum(unsigned32, 0)
+    let unsigned_total64: u64 = sum(unsigned64, 0)
 
-if unsigned_wrap32 != 1 or unsigned_wrap64 != 1 {
-    exit(1)
+    if signed_total32 != signed32 or signed_total64 != signed64 {
+        exit(1)
+    }
+
+    if unsigned_total32 != unsigned32 or unsigned_total64 != unsigned64 {
+        exit(1)
+    }
+}
+
+test "unsigned integer aggregate wrapping" {
+    let unsigned32: u32 = 4294967295
+    let unsigned64: u64 = 18446744073709551615
+    let unsigned_wrap32: u32 = sum(unsigned32, 1, 1)
+    let unsigned_wrap64: u64 = sum(unsigned64, 1, 1)
+
+    if unsigned_wrap32 != 1 or unsigned_wrap64 != 1 {
+        exit(1)
+    }
 }

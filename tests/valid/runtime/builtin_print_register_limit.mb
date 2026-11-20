@@ -127,6 +127,8 @@ var slot125: i64 = 5000000125
 var slot126: i64 = 5000000126
 var last: f64 = 3.5
 
-print(slot126)
-print(last)
-print(slot000)
+test "builtin print register limit" {
+    print(slot126)
+    print(last)
+    print(slot000)
+}

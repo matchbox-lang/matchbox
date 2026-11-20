@@ -6,7 +6,8 @@ func shadow() {
         let reference = 20
 
         value += 1
-        print(reference)
+
+        assert(reference == 20)
     }
 
     if value != 11 {
@@ -14,19 +15,22 @@ func shadow() {
     }
 }
 
-shadow()
+test "branch reference shadowing" {
+    shadow()
 
-var value = 30
-let reference = &value
+    var value = 30
+    let reference = &value
 
-match reference + 0 {
-    case reference if reference == 30:
-        value += 1
-        print(reference)
-    case _:
+    match reference + 0 {
+        case reference if reference == 30:
+            value += 1
+
+            assert(reference == 30)
+        case _:
+            exit(1)
+    }
+
+    if value != 31 {
         exit(1)
-}
-
-if value != 31 {
-    exit(1)
+    }
 }

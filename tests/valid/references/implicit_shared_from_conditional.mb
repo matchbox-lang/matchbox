@@ -1,9 +1,11 @@
 func take_shared(value: &i32) {
-    print(value)
+    assert(value == 1)
 }
 
-take_shared(if true {
-    1
-} else {
-    2
-})
+test "implicit shared from conditional" {
+    take_shared(if true {
+        1
+    } else {
+        2
+    })
+}

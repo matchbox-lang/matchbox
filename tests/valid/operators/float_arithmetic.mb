@@ -1,31 +1,3 @@
-let narrow: f32 = 2.5
-let wide: f64 = 3.0
-
-let sum: f64 = narrow + wide
-let difference: f64 = wide - narrow
-let product: f64 = narrow * wide
-let quotient: f64 = wide / narrow
-let remainder32: f32 = 5.5 % 2.0
-let remainder64: f64 = wide % narrow
-let literal_product: f64 = narrow * 4
-
-let signed16: i16 = -4
-let unsigned16: u16 = 4
-let signed32: i32 = -4
-let unsigned32: u32 = 4
-let signed_product32: f32 = narrow * signed16
-let unsigned_product32: f32 = narrow * unsigned16
-let signed_product64: f64 = wide * signed32
-let unsigned_product64: f64 = wide * unsigned32
-
-let widened: f64 = narrow
-var assigned: f64
-assigned = narrow
-var accumulated: f64 = wide
-accumulated += narrow
-var scaled: f32 = narrow
-scaled *= 2.0
-
 func accept64(value: f64) -> f64 {
     return value
 }
@@ -34,34 +6,84 @@ func widen_return(value: f32) -> f64 {
     return value
 }
 
-print(sum)
-print(difference)
-print(product)
-print(quotient)
-print(remainder32)
-print(remainder64)
-print(literal_product)
-print(signed_product32)
-print(unsigned_product32)
-print(signed_product64)
-print(unsigned_product64)
-print(widened)
-print(assigned)
-print(accumulated)
-print(scaled)
-print(accept64(narrow))
-print(widen_return(narrow))
+test "mixed precision floating point arithmetic" {
+    let narrow: f32 = 2.5
+    let wide: f64 = 3.0
+    let sum: f64 = narrow + wide
+    let difference: f64 = wide - narrow
+    let product: f64 = narrow * wide
+    let quotient: f64 = wide / narrow
+    let remainder32: f32 = 5.5 % 2.0
+    let remainder64: f64 = wide % narrow
+    let literal_product: f64 = narrow * 4
 
-let half_turn = rad(180.0) / 2.0
-let degrees = deg(1.0) + 1.0
-let complementary_angles = acos(0.5) + asin(0.5)
-let full_turn = atan(1.0) * 8.0
-let hyperbolic_difference = cosh(1.0) - sinh(1.0)
-let doubled_hyperbolic_tangent = tanh(0.5) * 2.0
+    assert(sum == 5.5)
+    assert(difference == 0.5)
+    assert(product == 7.5)
+    assert(quotient == 1.2)
+    assert(remainder32 == 1.5)
+    assert(remainder64 == 0.5)
+    assert(literal_product == 10.0)
+}
 
-print(half_turn)
-print(degrees)
-print(complementary_angles)
-print(full_turn)
-print(hyperbolic_difference)
-print(doubled_hyperbolic_tangent)
+test "mixed integer and floating point arithmetic" {
+    let narrow: f32 = 2.5
+    let wide: f64 = 3.0
+    let signed16: i16 = -4
+    let unsigned16: u16 = 4
+    let signed32: i32 = -4
+    let unsigned32: u32 = 4
+    let signed_product32: f32 = narrow * signed16
+    let unsigned_product32: f32 = narrow * unsigned16
+    let signed_product64: f64 = wide * signed32
+    let unsigned_product64: f64 = wide * unsigned32
+
+    assert(signed_product32 == -10.0)
+    assert(unsigned_product32 == 10.0)
+    assert(signed_product64 == -12.0)
+    assert(unsigned_product64 == 12.0)
+}
+
+test "floating point assignment widening" {
+    let narrow: f32 = 2.5
+    let wide: f64 = 3.0
+    let widened: f64 = narrow
+    var assigned: f64
+    assigned = narrow
+    var accumulated: f64 = wide
+    accumulated += narrow
+    var scaled: f32 = narrow
+    scaled *= 2.0
+
+    assert(widened == 2.5)
+    assert(assigned == 2.5)
+    assert(accumulated == 5.5)
+    assert(scaled == 5.0)
+}
+
+test "floating point argument and return widening" {
+    let narrow: f32 = 2.5
+    let argument_result = accept64(narrow)
+
+    assert(argument_result == 2.5)
+
+    let return_result = widen_return(narrow)
+
+    assert(return_result == 2.5)
+}
+
+test "arithmetic with floating point math results" {
+    let half_turn = rad(180.0) / 2.0
+    let degrees = deg(1.0) + 1.0
+    let complementary_angles = acos(0.5) + asin(0.5)
+    let full_turn = atan(1.0) * 8.0
+    let hyperbolic_difference = cosh(1.0) - sinh(1.0)
+    let doubled_hyperbolic_tangent = tanh(0.5) * 2.0
+
+    assert(half_turn >= 1.5707964 - 0.00001 and half_turn <= 1.5707964 + 0.00001)
+    assert(degrees >= 58.29578 - 0.00001 and degrees <= 58.29578 + 0.00001)
+    assert(complementary_angles >= 1.5707964 - 0.00001 and complementary_angles <= 1.5707964 + 0.00001)
+    assert(full_turn >= 6.2831855 - 0.00001 and full_turn <= 6.2831855 + 0.00001)
+    assert(hyperbolic_difference >= 0.3678795 - 0.00001 and hyperbolic_difference <= 0.3678795 + 0.00001)
+    assert(doubled_hyperbolic_tangent >= 0.92423433 - 0.00001 and doubled_hyperbolic_tangent <= 0.92423433 + 0.00001)
+}

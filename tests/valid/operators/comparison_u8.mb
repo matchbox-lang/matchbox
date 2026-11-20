@@ -1,13 +1,15 @@
-func compare(left: u8, right: u8) {
-    print(left == right)
-    print(left != right)
-    print(left < right)
-    print(left <= right)
-    print(left > right)
-    print(left >= right)
-    print(left <=> right)
+func compare(left: u8, right: u8, expected_order: i32) {
+    assert((left == right) == (expected_order == 0))
+    assert((left != right) == (expected_order != 0))
+    assert((left < right) == (expected_order < 0))
+    assert((left <= right) == (expected_order <= 0))
+    assert((left > right) == (expected_order > 0))
+    assert((left >= right) == (expected_order >= 0))
+    assert((left <=> right) == expected_order)
 }
 
-compare(0, 255)
-compare(255, 0)
-compare(255, 255)
+test "comparison u8" {
+    compare(0, 255, -1)
+    compare(255, 0, 1)
+    compare(255, 255, 0)
+}

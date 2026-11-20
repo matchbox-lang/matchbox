@@ -12,44 +12,55 @@ func fail() -> i32 {
     return 0
 }
 
-var condition = true
+test "runtime conditional branch evaluation" {
+    var condition = true
 
-let left = if condition {
-    choose(condition)
-} else {
-    fail()
+    let left = if condition {
+
+        choose(condition)
+    } else {
+        fail()
+    }
+
+    condition = false
+
+    let right = if condition {
+
+        fail()
+    } else {
+        choose(condition)
+    }
+
+    if left != 10 or right != 20 {
+        exit(1)
+    }
 }
 
-condition = false
+test "constant conditional branch evaluation" {
+    let constant = if true {
+        42
+    } else {
+        fail()
+    }
 
-let right = if condition {
-    fail()
-} else {
-    choose(condition)
+    if constant != 42 {
+        exit(1)
+    }
 }
 
-if left != 10 or right != 20 {
-    exit(1)
-}
+test "nested conditional branch evaluation" {
+    var condition = false
 
-let constant = if true {
-    42
-} else {
-    fail()
-}
+    let nested = if condition {
 
-if constant != 42 {
-    exit(1)
-}
+        fail()
+    } else if condition {
+        fail()
+    } else {
+        choose(condition)
+    }
 
-let nested = if condition {
-    fail()
-} else if condition {
-    fail()
-} else {
-    choose(condition)
-}
-
-if nested != 20 {
-    exit(1)
+    if nested != 20 {
+        exit(1)
+    }
 }

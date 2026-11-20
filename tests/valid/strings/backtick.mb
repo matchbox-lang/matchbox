@@ -1,3 +1,5 @@
-let value = `Hello`
+test "backtick" {
+    let value = `Hello`
 
-print(value)
+    print(value)
+}

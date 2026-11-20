@@ -1,6 +1,8 @@
-print('é' + '中')
-print("🌍" + '🌎')
-print('🌍' + "🌎")
-print('\0' + 'x')
-print("a\0" + 'b')
-print('\u{10FFFF}' + "!")
+test "concatenation unicode" {
+    print('é' + '中')
+    print("🌍" + '🌎')
+    print('🌍' + "🌎")
+    print('\0' + 'x')
+    print("a\0" + 'b')
+    print('\u{10FFFF}' + "!")
+}

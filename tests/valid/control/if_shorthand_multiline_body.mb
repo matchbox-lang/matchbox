@@ -1,2 +1,14 @@
-if (true) print(
-    1)
+var calls = 0
+
+func check(value: i32) {
+    assert(value == 1)
+
+    calls += 1
+}
+
+test "if shorthand multiline body" {
+    if (true) check(
+        1)
+
+    assert(calls == 1)
+}

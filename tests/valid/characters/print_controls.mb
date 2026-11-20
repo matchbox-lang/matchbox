@@ -1,7 +1,9 @@
-print('\0')
-print('\n')
-print('\r')
-print('\t')
-print('\\')
-print('\'')
-print('\"')
+test "print controls" {
+    print('\0')
+    print('\n')
+    print('\r')
+    print('\t')
+    print('\\')
+    print('\'')
+    print('\"')
+}

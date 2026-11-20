@@ -5,12 +5,14 @@ func next() -> i32 {
     return count
 }
 
-let first = $"{next()} / {next()} / {next()}"
+test "interpolation evaluation" {
+    let first = $"{next()} / {next()} / {next()}"
 
-print(first)
-print(count)
+    print(first)
+    assert(count == 3)
 
-let second = $"{count} / {next()} / {count}"
+    let second = $"{count} / {next()} / {count}"
 
-print(second)
-print(count)
+    print(second)
+    assert(count == 4)
+}

@@ -1,2 +1,4 @@
-if (true) """first
+test "if shorthand multiline literal" {
+    if (true) """first
 second"""
+}

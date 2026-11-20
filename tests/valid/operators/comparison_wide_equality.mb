@@ -1,21 +1,27 @@
+var observed_steps = 0
+
 func compare(left: u64, right: u64) {
-    print(left == right)
-    print(left != right)
+    assert(not ((left == right)))
+    assert((left != right))
 
     if left == right {
-        print(0)
+        assert(false)
     } else {
-        print(1)
+        observed_steps += 1
     }
 
     match left {
         case 4294967296:
-            print(2)
+            observed_steps += 1
         case 0:
-            print(3)
+            assert(false)
         case _:
-            print(4)
+            assert(false)
     }
 }
 
-compare(4294967296, 0)
+test "comparison wide equality" {
+    compare(4294967296, 0)
+
+    assert(observed_steps == 2)
+}

@@ -1,31 +1,42 @@
-const score = 85
+test "conditional statement branches" {
+    const SCORE = 85
 
-if score >= 90 {
-    print("A")
-} else if score >= 80 {
-    print("B")
-} else if score >= 70 {
-    print("C")
-} else {
-    print("F")
+    if SCORE >= 90 {
+        print("A")
+    } else if SCORE >= 80 {
+        print("B")
+    } else if SCORE >= 70 {
+        print("C")
+    } else {
+        print("F")
+    }
 }
 
-let grade = if (score >= 90)
-    "A"
-else if (score >= 80)
-    "B"
-else if (score >= 70)
-    "C"
-else
-    "F"
+test "conditional expression branches" {
+    const SCORE = 85
 
-print(grade)
+    let grade = if (SCORE >= 90)
+        "A"
+    else if (SCORE >= 80)
+        "B"
+    else if (SCORE >= 70)
+        "C"
+    else
+        "F"
 
-let x = 10
-let y = 20
+    print(grade)
+}
 
-if x < y {
-    if y < 100 {
-        print(true)
+test "nested conditional statements" {
+    let x = 10
+    let y = 20
+    var reached = false
+
+    if x < y {
+        if y < 100 {
+            reached = true
+        }
     }
+
+    assert(reached)
 }

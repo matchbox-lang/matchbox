@@ -1,11 +1,13 @@
-let empty = string()
-let single = string("Hello")
-let mixed = string("a", 'b', "c", 'd', "e", '!')
-let zeros = string("a\0", '\0', "b")
-let unicode = string('\u{1F600}', " / ", '\u{E9}')
+test "string text variadic" {
+    let empty = string()
+    let single = string("Hello")
+    let mixed = string("a", 'b', "c", 'd', "e", '!')
+    let zeros = string("a\0", '\0', "b")
+    let unicode = string('\u{1F600}', " / ", '\u{E9}')
 
-print(empty)
-print(single)
-print(mixed)
-print(zeros)
-print(unicode)
+    print(empty)
+    print(single)
+    print(mixed)
+    print(zeros)
+    print(unicode)
+}

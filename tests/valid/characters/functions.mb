@@ -6,7 +6,12 @@ func inferred() {
     return '😀'
 }
 
-let value = echo('中')
+test "functions" {
+    let value = echo('中')
 
-print(value)
-print(inferred())
+    assert(value == '中')
+
+    let inferred_character = inferred()
+
+    assert(inferred_character == '😀')
+}

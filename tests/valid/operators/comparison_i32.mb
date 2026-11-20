@@ -1,37 +1,43 @@
-func compare(left: i32, right: i32) {
-    print(left == right)
-    print(left != right)
-    print(left < right)
-    print(left <= right)
-    print(left > right)
-    print(left >= right)
-    print(left <=> right)
+func compare(left: i32, right: i32, expected_order: i32) {
+    assert((left == right) == (expected_order == 0))
+    assert((left != right) == (expected_order != 0))
+    assert((left < right) == (expected_order < 0))
+    assert((left <= right) == (expected_order <= 0))
+    assert((left > right) == (expected_order > 0))
+    assert((left >= right) == (expected_order >= 0))
+    assert((left <=> right) == expected_order)
+
+    var branches = 0
 
     if left == right {
-        print(10)
+        branches += 1
     }
 
     if left != right {
-        print(20)
+        branches += 1
     }
 
     if left < right {
-        print(30)
+        branches += 1
     }
 
     if left <= right {
-        print(40)
+        branches += 1
     }
 
     if left > right {
-        print(50)
+        branches += 1
     }
 
     if left >= right {
-        print(60)
+        branches += 1
     }
+
+    assert(branches == 3)
 }
 
-compare(-1, 1)
-compare(1, -1)
-compare(1, 1)
+test "comparison i32" {
+    compare(-1, 1, -1)
+    compare(1, -1, 1)
+    compare(1, 1, 0)
+}

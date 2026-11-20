@@ -1,12 +1,14 @@
-func compare(value: f64) {
-    print(value == value)
-    print(value != value)
-    print(value < 0.0)
-    print(value <= 0.0)
-    print(value > 0.0)
-    print(value >= 0.0)
-    print(value <=> 0.0)
+func compare(value: f64, expected_equal: bool, expected_order: i32) {
+    assert((value == value) == (expected_equal))
+    assert((value != value) == (not expected_equal))
+    assert(not ((value < 0.0)))
+    assert((value <= 0.0) == (expected_equal))
+    assert(not ((value > 0.0)))
+    assert((value >= 0.0) == (expected_equal))
+    assert((value <=> 0.0) == expected_order)
 }
 
-compare(0.0 / 0.0)
-compare(-0.0)
+test "comparison float special" {
+    compare(0.0 / 0.0, false, -1)
+    compare(-0.0, true, 0)
+}

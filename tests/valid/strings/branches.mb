@@ -1,14 +1,16 @@
-var condition = false
+test "branches" {
+    var condition = false
 
-let selected = if condition {
-    "First"
-} else {
-    "Second"
+    let selected = if condition {
+        "First"
+    } else {
+        "Second"
+    }
+
+    let result = match 2 {
+        case 1: "One"
+        case _: selected
+    }
+
+    print(result)
 }
-
-let result = match 2 {
-    case 1: "One"
-    case _: selected
-}
-
-print(result)

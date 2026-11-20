@@ -1,4 +1,6 @@
-let left: f32 = 20.5
-let right: f64 = 20.5
+test "comparison mixed float width ne" {
+    let left: f32 = 20.5
+    let right: f64 = 20.5
 
-print(left != right)
+    assert(not ((left != right)))
+}

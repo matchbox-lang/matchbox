@@ -1,12 +1,14 @@
 func exclusive(value: ^char) {
-    print(value)
+    assert(value == '😀')
 }
 
 func display(value: &char) {
-    print(value)
+    assert(value == '😀')
 }
 
-var value = '\u{1F600}'
+test "references" {
+    var value = '\u{1F600}'
 
-exclusive(^value)
-display(&value)
+    exclusive(^value)
+    display(&value)
+}

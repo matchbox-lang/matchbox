@@ -1,13 +1,15 @@
-print("""Multi
+test "multiline" {
+    print("""Multi
 Line
 String\n""")
 
-print(```Multi
+    print(```Multi
 Line
 String
 ```)
 
-print("""Hello "Alice"!""")
-print(""""Hello """Alice"""!"""")
-print("""""Hello """"Alice""""!""""")
-print("""I have {apples} apples.""")
+    print("""Hello "Alice"!""")
+    print(""""Hello """Alice"""!"""")
+    print("""""Hello """"Alice""""!""""")
+    print("""I have {apples} apples.""")
+}

@@ -1,14 +1,27 @@
 func read_paired_immediate_results() {
-    print(if (true) 120 else 0 + 7)
-    print(if (true) 0 - 120 else 0 + 7)
-    print(if (true) 120 else 0 / 3)
-    print(if (true) 120 else 0 & 3)
+    let positive = if (true) 120 else 0 + 7
+
+    assert(positive == 120)
+
+    let negative = if (true) 0 - 120 else 0 + 7
+
+    assert(negative == -120)
+
+    let division = if (true) 120 else 0 / 3
+
+    assert(division == 120)
+
+    let bitwise = if (true) 120 else 0 & 3
+
+    assert(bitwise == 120)
 }
 
 func read_moved_immediate_results(value: i32) {
-    print(value + 7)
-    print(value - 3)
+    assert((value + 7) == 17)
+    assert((value - 3) == 7)
 }
 
-read_paired_immediate_results()
-read_moved_immediate_results(10)
+test "paired load immediates" {
+    read_paired_immediate_results()
+    read_moved_immediate_results(10)
+}

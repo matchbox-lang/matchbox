@@ -1,21 +1,22 @@
-let a = 1234
-let b = 1_234_567
-let c = 0o123
-let d = 0x1A
-let e = 0b11111111
+test "integers" {
+    let a = 1234
+    let b = 1_234_567
+    let c = 0o123
+    let d = 0x1A
+    let e = 0b11111111
+    let large_decimal = 2147483648
+    let large_octal = 0o20000000000
+    let large_hexadecimal = 0x80000000
+    let large_binary = 0b10000000000000000000000000000000
 
-let large_decimal = 2147483648
-let large_octal = 0o20000000000
-let large_hexadecimal = 0x80000000
-let large_binary = 0b10000000000000000000000000000000
+    assert(a == 1234)
+    assert(b == 1234567)
+    assert(c == 83)
+    assert(d == 26)
+    assert(e == 255)
 
-print(a)
-print(b)
-print(c)
-print(d)
-print(e)
-
-print(large_decimal)
-print(large_octal)
-print(large_hexadecimal)
-print(large_binary)
+    assert(large_decimal == 2147483648)
+    assert(large_octal == 2147483648)
+    assert(large_hexadecimal == 2147483648)
+    assert(large_binary == 2147483648)
+}

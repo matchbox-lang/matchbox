@@ -1,8 +1,14 @@
-let character: char = 'a'
-let inferred = '😀'
+test "literals" {
+    let character: char = 'a'
+    let inferred = '😀'
+    let accented = 'é'
+    let ideograph = '中'
+    let maximum = '\u{10FFFF}'
+    let maximum_codepoint = i32(maximum)
 
-print(character)
-print(inferred)
-print('é')
-print('中')
-print('\u{10FFFF}')
+    assert(character == 'a')
+    assert(inferred == '\u{1F600}')
+    assert(accented == '\u{E9}')
+    assert(ideograph == '\u{4E2D}')
+    assert(maximum_codepoint == 1114111)
+}

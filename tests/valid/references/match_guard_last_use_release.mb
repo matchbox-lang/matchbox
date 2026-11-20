@@ -1,12 +1,18 @@
-var value = 10
-let exclusive = ^value
+test "match guard last use release" {
+    var observed_steps = 0
+    var value = 10
+    let exclusive = ^value
 
-match true {
-    case _ if exclusive == 10:
-        print(1)
-    case _:
-        print(0)
+    match true {
+        case _ if exclusive == 10:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
+
+    value = 20
+
+    assert(value == 20)
+
+    assert(observed_steps == 1)
 }
-
-value = 20
-print(value)

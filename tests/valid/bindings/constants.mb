@@ -1,11 +1,13 @@
-const PI = 3.1415926535
-
-print(PI)
-
 func square(x) {
     return x * x
 }
 
-let x = const square(10)
+test "constants" {
+    const PI = 3.1415926535
 
-print(x) // 100
+    assert(PI == 3.1415926535)
+
+    let x = const square(10)
+
+    assert(x == 100) // 100
+}

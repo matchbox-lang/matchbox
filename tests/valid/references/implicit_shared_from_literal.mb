@@ -1,5 +1,7 @@
 func take_shared(n: &i32) {
-    print(n)
+    assert(n == 10)
 }
 
-take_shared(10)
+test "implicit shared from literal" {
+    take_shared(10)
+}

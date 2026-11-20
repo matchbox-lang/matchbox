@@ -1,19 +1,25 @@
-func check(value) {
+func check(value, expected_first: i32, expected_second: i32) {
+    var first = 0
+    var second = 0
+
     if value == -128 {
-        print(10)
+        first = 10
     } else {
-        print(20)
+        first = 20
     }
 
     if 127 != value {
-        print(30)
+        second = 30
     } else {
-        print(40)
+        second = 40
     }
 
-    print(value)
+    assert(first == expected_first)
+    assert(second == expected_second)
 }
 
-check(-128)
-check(127)
-check(0)
+test "immediate equality branches" {
+    check(-128, 10, 30)
+    check(127, 20, 40)
+    check(0, 20, 30)
+}

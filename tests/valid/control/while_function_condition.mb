@@ -5,8 +5,14 @@ func advance() -> bool {
     return count < 5
 }
 
-while advance() {
-    print(count)
-}
+test "while function condition" {
+    var iterations = 0
 
-print(count)
+    while advance() {
+        assert(count == iterations + 1)
+
+        iterations += 1
+    }
+
+    assert(count == 5 and iterations == 4)
+}

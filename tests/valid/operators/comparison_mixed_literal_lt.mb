@@ -1,1 +1,3 @@
-print(20 < 20.5)
+test "comparison mixed literal lt" {
+    assert((20 < 20.5))
+}

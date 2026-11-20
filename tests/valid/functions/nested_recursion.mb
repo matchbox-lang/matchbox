@@ -10,6 +10,8 @@ func outer(n) {
     return countdown(n)
 }
 
-let result = outer(5)
+test "nested recursion" {
+    let result = outer(5)
 
-print(result)
+    assert(result == 0)
+}

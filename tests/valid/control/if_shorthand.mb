@@ -1,34 +1,3 @@
-var condition = true
-var count = 0
-
-if (condition) count += 1
-if (not condition) exit(1)
-if ((condition)) count += 2;
-if (condition) var count = 99
-
-if count != 3 {
-    exit(1)
-}
-
-condition = false
-
-if (condition) count += 10
-if (count != 3) exit(1)
-
-if (count) == (3) {
-    count += 1
-} else {
-    exit(1)
-}
-
-if (count != 4) exit(1)
-
-if (true) print(1); print(2)
-if (false) exit(1); count += 1
-if (true) count += 1; count += 2
-
-if (count != 8) exit(1)
-
 func sequence(value: bool) -> i32 {
     var result = 0
 
@@ -37,7 +6,49 @@ func sequence(value: bool) -> i32 {
     return result
 }
 
-let taken = sequence(true)
-let skipped = sequence(false)
+test "shorthand conditional statements" {
+    var condition = true
+    var count = 0
 
-if (taken != 3 or skipped != 2) exit(1)
+    if (condition) count += 1
+    if (not condition) exit(1)
+    if ((condition)) count += 2;
+    if (condition) var count = 99
+
+    if count != 3 {
+        exit(1)
+    }
+
+    condition = false
+
+    if (condition) count += 10
+    if (count != 3) exit(1)
+
+    if (count) == (3) {
+        count += 1
+    } else {
+        exit(1)
+    }
+
+    if (count != 4) exit(1)
+}
+
+test "shorthand semicolon boundaries" {
+    var observed_steps = 0
+    var count = 4
+
+    if (true) observed_steps += 1; observed_steps += 1
+    if (false) exit(1); count += 1
+    if (true) count += 1; count += 2
+
+    if (count != 8) exit(1)
+
+    assert(observed_steps == 2)
+}
+
+test "shorthand statements in functions" {
+    let taken = sequence(true)
+    let skipped = sequence(false)
+
+    if (taken != 3 or skipped != 2) exit(1)
+}

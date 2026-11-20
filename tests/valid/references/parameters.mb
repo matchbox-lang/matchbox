@@ -1,36 +1,38 @@
-func take_value(n: i32) {
-    print(n)
+func take_value(n: i32, expected: i32) {
+    assert(n == expected)
 }
 
 func take_shared(n: &i32) {
-    print(n)
+    assert(n == 10)
 }
 
 func take_exclusive(n: ^i32) {
-    print(n)
+    assert(n == 20)
 }
 
 func take_references(a: &i32, b: ^i32) {
-    print(a)
-    print(b)
+    assert(a == 30)
+    assert(b == 40)
 }
 
-var value = 10
-var shared = &value
+test "parameters" {
+    var value = 10
+    var shared = &value
 
-take_value(value)
-take_shared(value)
-take_shared(&value)
-take_value(shared)
-take_shared(shared)
+    take_value(value, 10)
+    take_shared(value)
+    take_shared(&value)
+    take_value(shared, 10)
+    take_shared(shared)
 
-var exclusive_value = 20
-var exclusive = ^exclusive_value
+    var exclusive_value = 20
+    var exclusive = ^exclusive_value
 
-take_value(exclusive)
-take_exclusive(exclusive)
+    take_value(exclusive, 20)
+    take_exclusive(exclusive)
 
-var a = 30
-var b = 40
+    var a = 30
+    var b = 40
 
-take_references(&a, ^b)
+    take_references(&a, ^b)
+}

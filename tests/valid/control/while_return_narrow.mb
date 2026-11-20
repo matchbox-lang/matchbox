@@ -4,4 +4,8 @@ func first() -> i8 {
     }
 }
 
-print(first())
+test "while return narrow" {
+    let result = first()
+
+    assert(result == 42)
+}

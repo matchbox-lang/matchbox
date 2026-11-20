@@ -1,12 +1,15 @@
-var count = 0
-var value = 10
-let shared = &value
+test "while outer reference" {
+    var count = 0
+    var value = 10
+    let shared = &value
 
-while count < 5 {
-    print(shared)
-    count += 1
+    while count < 5 {
+        assert(shared == 10)
+
+        count += 1
+    }
+
+    value = 20
+
+    assert(value == 20)
 }
-
-value = 20
-
-print(value)

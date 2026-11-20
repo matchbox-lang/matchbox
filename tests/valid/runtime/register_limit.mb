@@ -254,5 +254,7 @@ var slot252 = 252
 var slot253 = 253
 var slot254 = 254
 
-print(1)
-print(slot254)
+test "register limit" {
+    assert(slot000 == 0)
+    assert(slot254 == 254)
+}

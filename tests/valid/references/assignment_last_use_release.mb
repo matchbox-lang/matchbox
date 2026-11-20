@@ -1,8 +1,10 @@
-var first = 10
-var second = 20
-var exclusive = ^first
+test "assignment last use release" {
+    var first = 10
+    var second = 20
+    var exclusive = ^first
 
-exclusive = ^second
-second = 30
+    exclusive = ^second
+    second = 30
 
-print(second)
+    assert(second == 30)
+}

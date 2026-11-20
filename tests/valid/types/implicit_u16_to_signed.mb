@@ -1,6 +1,8 @@
-let source: u16 = 65535
-let signed32: i32 = source
-let signed64: i64 = source
+test "implicit u16 to signed" {
+    let source: u16 = 65535
+    let signed32: i32 = source
+    let signed64: i64 = source
 
-print(signed32)
-print(signed64)
+    assert(signed32 == 65535)
+    assert(signed64 == 65535)
+}

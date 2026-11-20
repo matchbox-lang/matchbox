@@ -6,10 +6,12 @@ func factorial(n) {
     return n * factorial(n - 1)
 }
 
-let zero = factorial(0)
-let one = factorial(1)
-let result = factorial(5)
+test "recursion" {
+    let zero = factorial(0)
+    let one = factorial(1)
+    let result = factorial(5)
 
-print(zero)
-print(one)
-print(result)
+    assert(zero == 1)
+    assert(one == 1)
+    assert(result == 120)
+}

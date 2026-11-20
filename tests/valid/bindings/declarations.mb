@@ -1,5 +1,7 @@
-let x = 10
-let y = 20
-let result = x + y
+test "declarations" {
+    let x = 10
+    let y = 20
+    let result = x + y
 
-print(result)
+    assert(result == 30)
+}

@@ -1,173 +1,3 @@
-var value8: i8 = 2
-value8 = 2
-value8 = 2
-value8 += 3
-
-print(value8)
-
-value8 = 2
-value8 -= -128
-
-print(value8)
-
-value8 = 2
-value8 *= 127
-
-print(value8)
-
-value8 = 2
-value8 |= -1
-
-print(value8)
-
-value8 = 2
-value8 <<= 1
-
-print(value8)
-
-var value16: i16 = 2
-value16 = 2
-value16 += 3
-
-print(value16)
-
-value16 = 2
-value16 -= -128
-
-print(value16)
-
-value16 = 2
-value16 *= 127
-
-print(value16)
-
-value16 = 2
-value16 |= -1
-
-print(value16)
-
-value16 = 2
-value16 <<= 1
-
-print(value16)
-
-var value32: i32 = 2
-value32 = 2
-value32 += 3
-
-print(value32)
-
-value32 = 2
-value32 -= 3
-
-print(value32)
-
-value32 = 2
-value32 *= 3
-
-print(value32)
-
-value32 = 2
-value32 /= 3
-
-print(value32)
-
-value32 = 2
-value32 %= 3
-
-print(value32)
-
-value32 = 2
-value32 &= 3
-
-print(value32)
-
-value32 = 2
-value32 |= 3
-
-print(value32)
-
-value32 = 2
-value32 ^= 3
-
-print(value32)
-
-value32 = 2
-value32 <<= 1
-
-print(value32)
-
-value32 = 2
-value32 >>= 1
-
-print(value32)
-
-value32 = 2
-value32 += -128
-
-print(value32)
-
-value32 = 2
-value32 -= -128
-
-print(value32)
-
-value32 = 2
-value32 *= -128
-
-print(value32)
-
-value32 = 2
-value32 += 127
-
-print(value32)
-
-value32 = 2
-value32 += 128
-
-print(value32)
-
-value32 = 2
-value32 += -129
-
-print(value32)
-
-value32 = 2
-value32 &= 255
-
-print(value32)
-
-value32 = 2
-value32 |= -1
-
-print(value32)
-
-var value64: i64 = 2
-value64 = 2
-value64 += 3
-
-print(value64)
-
-value64 = 2
-value64 -= -128
-
-print(value64)
-
-value64 = 2
-value64 *= 127
-
-print(value64)
-
-value64 = 2
-value64 |= -1
-
-print(value64)
-
-value64 = 2
-value64 <<= 1
-
-print(value64)
-
 func check_wide_immediates(value: i64, bits: u64) {
     if value + -128 != -126 {
         exit(1)
@@ -206,4 +36,193 @@ func check_wide_immediates(value: i64, bits: u64) {
     }
 }
 
-check_wide_immediates(2, 2)
+test "narrow integer compound assignment" {
+    var value8: i8 = 2
+    value8 = 2
+    value8 = 2
+    value8 += 3
+
+    assert(value8 == 5)
+
+    value8 = 2
+    value8 -= -128
+
+    assert(value8 == -126)
+
+    value8 = 2
+    value8 *= 127
+
+    assert(value8 == -2)
+
+    value8 = 2
+    value8 |= -1
+
+    assert(value8 == -1)
+
+    value8 = 2
+    value8 <<= 1
+
+    assert(value8 == 4)
+}
+
+test "short integer compound assignment" {
+    var value16: i16 = 2
+    value16 = 2
+    value16 += 3
+
+    assert(value16 == 5)
+
+    value16 = 2
+    value16 -= -128
+
+    assert(value16 == 130)
+
+    value16 = 2
+    value16 *= 127
+
+    assert(value16 == 254)
+
+    value16 = 2
+    value16 |= -1
+
+    assert(value16 == -1)
+
+    value16 = 2
+    value16 <<= 1
+
+    assert(value16 == 4)
+}
+
+test "integer arithmetic compound assignment" {
+    var value32: i32 = 2
+    value32 = 2
+    value32 += 3
+
+    assert(value32 == 5)
+
+    value32 = 2
+    value32 -= 3
+
+    assert(value32 == -1)
+
+    value32 = 2
+    value32 *= 3
+
+    assert(value32 == 6)
+
+    value32 = 2
+    value32 /= 3
+
+    assert(value32 == 0)
+
+    value32 = 2
+    value32 %= 3
+
+    assert(value32 == 2)
+}
+
+test "integer bitwise compound assignment" {
+    var value32: i32 = 2
+
+    value32 &= 3
+
+    assert(value32 == 2)
+
+    value32 = 2
+    value32 |= 3
+
+    assert(value32 == 3)
+
+    value32 = 2
+    value32 ^= 3
+
+    assert(value32 == 1)
+
+    value32 = 2
+    value32 <<= 1
+
+    assert(value32 == 4)
+
+    value32 = 2
+    value32 >>= 1
+
+    assert(value32 == 1)
+}
+
+test "negative integer assignment operands" {
+    var value32: i32 = 2
+
+    value32 += -128
+
+    assert(value32 == -126)
+
+    value32 = 2
+    value32 -= -128
+
+    assert(value32 == 130)
+
+    value32 = 2
+    value32 *= -128
+
+    assert(value32 == -256)
+}
+
+test "integer assignment operand boundaries" {
+    var value32: i32 = 2
+
+    value32 += 127
+
+    assert(value32 == 129)
+
+    value32 = 2
+    value32 += 128
+
+    assert(value32 == 130)
+
+    value32 = 2
+    value32 += -129
+
+    assert(value32 == -127)
+
+    value32 = 2
+    value32 &= 255
+
+    assert(value32 == 2)
+
+    value32 = 2
+    value32 |= -1
+
+    assert(value32 == -1)
+}
+
+test "wide integer compound assignment" {
+    var value64: i64 = 2
+    value64 = 2
+    value64 += 3
+
+    assert(value64 == 5)
+
+    value64 = 2
+    value64 -= -128
+
+    assert(value64 == 130)
+
+    value64 = 2
+    value64 *= 127
+
+    assert(value64 == 254)
+
+    value64 = 2
+    value64 |= -1
+
+    assert(value64 == -1)
+
+    value64 = 2
+    value64 <<= 1
+
+    assert(value64 == 4)
+}
+
+test "wide integer arithmetic operands" {
+    check_wide_immediates(2, 2)
+}

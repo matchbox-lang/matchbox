@@ -1,3 +1,5 @@
-while false {}
+test "while empty body" {
+    while false {}
 
-print("done")
+    print("done")
+}

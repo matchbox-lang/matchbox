@@ -1,8 +1,11 @@
-let empty_chars: char[0] = []
+test "explicit empty" {
+    let empty_chars: char[0] = []
+    let expected: char[0] = []
 
-print(empty_chars)
+    assert(empty_chars == expected)
 
-let empty_copy = copy(empty_chars)
+    let empty_copy = copy(empty_chars)
 
-print(empty_copy)
-print(empty_chars)
+    assert(empty_copy == expected)
+    assert(empty_chars == expected)
+}

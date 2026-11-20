@@ -1,20 +1,3 @@
-let signed8: i8 = -25
-let signed16: i16 = signed8
-let signed32: i32 = signed16
-let signed64: i64 = signed32
-
-let unsigned8: u8 = 25
-let unsigned16: u16 = unsigned8
-let unsigned32: u32 = unsigned16
-let unsigned64: u64 = unsigned32
-
-let signed_float32: f32 = signed16
-let unsigned_float32: f32 = unsigned16
-let signed_float64: f64 = signed32
-let unsigned_float64: f64 = unsigned32
-let literal_float32: f32 = 4
-let literal_float64: f64 = 16777217
-
 func widen_argument(value: i64) -> i64 {
     return value
 }
@@ -31,20 +14,61 @@ func integer_to_float_return(value: i32) -> f64 {
     return value
 }
 
-var assigned: i64
-assigned = signed8
-var assigned_float: f32
-assigned_float = 4
+test "integer width widening" {
+    let signed8: i8 = -25
+    let signed16: i16 = signed8
+    let signed32: i32 = signed16
+    let signed64: i64 = signed32
+    let unsigned8: u8 = 25
+    let unsigned16: u16 = unsigned8
+    let unsigned32: u32 = unsigned16
+    let unsigned64: u64 = unsigned32
+    var assigned: i64
+    assigned = signed8
 
-print(signed32)
-widen_argument(signed8)
-widen_return(signed8)
-print(signed_float32)
-print(unsigned_float32)
-print(signed_float64)
-print(unsigned_float64)
-print(literal_float32)
-print(literal_float64)
-print(assigned_float)
-print(integer_to_float_argument(signed32))
-print(integer_to_float_return(signed32))
+    assert(signed32 == -25)
+    widen_argument(signed8)
+    widen_return(signed8)
+}
+
+test "integer to floating point widening" {
+    let signed8: i8 = -25
+    let signed16: i16 = signed8
+    let signed32: i32 = signed16
+    let unsigned8: u8 = 25
+    let unsigned16: u16 = unsigned8
+    let unsigned32: u32 = unsigned16
+    let signed_float32: f32 = signed16
+    let unsigned_float32: f32 = unsigned16
+    let signed_float64: f64 = signed32
+    let unsigned_float64: f64 = unsigned32
+
+    assert(signed_float32 == -25.0)
+    assert(unsigned_float32 == 25.0)
+    assert(signed_float64 == -25.0)
+    assert(unsigned_float64 == 25.0)
+}
+
+test "integer literal floating point contexts" {
+    let literal_float32: f32 = 4
+    let literal_float64: f64 = 16777217
+    var assigned_float: f32
+    assigned_float = 4
+
+    assert(literal_float32 == 4.0)
+    assert(literal_float64 == 16777217.0)
+    assert(assigned_float == 4.0)
+}
+
+test "integer widening through floating point parameters" {
+    let signed8: i8 = -25
+    let signed16: i16 = signed8
+    let signed32: i32 = signed16
+    let argument_result = integer_to_float_argument(signed32)
+
+    assert(argument_result == -25.0)
+
+    let return_result = integer_to_float_return(signed32)
+
+    assert(return_result == -25.0)
+}

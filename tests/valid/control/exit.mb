@@ -8,5 +8,7 @@ func caller() {
     exit(1)
 }
 
-caller()
-exit(1)
+test "exit" {
+    caller()
+    exit(1)
+}

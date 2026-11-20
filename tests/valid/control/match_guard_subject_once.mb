@@ -1,13 +1,19 @@
+var observed_steps = 0
+
 func subject() -> i32 {
-    print(99)
+    observed_steps += 1
     return 10
 }
 
-match subject() {
-    case n if n == 20:
-        print(0)
-    case n if n == 10:
-        print(n)
-    case _:
-        print(0)
+test "match guard subject once" {
+    match subject() {
+        case n if n == 20:
+            assert(false)
+        case n if n == 10:
+            assert(n == 10)
+        case _:
+            assert(false)
+    }
+
+    assert(observed_steps == 1)
 }

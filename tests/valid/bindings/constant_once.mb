@@ -1,11 +1,13 @@
-print("runtime")
-
 func evaluate() {
     return 42
 }
 
-const VALUE = evaluate()
+test "constant once" {
+    print("runtime")
 
-print(VALUE)
-print(VALUE)
-assert(VALUE == 42)
+    const VALUE = evaluate()
+
+    assert(VALUE == 42)
+    assert(VALUE == 42)
+    assert(VALUE == 42)
+}

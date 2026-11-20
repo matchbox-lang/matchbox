@@ -2,12 +2,16 @@ var value = 10
 let fixed = 20
 
 func update_global() {
-    print(value)
+    assert(value == 10)
+
     value = 15
-    print(value)
+
+    assert(value == 15)
 }
 
-print(value)
-print(fixed)
-update_global()
-print(value)
+test "global scope" {
+    assert(value == 10)
+    assert(fixed == 20)
+    update_global()
+    assert(value == 15)
+}

@@ -2,6 +2,8 @@ func identity(value: i64) -> i64 {
     return value
 }
 
-let result = identity(-9223372036854775808)
+test "i64 minimum argument" {
+    let result = identity(-9223372036854775808)
 
-print(result)
+    assert(result == -9223372036854775808)
+}

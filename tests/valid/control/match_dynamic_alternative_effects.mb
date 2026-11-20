@@ -1,20 +1,28 @@
+var pattern_calls = 0
+
 func pattern() {
-    print(99)
+    pattern_calls += 1
     return 3
 }
 
-func check(value) {
+func check(value, expected: i32) {
+    var selected = 0
+
     match value {
         case 1 | 2 | pattern():
-            print(10)
+            selected = 10
         case _:
-            print(20)
+            selected = 20
     }
 
-    print(value)
+    assert(selected == expected)
 }
 
-check(1)
-check(2)
-check(3)
-check(4)
+test "match dynamic alternative effects" {
+    check(1, 10)
+    check(2, 10)
+    check(3, 10)
+    check(4, 20)
+
+    assert(pattern_calls == 4)
+}

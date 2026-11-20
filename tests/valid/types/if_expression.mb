@@ -1,45 +1,60 @@
-var condition = true
-let narrow: f32 = 2.5
+test "conditional floating point widening" {
+    var condition = true
+    let narrow: f32 = 2.5
 
-let selected: f64 = if condition {
-    narrow
-} else {
-    narrow
+    let selected: f64 = if condition {
+        narrow
+    } else {
+        narrow
+    }
+
+    if selected != 2.5 {
+        exit(1)
+    }
 }
 
-if selected != 2.5 {
-    exit(1)
+test "conditional wide integer literals" {
+    var condition = true
+
+    let wide: i64 = if condition {
+        3000000000
+    } else {
+        4000000000
+    }
+
+    if wide != 3000000000 {
+        exit(1)
+    }
 }
 
-let wide: i64 = if condition {
-    3000000000
-} else {
-    4000000000
+test "conditional shared reference results" {
+    var condition = true
+    var left = 10
+    var right = 20
+
+    let shared: &i32 = if condition {
+        &left
+    } else {
+        &right
+    }
+
+    if shared != 10 {
+        exit(1)
+    }
 }
 
-if wide != 3000000000 {
-    exit(1)
-}
+test "conditional exclusive reference results" {
+    var condition = true
+    var left = 10
+    var right = 20
 
-var left = 10
-var right = 20
+    let exclusive: ^i32 = if condition {
+        ^left
+    } else {
+        ^right
+    }
 
-let shared: &i32 = if condition {
-    &left
-} else {
-    &right
-}
-
-if shared != 10 {
-    exit(1)
-}
-
-let exclusive: ^i32 = if condition {
-    ^left
-} else {
-    ^right
-}
-
-if exclusive != 10 {
-    exit(1)
+    if exclusive != 10 {
+        exit(1)
+    }
 }

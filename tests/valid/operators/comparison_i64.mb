@@ -1,15 +1,17 @@
-func compare(left: i64, right: i64) {
-    print(left == right)
-    print(left != right)
-    print(left < right)
-    print(left <= right)
-    print(left > right)
-    print(left >= right)
-    print(left <=> right)
+func compare(left: i64, right: i64, expected_order: i32) {
+    assert((left == right) == (expected_order == 0))
+    assert((left != right) == (expected_order != 0))
+    assert((left < right) == (expected_order < 0))
+    assert((left <= right) == (expected_order <= 0))
+    assert((left > right) == (expected_order > 0))
+    assert((left >= right) == (expected_order >= 0))
+    assert((left <=> right) == expected_order)
 }
 
-let minimum: i64 = -9223372036854775808
+test "comparison i64" {
+    let minimum: i64 = -9223372036854775808
 
-compare(minimum, 9223372036854775807)
-compare(9223372036854775807, minimum)
-compare(9223372036854775807, 9223372036854775807)
+    compare(minimum, 9223372036854775807, -1)
+    compare(9223372036854775807, minimum, 1)
+    compare(9223372036854775807, 9223372036854775807, 0)
+}

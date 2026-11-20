@@ -3,14 +3,16 @@ func evaluate() {
     return 42
 }
 
-let value = evaluate()
-
-assert(value == 42)
-
 func with_default(value = abs(-42)) {
     return value
 }
 
-const VALUE = with_default()
+test "constant side effects" {
+    let value = evaluate()
 
-assert(VALUE == 42)
+    assert(value == 42)
+
+    const VALUE = with_default()
+
+    assert(VALUE == 42)
+}

@@ -1,12 +1,23 @@
-var outer = 0
+test "while nested" {
+    var outer = 0
+    var iterations: usize = 0
+    let expected_outer = [0, 0, 1, 1]
+    let expected_inner = [0, 1, 0, 1]
 
-while outer < 2 {
-    var inner = 0
+    while outer < 2 {
+        var inner = 0
 
-    while inner < 2 {
-        print(outer, inner)
-        inner += 1
+        while inner < 2 {
+            assert(outer == expected_outer[iterations])
+            assert(inner == expected_inner[iterations])
+
+            iterations += 1
+
+            inner += 1
+        }
+
+        outer += 1
     }
-    
-    outer += 1
+
+    assert(outer == 2 and iterations == 4)
 }

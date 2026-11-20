@@ -11,16 +11,19 @@ func update() {
     values += make()
 }
 
-update()
-assert(calls == 1 and values == [4, 6])
-
 func local() {
     let numbers = [2, 3]
 
     numbers *= numbers
     numbers += make()
+
     assert(numbers == [7, 13])
 }
 
-local()
-assert(calls == 2)
+test "compound evaluation" {
+    update()
+    assert(calls == 1 and values == [4, 6])
+
+    local()
+    assert(calls == 2)
+}

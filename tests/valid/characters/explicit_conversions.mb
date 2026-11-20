@@ -1,32 +1,34 @@
 func take(value: char) {
-    print(value)
+    assert(value == 'a')
 }
 
 func convert(value: u8) -> char {
     return char(value)
 }
 
-let letter = convert(97)
-let identity = char(letter)
-let number = i32(letter)
-let wide = i64(letter)
-let unsigned = u64(letter)
+test "explicit conversions" {
+    let letter = convert(97)
+    let identity = char(letter)
+    let number = i32(letter)
+    let wide = i64(letter)
+    let unsigned = u64(letter)
 
-take(letter)
-take(identity)
-print(number)
-print(wide)
-print(unsigned)
+    take(letter)
+    take(identity)
+    assert(number == 97)
+    assert(wide == 97)
+    assert(unsigned == 97)
 
-let constant = char(97)
-let narrowed = u8(letter)
+    let constant = char(97)
+    let narrowed = u8(letter)
 
-print(constant)
-print(narrowed)
+    assert(constant == 'a')
+    assert(narrowed == 97)
 
-let base = 96
-let computed = char(base + 1)
-let selected = char(if (true) 97 else 98)
+    let base = 96
+    let computed = char(base + 1)
+    let selected = char(if (true) 97 else 98)
 
-assert(computed == 'a')
-assert(selected == 'a')
+    assert(computed == 'a')
+    assert(selected == 'a')
+}

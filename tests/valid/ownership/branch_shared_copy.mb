@@ -1,11 +1,14 @@
-var number = 25
-var shared = &number
+test "branch shared copy" {
+    var number = 25
+    var shared = &number
 
-if true {
-    var copied: &i32 = shared
-    print(copied)
-} else {
-    print(shared)
+    if true {
+        var copied: &i32 = shared
+
+        assert(copied == 25)
+    } else {
+        assert(false)
+    }
+
+    assert(shared == 25)
 }
-
-print(shared)

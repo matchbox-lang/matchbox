@@ -6,6 +6,8 @@ func factorial(n: i64) -> i64 {
     return n * factorial(n - 1)
 }
 
-let result = factorial(20)
+test "typed recursion" {
+    let result = factorial(20)
 
-print(result)
+    assert(result == 2432902008176640000)
+}

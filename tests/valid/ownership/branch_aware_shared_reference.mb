@@ -1,11 +1,14 @@
-var number = 25
-var shared = &number
+test "branch aware shared reference" {
+    var number = 25
+    var shared = &number
 
-if (true) {
-    print(shared)
-} else {
-    var exclusive = ^number
-    print(exclusive)
+    if (true) {
+        assert(shared == 25)
+    } else {
+        var exclusive = ^number
+
+        assert(false)
+    }
+
+    assert(number == 25)
 }
-
-print(number)

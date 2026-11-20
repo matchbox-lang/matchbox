@@ -1,6 +1,8 @@
-var value: char
-value = 'a'
-value = '😀'
-let copy: char = value
+test "bindings" {
+    var value: char
+    value = 'a'
+    value = '😀'
+    let copy: char = value
 
-print(copy)
+    assert(copy == '😀')
+}

@@ -1,23 +1,25 @@
-var value = 10
-var copied_infer_type = value
-var copied: i32 = value
-var inferred_shared = &value
-var explicit_shared: &i32 = &value
-var assigned_shared: &i32
+test "declarations" {
+    var value = 10
+    var copied_infer_type = value
+    var copied: i32 = value
+    var inferred_shared = &value
+    var explicit_shared: &i32 = &value
+    var assigned_shared: &i32
 
-assigned_shared = &value
+    assigned_shared = &value
 
-print(copied_infer_type)
-print(copied)
-print(inferred_shared)
-print(explicit_shared)
-print(assigned_shared)
+    assert(copied_infer_type == 10)
+    assert(copied == 10)
+    assert(inferred_shared == 10)
+    assert(explicit_shared == 10)
+    assert(assigned_shared == 10)
 
-var exclusive_value = 20
-var inferred_exclusive = ^exclusive_value
-var explicit_exclusive: ^i32 = inferred_exclusive
-var assigned_exclusive: ^i32
+    var exclusive_value = 20
+    var inferred_exclusive = ^exclusive_value
+    var explicit_exclusive: ^i32 = inferred_exclusive
+    var assigned_exclusive: ^i32
 
-assigned_exclusive = explicit_exclusive
+    assigned_exclusive = explicit_exclusive
 
-print(assigned_exclusive)
+    assert(assigned_exclusive == 20)
+}

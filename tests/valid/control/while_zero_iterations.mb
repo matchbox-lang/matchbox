@@ -1,13 +1,15 @@
-var count = 0
+test "while zero iterations" {
+    var count = 0
 
-while false {
-    count += 1
+    while false {
+        count += 1
+    }
+
+    assert(count == 0)
+
+    while count != 0 {
+        count += 1
+    }
+
+    assert(count == 0)
 }
-
-print(count)
-
-while count != 0 {
-    count += 1
-}
-
-print(count)

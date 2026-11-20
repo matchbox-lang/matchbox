@@ -1,39 +1,87 @@
-let value = 2
+test "match fallback values" {
+    let value = 2
+    let fallback_result = match value {
+        case 0: 10
+        case _: 20
+    }
 
-let fallback_result = match value {
-    case 0: 10
-    case _: 20
+    let wildcard_result = match value {
+        case 0: 30
+        case _: 40
+    }
+
+    let capture_result = match value {
+        case 0: 50
+        case captured: 60 + captured
+    }
+
+    assert(fallback_result == 20)
 }
 
-let wildcard_result = match value {
-    case 0: 30
-    case _: 40
+test "match wildcard values" {
+    let value = 2
+    let fallback_result = match value {
+        case 0: 10
+        case _: 20
+    }
+
+    let wildcard_result = match value {
+        case 0: 30
+        case _: 40
+    }
+
+    let capture_result = match value {
+        case 0: 50
+        case captured: 60 + captured
+    }
+
+    assert(wildcard_result == 40)
 }
 
-let capture_result = match value {
-    case 0: 50
-    case captured: 60 + captured
+test "match capture values" {
+    let value = 2
+    let fallback_result = match value {
+        case 0: 10
+        case _: 20
+    }
+
+    let wildcard_result = match value {
+        case 0: 30
+        case _: 40
+    }
+
+    let capture_result = match value {
+        case 0: 50
+        case captured: 60 + captured
+    }
+
+    assert(capture_result == 62)
 }
 
-let explicit_boolean_result = match true {
-    case true: 70
-    case false: 80
+test "boolean match values" {
+    let explicit_boolean_result = match true {
+        case true: 70
+        case false: 80
+    }
+
+    assert(explicit_boolean_result == 70)
 }
 
-let implicit_boolean_result = match {
-    case true: 90
-    case false: 100
+test "subjectless match values" {
+    let implicit_boolean_result = match {
+        case true: 90
+        case false: 100
+    }
+
+    assert(implicit_boolean_result == 90)
 }
 
-let fixed_result = match 2 {
-    case 1: 110
-    case 2: 120
-    case _: 130
-}
+test "constant match values" {
+    let fixed_result = match 2 {
+        case 1: 110
+        case 2: 120
+        case _: 130
+    }
 
-print(fallback_result)
-print(wildcard_result)
-print(capture_result)
-print(explicit_boolean_result)
-print(implicit_boolean_result)
-print(fixed_result)
+    assert(fixed_result == 120)
+}

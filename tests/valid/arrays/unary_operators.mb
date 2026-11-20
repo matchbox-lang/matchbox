@@ -1,18 +1,29 @@
-let values: i8[3] = [-128, 0, 127]
-let negative = -values
-let complemented = ~values
+test "unary array operations preserve inputs" {
+    let values: i8[3] = [-128, 0, 127]
+    let negative = -values
+    let complemented = ~values
 
-assert(negative == [-128, 0, -127])
-assert(complemented == [127, -1, -128])
-assert(values == [-128, 0, 127])
-negative[1] = 5
-assert(values[1] == 0)
-assert((-[[1, -2], [3, -4]]) == [[-1, 2], [-3, 4]])
+    assert(negative == [-128, 0, -127])
+    assert(complemented == [127, -1, -128])
+    assert(values == [-128, 0, 127])
 
-let empty_vector: i32[0] = []
+    negative[1] = 5
 
-assert((-empty_vector) == empty_vector)
+    assert(values[1] == 0)
+}
 
-let empty: u8[2][0] = [[], []]
+test "nested array negation" {
+    assert((-[[1, -2], [3, -4]]) == [[-1, 2], [-3, 4]])
+}
 
-assert((~empty) == empty)
+test "empty array negation" {
+    let empty_vector: i32[0] = []
+
+    assert((-empty_vector) == empty_vector)
+}
+
+test "empty row complementation" {
+    let empty: u8[2][0] = [[], []]
+
+    assert((~empty) == empty)
+}

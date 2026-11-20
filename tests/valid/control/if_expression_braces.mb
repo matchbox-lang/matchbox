@@ -10,32 +10,36 @@ func select(value: i32) -> i32 {
     }
 }
 
-let parenthesized = if (true) {
-    1
-} else {
-    0
+test "mixed conditional expression braces" {
+    let parenthesized = if (true) {
+        1
+    } else {
+        0
+    }
+
+    let mixed = if (false)
+        0
+    else {
+        2
+    }
+
+    let nested = if true {
+        if (false) 0 else 3
+    } else 0
+
+    assert(parenthesized == 1)
+    assert(mixed == 2)
+    assert(nested == 3)
 }
 
-let mixed = if (false)
-    0
-else {
-    2
+test "conditional return branches" {
+    let highest = select(95)
+    let high = select(85)
+    let low = select(75)
+    let lowest = select(65)
+
+    assert(highest == 4)
+    assert(high == 3)
+    assert(low == 2)
+    assert(lowest == 1)
 }
-
-let nested = if true {
-    if (false) 0 else 3
-} else 0
-
-assert(parenthesized == 1)
-assert(mixed == 2)
-assert(nested == 3)
-
-let highest = select(95)
-let high = select(85)
-let low = select(75)
-let lowest = select(65)
-
-assert(highest == 4)
-assert(high == 3)
-assert(low == 2)
-assert(lowest == 1)

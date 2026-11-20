@@ -1,21 +1,24 @@
-let a: i8[] = [1, 2, 3]
-let b: i8[] = a
-let expected: &i8[3] = &b
-
-assert(expected[2] == 3)
-
 func take(values: i8[3]) -> i8[3] {
     let moved: i8[] = values
 
     return moved
 }
 
-let c: i8[] = take(b)
+test "count inference moves" {
+    let a: i8[] = [1, 2, 3]
+    let b: i8[] = a
+    let expected: &i8[3] = &b
 
-assert(c[0] == 1 and c[2] == 3)
+    assert(expected[2] == 3)
 
-let empty: char[0] = []
-let moved_empty: char[] = empty
-let expected_empty: &char[0] = &moved_empty
+    let c: i8[] = take(b)
 
-print(expected_empty)
+    assert(c[0] == 1 and c[2] == 3)
+
+    let empty: char[0] = []
+    let moved_empty: char[] = empty
+    let expected_empty: &char[0] = &moved_empty
+    let expected_expected_empty: char[0] = []
+
+    assert(expected_empty == expected_expected_empty)
+}

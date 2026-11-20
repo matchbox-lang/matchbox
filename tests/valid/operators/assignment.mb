@@ -1,15 +1,17 @@
-var a = 2
-let b = 3
+test "assignment" {
+    var a = 2
+    let b = 3
 
-a += b
-a -= b
-a *= b
-a /= b
-a %= b
-a **= b
+    a += b
+    a -= b
+    a *= b
+    a /= b
+    a %= b
+    a **= b
 
-a &= b
-a |= b
-a ^= b
-a <<= 1
-a >>= 1
+    a &= b
+    a |= b
+    a ^= b
+    a <<= 1
+    a >>= 1
+}

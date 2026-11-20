@@ -1,22 +1,24 @@
-let packed: i8[2][3] = [-128, 2, 3, 4, 5, 127]
-let replacement: i8[3] = [-1, -2, -3]
+test "packed subarrays" {
+    let packed: i8[2][3] = [-128, 2, 3, 4, 5, 127]
+    let replacement: i8[3] = [-1, -2, -3]
 
-packed[1] = replacement
-packed[0][1] = -4
+    packed[1] = replacement
+    packed[0][1] = -4
 
-assert(packed[0][0] == -128 and packed[0][2] == 3)
-assert(packed[1][0] == -1 and packed[1][2] == -3)
-print(string(packed))
-print(string(packed[1]))
+    assert(packed[0][0] == -128 and packed[0][2] == 3)
+    assert(packed[1][0] == -1 and packed[1][2] == -3)
+    print(string(packed))
+    print(string(packed[1]))
 
-let large = i16[2][129](0)
-let row = i16[129](-1234)
-large[1] = row
+    let large = i16[2][129](0)
+    let row = i16[129](-1234)
+    large[1] = row
 
-assert(large[1][0] == -1234 and large[1][127] == -1234 and large[1][128] == -1234)
-assert(large[0][128] == 0)
+    assert(large[1][0] == -1234 and large[1][127] == -1234 and large[1][128] == -1234)
+    assert(large[0][128] == 0)
 
-let packed_copy = copy(packed)
-packed[0][0] = 1
+    let packed_copy = copy(packed)
+    packed[0][0] = 1
 
-assert(packed_copy[0][0] == -128 and packed_copy[1][2] == -3)
+    assert(packed_copy[0][0] == -128 and packed_copy[1][2] == -3)
+}

@@ -1,8 +1,10 @@
-var value = 10
-var source = &value
-var destination: &i32
+test "shared assignment transfer" {
+    var value = 10
+    var source = &value
+    var destination: &i32
 
-destination = source
+    destination = source
 
-print(source)
-print(destination)
+    assert(source == 10)
+    assert(destination == 10)
+}

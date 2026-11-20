@@ -1,10 +1,12 @@
-let value: u64 = 4294967296
+test "match guard wide" {
+    let value: u64 = 4294967296
 
-match value {
-    case n if n == 0:
-        print(0)
-    case n if n == value:
-        print(n)
-    case _:
-        print(0)
+    match value {
+        case n if n == 0:
+            assert(false)
+        case n if n == value:
+            assert(n == 4294967296)
+        case _:
+            assert(false)
+    }
 }

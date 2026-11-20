@@ -1,8 +1,10 @@
-print('\n' == '\u{A}')
-print('\r' == '\u{D}')
-print('\t' == '\u{9}')
-print('\0' == '\u{0}')
-print('\\' == '\u{5C}')
-print('\'' == '\u{27}')
-print('\"' == '\u{22}')
-print('\u{1f600}' == '\u{01F600}')
+test "escapes" {
+    assert('\n' == '\u{A}')
+    assert('\r' == '\u{D}')
+    assert('\t' == '\u{9}')
+    assert('\0' == '\u{0}')
+    assert('\\' == '\u{5C}')
+    assert('\'' == '\u{27}')
+    assert('\"' == '\u{22}')
+    assert('\u{1f600}' == '\u{01F600}')
+}

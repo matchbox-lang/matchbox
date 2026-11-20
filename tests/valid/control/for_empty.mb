@@ -1,15 +1,18 @@
-let empty: i32[0] = []
-var count = 0
+test "for empty" {
+    let empty: i32[0] = []
+    var count = 0
 
-for value in empty {
-    count += 1
+    for value in empty {
+        count += 1
+    }
+
+    let rows: i32[3][0] = [[], [], []]
+
+    for index, row in rows {
+        assert(index < 3 and len(row) == 0)
+
+        count += 1
+    }
+
+    assert(count == 3)
 }
-
-let rows: i32[3][0] = [[], [], []]
-
-for index, row in rows {
-    assert(index < 3 and len(row) == 0)
-    count += 1
-}
-
-assert(count == 3)

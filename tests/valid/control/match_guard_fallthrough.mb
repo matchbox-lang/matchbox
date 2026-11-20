@@ -1,10 +1,12 @@
-let value = 10
+test "match guard fallthrough" {
+    let value = 10
 
-match value {
-    case n if n == 20:
-        print(0)
-    case n if n == 10:
-        print(n)
-    case _:
-        print(0)
+    match value {
+        case n if n == 20:
+            assert(false)
+        case n if n == 10:
+            assert(n == 10)
+        case _:
+            assert(false)
+    }
 }

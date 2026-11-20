@@ -1,3 +1,5 @@
-let minimum = -9223372036854775808
+test "i64 minimum inference" {
+    let minimum = -9223372036854775808
 
-print(minimum)
+    assert(minimum == -9223372036854775808)
+}

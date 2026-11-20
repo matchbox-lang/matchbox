@@ -1,11 +1,13 @@
-let value: f64 = 20.5
-let other: f64 = 20.5
+test "match guard float" {
+    let value: f64 = 20.5
+    let other: f64 = 20.5
 
-match value {
-    case n if n != other:
-        print(0)
-    case n if n == other:
-        print(n)
-    case _:
-        print(0)
+    match value {
+        case n if n != other:
+            assert(false)
+        case n if n == other:
+            assert(n == 20.5)
+        case _:
+            assert(false)
+    }
 }

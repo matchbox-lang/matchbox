@@ -1,4 +1,6 @@
-let left: u8 = 25
-let right: i16 = 25
+test "comparison lossless mixed signedness" {
+    let left: u8 = 25
+    let right: i16 = 25
 
-print(left == right)
+    assert((left == right))
+}

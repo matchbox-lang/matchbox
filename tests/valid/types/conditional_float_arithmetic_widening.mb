@@ -1,11 +1,13 @@
-let narrow: f32 = 2.5
-let other: f32 = -3.75
-var choose = false
+test "conditional float arithmetic widening" {
+    let narrow: f32 = 2.5
+    let other: f32 = -3.75
+    var choose = false
 
-let result: f64 = if choose {
-    narrow + other
-} else {
-    narrow * other
+    let result: f64 = if choose {
+        narrow + other
+    } else {
+        narrow * other
+    }
+
+    assert(result == -9.375)
 }
-
-print(result)

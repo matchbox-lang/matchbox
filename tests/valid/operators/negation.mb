@@ -22,11 +22,35 @@ func negate_float64(value: f64) -> f64 {
     return -value
 }
 
-print(negate8(4))
-print(negate16(4))
-print(negate32(4))
-print(negate64(4))
-print(negate_float32(1.5))
-print(negate_float64(1.5))
-print(negate_float32(-0.0))
-print(negate_float64(-0.0))
+test "integer negation" {
+    let signed8 = negate8(4)
+    let signed16 = negate16(4)
+    let signed32 = negate32(4)
+    let signed64 = negate64(4)
+
+    assert(signed8 == -4)
+    assert(signed16 == -4)
+    assert(signed32 == -4)
+    assert(signed64 == -4)
+}
+
+test "floating point negation" {
+    let float32 = negate_float32(1.5)
+    let float64 = negate_float64(1.5)
+
+    assert(float32 == -1.5)
+    assert(float64 == -1.5)
+}
+
+test "negative zero negation" {
+    let zero32 = negate_float32(-0.0)
+    let zero64 = negate_float64(-0.0)
+    let one64: f64 = 1.0
+    let reciprocal32 = 1.0 / zero32
+    let reciprocal64 = one64 / zero64
+
+    assert(zero32 == 0.0)
+    assert(zero64 == 0.0)
+    assert(reciprocal32 == f32.INFINITY)
+    assert(reciprocal64 == f64.INFINITY)
+}

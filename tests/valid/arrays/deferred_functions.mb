@@ -6,10 +6,6 @@ func make() -> i32[2][2] {
     return arr
 }
 
-let made = make()
-
-assert(made[1][1] == 10)
-
 let global: i32[2]
 
 func initialize() -> i32 {
@@ -19,7 +15,13 @@ func initialize() -> i32 {
     return 0
 }
 
-let status = initialize()
+test "deferred functions" {
+    let made = make()
 
-assert(status == 0)
-assert(global[0] == 7 and global[1] == 9)
+    assert(made[1][1] == 10)
+
+    let status = initialize()
+
+    assert(status == 0)
+    assert(global[0] == 7 and global[1] == 9)
+}

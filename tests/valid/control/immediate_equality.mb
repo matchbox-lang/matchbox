@@ -1,13 +1,15 @@
-func check(value) {
-    print(value == -128)
-    print(-128 != value)
-    print(value == 127)
-    print(127 != value)
-    print(value == -129)
-    print(value != 128)
+func check(value, expected: bool[4]) {
+    assert((value == -128) == (expected[0]))
+    assert((-128 != value) == (not expected[0]))
+    assert((value == 127) == (expected[1]))
+    assert((127 != value) == (not expected[1]))
+    assert((value == -129) == (expected[2]))
+    assert((value != 128) == (expected[3]))
 }
 
-check(-128)
-check(127)
-check(-129)
-check(128)
+test "immediate equality" {
+    check(-128, [true, false, false, true])
+    check(127, [false, true, false, true])
+    check(-129, [false, false, true, true])
+    check(128, [false, false, false, false])
+}

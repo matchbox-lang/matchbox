@@ -1,13 +1,15 @@
-func compare(left: f64, right: f64) {
-    print(left == right)
-    print(left != right)
-    print(left < right)
-    print(left <= right)
-    print(left > right)
-    print(left >= right)
-    print(left <=> right)
+func compare(left: f64, right: f64, expected_order: i32) {
+    assert((left == right) == (expected_order == 0))
+    assert((left != right) == (expected_order != 0))
+    assert((left < right) == (expected_order < 0))
+    assert((left <= right) == (expected_order <= 0))
+    assert((left > right) == (expected_order > 0))
+    assert((left >= right) == (expected_order >= 0))
+    assert((left <=> right) == expected_order)
 }
 
-compare(-1.5, 1.5)
-compare(1.5, -1.5)
-compare(1.5, 1.5)
+test "comparison f64" {
+    compare(-1.5, 1.5, -1)
+    compare(1.5, -1.5, 1)
+    compare(1.5, 1.5, 0)
+}

@@ -1,7 +1,9 @@
 func take_shared(n: &i32) {
-    print(n)
+    assert(n == 10)
 }
 
-let value = 10
+test "shared from fixed" {
+    let value = 10
 
-take_shared(&value)
+    take_shared(&value)
+}

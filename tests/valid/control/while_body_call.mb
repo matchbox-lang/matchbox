@@ -1,10 +1,18 @@
-func show(value) {
-    print(value)
+func show(value, expected: i32) {
+    assert(value == expected)
 }
 
-var count = 0
+test "while body call" {
+    var count = 0
+    var iterations = 0
 
-while count < 2 {
-    show(count)
-    count += 1
+    while count < 2 {
+        show(count, iterations)
+
+        iterations += 1
+
+        count += 1
+    }
+
+    assert(count == 2 and iterations == 2)
 }

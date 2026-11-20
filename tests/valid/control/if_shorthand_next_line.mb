@@ -1,2 +1,8 @@
-if (true)
-    print(1)
+test "if shorthand next line" {
+    var observed_steps = 0
+
+    if (true)
+        observed_steps += 1
+
+    assert(observed_steps == 1)
+}

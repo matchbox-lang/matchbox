@@ -1,4 +1,6 @@
-let left: i16 = 20
-let right: i32 = 20
+test "comparison mixed integer width lt" {
+    let left: i16 = 20
+    let right: i32 = 20
 
-print(left < right)
+    assert(not ((left < right)))
+}

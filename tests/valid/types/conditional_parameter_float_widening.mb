@@ -8,8 +8,10 @@ func select(choose: bool, left: f32, right: f32) -> f64 {
     return result
 }
 
-let selected_then = select(true, 2.5, -3.75)
-let selected_else = select(false, 2.5, -3.75)
+test "conditional parameter float widening" {
+    let selected_then = select(true, 2.5, -3.75)
+    let selected_else = select(false, 2.5, -3.75)
 
-print(selected_then)
-print(selected_else)
+    assert(selected_then == 2.5)
+    assert(selected_else == -3.75)
+}

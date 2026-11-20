@@ -1,23 +1,25 @@
 func combine(left: i8, right: u8) {
-    print(left + right)
-    print(right + left)
-    print(left - right)
-    print(right - left)
-    print(left * right)
-    print(right * left)
-    print(left / right)
-    print(right / left)
-    print(left < right)
-    print(right > left)
-    print(left == right)
-    print(right == left)
-    print(left <=> right)
-    print(right <=> left)
+    assert((left + right) == 100)
+    assert((right + left) == 100)
+    assert((left - right) == -300)
+    assert((right - left) == 300)
+    assert((left * right) == -20000)
+    assert((right * left) == -20000)
+    assert((left / right) == 0)
+    assert((right / left) == -2)
+    assert((left < right))
+    assert((right > left))
+    assert(not ((left == right)))
+    assert(not ((right == left)))
+    assert((left <=> right) == -1)
+    assert((right <=> left) == 1)
 }
 
-combine(-100, 200)
+test "lossless integer binary" {
+    combine(-100, 200)
 
-let wide: u64 = 100
+    let wide: u64 = 100
 
-print(wide == 100)
-print(100 == wide)
+    assert((wide == 100))
+    assert((100 == wide))
+}

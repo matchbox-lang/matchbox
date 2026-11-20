@@ -1,13 +1,16 @@
-var value = 10
-let exclusive = ^value
+test "last use release" {
+    var value = 10
+    let exclusive = ^value
 
-print(exclusive)
+    assert(exclusive == 10)
 
-value = 20
+    value = 20
 
-let shared = &value
-print(shared)
+    let shared = &value
 
-value = 30
+    assert(shared == 20)
 
-print(value)
+    value = 30
+
+    assert(value == 30)
+}

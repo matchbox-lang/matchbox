@@ -1,14 +1,3 @@
-let a: f32 = 12.34
-let b: f32 = 12.34e2
-let c: f64 = 12.34
-let d: f64 = 12.34e2
-
-let large: f64 = 1.0e100
-let inferred_large = 1e100
-let leading_decimal = .2
-let leading_decimal_exponent = .2e2
-let leading_zeros = 001.2
-
 func preserve32(value: f32) -> f32 {
     return value
 }
@@ -21,62 +10,104 @@ func literal64() -> f64 {
     return 56.78
 }
 
-let returned32 = preserve32(a)
-let returned64 = preserve64(c)
-let contextual64 = preserve64(90.12)
+test "typed floating point literals" {
+    let a: f32 = 12.34
+    let b: f32 = 12.34e2
+    let c: f64 = 12.34
+    let d: f64 = 12.34e2
 
-print(a)
-print(b)
-print(c)
-print(d)
+    assert(a == 12.34)
+    assert(b == 1234.0)
+    assert(c == 12.34)
+    assert(d == 1234.0)
+}
 
-print(returned32)
-print(returned64)
-print(literal64())
-print(contextual64)
-print(large)
-print(inferred_large)
-print(leading_decimal)
-print(leading_decimal_exponent)
-print(leading_zeros)
+test "floating point arguments and returns" {
+    let a: f32 = 12.34
+    let c: f64 = 12.34
+    let returned32 = preserve32(a)
+    let returned64 = preserve64(c)
+    let contextual64 = preserve64(90.12)
 
-let exponential = exp(1.0)
-let natural_logarithm = log(2.0)
-let decimal_logarithm = log10(100.0)
-let binary_logarithm = log2(8.0)
-let sine = sin(0.5)
-let cosine = cos(0.5)
-let tangent = tan(0.5)
+    assert(returned32 == 12.34)
+    assert(returned64 == 12.34)
 
-print(exponential)
-print(natural_logarithm)
-print(decimal_logarithm)
-print(binary_logarithm)
-print(sine)
-print(cosine)
-print(tangent)
+    let returned_literal = literal64()
 
-let whole32: f32 = 25.0
-let whole64: f64 = 25.0
+    assert(returned_literal == 56.78)
+    assert(contextual64 == 90.12)
+}
 
-print(25.0)
-print(whole32)
-print(whole64)
-print(0.0)
-print(-0.0)
-print(-25.0)
+test "floating point literal syntax" {
+    let large: f64 = 1.0e100
+    let inferred_large = 1e100
+    let leading_decimal = .2
+    let leading_decimal_exponent = .2e2
+    let leading_zeros = 001.2
 
-let small_exponent: f64 = 1e-9
-let large_exponent: f64 = 1e9
+    assert(large == 1e+100)
+    assert(inferred_large == 1e+100)
+    assert(leading_decimal == 0.2)
+    assert(leading_decimal_exponent == 20.0)
+    assert(leading_zeros == 1.2)
+}
 
-print(f32.EPSILON)
-print(f64.EPSILON)
-print(small_exponent)
-print(large_exponent)
-print($"{-f32.EPSILON}")
+test "floating point math functions" {
+    let exponential = exp(1.0)
+    let natural_logarithm = log(2.0)
+    let decimal_logarithm = log10(100.0)
+    let binary_logarithm = log2(8.0)
+    let sine = sin(0.5)
+    let cosine = cos(0.5)
+    let tangent = tan(0.5)
 
-print($"{f32.NAN} {f32.INFINITY} {f32.NEG_INFINITY} {-f32.NAN}")
-print($"{f64.NAN} {f64.INFINITY} {f64.NEG_INFINITY} {-f64.NAN}")
+    assert(exponential >= 2.7182817 - 0.00001 and exponential <= 2.7182817 + 0.00001)
+    assert(natural_logarithm >= 0.6931472 - 0.00001 and natural_logarithm <= 0.6931472 + 0.00001)
+    assert(decimal_logarithm >= 2.0 - 0.00001 and decimal_logarithm <= 2.0 + 0.00001)
+    assert(binary_logarithm >= 3.0 - 0.00001 and binary_logarithm <= 3.0 + 0.00001)
+    assert(sine >= 0.47942555 - 0.00001 and sine <= 0.47942555 + 0.00001)
+    assert(cosine >= 0.87758255 - 0.00001 and cosine <= 0.87758255 + 0.00001)
+    assert(tangent >= 0.5463025 - 0.00001 and tangent <= 0.5463025 + 0.00001)
+}
 
-print(f32.NAN, " ", f32.INFINITY, " ", f32.NEG_INFINITY)
-print(f64.NAN, " ", f64.INFINITY, " ", f64.NEG_INFINITY)
+test "whole floating point values" {
+    let whole32: f32 = 25.0
+    let whole64: f64 = 25.0
+    let positive = 25.0
+    let negative = -25.0
+
+    assert(whole32 == 25.0)
+    assert(whole64 == 25.0)
+    assert(positive == 25.0)
+    assert(negative == -25.0)
+}
+
+test "signed floating point zero" {
+    let positive = 0.0
+    let negative = -0.0
+    let positive_reciprocal = 1.0 / positive
+    let negative_reciprocal = 1.0 / negative
+
+    assert(positive == negative)
+    assert(positive_reciprocal == f32.INFINITY)
+    assert(negative_reciprocal == f32.NEG_INFINITY)
+}
+
+test "floating point epsilon and exponents" {
+    let small_exponent: f64 = 1e-9
+    let large_exponent: f64 = 1e9
+
+    assert((f32.EPSILON) == 1.1920929e-7)
+    assert((f64.EPSILON) == 2.220446049250313e-16)
+    assert(small_exponent == 1e-9)
+    assert(large_exponent == 1e+9)
+    print($"{-f32.EPSILON}")
+}
+
+test "special floating point values" {
+    print($"{f32.NAN} {f32.INFINITY} {f32.NEG_INFINITY} {-f32.NAN}")
+    print($"{f64.NAN} {f64.INFINITY} {f64.NEG_INFINITY} {-f64.NAN}")
+
+    print(f32.NAN, " ", f32.INFINITY, " ", f32.NEG_INFINITY)
+    print(f64.NAN, " ", f64.INFINITY, " ", f64.NEG_INFINITY)
+}

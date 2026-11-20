@@ -1,33 +1,51 @@
-let value = 2
+test "match statement alternatives" {
+    var observed_steps = 0
+    let value = 2
 
-match value {
-    case 1:
-        print(10)
-    case 2 | 3 | 4:
-        print(20)
-    case _:
-        print(30)
+    match value {
+        case 1:
+            assert(false)
+        case 2 | 3 | 4:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
+
+    assert(observed_steps == 1)
 }
 
-match {
-    case value < 2 or value == 10:
-        print(40)
-    case value == 2:
-        print(50)
+test "subjectless match conditions" {
+    var observed_steps = 0
+    let value = 2
+
+    match {
+        case value < 2 or value == 10:
+            assert(false)
+        case value == 2:
+            observed_steps += 1
+    }
+
+    assert(observed_steps == 1)
 }
 
-let result = match value {
-    case 0: 100
-    case 1: 200
-    case 2 | 3 | 4: 300
-    case _: 400
+test "match expression alternatives" {
+    let value = 2
+
+    let result = match value {
+        case 0: 100
+        case 1: 200
+        case 2 | 3 | 4: 300
+        case _: 400
+    }
+
+    assert(result == 300)
 }
 
-print(result)
+test "subjectless match expression values" {
+    let binary_result = match {
+        case true: 1
+        case false: 0
+    }
 
-let binary_result = match {
-    case true: 1
-    case false: 0
+    assert(binary_result == 1)
 }
-
-print(binary_result)

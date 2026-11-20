@@ -1,29 +1,37 @@
+var observed_steps = 0
 var live = 7
-let unused = 10
-let unused_wide: i64 = 4294967296
 
 func read_live() {
-    print(live)
+    assert(live == 7)
 }
-
-if live == 7 {
-    var local = 40
-    print(local)
-} else {
-    var local = 50
-    print(local)
-}
-
-print(live)
-read_live()
 
 func side_effect() {
-    print(60)
+    observed_steps += 1
     return 90
 }
 
-let unused_call = side_effect()
-let folded = 1 + 2
+test "unused trailing slots" {
+    let unused = 10
+    let unused_wide: i64 = 4294967296
 
-print(folded)
-print(live)
+    if live == 7 {
+        var local = 40
+
+        assert(local == 40)
+    } else {
+        var local = 50
+
+        assert(false)
+    }
+
+    assert(live == 7)
+    read_live()
+
+    let unused_call = side_effect()
+    let folded = 1 + 2
+
+    assert(folded == 3)
+    assert(live == 7)
+
+    assert(observed_steps == 1)
+}

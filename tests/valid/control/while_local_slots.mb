@@ -5,7 +5,9 @@ func sum() {
     while count != 3 {
         let value: i64 = 10000000000
         total += count
-        print(value)
+
+        assert(value == 10000000000)
+
         count += 1
     }
 
@@ -14,4 +16,8 @@ func sum() {
     return total + after
 }
 
-print(sum())
+test "while local slots" {
+    let result = sum()
+
+    assert(result == 10)
+}

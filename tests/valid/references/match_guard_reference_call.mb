@@ -2,12 +2,14 @@ func guard(value: ^i32) -> bool {
     return value == 20
 }
 
-var value = 10
-let exclusive = ^value
+test "match guard reference call" {
+    var value = 10
+    let exclusive = ^value
 
-match true {
-    case _ if guard(exclusive):
-        print(0)
-    case _:
-        print(exclusive)
+    match true {
+        case _ if guard(exclusive):
+            assert(false)
+        case _:
+            assert(exclusive == 10)
+    }
 }

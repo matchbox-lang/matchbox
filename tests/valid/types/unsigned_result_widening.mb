@@ -8,16 +8,18 @@ func widen(small: u8, medium: u16) {
     let float_byte: f32 = byte
     let float_hword: f64 = hword
 
-    print(byte)
-    print(hword)
-    print(signed_byte)
-    print(signed_hword)
-    print(wide_byte)
-    print(wide_hword)
-    print(float_byte)
-    print(float_hword)
-    print(byte + signed_hword)
-    print(signed_hword + byte)
+    assert(byte == 200)
+    assert(hword == 40000)
+    assert(signed_byte == 200)
+    assert(signed_hword == 40000)
+    assert(wide_byte == 200)
+    assert(wide_hword == 40000)
+    assert(float_byte == 200.0)
+    assert(float_hword == 4e+4)
+    assert((byte + signed_hword) == 40200)
+    assert((signed_hword + byte) == 40200)
 }
 
-widen(100, 20000)
+test "unsigned result widening" {
+    widen(100, 20000)
+}

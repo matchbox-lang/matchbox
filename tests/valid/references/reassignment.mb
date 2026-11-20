@@ -1,21 +1,25 @@
-var first = 10
-var second = 20
-var shared: &i32 = &first
+test "reassignment" {
+    var first = 10
+    var second = 20
+    var shared: &i32 = &first
 
-shared = &second
-print(shared)
+    shared = &second
 
-if first != 10 {
-    exit(1)
-}
+    assert(shared == 20)
 
-var third = 30
-var fourth = 40
-var exclusive: ^i32 = ^third
+    if first != 10 {
+        exit(1)
+    }
 
-exclusive = ^fourth
-print(exclusive)
+    var third = 30
+    var fourth = 40
+    var exclusive: ^i32 = ^third
 
-if third != 30 {
-    exit(1)
+    exclusive = ^fourth
+
+    assert(exclusive == 40)
+
+    if third != 30 {
+        exit(1)
+    }
 }

@@ -1,25 +1,31 @@
-var a = 2
-let b = 3
+test "integer binary arithmetic" {
+    var a = 2
+    let b = 3
 
-a + b
-a - b
-a * b
-a / b
-a % b
-a ** b
+    a + b
+    a - b
+    a * b
+    a / b
+    a % b
+    a ** b
 
--a
+    -a
+}
 
-let signed8: i8 = 4
-let signed16: i16 = 4
-let signed32: i32 = 4
-let signed64: i64 = 4
+test "integer arithmetic width preservation" {
+    let signed8: i8 = 4
+    let signed16: i16 = 4
+    let signed32: i32 = 4
+    let signed64: i64 = 4
 
-signed8 * 3
-signed16 * 3
-signed32 * 3
-signed64 * 3
+    signed8 * 3
+    signed16 * 3
+    signed32 * 3
+    signed64 * 3
+}
 
-print(2147483647 + 1)
-print(0 - 2147483647 - 2)
-print(65536 * 65536)
+test "integer arithmetic overflow" {
+    assert((2147483647 + 1) == -2147483648)
+    assert((0 - 2147483647 - 2) == 2147483647)
+    assert((65536 * 65536) == 0)
+}

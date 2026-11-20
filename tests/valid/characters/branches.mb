@@ -1,16 +1,18 @@
-var value = '😀'
+test "branches" {
+    var value = '😀'
 
-let selected = if value == 'a' {
-    'b'
-} else {
-    value
+    let selected = if value == 'a' {
+        'b'
+    } else {
+        value
+    }
+
+    let result = match selected {
+        case 'a' | 'b': 'c'
+        case '😀': 'é'
+        case _: 'd'
+    }
+
+    assert(selected == '😀')
+    assert(result == 'é')
 }
-
-let result = match selected {
-    case 'a' | 'b': 'c'
-    case '😀': 'é'
-    case _: 'd'
-}
-
-print(selected)
-print(result)

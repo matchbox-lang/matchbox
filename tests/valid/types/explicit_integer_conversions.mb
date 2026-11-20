@@ -8,31 +8,37 @@ func convert(value: u8) {
     let float32 = f32(value)
     let float64 = f64(value)
 
-    print(signed16)
-    print(signed32)
-    print(signed64)
-    print(unsigned16)
-    print(unsigned32)
-    print(unsigned64)
-    print(float32)
-    print(float64)
+    assert(signed16 == 200)
+    assert(signed32 == 200)
+    assert(signed64 == 200)
+    assert(unsigned16 == 200)
+    assert(unsigned32 == 200)
+    assert(unsigned64 == 200)
+    assert(float32 == 200.0)
+    assert(float64 == 200.0)
 }
 
-convert(200)
+test "integer conversion targets" {
+    convert(200)
+}
 
-let identity = i32(-97)
-let widened = i64(-97)
-let maximum = u64(18446744073709551615)
+test "integer literal conversions" {
+    let identity = i32(-97)
+    let widened = i64(-97)
+    let maximum = u64(18446744073709551615)
 
-print(identity)
-print(widened)
-print(maximum)
+    assert(identity == -97)
+    assert(widened == -97)
+    assert(maximum == 18446744073709551615)
+}
 
-let difference = i64(0 - 1)
-let negated_difference = i64(-(0 - 1))
-let narrowed_constant = u8(257)
-let widened_constant = i64(narrowed_constant)
+test "integer constant expression conversions" {
+    let difference = i64(0 - 1)
+    let negated_difference = i64(-(0 - 1))
+    let narrowed_constant = u8(257)
+    let widened_constant = i64(narrowed_constant)
 
-assert(difference == -1)
-assert(negated_difference == 1)
-assert(widened_constant == 1)
+    assert(difference == -1)
+    assert(negated_difference == 1)
+    assert(widened_constant == 1)
+}

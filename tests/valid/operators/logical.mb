@@ -1,3 +1,5 @@
-let value = true
+test "logical" {
+    let value = true
 
-print(not value)
+    assert(not ((not value)))
+}

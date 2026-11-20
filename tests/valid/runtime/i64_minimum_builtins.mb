@@ -1,5 +1,12 @@
-let result = min(-9223372036854775808, 0)
+test "i64 minimum builtins" {
+    var observed_steps = 0
+    let result = min(-9223372036854775808, 0)
 
-print(result)
-print(-9223372036854775808)
-print("minimum:", -9223372036854775808)
+    assert(result == -9223372036854775808)
+
+    observed_steps += 1
+
+    print("minimum:", -9223372036854775808)
+
+    assert(observed_steps == 1)
+}

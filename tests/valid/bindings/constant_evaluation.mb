@@ -1,24 +1,29 @@
-const BASE = 10
-
 func square(x) {
     return x * x
 }
-
-const CONSTANT_RESULT = square(BASE)
-let result = const square(10)
-
-assert(CONSTANT_RESULT == 100)
-assert(result == 100)
 
 func local(x) {
     const OFFSET = square(2)
     return x + OFFSET
 }
 
-let first = local(3)
-let second = local(5)
+test "discarded constant expression" {
+    const square(3)
+}
 
-assert(first == 7)
-assert(second == 9)
+test "constant expression evaluation" {
+    const BASE = 10
+    const CONSTANT_RESULT = square(BASE)
+    let result = const square(10)
 
-const square(3)
+    assert(CONSTANT_RESULT == 100)
+    assert(result == 100)
+}
+
+test "local constants in function calls" {
+    let first = local(3)
+    let second = local(5)
+
+    assert(first == 7)
+    assert(second == 9)
+}

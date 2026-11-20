@@ -1,13 +1,15 @@
-func compare(left: u64, right: u64) {
-    print(left == right)
-    print(left != right)
-    print(left < right)
-    print(left <= right)
-    print(left > right)
-    print(left >= right)
-    print(left <=> right)
+func compare(left: u64, right: u64, expected_order: i32) {
+    assert((left == right) == (expected_order == 0))
+    assert((left != right) == (expected_order != 0))
+    assert((left < right) == (expected_order < 0))
+    assert((left <= right) == (expected_order <= 0))
+    assert((left > right) == (expected_order > 0))
+    assert((left >= right) == (expected_order >= 0))
+    assert((left <=> right) == expected_order)
 }
 
-compare(0, 18446744073709551615)
-compare(18446744073709551615, 0)
-compare(18446744073709551615, 18446744073709551615)
+test "comparison u64" {
+    compare(0, 18446744073709551615, -1)
+    compare(18446744073709551615, 0, 1)
+    compare(18446744073709551615, 18446744073709551615, 0)
+}

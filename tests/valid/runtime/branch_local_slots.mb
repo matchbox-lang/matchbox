@@ -1,42 +1,53 @@
-var first = 10
-var second = 20
-
-if true {
-    var then_value = 30
-    print(then_value)
-} else {
-    var unused_else_value = 40
-    print(unused_else_value)
-}
-
-if false {
-    var unused_then_value = 50
-    print(unused_then_value)
-} else {
-    var else_value = 60
-    print(else_value)
-}
-
-print(first)
-print(second)
-
 func print_function_branch() {
     var before_branch = 70
 
     if true {
         var branch_value = 80
-        print(branch_value)
+
+        assert(branch_value == 80)
     }
 
-    print(before_branch)
+    assert(before_branch == 70)
 }
 
-print_function_branch()
+test "branch bindings preserve enclosing bindings" {
+    var first = 10
+    var second = 20
 
-var conditional_value = if true {
-    90
-} else {
-    100
+    if true {
+        var then_value = 30
+
+        assert(then_value == 30)
+    } else {
+        var unused_else_value = 40
+
+        assert(false)
+    }
+
+    if false {
+        var unused_then_value = 50
+
+        assert(false)
+    } else {
+        var else_value = 60
+
+        assert(else_value == 60)
+    }
+
+    assert(first == 10)
+    assert(second == 20)
 }
 
-print(conditional_value)
+test "branch bindings in functions" {
+    print_function_branch()
+}
+
+test "conditional result bindings" {
+    var conditional_value = if true {
+        90
+    } else {
+        100
+    }
+
+    assert(conditional_value == 90)
+}

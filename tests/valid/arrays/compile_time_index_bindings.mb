@@ -2,18 +2,20 @@ func index() -> usize {
     return 1
 }
 
-let values = [10, 20]
-let evaluated_position = const index()
-let typed_position: usize = 1
-let inferred_position = 1
-let signed_position: i32 = 1
-let forwarded_position = evaluated_position
+test "compile time index bindings" {
+    let values = [10, 20]
+    let evaluated_position = const index()
+    let typed_position: usize = 1
+    let inferred_position = 1
+    let signed_position: i32 = 1
+    let forwarded_position = evaluated_position
 
-assert(values[evaluated_position] == 20 and values[typed_position] == 20)
-assert(values[inferred_position] == 20 and values[signed_position] == 20)
-assert(values[forwarded_position] == 20 and values[const index()] == 20)
+    assert(values[evaluated_position] == 20 and values[typed_position] == 20)
+    assert(values[inferred_position] == 20 and values[signed_position] == 20)
+    assert(values[forwarded_position] == 20 and values[const index()] == 20)
 
-values[inferred_position] = 30
-values[evaluated_position] = 40
+    values[inferred_position] = 30
+    values[evaluated_position] = 40
 
-assert(values[1] == 40 and values[0] == 10)
+    assert(values[1] == 40 and values[0] == 10)
+}

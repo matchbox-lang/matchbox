@@ -1,6 +1,8 @@
-var value = 10
-let first = &value
-let second = &value
+test "share during shared" {
+    var value = 10
+    let first = &value
+    let second = &value
 
-print(first)
-print(second)
+    assert(first == 10)
+    assert(second == 10)
+}

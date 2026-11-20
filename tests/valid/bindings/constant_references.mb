@@ -1,17 +1,18 @@
-const BASE = 10
-
 func read_shared(value: &i32) {
     return value + 1
 }
-
-let runtime = read_shared(BASE)
-
-assert(runtime == 11)
 
 func local(value) {
     return read_shared(value)
 }
 
-const RESULT = local(10)
+test "constant references" {
+    const BASE = 10
+    let runtime = read_shared(BASE)
 
-assert(RESULT == 11)
+    assert(runtime == 11)
+
+    const RESULT = local(10)
+
+    assert(RESULT == 11)
+}

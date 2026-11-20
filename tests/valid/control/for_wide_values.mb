@@ -1,8 +1,10 @@
-let values: i64[2] = [4294967296, -3]
-var total: i64 = 0
+test "for wide values" {
+    let values: i64[2] = [4294967296, -3]
+    var total: i64 = 0
 
-for value in values {
-    total += value
+    for value in values {
+        total += value
+    }
+
+    assert(total == 4294967293)
 }
-
-assert(total == 4294967293)

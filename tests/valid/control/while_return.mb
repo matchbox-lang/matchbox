@@ -4,4 +4,8 @@ func first() {
     }
 }
 
-print(first())
+test "while return" {
+    let result = first()
+
+    assert(result == 42)
+}

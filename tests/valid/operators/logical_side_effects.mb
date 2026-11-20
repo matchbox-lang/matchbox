@@ -1,7 +1,14 @@
 func check() -> bool {
-    print(10)
+    assert(false)
     return true
 }
 
-print(false and check())
-print(true or check())
+test "logical side effects" {
+    let skipped_and = false and check()
+
+    assert(not (skipped_and))
+
+    let skipped_or = true or check()
+
+    assert(skipped_or)
+}

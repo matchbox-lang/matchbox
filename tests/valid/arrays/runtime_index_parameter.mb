@@ -12,10 +12,12 @@ func write(values: ^i32[2], index: usize, value: i32) {
     assert(index < 2)
 }
 
-let values = [10, 20]
-let first = read(&values, 0)
-let last = read(&values, 1)
+test "runtime index parameter" {
+    let values = [10, 20]
+    let first = read(&values, 0)
+    let last = read(&values, 1)
 
-assert(first == 10 and last == 20)
-write(^values, 1, 30)
-assert(values[1] == 30)
+    assert(first == 10 and last == 20)
+    write(^values, 1, 30)
+    assert(values[1] == 30)
+}

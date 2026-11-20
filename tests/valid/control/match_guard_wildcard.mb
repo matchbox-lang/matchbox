@@ -1,16 +1,22 @@
-match 10 {
-    case _ if false:
-        print(0)
-    case _ if true:
-        print(1)
-    case _:
-        assert(false)
-}
+test "match guard wildcard" {
+    var observed_steps = 0
 
-let result = match 10 {
-    case _ if false: 0
-    case _ if true: 1
-    case _: 2
-}
+    match 10 {
+        case _ if false:
+            assert(false)
+        case _ if true:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
 
-assert(result == 1)
+    let result = match 10 {
+        case _ if false: 0
+        case _ if true: 1
+        case _: 2
+    }
+
+    assert(result == 1)
+
+    assert(observed_steps == 1)
+}

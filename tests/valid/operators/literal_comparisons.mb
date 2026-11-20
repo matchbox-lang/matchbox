@@ -1,11 +1,13 @@
-let value = 2
+test "literal comparisons" {
+    let value = 2
 
-print(value == 2)
-print(value != 2)
-print(value < 2)
-print(value <= 2)
-print(value > 2)
-print(value >= 2)
-print(-1 < 0)
-print(2147483647 + 1 < 0)
-print(-2147483648 == 2147483647 + 1)
+    assert((value == 2))
+    assert(not ((value != 2)))
+    assert(not ((value < 2)))
+    assert((value <= 2))
+    assert(not ((value > 2)))
+    assert((value >= 2))
+    assert((-1 < 0))
+    assert((2147483647 + 1 < 0))
+    assert((-2147483648 == 2147483647 + 1))
+}

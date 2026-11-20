@@ -1,3 +1,5 @@
+var value = 3
+
 func update(value: ^i32, increment: i8) {
     value += increment
     value **= 2
@@ -9,25 +11,6 @@ func update_wide(integer: ^i64, floating: ^f64, increment: i16) {
     floating *= 2
     integer -= 1
     floating += increment
-}
-
-var value = 3
-var wide: i64 = 4294967296
-var floating: f64 = 1.5
-
-update(^value, 1)
-update_wide(^wide, ^floating, 2)
-
-if value != 8 or wide != 4294967297 or floating != 5.0 {
-    exit(1)
-}
-
-let global_reference = ^value
-
-global_reference += 2
-
-if value != 10 {
-    exit(1)
 }
 
 func local_reference() {
@@ -48,8 +31,6 @@ func local_reference() {
     }
 }
 
-local_reference()
-
 func rebind() {
     var first = 10
     var second = 20
@@ -64,4 +45,30 @@ func rebind() {
     }
 }
 
-rebind()
+test "compound assignment through reference parameters" {
+    var wide: i64 = 4294967296
+    var floating: f64 = 1.5
+
+    update(^value, 1)
+    update_wide(^wide, ^floating, 2)
+
+    if value != 8 or wide != 4294967297 or floating != 5.0 {
+        exit(1)
+    }
+
+    let global_reference = ^value
+
+    global_reference += 2
+
+    if value != 10 {
+        exit(1)
+    }
+}
+
+test "compound assignment through local references" {
+    local_reference()
+}
+
+test "compound assignment after reference rebinding" {
+    rebind()
+}

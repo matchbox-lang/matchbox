@@ -1,7 +1,9 @@
-var value = 10
-var source = ^value
-var destination: ^i32
+test "exclusive assignment transfer" {
+    var value = 10
+    var source = ^value
+    var destination: ^i32
 
-destination = source
+    destination = source
 
-print(destination)
+    assert(destination == 10)
+}

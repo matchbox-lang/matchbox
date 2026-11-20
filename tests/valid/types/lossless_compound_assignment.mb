@@ -9,8 +9,10 @@ func combine(small: u8, medium: i16, single: f32) {
     floating *= small
     floating /= small
 
-    print(integer)
-    print(floating)
+    assert(integer == 1300)
+    assert(floating == 1102.5)
 }
 
-combine(200, -100, 2.5)
+test "lossless compound assignment" {
+    combine(200, -100, 2.5)
+}

@@ -1,23 +1,26 @@
-var value = 10
-let reference = &value
-
-print(reference)
-value += 1
-
 func unrelated() {
     let local = 20
     let reference = &local
 
-    print(reference)
+    assert(reference == 20)
 }
 
 func parameter(reference: i32) {
-    print(reference)
+    assert(reference == 30)
 }
 
-unrelated()
-parameter(30)
+test "reference shadowing" {
+    var value = 10
+    let reference = &value
 
-if value != 11 {
-    exit(1)
+    assert(reference == 10)
+
+    value += 1
+
+    unrelated()
+    parameter(30)
+
+    if value != 11 {
+        exit(1)
+    }
 }

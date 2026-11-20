@@ -1,20 +1,23 @@
 let global = 20
 
 func test_local(value: i32) {
-    print(value)
-    print(global)
+    assert(value == 100)
+    assert(global == 20)
 
     let local = 200
-    print(local)
+
+    assert(local == 200)
 
     func inner(value: i32) {
-        print(value)
-        print(global)
+        assert(value == 300)
+        assert(global == 20)
     }
 
     inner(300)
-    print(value)
-    print(local)
+    assert(value == 100)
+    assert(local == 200)
 }
 
-test_local(100)
+test "local scope" {
+    test_local(100)
+}

@@ -1,12 +1,18 @@
-var a = 2
-let b = 3
-
-a + b
+var observed_steps = 0
 
 func effect() -> i32 {
-    print(1)
+    observed_steps += 1
 
     return 4
 }
 
-let unused = effect()
+test "dead locals" {
+    var a = 2
+    let b = 3
+
+    a + b
+
+    let unused = effect()
+
+    assert(observed_steps == 1)
+}

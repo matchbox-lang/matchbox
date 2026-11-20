@@ -1,26 +1,31 @@
 let value: i32 = 10
 
-func print_value() -> void {
-    print(value)
+func check_value() -> void {
+    assert(value == 10)
 }
 
-print_value()
+test "annotations" {
+    check_value()
 
-let inverse_hyperbolic_cosine: f32 = acosh(2.0)
-let inverse_hyperbolic_sine: f64 = asinh(1.0)
-let inverse_hyperbolic_tangent: f32 = atanh(0.5)
-let cube_root: f64 = cbrt(-8.0)
-let rounded_up: f32 = ceil(1.25)
-let rounded_down: f64 = floor(1.75)
-let square_root: f32 = sqrt(9.0)
-let order: i32 = byteorder()
+    let inverse_hyperbolic_cosine: f32 = acosh(2.0)
+    let inverse_hyperbolic_sine: f64 = asinh(1.0)
+    let inverse_hyperbolic_tangent: f32 = atanh(0.5)
+    let cube_root: f64 = cbrt(-8.0)
+    let rounded_up: f32 = ceil(1.25)
+    let rounded_down: f64 = floor(1.75)
+    let square_root: f32 = sqrt(9.0)
+    let order: i32 = byteorder()
 
-print(inverse_hyperbolic_cosine)
-print(inverse_hyperbolic_sine)
-print(inverse_hyperbolic_tangent)
-print(cube_root)
-print(rounded_up)
-print(rounded_down)
-print(square_root)
-print(order)
-exit(0)
+    assert(inverse_hyperbolic_cosine >= 1.316958 - 0.00001 and inverse_hyperbolic_cosine <= 1.316958 + 0.00001)
+    assert(
+
+        inverse_hyperbolic_sine >= 0.8813735842704773 - 0.00001
+        and inverse_hyperbolic_sine <= 0.8813735842704773 + 0.00001)
+    assert(inverse_hyperbolic_tangent >= 0.54930615 - 0.00001 and inverse_hyperbolic_tangent <= 0.54930615 + 0.00001)
+    assert(cube_root >= -2.0 - 0.00001 and cube_root <= -2.0 + 0.00001)
+    assert(rounded_up == 2.0)
+    assert(rounded_down == 1.0)
+    assert(square_root == 3.0)
+    assert(order == 0 or order == 1)
+    exit(0)
+}

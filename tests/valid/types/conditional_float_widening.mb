@@ -1,17 +1,19 @@
-let narrow: f32 = 2.5
-let other: f32 = -3.75
+test "conditional float widening" {
+    let narrow: f32 = 2.5
+    let other: f32 = -3.75
 
-let selected_then: f64 = if true {
-    narrow
-} else {
-    other
+    let selected_then: f64 = if true {
+        narrow
+    } else {
+        other
+    }
+
+    let selected_else: f64 = if false {
+        narrow
+    } else {
+        other
+    }
+
+    assert(selected_then == 2.5)
+    assert(selected_else == -3.75)
 }
-
-let selected_else: f64 = if false {
-    narrow
-} else {
-    other
-}
-
-print(selected_then)
-print(selected_else)

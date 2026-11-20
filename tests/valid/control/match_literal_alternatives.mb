@@ -1,24 +1,30 @@
-match 2 {
-    case 1:
-        print(10)
-    case 2 | 3 | 4:
-        print(20)
-    case _:
-        print(30)
-}
+test "match literal alternatives" {
+    var observed_steps = 0
 
-match 3 {
-    case 2 | 3 | 4:
-        print(40)
-    case _:
-        print(50)
-}
+    match 2 {
+        case 1:
+            assert(false)
+        case 2 | 3 | 4:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
 
-match 4 {
-    case 2 | 3 | 4:
-        print(60)
-    case 4:
-        print(70)
-    case _:
-        print(80)
+    match 3 {
+        case 2 | 3 | 4:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
+
+    match 4 {
+        case 2 | 3 | 4:
+            observed_steps += 1
+        case 4:
+            assert(false)
+        case _:
+            assert(false)
+    }
+
+    assert(observed_steps == 3)
 }

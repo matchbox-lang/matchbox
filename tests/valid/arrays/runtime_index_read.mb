@@ -2,17 +2,19 @@ func index() -> usize {
     return 1
 }
 
-let values = [10, 20]
-let position = index()
+test "runtime index read" {
+    let values = [10, 20]
+    let position = index()
 
-assert(values[position] == 20)
+    assert(values[position] == 20)
 
-var i: usize = 0
-var total = 0
+    var i: usize = 0
+    var total = 0
 
-while i < 2 {
-    total += values[i]
-    i += 1
+    while i < 2 {
+        total += values[i]
+        i += 1
+    }
+
+    assert(total == 30)
 }
-
-assert(total == 30)

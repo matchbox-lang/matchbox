@@ -1,12 +1,23 @@
-let values = [8, 9]
+test "compound bitwise" {
+    let values = [8, 9]
 
-values |= [2, 3]
-assert(values == [10, 11])
-values &= [7, 7]
-assert(values == [2, 3])
-values ^= [3, 2]
-assert(values == [1, 1])
-values <<= [2, 3]
-assert(values == [4, 8])
-values >>= [1, 2]
-assert(values == [2, 2])
+    values |= [2, 3]
+
+    assert(values == [10, 11])
+
+    values &= [7, 7]
+
+    assert(values == [2, 3])
+
+    values ^= [3, 2]
+
+    assert(values == [1, 1])
+
+    values <<= [2, 3]
+
+    assert(values == [4, 8])
+
+    values >>= [1, 2]
+
+    assert(values == [2, 2])
+}

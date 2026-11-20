@@ -1,6 +1,6 @@
 func select(choose: bool, value: i32) -> i32 {
     let local = value + 4
-    
+
     let result = match choose {
         case true: value
         case _: local
@@ -9,8 +9,10 @@ func select(choose: bool, value: i32) -> i32 {
     return result
 }
 
-let selected_then = select(true, 60)
-let selected_else = select(false, 70)
+test "match enclosing scope" {
+    let selected_then = select(true, 60)
+    let selected_else = select(false, 70)
 
-print(selected_then)
-print(selected_else)
+    assert(selected_then == 60)
+    assert(selected_else == 74)
+}

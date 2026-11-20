@@ -1,8 +1,13 @@
-let other: i64 = 20
+test "match guard comparison type" {
+    var observed_steps = 0
+    let other: i64 = 20
 
-match 10 {
-    case n if n == other:
-        print(0)
-    case _:
-        print(0)
+    match 10 {
+        case n if n == other:
+            assert(false)
+        case _:
+            observed_steps += 1
+    }
+
+    assert(observed_steps == 1)
 }

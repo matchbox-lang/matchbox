@@ -12,15 +12,17 @@ func flags(value: i32) -> bool[1] {
     return [false]
 }
 
-[1] + [2];
-[element(1)] + [element(2)]
+test "binary discarded" {
+    [1] + [2];
+    [element(1)] + [element(2)]
 
-assert(order == 12)
+    assert(order == 12)
 
-flags(3) and flags(4)
+    flags(3) and flags(4)
 
-assert(order == 1234);
+    assert(order == 1234);
 
-[element(5)] == [[element(6)]]
+    [element(5)] == [[element(6)]]
 
-assert(order == 123456)
+    assert(order == 123456)
+}

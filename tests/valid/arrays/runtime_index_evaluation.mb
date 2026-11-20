@@ -9,22 +9,25 @@ func next_index() -> usize {
 
 func replacement() -> i32 {
     assert(calls == 2)
+
     calls += 1
 
     return 50
 }
 
-let matrix: i32[2][2] = [[10, 20], [30, 40]]
-let value = matrix[next_index()][next_index()]
+test "runtime index evaluation" {
+    let matrix: i32[2][2] = [[10, 20], [30, 40]]
+    let value = matrix[next_index()][next_index()]
 
-assert(value == 20 and calls == 2)
+    assert(value == 20 and calls == 2)
 
-calls = 0
-matrix[next_index()][next_index()] = replacement()
+    calls = 0
+    matrix[next_index()][next_index()] = replacement()
 
-assert(matrix[0][1] == 50 and calls == 3)
+    assert(matrix[0][1] == 50 and calls == 3)
 
-var index: usize = 0
-let length = len(matrix[index])
+    var index: usize = 0
+    let length = len(matrix[index])
 
-assert(length == 2 and calls == 3)
+    assert(length == 2 and calls == 3)
+}

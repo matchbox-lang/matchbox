@@ -6,10 +6,18 @@ func widen(value: u32) -> i64 {
     return value
 }
 
-let source: u32 = 4294967295
-var assigned: i64 = 0
-assigned = source
+test "implicit unsigned to signed contexts" {
+    let source: u32 = 4294967295
+    var assigned: i64 = 0
+    assigned = source
 
-print(assigned)
-print(accept(source))
-print(widen(source))
+    assert(assigned == 4294967295)
+
+    let accepted = accept(source)
+
+    assert(accepted == 4294967295)
+
+    let widened = widen(source)
+
+    assert(widened == 4294967295)
+}

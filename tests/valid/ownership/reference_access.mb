@@ -1,9 +1,9 @@
 func read(value: &i32) {
-    print(value)
+    assert(value == 10)
 }
 
 func read_exclusive(value: ^i32) {
-    print(value)
+    assert(value == 20)
 }
 
 func return_shared(value: &i32) -> &i32 {
@@ -17,20 +17,24 @@ func shared_access() {
 
     read(first)
     read(second)
+
     value = 11
-    print(value)
+
+    assert(value == 11)
 }
 
 func exclusive_access() {
     let value = 20
 
     read_exclusive(^value)
-    print(value)
+    assert(value == 20)
 }
 
-var value = 30
-let returned = return_shared(&value)
+test "reference access" {
+    var value = 30
+    let returned = return_shared(&value)
 
-shared_access()
-exclusive_access()
-print(returned)
+    shared_access()
+    exclusive_access()
+    assert(returned == 30)
+}

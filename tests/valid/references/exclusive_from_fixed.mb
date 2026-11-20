@@ -1,7 +1,9 @@
 func take_exclusive(n: ^i32) {
-    print(n)
+    assert(n == 10)
 }
 
-let value = 10
+test "exclusive from fixed" {
+    let value = 10
 
-take_exclusive(^value)
+    take_exclusive(^value)
+}

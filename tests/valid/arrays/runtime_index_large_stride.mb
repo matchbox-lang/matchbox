@@ -1,13 +1,15 @@
-var row: usize = 1
-var column: usize = 128
-let matrix = i16[2][129](0)
-let replacement = i16[129](-1234)
+test "runtime index large stride" {
+    var row: usize = 1
+    var column: usize = 128
+    let matrix = i16[2][129](0)
+    let replacement = i16[129](-1234)
 
-matrix[row] = replacement
+    matrix[row] = replacement
 
-assert(matrix[row][column] == -1234 and matrix[0][column] == 0)
+    assert(matrix[row][column] == -1234 and matrix[0][column] == 0)
 
-matrix[row][column] = 1234
-let selected = copy(matrix[row])
+    matrix[row][column] = 1234
+    let selected = copy(matrix[row])
 
-assert(selected[column] == 1234 and selected[0] == -1234)
+    assert(selected[column] == 1234 and selected[0] == -1234)
+}

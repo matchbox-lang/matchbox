@@ -1,4 +1,6 @@
-let floating: f64 = 20.5
-let integer: i16 = 20
+test "comparison mixed typed lt" {
+    let floating: f64 = 20.5
+    let integer: i16 = 20
 
-print(floating < integer)
+    assert(not ((floating < integer)))
+}

@@ -2,18 +2,20 @@ let app_id = 10
 var count = 0
 
 func read_app_id() {
-    print(app_id)
+    assert(app_id == 10)
 }
 
-func read_count() {
-    print(count)
+func read_count(expected: i32) {
+    assert(count == expected)
 }
 
 func write_count() {
     count += 1
 }
 
-read_app_id()
-read_count()
-write_count()
-read_count()
+test "global bindings" {
+    read_app_id()
+    read_count(0)
+    write_count()
+    read_count(1)
+}

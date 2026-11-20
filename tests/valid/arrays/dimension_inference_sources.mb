@@ -4,11 +4,13 @@ func make() -> i32[2][2] {
     return local
 }
 
-let returned: i32[][] = make()
-let moved: i32[2][] = returned
-let filled: i32[][2] = i32[2][2](7)
-let first = [1, 2]
-let second = [3, 4]
-let rows: i32[][] = [first, second]
+test "dimension inference sources" {
+    let returned: i32[][] = make()
+    let moved: i32[2][] = returned
+    let filled: i32[][2] = i32[2][2](7)
+    let first = [1, 2]
+    let second = [3, 4]
+    let rows: i32[][] = [first, second]
 
-assert(moved[1][1] == 4 and filled[1][1] == 7 and rows == moved)
+    assert(moved[1][1] == 4 and filled[1][1] == 7 and rows == moved)
+}

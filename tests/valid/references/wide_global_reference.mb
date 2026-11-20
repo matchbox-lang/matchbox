@@ -1,4 +1,6 @@
 var wide: i64 = 4294967296
 var reference = &wide
 
-print(reference)
+test "wide global reference" {
+    assert(reference == 4294967296)
+}

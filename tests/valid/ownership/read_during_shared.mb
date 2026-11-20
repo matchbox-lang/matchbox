@@ -1,5 +1,7 @@
-var value = 10
-let shared = &value
+test "read during shared" {
+    var value = 10
+    let shared = &value
 
-print(value)
-print(shared)
+    assert(value == 10)
+    assert(shared == 10)
+}

@@ -1,6 +1,9 @@
-var running = true
+test "while boolean" {
+    var running = true
 
-while running {
-    print("once")
-    running = false
+    while running {
+        print("once")
+
+        running = false
+    }
 }

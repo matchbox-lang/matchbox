@@ -2,27 +2,29 @@ func convert(value: f32) {
     let signed = i32(value)
     let unsigned = u64(value)
 
-    print(signed)
-    print(unsigned)
+    assert(signed == 25)
+    assert(unsigned == 25)
 }
 
 func convert_wide(value: f64) {
     let signed = i64(value)
     let unsigned = u32(value)
 
-    print(signed)
-    print(unsigned)
+    assert(signed == 4294967295)
+    assert(unsigned == 4294967295)
 }
 
 func convert_negative(value: f64) -> i32 {
     return i32(value)
 }
 
-convert(25.9)
-convert_wide(4294967295.0)
+test "explicit float integer" {
+    convert(25.9)
+    convert_wide(4294967295.0)
 
-let negative = convert_negative(-25.9)
-let constant = u64(25.0)
+    let negative = convert_negative(-25.9)
+    let constant = u64(25.0)
 
-print(negative)
-print(constant)
+    assert(negative == -25)
+    assert(constant == 25)
+}

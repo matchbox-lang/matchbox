@@ -1,13 +1,16 @@
-let matrix = [[1, 2, 3], [4, 5, 6]]
-var total = 0
-var index_total: usize = 0
+test "for nested" {
+    let matrix = [[1, 2, 3], [4, 5, 6]]
+    var total = 0
+    var index_total: usize = 0
 
-for row_index, row in matrix {
-    for column_index, value in row {
-        assert(value == matrix[row_index][column_index])
-        total += value
-        index_total += row_index * 10 + column_index
+    for row_index, row in matrix {
+        for column_index, value in row {
+            assert(value == matrix[row_index][column_index])
+
+            total += value
+            index_total += row_index * 10 + column_index
+        }
     }
-}
 
-assert(total == 21 and index_total == 36)
+    assert(total == 21 and index_total == 36)
+}

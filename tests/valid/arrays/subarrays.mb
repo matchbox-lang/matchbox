@@ -2,35 +2,45 @@ func last(values: &i64[2]) -> i64 {
     return values[1]
 }
 
-let matrix: i64[2][2] = [[5000000000, 6000000000], [7000000000, 8000000000]]
-let value = last(matrix[1])
+test "subarray arguments and replacement" {
+    let matrix: i64[2][2] = [[5000000000, 6000000000], [7000000000, 8000000000]]
+    let value = last(matrix[1])
 
-assert(value == 8000000000)
+    assert(value == 8000000000)
 
-let row: i64[2] = [9000000000, 10000000000]
-matrix[1] = row
+    let row: i64[2] = [9000000000, 10000000000]
+    matrix[1] = row
 
-assert(matrix[1][1] == 10000000000)
-print(matrix[1])
+    assert(matrix[1][1] == 10000000000)
+    assert(matrix[1] == [9000000000, 10000000000])
+}
 
-let cube: i32[2][2][2] = [1, 2, 3, 4, 5, 6, 7, 8]
-cube[1][0][1] = 20
+test "nested subarray writes" {
+    let cube: i32[2][2][2] = [1, 2, 3, 4, 5, 6, 7, 8]
+    cube[1][0][1] = 20
 
-assert(cube[1][1][1] == 8)
-print(cube[1])
+    assert(cube[1][1][1] == 8)
+    assert(cube[1] == [[5, 20], [7, 8]])
+}
 
-let empty: i32[2][0] = [[], []]
+test "empty subarray reads" {
+    let empty: i32[2][0] = [[], []]
+    let expected_empty_1: i32[0] = []
 
-print(empty[1])
+    assert(empty[1] == expected_empty_1)
+}
 
-let matrix_copy = copy(matrix)
-let row_copy = copy(matrix[1])
+test "independent subarray copies" {
+    let matrix: i64[2][2] = [[5000000000, 6000000000], [9000000000, 10000000000]]
+    let matrix_copy = copy(matrix)
+    let row_copy = copy(matrix[1])
 
-matrix[1][0] = 11
-matrix_copy[0][0] = 12
-row_copy[1] = 13
+    matrix[1][0] = 11
+    matrix_copy[0][0] = 12
+    row_copy[1] = 13
 
-assert(matrix_copy[1][0] == 9000000000)
-assert(matrix[0][0] == 5000000000)
-assert(matrix[1][1] == 10000000000)
-assert(row_copy[0] == 9000000000 and row_copy[1] == 13)
+    assert(matrix_copy[1][0] == 9000000000)
+    assert(matrix[0][0] == 5000000000)
+    assert(matrix[1][1] == 10000000000)
+    assert(row_copy[0] == 9000000000 and row_copy[1] == 13)
+}

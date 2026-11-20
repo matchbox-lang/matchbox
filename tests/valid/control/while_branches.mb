@@ -1,11 +1,17 @@
-var count = 0
+test "while branches" {
+    var count = 0
+    var iterations = 0
 
-while count < 5 {
-    if count == 1 {
-        print("middle")
-    } else {
-        print(count)
+    while count < 5 {
+        if count == 1 {
+            print("middle")
+        } else {
+            assert(count == iterations)
+        }
+
+        iterations += 1
+        count += 1
     }
-    
-    count += 1
+
+    assert(count == 5 and iterations == 5)
 }

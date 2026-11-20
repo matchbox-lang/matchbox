@@ -1,9 +1,11 @@
-var first = 10
-var second = 20
-var exclusive = ^first
+test "exclusive reassignment releases origin" {
+    var first = 10
+    var second = 20
+    var exclusive = ^first
 
-exclusive = ^second
-first = 11
+    exclusive = ^second
+    first = 11
 
-print(first)
-print(exclusive)
+    assert(first == 11)
+    assert(exclusive == 20)
+}

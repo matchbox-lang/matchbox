@@ -1,6 +1,16 @@
-var count: i64 = 0
+test "while wide condition" {
+    var count: i64 = 0
+    var iterations = 0
 
-while count < 5 {
-    print(count)
-    count += 1
+    while count < 5 {
+        assert(count == iterations)
+
+        iterations += 1
+
+        count += 1
+    }
+
+    assert(count == 5)
+
+    assert(iterations == 5)
 }

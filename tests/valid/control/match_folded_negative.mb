@@ -1,15 +1,20 @@
-let value = 0 - 1
+test "match folded negative" {
+    var observed_steps = 0
+    let value = 0 - 1
 
-match value {
-    case -1:
-        print(10)
-    case _:
-        print(20)
+    match value {
+        case -1:
+            observed_steps += 1
+        case _:
+            assert(false)
+    }
+
+    let result = match value {
+        case -2 | -1: 30
+        case _: 40
+    }
+
+    assert(result == 30)
+
+    assert(observed_steps == 1)
 }
-
-let result = match value {
-    case -2 | -1: 30
-    case _: 40
-}
-
-print(result)

@@ -1,9 +1,12 @@
-let matrix = [[1, 2], [3, 4]]
-let empty: i32[0] = []
-let empty_matrix: u8[2][0] = [[], []]
+test "compound shapes" {
+    let matrix = [[1, 2], [3, 4]]
+    let empty: i32[0] = []
+    let empty_matrix: u8[2][0] = [[], []]
 
-matrix += [[4, 3], [2, 1]]
-empty += empty
-empty_matrix *= empty_matrix
-assert(matrix == [[5, 5], [5, 5]])
-assert(len(empty) == 0 and len(empty_matrix) == 2)
+    matrix += [[4, 3], [2, 1]]
+    empty += empty
+    empty_matrix *= empty_matrix
+
+    assert(matrix == [[5, 5], [5, 5]])
+    assert(len(empty) == 0 and len(empty_matrix) == 2)
+}

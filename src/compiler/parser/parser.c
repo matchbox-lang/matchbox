@@ -103,7 +103,7 @@ bool parse_braced_block(Parser* parser, ASTNode** block)
     *block = create_compound_node(NULL);
     bool complete = parse_statements(parser, &(*block)->compound.statements, TokenRbrace);
 
-    if (!complete) {
+    if (!complete || is_end_of_file(parser)) {
         return false;
     }
 

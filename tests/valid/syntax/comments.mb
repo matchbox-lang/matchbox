@@ -1,12 +1,40 @@
 // Single line comment
 
+// Repeated
+// Single line
+// Comments
+
 /*
 Multi
 Line
 Comment
 */
 
+func commented_value() -> i32 {
+    /**
+    * Comment before the first statement
+    */
+    return 42
+}
+
 /** Documentation comment */
 
-test "comments" {
+test "multiline comments in functions" {
+    let result = commented_value()
+
+    assert(result == 42)
+}
+
+test "multiline comments in conditional blocks" {
+    var value = 0
+
+    if true {
+        value = 1
+        /**
+        * Comment between statements
+        */
+        value += 1
+    }
+
+    assert(value == 2)
 }

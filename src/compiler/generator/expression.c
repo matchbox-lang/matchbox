@@ -154,6 +154,18 @@ Operand emit_immediate_comparison(Compiler* compiler, Opcode opcode, Operand lef
     return emit_immediate_comparison_value(compiler, opcode, left, load.c);
 }
 
+static Operand emit_comparison_value(Compiler* compiler, Opcode opcode, Operand left, Operand right)
+{
+    release_operand(compiler, right);
+    release_operand(compiler, left);
+
+    int destination = allocate_register(compiler);
+
+    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
+
+    return make_operand(destination, true);
+}
+
 Operand emit_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
     Operand immediate = emit_immediate_comparison(compiler, opcode, left, right);
@@ -162,32 +174,12 @@ Operand emit_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand
         return immediate;
     }
 
-    if (left.temporary) {
-        release_operand(compiler, right);
-        emit_instruction(compiler, opcode, left.reg, left.reg, right.reg);
-
-        return make_operand(left.reg, true);
-    }
-
-    int destination = right.temporary ? right.reg : allocate_register(compiler);
-    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
-
-    return make_operand(destination, true);
+    return emit_comparison_value(compiler, opcode, left, right);
 }
 
 static Operand emit_reversed_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
 {
-    if (left.temporary) {
-        release_operand(compiler, right);
-        emit_instruction(compiler, opcode, left.reg, right.reg, left.reg);
-
-        return make_operand(left.reg, true);
-    }
-
-    int destination = right.temporary ? right.reg : allocate_register(compiler);
-    emit_instruction(compiler, opcode, destination, right.reg, left.reg);
-
-    return make_operand(destination, true);
+    return emit_comparison_value(compiler, opcode, right, left);
 }
 
 static Opcode get_comparison_opcode(Type type, bool or_equal)
@@ -288,18 +280,6 @@ Opcode get_three_way_opcode(Type type, TokenType operator_type)
     }
 }
 
-static Operand emit_three_way_comparison(Compiler* compiler, Opcode opcode, Operand left, Operand right)
-{
-    release_operand(compiler, right);
-    release_operand(compiler, left);
-
-    int destination = allocate_register(compiler);
-
-    emit_instruction(compiler, opcode, destination, left.reg, right.reg);
-
-    return make_operand(destination, true);
-}
-
 static Operand emit_integer_comparison(Compiler* compiler, TokenType operator_type,
     Type type, Operand left, Operand right)
 {
@@ -329,7 +309,7 @@ Operand emit_numeric_comparison(Compiler* compiler, TokenType operator_type, Typ
     }
 
     Opcode opcode = get_three_way_opcode(type, operator_type);
-    Operand ordering = emit_three_way_comparison(compiler, opcode, left, right);
+    Operand ordering = emit_comparison_value(compiler, opcode, left, right);
 
     if (operator_type == TokenSpaceship) {
         return ordering;

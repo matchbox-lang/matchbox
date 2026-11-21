@@ -1,0 +1,28 @@
+func check(label: string, actual: bool, expected: bool) {
+    assert(actual == expected, label)
+}
+
+func check_comparisons(left: i8, right: u8) {
+    check("equal", left == right, false)
+    check("not equal", left != right, true)
+    check("less", left < right, true)
+    check("less or equal", left <= right, true)
+    check("greater", left > right, false)
+    check("greater or equal", left >= right, false)
+    check("reversed equality", right == left, false)
+}
+
+func print_comparisons(left: i8, right: u8) {
+    print("equal: ", left == right)
+    print("not equal: ", left != right)
+    print("less: ", left < right)
+    print("greater: ", left > right)
+}
+
+test "mixed comparison call arguments" {
+    check_comparisons(-100, 200)
+}
+
+test "mixed comparison print arguments" {
+    print_comparisons(-100, 200)
+}

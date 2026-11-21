@@ -2,7 +2,7 @@
 #include "cli/options.h"
 #include "cli/path.h"
 #include "cli/runner.h"
-#include "cli/test_discovery.h"
+#include "cli/source_discovery.h"
 #include "cli/test_output.h"
 #include "common/errors.h"
 #include "common/memory.h"
@@ -136,7 +136,7 @@ static void init_program_test_run(ProgramTestRun* run, const Options* options)
 
 static bool discover_program_tests(ProgramTestRun* run, const char* path)
 {
-    run->discovery_failed += discover_test_paths(&run->paths, path);
+    run->discovery_failed += discover_source_paths(&run->paths, path);
 
     if (run->paths.count == 0) {
         report_error("No programs found in %s", path);

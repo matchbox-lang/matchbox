@@ -2,7 +2,7 @@
 #include "cli/options.h"
 #include "cli/path.h"
 #include "cli/runner.h"
-#include "cli/test_discovery.h"
+#include "cli/source_discovery.h"
 #include "cli/test_output.h"
 #include "common/errors.h"
 #include "common/math.h"
@@ -302,7 +302,7 @@ static void init_test_run(TestRun* run, TestOutput output)
 
 static bool discover_tests(TestRun* run, const char* path)
 {
-    run->validation_failed += discover_test_paths(&run->paths, path);
+    run->validation_failed += discover_source_paths(&run->paths, path);
 
     for (size_t i = 0; i < run->paths.count; i++) {
         const char* filename = run->paths.data[i];

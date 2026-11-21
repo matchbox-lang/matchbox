@@ -1,6 +1,7 @@
 #include "cli/program_test_runner.h"
 #include "cli/options.h"
 #include "cli/path.h"
+#include "cli/runner.h"
 #include "cli/test_discovery.h"
 #include "cli/test_output.h"
 #include "common/errors.h"
@@ -20,10 +21,12 @@ typedef struct ProgramTestRun
     int discovery_failed;
 } ProgramTestRun;
 
-static bool run_program_file(const char* path)
+static bool run_program_file(const void* data, MemoryGroup* result_memory)
 {
+    const char* path = data;
     Options options;
 
+    (void)result_memory;
     init_options(&options);
 
     options.filename = path;
@@ -31,35 +34,6 @@ static bool run_program_file(const char* path)
     int status = run_program(&options);
 
     return status == EXIT_SUCCESS;
-}
-
-static bool run_program_file_with_context(const char* path, MemoryGroup* memory)
-{
-    ErrorContext context;
-
-    begin_error_context(&context, memory);
-
-    if (setjmp(context.jump) != 0) {
-        end_error_context(&context);
-
-        return false;
-    }
-
-    bool success = run_program_file(path);
-
-    end_error_context(&context);
-
-    return success;
-}
-
-static bool run_isolated_program_file(const char* path)
-{
-    MemoryGroup memory = {0};
-    bool success = run_program_file_with_context(path, &memory);
-
-    free_memory_group(&memory);
-
-    return success;
 }
 
 static bool should_print_result(TestOutput output, bool passed)
@@ -109,7 +83,7 @@ static bool run_program_test_file(const ProgramTestRun* run, const char* path)
         return false;
     }
 
-    bool success = run_isolated_program_file(path);
+    bool success = run_isolated(run_program_file, path);
     bool flushed = end_test_output_capture(saved_stdout, &saved_stderr);
     bool expects_failure = path_has_extension(path, ".fail" PROGRAM_FILE_EXTENSION);
     bool passed = flushed && success != expects_failure;
@@ -142,23 +116,6 @@ static void free_program_test_run(ProgramTestRun* run)
     }
 
     free_vector(&run->paths);
-}
-
-static bool validate_program_test_path(const char* path)
-{
-    if (!path_exists(path)) {
-        report_error("Could not find path %s", path);
-
-        return false;
-    }
-
-    if (!path_is_directory(path) && !path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
-        report_error("Expected %s file but found %s", PROGRAM_FILE_EXTENSION, path);
-
-        return false;
-    }
-
-    return true;
 }
 
 static const char* get_program_test_path(const Options* options)
@@ -217,7 +174,7 @@ int run_program_tests(const Options* options)
 {
     const char* path = get_program_test_path(options);
 
-    if (!validate_program_test_path(path)) {
+    if (!validate_source_path(path)) {
         return EXIT_FAILURE;
     }
 

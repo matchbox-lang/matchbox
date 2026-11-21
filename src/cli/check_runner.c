@@ -1,72 +1,29 @@
 #include "cli/check_runner.h"
 #include "cli/options.h"
 #include "cli/path.h"
+#include "cli/runner.h"
 #include "common/errors.h"
-#include "common/io.h"
-#include "common/memory.h"
-#include "compiler/analyzer/analyzer.h"
-#include "compiler/parser/parser.h"
-#include "compiler/diagnostics.h"
-#include "compiler/scope.h"
 #include "config.h"
 #include <dirent.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
 
 static bool check_path(const char* path);
 
-static bool check_source_file(const char* path)
+static bool check_source_file(const void* data, MemoryGroup* result_memory)
 {
-    char* source = read_file_contents(path);
-    if (!source) {
-        const char* detail = strerror(errno);
+    const char* path = data;
+    char* source = read_source(path);
 
-        report_error("Could not read file %s: %s", path, detail);
+    (void)result_memory;
+    analyze_source(source);
 
-        return false;
-    }
-
-    Scope* scope = create_scope(NULL);
-    ASTNode* ast = create_compound_node(scope);
-    Parser parser;
-    Analyzer analyzer;
-
-    init_parser(&parser, ast);
-    init_analyzer(&analyzer, ast);
-
-    if (!parse(&parser, source)) {
-        unexpected_end_of_input_error(parser.current_token);
-    }
-
-    return analyze(&analyzer, 0);
-}
-
-static bool check_file_with_context(const char* path, MemoryGroup* memory)
-{
-    ErrorContext context;
-
-    begin_error_context(&context, memory);
-
-    if (setjmp(context.jump) != 0) {
-        end_error_context(&context);
-
-        return false;
-    }
-
-    bool success = check_source_file(path);
-
-    end_error_context(&context);
-
-    return success;
+    return true;
 }
 
 static bool check_file(const char* path)
 {
-    MemoryGroup memory = {0};
-    bool success = check_file_with_context(path, &memory);
-
-    free_memory_group(&memory);
+    bool success = run_isolated(check_source_file, path);
 
     if (!success) {
         report_error("Check failed for %s", path);
@@ -146,15 +103,7 @@ int run_checks(const Options* options)
 {
     const char* path = options->filename ? options->filename : ".";
 
-    if (!path_exists(path)) {
-        report_error("Could not find path %s", path);
-
-        return EXIT_FAILURE;
-    }
-
-    if (!path_is_directory(path) && !path_has_extension(path, PROGRAM_FILE_EXTENSION)) {
-        report_error("Expected %s file but found %s", PROGRAM_FILE_EXTENSION, path);
-
+    if (!validate_source_path(path)) {
         return EXIT_FAILURE;
     }
 

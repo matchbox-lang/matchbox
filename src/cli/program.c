@@ -3,9 +3,8 @@
 #include "cli/options.h"
 #include "cli/program_test_runner.h"
 #include "cli/repl.h"
+#include "cli/runner.h"
 #include "cli/test_runner.h"
-#include "common/errors.h"
-#include "common/io.h"
 #include "common/memory.h"
 #include "compiler/compiler.h"
 #include "compiler/diagnostics.h"
@@ -15,14 +14,6 @@
 #include "config.h"
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
-
-static _Noreturn void read_file_error(const char* filename)
-{
-    const char* detail = strerror(errno);
-
-    fatal_error("Could not read file %s: %s", filename, detail);
-}
 
 static int run_module(ModuleObject* module, bool disassemble)
 {
@@ -63,10 +54,7 @@ static int run_source(const char* source, bool disassemble)
 
 static int run_file(const Options* options)
 {
-    char* source = read_file_contents(options->filename);
-    if (!source) {
-        read_file_error(options->filename);
-    }
+    char* source = read_source(options->filename);
 
     int status = run_source(source, options->disassemble);
 

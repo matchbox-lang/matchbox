@@ -20,6 +20,14 @@ _Noreturn void expected_token_error(TokenType type, Token token)
     fatal_token_error(token, "", "Expected %s but found ", type_name);
 }
 
+_Noreturn void expected_tokens_error(TokenType first_type, TokenType second_type, Token token)
+{
+    const char* first_name = get_token_type_name(first_type);
+    const char* second_name = get_token_type_name(second_type);
+
+    fatal_token_error(token, "", "Expected %s or %s but found ", first_name, second_name);
+}
+
 void advance(Parser* parser)
 {
     parser->previous_token = parser->current_token;

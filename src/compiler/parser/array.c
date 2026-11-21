@@ -40,7 +40,7 @@ static ASTNode* parse_array_element(Parser* parser, ASTNode* ast)
     }
 
     if (parser->current_token.type != TokenRsquare && !is_end_of_file(parser)) {
-        expected_token_error(TokenComma, parser->current_token);
+        expected_tokens_error(TokenComma, TokenRsquare, parser->current_token);
     }
 
     return ast;

@@ -1,0 +1,8 @@
+func trailing(value: i32,) -> i32 = value
+
+test "delimited lists allow trailing commas" {
+    let values = [8, 9,]
+    let value = trailing(values[1],)
+
+    assert(value == 9)
+}

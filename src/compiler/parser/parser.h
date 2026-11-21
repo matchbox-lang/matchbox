@@ -15,6 +15,7 @@ typedef struct Parser
 
 _Noreturn void expected_expression_error(Token token);
 _Noreturn void expected_token_error(TokenType type, Token token);
+_Noreturn void expected_tokens_error(TokenType first_type, TokenType second_type, Token token);
 void advance(Parser* parser);
 void consume(Parser* parser, TokenType type);
 bool is_end_of_file(Parser* parser);

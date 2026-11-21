@@ -33,6 +33,10 @@ static bool parse_argument_list_item(Parser* parser, Vector* args)
 
     push_vector_item(args, expr);
 
+    if (parser->current_token.type != TokenComma && parser->current_token.type != TokenRparen && !is_end_of_file(parser)) {
+        expected_tokens_error(TokenComma, TokenRparen, parser->current_token);
+    }
+
     if (parser->current_token.type == TokenComma) {
         consume(parser, TokenComma);
     }
@@ -130,6 +134,10 @@ static bool parse_parameter_list_item(Parser* parser, Vector* params)
     }
 
     push_vector_item(params, param);
+
+    if (parser->current_token.type != TokenComma && parser->current_token.type != TokenRparen && !is_end_of_file(parser)) {
+        expected_tokens_error(TokenComma, TokenRparen, parser->current_token);
+    }
 
     if (parser->current_token.type == TokenComma) {
         consume(parser, TokenComma);

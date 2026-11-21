@@ -2,6 +2,7 @@
 #include "cli/options.h"
 #include "cli/path.h"
 #include "cli/test_discovery.h"
+#include "cli/test_output.h"
 #include "common/errors.h"
 #include "common/io.h"
 #include "common/memory.h"
@@ -16,22 +17,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef _WIN32
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <io.h>
-#define DUP _dup
-#define DUP2 _dup2
-#define CLOSE _close
-#define FILENO _fileno
-#else
-#include <unistd.h>
-#define DUP dup
-#define DUP2 dup2
-#define CLOSE close
-#define FILENO fileno
-#endif
 
 typedef struct TestCase
 {
@@ -278,137 +263,22 @@ static bool run_isolated_test_block(const TestCase* test)
     return passed;
 }
 
-static FILE* create_test_output_file(void)
-{
-#ifdef _WIN32
-    char* path = _tempnam(NULL, "mbx");
-
-    if (!path) {
-        return NULL;
-    }
-
-    int flags = _O_CREAT | _O_EXCL | _O_RDWR | _O_BINARY | _O_TEMPORARY;
-    int descriptor = _open(path, flags, _S_IREAD | _S_IWRITE);
-
-    free(path);
-
-    if (descriptor < 0) {
-        return NULL;
-    }
-
-    FILE* output = _fdopen(descriptor, "w+b");
-
-    if (!output) {
-        _close(descriptor);
-    }
-
-    return output;
-#else
-    return tmpfile();
-#endif
-}
-
-static FILE* begin_test_output_capture(int* saved_stdout)
-{
-    if (fflush(stdout) != 0) {
-        report_error("Could not flush test output");
-
-        return NULL;
-    }
-
-    FILE* output = create_test_output_file();
-
-    if (!output) {
-        report_error("Could not capture test output");
-
-        return NULL;
-    }
-
-    int stdout_fd = FILENO(stdout);
-    int output_fd = FILENO(output);
-
-    *saved_stdout = DUP(stdout_fd);
-
-    if (*saved_stdout < 0) {
-        fclose(output);
-        report_error("Could not save standard output");
-
-        return NULL;
-    }
-
-    if (DUP2(output_fd, stdout_fd) < 0) {
-        CLOSE(*saved_stdout);
-        fclose(output);
-        report_error("Could not redirect test output");
-
-        return NULL;
-    }
-
-    return output;
-}
-
-static bool end_test_output_capture(int saved_stdout)
-{
-    bool flushed = fflush(stdout) == 0;
-    int stdout_fd = FILENO(stdout);
-    int restored = DUP2(saved_stdout, stdout_fd);
-
-    CLOSE(saved_stdout);
-    clearerr(stdout);
-
-    if (restored < 0) {
-        fatal_error("Could not restore standard output");
-    }
-
-    if (!flushed) {
-        report_error("Could not flush captured test output");
-    }
-
-    return flushed;
-}
-
-static void print_captured_test_output(FILE* output)
-{
-    if (fseek(output, 0, SEEK_SET) != 0) {
-        report_error("Could not rewind captured test output");
-
-        return;
-    }
-
-    char buffer[4096];
-    size_t count = fread(buffer, 1, sizeof(buffer), output);
-
-    if (count > 0) {
-        fputs("Captured output:\n", stderr);
-    }
-
-    while (count > 0) {
-        fwrite(buffer, 1, count, stderr);
-
-        count = fread(buffer, 1, sizeof(buffer), output);
-    }
-
-    if (ferror(output)) {
-        report_error("Could not read captured test output");
-    }
-}
-
 static bool run_test_with_captured_output(const TestCase* test)
 {
     int saved_stdout;
-    FILE* output = begin_test_output_capture(&saved_stdout);
+    FILE* output = matchbox_begin_test_output_capture(&saved_stdout, NULL);
 
     if (!output) {
         return false;
     }
 
     bool passed = run_isolated_test_block(test);
-    bool flushed = end_test_output_capture(saved_stdout);
+    bool flushed = matchbox_end_test_output_capture(saved_stdout, NULL);
 
     passed = passed && flushed;
 
     if (!passed) {
-        print_captured_test_output(output);
+        matchbox_print_test_output(output, stderr, "Captured output:\n");
     }
 
     fclose(output);

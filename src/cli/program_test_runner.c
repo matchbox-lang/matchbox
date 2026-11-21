@@ -2,6 +2,7 @@
 #include "cli/options.h"
 #include "cli/path.h"
 #include "cli/test_discovery.h"
+#include "cli/test_output.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
@@ -9,84 +10,56 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#ifdef _WIN32
-#define POPEN _popen
-#define PCLOSE _pclose
-#else
-#include <sys/wait.h>
-#define POPEN popen
-#define PCLOSE pclose
-#endif
 
 typedef struct ProgramTestRun
 {
     Vector paths;
-    const char* executable_path;
     TestOutput output;
     int passed;
     int failed;
     int discovery_failed;
 } ProgramTestRun;
 
-static void append_process_output(Vector* output, const char* buffer)
+static bool run_program_file(const char* path)
 {
-    size_t length = strlen(buffer);
-    char* copy = allocate_memory(length + 1);
+    Options options;
 
-    memcpy(copy, buffer, length + 1);
-    push_vector_item(output, copy);
+    init_options(&options);
+
+    options.filename = path;
+
+    int status = run_program(&options);
+
+    return status == EXIT_SUCCESS;
 }
 
-static bool read_process_output(FILE* stream, Vector* output)
+static bool run_program_file_with_context(const char* path, MemoryGroup* memory)
 {
-    char buffer[256];
+    ErrorContext context;
 
-    while (fgets(buffer, sizeof(buffer), stream)) {
-        append_process_output(output, buffer);
-    }
+    begin_error_context(&context, memory);
 
-    return ferror(stream) == 0;
-}
+    if (setjmp(context.jump) != 0) {
+        end_error_context(&context);
 
-static void free_process_output(Vector* output)
-{
-    for (size_t i = 0; i < output->count; i++) {
-        char* buffer = output->data[i];
-
-        free_memory(buffer);
-    }
-
-    free_vector(output);
-}
-
-static bool process_crashed(int status)
-{
-#ifdef _WIN32
-    return status < 0;
-#else
-    return !WIFEXITED(status);
-#endif
-}
-
-static bool check_process_result(int status, bool expects_failure)
-{
-    if (status == -1 || process_crashed(status)) {
         return false;
     }
 
-    int exit_status = status;
+    bool success = run_program_file(path);
 
-#ifndef _WIN32
-    exit_status = WEXITSTATUS(status);
-#endif
+    end_error_context(&context);
 
-    if (expects_failure) {
-        return exit_status != EXIT_SUCCESS;
-    }
+    return success;
+}
 
-    return exit_status == EXIT_SUCCESS;
+static bool run_isolated_program_file(const char* path)
+{
+    MemoryGroup memory = {0};
+    bool success = run_program_file_with_context(path, &memory);
+
+    free_memory_group(&memory);
+
+    return success;
 }
 
 static bool should_print_result(TestOutput output, bool passed)
@@ -98,16 +71,7 @@ static bool should_print_result(TestOutput output, bool passed)
     return (output == TestOutputPassed) == passed;
 }
 
-static void print_process_output(FILE* stream, const Vector* output)
-{
-    for (size_t i = 0; i < output->count; i++) {
-        const char* buffer = output->data[i];
-
-        fputs(buffer, stream);
-    }
-}
-
-static void print_program_test_result(const ProgramTestRun* run, const char* path, const Vector* output, bool passed)
+static void print_program_test_result(const ProgramTestRun* run, const char* path, FILE* output, bool passed)
 {
     if (run->output == TestOutputSkipped && passed) {
         return;
@@ -132,49 +96,26 @@ static void print_program_test_result(const ProgramTestRun* run, const char* pat
     }
 
     fprintf(stream, "FAIL %s\n", display_path);
-    print_process_output(stream, output);
-}
-
-static char* create_program_test_command(const char* executable_path, const char* path)
-{
-    size_t executable_length = strlen(executable_path);
-    size_t path_length = strlen(path);
-    size_t command_length = executable_length + path_length + 32;
-    char* command = allocate_memory(command_length);
-
-#ifdef _WIN32
-    snprintf(command, command_length, "\"\"%s\" -- \"%s\" 2>&1\"", executable_path, path);
-#else
-    snprintf(command, command_length, "exec \"%s\" -- \"%s\" 2>&1", executable_path, path);
-#endif
-
-    return command;
+    matchbox_print_test_output(output, stream, NULL);
 }
 
 static bool run_program_test_file(const ProgramTestRun* run, const char* path)
 {
-    char* command = create_program_test_command(run->executable_path, path);
-    FILE* stream = POPEN(command, "r");
+    int saved_stdout;
+    int saved_stderr;
+    FILE* output = matchbox_begin_test_output_capture(&saved_stdout, &saved_stderr);
 
-    free_memory(command);
-
-    if (!stream) {
-        report_error("Could not run program test %s", path);
-
+    if (!output) {
         return false;
     }
 
-    Vector output;
-
-    init_vector(&output);
-
-    bool read_success = read_process_output(stream, &output);
-    int status = PCLOSE(stream);
+    bool success = run_isolated_program_file(path);
+    bool flushed = matchbox_end_test_output_capture(saved_stdout, &saved_stderr);
     bool expects_failure = path_has_extension(path, ".fail" PROGRAM_FILE_EXTENSION);
-    bool passed = read_success && check_process_result(status, expects_failure);
+    bool passed = flushed && success != expects_failure;
 
-    print_program_test_result(run, path, &output, passed);
-    free_process_output(&output);
+    print_program_test_result(run, path, output, passed);
+    fclose(output);
 
     return passed;
 }
@@ -231,11 +172,7 @@ static const char* get_program_test_path(const Options* options)
 
 static void init_program_test_run(ProgramTestRun* run, const Options* options)
 {
-    *run = (ProgramTestRun){.output = options->test_output, .executable_path = options->executable_path};
-
-    if (!run->executable_path) {
-        run->executable_path = PROGRAM_COMMAND;
-    }
+    *run = (ProgramTestRun){.output = options->test_output};
 
     init_vector(&run->paths);
 }

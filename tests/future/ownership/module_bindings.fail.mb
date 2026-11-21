@@ -1,4 +1,4 @@
-let app_name = "Matchbox"
+let app_name = "Test"
 let numbers = List(1, 2, 3)
 
 var users = List("Alice", "Bob")

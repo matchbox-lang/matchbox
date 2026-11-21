@@ -266,19 +266,19 @@ static bool run_isolated_test_block(const TestCase* test)
 static bool run_test_with_captured_output(const TestCase* test)
 {
     int saved_stdout;
-    FILE* output = matchbox_begin_test_output_capture(&saved_stdout, NULL);
+    FILE* output = begin_test_output_capture(&saved_stdout, NULL);
 
     if (!output) {
         return false;
     }
 
     bool passed = run_isolated_test_block(test);
-    bool flushed = matchbox_end_test_output_capture(saved_stdout, NULL);
+    bool flushed = end_test_output_capture(saved_stdout, NULL);
 
     passed = passed && flushed;
 
     if (!passed) {
-        matchbox_print_test_output(output, stderr, "Captured output:\n");
+        print_test_output(output, stderr, "Captured output:\n");
     }
 
     fclose(output);

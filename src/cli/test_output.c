@@ -88,7 +88,7 @@ static FILE* create_test_output_file(void)
 #endif
 }
 
-FILE* matchbox_begin_test_output_capture(int* saved_stdout, int* saved_stderr)
+FILE* begin_test_output_capture(int* saved_stdout, int* saved_stderr)
 {
     if (fflush(stdout) != 0) {
         report_error("Could not flush test output");
@@ -134,7 +134,7 @@ FILE* matchbox_begin_test_output_capture(int* saved_stdout, int* saved_stderr)
     return output;
 }
 
-bool matchbox_end_test_output_capture(int saved_stdout, const int* saved_stderr)
+bool end_test_output_capture(int saved_stdout, const int* saved_stderr)
 {
     bool errors_flushed = true;
 
@@ -157,7 +157,7 @@ bool matchbox_end_test_output_capture(int saved_stdout, const int* saved_stderr)
     return flushed;
 }
 
-void matchbox_print_test_output(FILE* output, FILE* stream, const char* heading)
+void print_test_output(FILE* output, FILE* stream, const char* heading)
 {
     if (fseek(output, 0, SEEK_SET) != 0) {
         report_error("Could not rewind captured test output");

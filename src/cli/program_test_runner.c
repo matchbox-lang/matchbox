@@ -96,21 +96,21 @@ static void print_program_test_result(const ProgramTestRun* run, const char* pat
     }
 
     fprintf(stream, "FAIL %s\n", display_path);
-    matchbox_print_test_output(output, stream, NULL);
+    print_test_output(output, stream, NULL);
 }
 
 static bool run_program_test_file(const ProgramTestRun* run, const char* path)
 {
     int saved_stdout;
     int saved_stderr;
-    FILE* output = matchbox_begin_test_output_capture(&saved_stdout, &saved_stderr);
+    FILE* output = begin_test_output_capture(&saved_stdout, &saved_stderr);
 
     if (!output) {
         return false;
     }
 
     bool success = run_isolated_program_file(path);
-    bool flushed = matchbox_end_test_output_capture(saved_stdout, &saved_stderr);
+    bool flushed = end_test_output_capture(saved_stdout, &saved_stderr);
     bool expects_failure = path_has_extension(path, ".fail" PROGRAM_FILE_EXTENSION);
     bool passed = flushed && success != expects_failure;
 

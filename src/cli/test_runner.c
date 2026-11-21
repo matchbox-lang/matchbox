@@ -5,6 +5,7 @@
 #include "cli/test_discovery.h"
 #include "cli/test_output.h"
 #include "common/errors.h"
+#include "common/math.h"
 #include "common/memory.h"
 #include "compiler/lexer/lexer.h"
 #include "compiler/compiler.h"
@@ -102,15 +103,22 @@ static void report_filtered_test_failure(const TestRun* run, const TestCase* tes
 
 static void add_test_case(TestRun* run, const char* path, ASTNode* ast, size_t index)
 {
+    if (run->cases.count == run->cases.capacity) {
+        size_t capacity = MAX(run->cases.capacity * 2, 4);
+
+        reserve_vector(&run->cases, capacity);
+    }
+
     TestCase* test = allocate_zeroed_memory(1, sizeof(TestCase));
+
+    push_vector_item(&run->cases, test);
 
     test->path = path;
     test->statement_index = index;
     test->skipped = ast->function_definition.is_test_skipped;
+    test->line = ast->function_definition.token.line;
 
     Token name = ast->function_definition.test_name;
-
-    test->line = ast->function_definition.token.line;
 
     if (name.length > 0) {
         test->name = allocate_memory(name.length + 1);
@@ -119,8 +127,6 @@ static void add_test_case(TestRun* run, const char* path, ASTNode* ast, size_t i
 
         test->name[name.length] = '\0';
     }
-
-    push_vector_item(&run->cases, test);
 }
 
 static void collect_test_case(TestRun* run, const char* path, ASTNode* ast, size_t index)

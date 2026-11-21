@@ -1,4 +1,5 @@
 #include "common/io.h"
+#include "common/errors.h"
 #include "common/memory.h"
 #include <stdio.h>
 #include <string.h>
@@ -37,7 +38,20 @@ char* read_file_contents(const char* filename)
         return NULL;
     }
 
+    ErrorContext context;
+
+    begin_error_context(&context, NULL);
+
+    if (setjmp(context.jump) != 0) {
+        end_error_context(&context);
+        fclose(file);
+        raise_error();
+    }
+
     char* source = read_stream(file);
+
+    end_error_context(&context);
+
     int closed = fclose(file);
 
     if (closed != 0) {

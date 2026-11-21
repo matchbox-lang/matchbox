@@ -13,7 +13,8 @@ static bool is_match_branch_end(Parser* parser)
 
 static void consume_match_statement_separator(Parser* parser)
 {
-    bool same_line_statement = parser->current_token.line == parser->previous_token.line
+    bool same_line_statement = !is_end_of_file(parser)
+        && parser->current_token.line == parser->previous_token.line
         && !is_match_arm_end_token(parser->current_token.type)
         && parser->previous_token.type != TokenRbrace;
 

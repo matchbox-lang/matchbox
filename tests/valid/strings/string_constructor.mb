@@ -8,6 +8,6 @@ test "string constructor" {
     let constructed: string = message(converted)
     let interpolated: string = $"Count: {count}"
 
-    print(constructed)
-    print(interpolated)
+    assert(constructed == "Count: 5")
+    assert(interpolated == "Count: 5")
 }

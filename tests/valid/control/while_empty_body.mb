@@ -1,5 +1,7 @@
 test "while empty body" {
-    while false {}
+    var running = false
 
-    print("done")
+    while running {}
+
+    assert(not running)
 }

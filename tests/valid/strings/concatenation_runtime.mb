@@ -4,9 +4,23 @@ test "concatenation runtime" {
     var left_string: string = "🌍"
     var right_string: string = "🌎"
 
-    print(left_char + right_char)
-    print(left_string + right_char)
-    print(left_char + right_string)
-    print(left_string + right_string)
-    print(left_char + right_string + '!' + "!")
+    let characters = left_char + right_char
+
+    assert(characters == "🌍🌎")
+
+    let string_character = left_string + right_char
+
+    assert(string_character == "🌍🌎")
+
+    let character_string = left_char + right_string
+
+    assert(character_string == "🌍🌎")
+
+    let strings = left_string + right_string
+
+    assert(strings == "🌍🌎")
+
+    let punctuated = left_char + right_string + '!' + "!"
+
+    assert(punctuated == "🌍🌎!!")
 }

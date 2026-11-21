@@ -1,3 +1,5 @@
 test "concatenation" {
-    print('a' + 'b')
+    let joined = 'a' + 'b'
+
+    assert(joined == "ab")
 }

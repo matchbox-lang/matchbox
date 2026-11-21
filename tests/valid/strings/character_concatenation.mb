@@ -4,8 +4,8 @@ test "character concatenation" {
     let c: string = 'H' + "ello"
     let d: string = '🌍' + '🌎'
 
-    print(a)
-    print(b)
-    print(c)
-    print(d)
+    assert(a == "Hi")
+    assert(b == "Hello")
+    assert(c == "Hello")
+    assert(d == "🌍🌎")
 }

@@ -11,8 +11,14 @@ test "narrow signed array element storage" {
     assert(bytes[0] == -128 and bytes[1] == -1 and bytes[2] == 127)
     assert(shorts[0] == -32768 and shorts[1] == -2 and shorts[2] == 32767)
     assert(widened_byte == -128 and widened_short == -2)
-    print(string(bytes))
-    print(string(shorts))
+
+    let byte_text = string(bytes)
+
+    assert(byte_text == "[-128, -1, 127]")
+
+    let short_text = string(shorts)
+
+    assert(short_text == "[-32768, -2, 32767]")
 }
 
 test "narrow unsigned array element storage" {
@@ -24,8 +30,14 @@ test "narrow unsigned array element storage" {
 
     assert(unsigned_bytes[0] == 254 and unsigned_bytes[1] == 255)
     assert(unsigned_shorts[0] == 65534 and unsigned_shorts[1] == 65535)
-    print(string(unsigned_bytes))
-    print(string(unsigned_shorts))
+
+    let byte_text = string(unsigned_bytes)
+
+    assert(byte_text == "[254, 255]")
+
+    let short_text = string(unsigned_shorts)
+
+    assert(short_text == "[65534, 65535]")
 }
 
 test "single precision array element storage" {
@@ -33,5 +45,8 @@ test "single precision array element storage" {
     singles[0] = -3.75
 
     assert(singles[0] == -3.75 and singles[1] == -2.5)
-    print(string(singles))
+
+    let text = string(singles)
+
+    assert(text == "[-3.75, -2.5]")
 }

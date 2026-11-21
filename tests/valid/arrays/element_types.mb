@@ -17,8 +17,13 @@ test "array element storage types" {
     let chars = ['a', 'b']
 
     assert(flags[0] and chars[1] == 'b')
-    print(wide, floats, text, flags, chars)
-    print($"Array: {wide}")
+    assert(text == ["hi", ""])
+    assert(flags == [true, false])
+    assert(chars == ['a', 'b'])
+
+    let formatted = $"Array: {wide}"
+
+    assert(formatted == "Array: [5000000000, 7000000000]")
 }
 
 test "inferred floating point array elements" {
@@ -32,7 +37,7 @@ test "independent string array copies" {
     let text_copy = copy(text)
     text[0] = "changed"
 
-    print(text_copy)
+    assert(text_copy == ["hi", ""])
 }
 
 test "independent floating point array copies" {

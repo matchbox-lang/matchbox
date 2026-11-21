@@ -1,14 +1,18 @@
 test "while match" {
     var count = 0
+    var result = ""
 
     while count < 2 {
         match count {
             case 0:
-                print("zero")
+                result = result + "zero"
             case _:
-                print("one")
+                result = result + "one"
         }
 
         count += 1
     }
+
+    assert(result == "zeroone")
+    assert(count == 2)
 }

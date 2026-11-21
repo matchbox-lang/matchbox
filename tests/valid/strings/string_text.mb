@@ -4,8 +4,8 @@ test "string text" {
     let char_string = string('H', "ello")
     let strings = string("H", "ello")
 
-    print(chars)
-    print(string_char)
-    print(char_string)
-    print(strings)
+    assert(chars == "Hi")
+    assert(string_char == "Hello")
+    assert(char_string == "Hello")
+    assert(strings == "Hello")
 }

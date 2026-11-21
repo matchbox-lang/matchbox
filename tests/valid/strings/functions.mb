@@ -7,6 +7,11 @@ func inferred() {
 }
 
 test "functions" {
-    print(echo("Hello"))
-    print(inferred())
+    let echoed = echo("Hello")
+
+    assert(echoed == "Hello")
+
+    let inferred_value = inferred()
+
+    assert(inferred_value == "😀")
 }

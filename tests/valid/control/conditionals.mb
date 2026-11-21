@@ -1,15 +1,18 @@
 test "conditional statement branches" {
     const SCORE = 85
+    var grade = ""
 
     if SCORE >= 90 {
-        print("A")
+        grade = "A"
     } else if SCORE >= 80 {
-        print("B")
+        grade = "B"
     } else if SCORE >= 70 {
-        print("C")
+        grade = "C"
     } else {
-        print("F")
+        grade = "F"
     }
+
+    assert(grade == "B")
 }
 
 test "conditional expression branches" {
@@ -24,7 +27,7 @@ test "conditional expression branches" {
     else
         "F"
 
-    print(grade)
+    assert(grade == "B")
 }
 
 test "nested conditional statements" {

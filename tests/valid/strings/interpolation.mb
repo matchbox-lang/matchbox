@@ -3,11 +3,31 @@ test "interpolation" {
     let apples = 4
     let bananas = 3
 
-    print($"I have {apples} apples.")
-    print($"I have {apples + bananas} fruit.")
-    print($"Hello {{{name}}}.")
-    print($`C:\path\{name}\`)
-    print($"{{}} {name}{apples}")
-    print($"\u{1F600} {name}")
-    print($"")
+    let apples_text = $"I have {apples} apples."
+
+    assert(apples_text == "I have 4 apples.")
+
+    let fruit_text = $"I have {apples + bananas} fruit."
+
+    assert(fruit_text == "I have 7 fruit.")
+
+    let greeting = $"Hello {{{name}}}."
+
+    assert(greeting == "Hello {Alice}.")
+
+    let path = $`C:\path\{name}\`
+
+    assert(path == "C:\\path\\Alice\\")
+
+    let braces = $"{{}} {name}{apples}"
+
+    assert(braces == "{} Alice4")
+
+    let unicode = $"\u{1F600} {name}"
+
+    assert(unicode == "😀 Alice")
+
+    let empty = $""
+
+    assert(empty == "")
 }

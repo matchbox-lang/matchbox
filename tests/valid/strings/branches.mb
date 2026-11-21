@@ -12,5 +12,5 @@ test "branches" {
         case _: selected
     }
 
-    print(result)
+    assert(result == "Second")
 }

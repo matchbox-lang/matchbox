@@ -1,15 +1,30 @@
 test "multiline" {
-    print("""Multi
+    let escaped = """Multi
 Line
-String\n""")
+String\n"""
 
-    print(```Multi
+    assert(escaped == "Multi\r\nLine\r\nString\n")
+
+    let raw = ```Multi
 Line
 String
-```)
+```
 
-    print("""Hello "Alice"!""")
-    print(""""Hello """Alice"""!"""")
-    print("""""Hello """"Alice""""!""""")
-    print("""I have {apples} apples.""")
+    assert(raw == "Multi\r\nLine\r\nString\r\n")
+
+    let quoted = """Hello "Alice"!"""
+
+    assert(quoted == "Hello \"Alice\"!")
+
+    let triple_quoted = """"Hello """Alice"""!""""
+
+    assert(triple_quoted == "Hello \"\"\"Alice\"\"\"!")
+
+    let quadruple_quoted = """""Hello """"Alice""""!"""""
+
+    assert(quadruple_quoted == "Hello \"\"\"\"Alice\"\"\"\"!")
+
+    let literal_braces = """I have {apples} apples."""
+
+    assert(literal_braces == "I have {apples} apples.")
 }

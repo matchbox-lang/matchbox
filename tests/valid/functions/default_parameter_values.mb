@@ -3,7 +3,7 @@ func values(wide: u64 = 18446744073709551615, negative: i64 = -92233720368547758
     assert(wide == 18446744073709551615)
     assert(negative == -9223372036854775808)
     assert(floating == 1.25)
-    print(text)
+    assert(text == "hello")
     assert(character == 'a')
     assert(truth)
 }

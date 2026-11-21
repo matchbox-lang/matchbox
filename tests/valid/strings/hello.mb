@@ -1,3 +1,5 @@
 test "hello" {
-    print("Hello World!")
+    let greeting = "Hello World!"
+
+    assert(greeting == "Hello World!")
 }

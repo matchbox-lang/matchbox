@@ -3,14 +3,29 @@ func fruit(count: i32) -> string {
 }
 
 test "interpolation expressions" {
-    print($"{fruit(4)}")
-    print($"{if true { 4 } else { 3 }} fruit")
-    print($"{string("Hello ", "Alice")}")
-    print($"Nested: {$"{2 + 3}"}")
+    let function_result = $"{fruit(4)}"
 
-    print($"""I have {4} apples.
-I have {3} bananas.""")
+    assert(function_result == "4 apples")
 
-    print($```Raw\n{4}
-{3}```)
+    let conditional_result = $"{if true { 4 } else { 3 }} fruit"
+
+    assert(conditional_result == "4 fruit")
+
+    let constructed = $"{string("Hello ", "Alice")}"
+
+    assert(constructed == "Hello Alice")
+
+    let nested = $"Nested: {$"{2 + 3}"}"
+
+    assert(nested == "Nested: 5")
+
+    let multiline = $"""I have {4} apples.
+I have {3} bananas."""
+
+    assert(multiline == "I have 4 apples.\r\nI have 3 bananas.")
+
+    let raw = $```Raw\n{4}
+{3}```
+
+    assert(raw == "Raw\\n4\r\n3")
 }

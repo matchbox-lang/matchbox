@@ -1,6 +1,17 @@
 test "raw" {
-    print(`C:\path\to\file`)
-    print(`trailing\`)
-    print(`\n\u{1F600} {literal}`)
-    print(``)
+    let path = `C:\path\to\file`
+
+    assert(path == "C:\\path\\to\\file")
+
+    let trailing_slash = `trailing\`
+
+    assert(trailing_slash == "trailing\\")
+
+    let literal_escapes = `\n\u{1F600} {literal}`
+
+    assert(literal_escapes == "\\n\\u{1F600} {literal}")
+
+    let empty = ``
+
+    assert(empty == "")
 }

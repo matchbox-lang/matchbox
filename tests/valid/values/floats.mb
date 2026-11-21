@@ -101,13 +101,26 @@ test "floating point epsilon and exponents" {
     assert((f64.EPSILON) == 2.220446049250313e-16)
     assert(small_exponent == 1e-9)
     assert(large_exponent == 1e+9)
-    print($"{-f32.EPSILON}")
+
+    let negative_epsilon = $"{-f32.EPSILON}"
+
+    assert(negative_epsilon == "-1.1920929e-7")
 }
 
 test "special floating point values" {
-    print($"{f32.NAN} {f32.INFINITY} {f32.NEG_INFINITY} {-f32.NAN}")
-    print($"{f64.NAN} {f64.INFINITY} {f64.NEG_INFINITY} {-f64.NAN}")
+    let interpolated_single = $"{f32.NAN} {f32.INFINITY} {f32.NEG_INFINITY} {-f32.NAN}"
 
-    print(f32.NAN, " ", f32.INFINITY, " ", f32.NEG_INFINITY)
-    print(f64.NAN, " ", f64.INFINITY, " ", f64.NEG_INFINITY)
+    assert(interpolated_single == "NaN Infinity -Infinity NaN")
+
+    let interpolated_double = $"{f64.NAN} {f64.INFINITY} {f64.NEG_INFINITY} {-f64.NAN}"
+
+    assert(interpolated_double == "NaN Infinity -Infinity NaN")
+
+    let constructed_single = string(f32.NAN, " ", f32.INFINITY, " ", f32.NEG_INFINITY)
+
+    assert(constructed_single == "NaN Infinity -Infinity")
+
+    let constructed_double = string(f64.NAN, " ", f64.INFINITY, " ", f64.NEG_INFINITY)
+
+    assert(constructed_double == "NaN Infinity -Infinity")
 }

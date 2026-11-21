@@ -1,5 +1,5 @@
 test "backtick" {
     let value = `Hello`
 
-    print(value)
+    assert(value == "Hello")
 }

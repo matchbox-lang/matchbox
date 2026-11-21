@@ -8,11 +8,11 @@ func next() -> i32 {
 test "interpolation evaluation" {
     let first = $"{next()} / {next()} / {next()}"
 
-    print(first)
+    assert(first == "1 / 2 / 3")
     assert(count == 3)
 
     let second = $"{count} / {next()} / {count}"
 
-    print(second)
+    assert(second == "3 / 4 / 4")
     assert(count == 4)
 }

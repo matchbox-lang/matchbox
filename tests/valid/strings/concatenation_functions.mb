@@ -7,8 +7,17 @@ test "concatenation functions" {
     let word = "ello"
     let joined = join(letter, word)
 
-    print(joined)
-    print((letter + 'i') + '!' + " " + word)
-    print("" + letter)
-    print(letter + "")
+    assert(joined == "Hello")
+
+    let greeting = (letter + 'i') + '!' + " " + word
+
+    assert(greeting == "Hi! ello")
+
+    let empty_prefix = "" + letter
+
+    assert(empty_prefix == "H")
+
+    let empty_suffix = letter + ""
+
+    assert(empty_suffix == "H")
 }

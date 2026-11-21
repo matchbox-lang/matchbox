@@ -1,7 +1,21 @@
 test "escapes" {
-    print("line\nnext\tcolumn\rreturn")
-    print("\"quoted\" \\path \'apostrophe\'")
-    print("before\0after")
-    print("\u{0}\u{7F}\u{80}\u{7FF}\u{800}\u{FFFF}\u{10000}\u{10FFFF}")
-    print("\u{1F600}")
+    let controls = "line\nnext\tcolumn\rreturn"
+
+    assert(controls == "line\u{A}next\u{9}column\u{D}return")
+
+    let quotes = "\"quoted\" \\path \'apostrophe\'"
+
+    assert(quotes == "\"quoted\" \\path 'apostrophe'")
+
+    let embedded_zero = "before\0after"
+
+    assert(embedded_zero == "before\u{0}after")
+
+    let unicode_boundaries = "\u{0}\u{7F}\u{80}\u{7FF}\u{800}\u{FFFF}\u{10000}\u{10FFFF}"
+
+    assert(unicode_boundaries == "\0\u{7F}\u{80}߿ࠀ￿𐀀􏿿")
+
+    let emoji = "\u{1F600}"
+
+    assert(emoji == "😀")
 }

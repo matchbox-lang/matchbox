@@ -5,9 +5,9 @@ test "string text variadic" {
     let zeros = string("a\0", '\0', "b")
     let unicode = string('\u{1F600}', " / ", '\u{E9}')
 
-    print(empty)
-    print(single)
-    print(mixed)
-    print(zeros)
-    print(unicode)
+    assert(empty == "")
+    assert(single == "Hello")
+    assert(mixed == "abcde!")
+    assert(zeros == "a\0\0b")
+    assert(unicode == "😀 / é")
 }

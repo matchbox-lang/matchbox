@@ -40,6 +40,6 @@ test "fixed string and character bindings" {
     let name_copy = name
     let punctuation = '!'
 
-    print(name)
-    print(name_copy + punctuation)
+    assert(name == "Alice")
+    assert(name_copy + punctuation == "Alice!")
 }

@@ -3,8 +3,6 @@ func evaluate() {
 }
 
 test "constant once" {
-    print("runtime")
-
     const VALUE = evaluate()
 
     assert(VALUE == 42)

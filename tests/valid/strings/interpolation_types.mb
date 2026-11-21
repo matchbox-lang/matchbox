@@ -9,7 +9,15 @@ test "interpolation types" {
     let single: f32 = 1.25
     let double: f64 = 1.25
 
-    print($"{small}\n{medium}\n{large}")
-    print($"{byte}\n{hword}\n{unsigned}\n{wide}")
-    print($"{single}\n{double}\n{true}\n{false}\n{'\u{E9}'}\n{'\0'}")
+    let signed_values = $"{small}\n{medium}\n{large}"
+
+    assert(signed_values == "-128\n-32768\n-9223372036854775808")
+
+    let unsigned_values = $"{byte}\n{hword}\n{unsigned}\n{wide}"
+
+    assert(unsigned_values == "255\n65535\n4294967295\n18446744073709551615")
+
+    let other_values = $"{single}\n{double}\n{true}\n{false}\n{'\u{E9}'}\n{'\0'}"
+
+    assert(other_values == "1.25\n1.25\ntrue\nfalse\né\n\0")
 }

@@ -7,5 +7,5 @@ test "interpolation references" {
     var text = "Value"
     let result = display(&number, &text)
 
-    print(result)
+    assert(result == "Value: -9223372036854775808")
 }

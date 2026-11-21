@@ -29,7 +29,7 @@ test "computed default arguments" {
 
     assert(computed_default == 9)
     assert(recursive_default == 3)
-    print(text_default)
+    assert(text_default == "default")
 }
 
 test "nested function default arguments" {

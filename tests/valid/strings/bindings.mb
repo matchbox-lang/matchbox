@@ -5,6 +5,6 @@ test "bindings" {
     let copy: string = value
     value = "Second"
 
-    print(copy)
-    print(value)
+    assert(copy == "First")
+    assert(value == "Second")
 }

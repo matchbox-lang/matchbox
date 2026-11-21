@@ -56,7 +56,10 @@ test "pointer sized integer bounds" {
     assert(unsigned == 202)
     assert(maximum == usize.MAX)
     assert(minimum == isize.MIN)
-    print($"Values: {negative}, {unsigned}")
+
+    let formatted = $"Values: {negative}, {unsigned}"
+
+    assert(formatted == "Values: -123, 202")
 }
 
 test "pointer sized conditional results" {

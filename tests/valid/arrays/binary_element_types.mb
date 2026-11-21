@@ -31,5 +31,5 @@ test "mixed precision array operations" {
 test "character array concatenation" {
     let text = ['a', 'b'] + ['x', 'y']
 
-    print(text)
+    assert(text == ["ax", "by"])
 }

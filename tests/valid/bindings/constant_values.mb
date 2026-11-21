@@ -24,7 +24,7 @@ test "floating point constant values" {
 test "string constant values" {
     const TEXT = string(123)
 
-    print(TEXT)
+    assert(TEXT == "123")
 }
 
 test "character and boolean constant values" {

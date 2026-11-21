@@ -1,9 +1,12 @@
 test "while boolean" {
     var running = true
+    var iterations = 0
 
     while running {
-        print("once")
-
+        iterations += 1
         running = false
     }
+
+    assert(iterations == 1)
+    assert(not running)
 }

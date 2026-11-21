@@ -1,8 +1,25 @@
 test "concatenation unicode" {
-    print('é' + '中')
-    print("🌍" + '🌎')
-    print('🌍' + "🌎")
-    print('\0' + 'x')
-    print("a\0" + 'b')
-    print('\u{10FFFF}' + "!")
+    let letters = 'é' + '中'
+
+    assert(letters == "é中")
+
+    let string_character = "🌍" + '🌎'
+
+    assert(string_character == "🌍🌎")
+
+    let character_string = '🌍' + "🌎"
+
+    assert(character_string == "🌍🌎")
+
+    let leading_zero = '\0' + 'x'
+
+    assert(leading_zero == "\0x")
+
+    let embedded_zero = "a\0" + 'b'
+
+    assert(embedded_zero == "a\0b")
+
+    let maximum_character = '\u{10FFFF}' + "!"
+
+    assert(maximum_character == "􏿿!")
 }

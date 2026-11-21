@@ -1,11 +1,14 @@
 test "match guard capture" {
     let value = 10
     let other = 20
+    var result = ""
 
     match value {
         case n if n == other:
-            print("Equal")
+            result = "Equal"
         case _:
-            print("Different")
+            result = "Different"
     }
+
+    assert(result == "Different")
 }

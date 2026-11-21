@@ -1,5 +1,8 @@
+var calls = 0
+
 func evaluate() {
-    print("runtime")
+    calls += 1
+
     return 42
 }
 
@@ -11,6 +14,7 @@ test "constant side effects" {
     let value = evaluate()
 
     assert(value == 42)
+    assert(calls == 1)
 
     const VALUE = with_default()
 

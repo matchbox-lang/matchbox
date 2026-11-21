@@ -1,9 +1,9 @@
 func exclusive(value: ^string) {
-    print(value)
+    assert(value == "Original")
 }
 
 func display(value: &string) {
-    print(value)
+    assert(value == "Original")
 }
 
 func capture(value: &string) -> string {
@@ -19,6 +19,6 @@ test "references" {
     let captured = capture(&value)
     value = "Updated"
 
-    print(captured)
-    print(value)
+    assert(captured == "Original")
+    assert(value == "Updated")
 }

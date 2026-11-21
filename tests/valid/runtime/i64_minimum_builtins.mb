@@ -6,7 +6,9 @@ test "i64 minimum builtins" {
 
     observed_steps += 1
 
-    print("minimum:", -9223372036854775808)
+    let formatted = string("minimum:", -9223372036854775808)
+
+    assert(formatted == "minimum:-9223372036854775808")
 
     assert(observed_steps == 1)
 }

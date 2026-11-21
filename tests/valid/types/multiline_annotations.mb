@@ -1,0 +1,31 @@
+test "continued variable and constant annotations" {
+    let value:
+
+        i32
+        = 7
+    const CONSTANT:
+        i32
+        = 9
+    var mutable:
+        i32 = 11
+
+    assert(value == 7)
+    assert(CONSTANT == 9)
+    assert(mutable == 11)
+}
+
+test "continued reference annotation" {
+    let origin = 7
+    let reference:
+        &
+        i32 = &origin
+
+    assert(reference == 7)
+}
+
+test "continued type conversion" {
+    let value = i64
+        (7)
+
+    assert(value == 7)
+}

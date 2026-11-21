@@ -11,9 +11,8 @@ ASTNode* parse_array_initializer(Parser* parser, Token token, TypeKind kind)
     ast->array.type_id = (Type){.kind = kind};
     ast->array.fill = true;
 
-    parse_dimensions(parser, &ast->array.type_id);
-
-    bool complete = parse_argument_list(parser, &ast->array.elements);
+    bool complete = parse_dimensions(parser, &ast->array.type_id)
+        && !is_end_of_file(parser) && parse_argument_list(parser, &ast->array.elements);
 
     if (!complete) {
         free_ast_node(ast);

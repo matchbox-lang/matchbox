@@ -1,0 +1,33 @@
+test "continued conditional header" {
+    var value = 0
+
+    if true
+    {
+        value = 7
+    }
+
+    assert(value == 7)
+}
+
+test "continued while header" {
+    var count = 0
+
+    while count < 1
+    {
+        count += 1
+    }
+
+    assert(count == 1)
+}
+
+test "continued typed for header" {
+    var total = 0
+
+    for value:
+        i32 in [3, 4]
+    {
+        total += value
+    }
+
+    assert(total == 7)
+}

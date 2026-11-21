@@ -22,7 +22,7 @@ static ASTNode* parse_if_condition(Parser* parser)
     Parser start = *parser;
     ASTNode* condition = parse_expression(parser);
 
-    if (!condition || parser->current_token.type == TokenLbrace) {
+    if (!condition || parser->current_token.type == TokenLbrace || is_end_of_file(parser)) {
         return condition;
     }
 
@@ -180,8 +180,10 @@ static ASTNode* parse_for_binding(Parser* parser)
     ASTNode* binding = create_variable_definition_node(token, id, true);
     binding->variable_definition.expr = create_ast_node(ASTNone);
 
-    if (parser->current_token.type == TokenColon) {
-        parse_variable_type(parser, binding);
+    if (parser->current_token.type == TokenColon && !parse_variable_type(parser, binding)) {
+        free_ast_node(binding);
+
+        return NULL;
     }
 
     return binding;

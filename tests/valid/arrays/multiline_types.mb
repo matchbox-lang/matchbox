@@ -1,0 +1,26 @@
+test "continued array dimension expressions" {
+    let values: i32[
+        1 +
+        1
+    ][
+        2
+    ] = [1, 2, 3, 4]
+
+    assert(values[1][1] == 4)
+}
+
+test "continued inferred array dimension" {
+    let values: i32[
+    ] = [3, 7]
+
+    assert(values == [3, 7])
+}
+
+test "continued array constructor" {
+    let values = i32[
+        2
+    ]
+        (7)
+
+    assert(values == [7, 7])
+}

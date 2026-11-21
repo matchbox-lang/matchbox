@@ -98,6 +98,12 @@ static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
 
 bool parse_braced_block(Parser* parser, ASTNode** block)
 {
+    *block = NULL;
+
+    if (is_end_of_file(parser)) {
+        return false;
+    }
+
     consume(parser, TokenLbrace);
 
     *block = create_compound_node(NULL);

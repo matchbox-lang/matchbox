@@ -1,4 +1,5 @@
 #include "compiler/parser/variable.h"
+#include "common/array_type.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/type.h"
@@ -64,19 +65,43 @@ static ASTNode* parse_variable_binding(Parser* parser, Token keyword)
     return ast;
 }
 
+static bool has_inferred_dimensions(Type type)
+{
+    if (type.kind != TypeArray || !type.array->dimensions) {
+        return false;
+    }
+
+    const Vector* dimensions = type.array->dimensions;
+    size_t index = 0;
+
+    while (index < dimensions->count && dimensions->data[index]) {
+        index++;
+    }
+
+    return index < dimensions->count;
+}
+
 static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword)
 {
-    parse_variable_type(parser, ast);
+    if (!parse_variable_type(parser, ast)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
 
     bool requires_initializer = ast->variable_definition.fixed
         && (ast->variable_definition.constant || ast->variable_definition.type_id.kind != TypeArray);
 
-    if (requires_initializer && parser->current_token.type != TokenEqual) {
+    if (requires_initializer && parser->current_token.type != TokenEqual && !is_end_of_file(parser)) {
         expected_token_error(TokenEqual, parser->current_token);
     }
 
-    if (!parse_variable_initializer(parser, ast)) {
+    bool incomplete = is_end_of_file(parser)
+        && (requires_initializer || has_inferred_dimensions(ast->variable_definition.type_id));
+
+    if (incomplete || !parse_variable_initializer(parser, ast)) {
         free_ast_node(ast);
+
         return NULL;
     }
 

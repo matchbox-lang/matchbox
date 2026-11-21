@@ -1,0 +1,31 @@
+func value() ->
+    i32 {
+    return 7
+}
+
+func shared(value: &i32) ->
+    &
+    i32 {
+    return value
+}
+
+func make() -> i32[
+    2
+] {
+    return [3, 7]
+}
+
+test "continued scalar and reference return types" {
+    let result = value()
+    let origin = 9
+    let reference = shared(&origin)
+
+    assert(result == 7)
+    assert(reference == 9)
+}
+
+test "continued array return dimensions" {
+    let values = make()
+
+    assert(values == [3, 7])
+}

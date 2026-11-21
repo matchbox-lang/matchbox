@@ -46,6 +46,10 @@ ASTNode* parse_type_expression(Parser* parser)
 
     consume(parser, type_token.type);
 
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
     if (parser->current_token.type == TokenLsquare) {
         return parse_array_initializer(parser, type_token, kind);
     }
@@ -73,7 +77,7 @@ ASTNode* parse_type_expression(Parser* parser)
     return ast;
 }
 
-static void parse_dimension(Parser* parser, Vector* dimensions)
+static bool parse_dimension(Parser* parser, Vector* dimensions)
 {
     consume(parser, TokenLsquare);
 
@@ -81,23 +85,30 @@ static void parse_dimension(Parser* parser, Vector* dimensions)
         push_vector_item(dimensions, NULL);
         consume(parser, TokenRsquare);
 
-        return;
+        return true;
     }
 
     ASTNode* count = parse_expression(parser);
 
     if (!count) {
-        expected_expression_error(parser->current_token);
+        return false;
     }
 
     push_vector_item(dimensions, count);
+
+    if (is_end_of_file(parser)) {
+        return false;
+    }
+
     consume(parser, TokenRsquare);
+
+    return true;
 }
 
-void parse_dimensions(Parser* parser, Type* type)
+bool parse_dimensions(Parser* parser, Type* type)
 {
     if (parser->current_token.type != TokenLsquare) {
-        return;
+        return true;
     }
 
     ArrayType* array_type = allocate_zeroed_memory(1, sizeof(ArrayType) + 1);
@@ -108,47 +119,61 @@ void parse_dimensions(Parser* parser, Type* type)
     init_vector(dimensions);
 
     *type = (Type){.kind = TypeArray, .array = array_type};
+    bool complete = true;
 
-    while (parser->current_token.type == TokenLsquare) {
-        parse_dimension(parser, dimensions);
+    while (complete && parser->current_token.type == TokenLsquare) {
+        complete = parse_dimension(parser, dimensions);
     }
+
+    return complete;
 }
 
-void parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_type)
+bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_type)
 {
     *reference_type = parse_reference_type(parser);
+
+    if (is_end_of_file(parser)) {
+        return false;
+    }
+
     TypeKind kind = get_token_data_type(parser->current_token.type);
     *type = (Type){.kind = kind};
 
     consume_type(parser);
-    parse_dimensions(parser, type);
+
+    return parse_dimensions(parser, type);
 }
 
-void parse_function_return_type(Parser* parser, ASTNode* ast)
+bool parse_function_return_type(Parser* parser, ASTNode* ast)
 {
     if (parser->current_token.type != TokenArrow) {
-        return;
+        return true;
     }
 
     consume(parser, TokenArrow);
 
-    parse_declared_type(parser, &ast->function_definition.return_type_id,
+    bool complete = parse_declared_type(parser, &ast->function_definition.return_type_id,
         &ast->function_definition.return_reference_type);
+    ast->function_definition.has_explicit_return_type = complete;
 
-    ast->function_definition.has_explicit_return_type = true;
+    return complete;
 }
 
-void parse_variable_type(Parser* parser, ASTNode* ast)
+bool parse_variable_type(Parser* parser, ASTNode* ast)
 {
     if (parser->current_token.type == TokenColon) {
         consume(parser, TokenColon);
 
-        parse_declared_type(parser, &ast->variable_definition.type_id, &ast->variable_definition.reference_type);
+        return parse_declared_type(parser, &ast->variable_definition.type_id, &ast->variable_definition.reference_type);
+    }
 
-        return;
+    if (is_end_of_file(parser)) {
+        return false;
     }
 
     if (parser->current_token.type != TokenEqual) {
         expected_token_error(TokenEqual, parser->current_token);
     }
+
+    return true;
 }

@@ -88,6 +88,17 @@ static bool parse_parameter_default(Parser* parser, ASTNode* ast)
     return true;
 }
 
+static bool parse_parameter_type(Parser* parser, ASTNode* ast)
+{
+    if (parser->current_token.type != TokenColon) {
+        return true;
+    }
+
+    consume(parser, TokenColon);
+
+    return parse_declared_type(parser, &ast->parameter.type_id, &ast->parameter.reference_type);
+}
+
 static ASTNode* parse_parameter(Parser* parser)
 {
     if (is_end_of_file(parser)) {
@@ -101,13 +112,7 @@ static ASTNode* parse_parameter(Parser* parser)
 
     ASTNode* ast = create_parameter_node(token, id);
 
-    if (parser->current_token.type == TokenColon) {
-        consume(parser, TokenColon);
-
-        parse_declared_type(parser, &ast->parameter.type_id, &ast->parameter.reference_type);
-    }
-
-    if (!parse_parameter_default(parser, ast)) {
+    if (!parse_parameter_type(parser, ast) || !parse_parameter_default(parser, ast)) {
         free_ast_node(ast);
 
         return NULL;
@@ -225,9 +230,7 @@ ASTNode* parse_function_definition(Parser* parser)
         return NULL;
     }
 
-    parse_function_return_type(parser, ast);
-
-    if (!parse_function_body(parser, ast)) {
+    if (!parse_function_return_type(parser, ast) || !parse_function_body(parser, ast)) {
         free_ast_node(ast);
 
         return NULL;

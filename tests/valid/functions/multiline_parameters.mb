@@ -1,0 +1,45 @@
+func identity(value:
+    i32) -> i32 {
+    return value
+}
+
+func add(first:
+    i32, second:
+    i32 = 2) -> i32 {
+    return first + second
+}
+
+func read(value: &
+    i32) -> i32 {
+    return value + 0
+}
+
+func increment(value: ^
+    i32) {
+    value += 1
+}
+
+test "parameter types on following lines" {
+    let value = identity(42)
+    let total = add(3, 4)
+
+    assert(value == 42)
+    assert(total == 7)
+}
+
+test "continued parameter types with defaults" {
+    let result = add(3)
+
+    assert(result == 5)
+}
+
+test "continued reference parameter types" {
+    var value = 7
+    let result = read(&value)
+
+    assert(result == 7)
+
+    increment(^value)
+
+    assert(value == 8)
+}

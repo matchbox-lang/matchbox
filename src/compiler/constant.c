@@ -5,6 +5,7 @@
 #include "common/unicode.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
+#include "runtime/string_object.h"
 #include <limits.h>
 #include <math.h>
 
@@ -354,8 +355,27 @@ static bool evaluate_boolean_binary(
     return folded;
 }
 
+static bool evaluate_string_binary(const ASTNode* ast, ConstantValue* value)
+{
+    const ASTNode* left = ast->binary.left_expr;
+    const ASTNode* right = ast->binary.right_expr;
+
+    if (left->type != ASTString || right->type != ASTString) {
+        return false;
+    }
+
+    bool equal = string_objects_equal(left->string_literal.value, right->string_literal.value);
+    value->integer = equal == (ast->binary.operator.type == TokenEqualEqual);
+
+    return true;
+}
+
 static bool evaluate_binary(const ASTNode* ast, ConstantValue* value)
 {
+    if (ast->binary.operand_type.kind == TypeString && ast->binary.type_id.kind == TypeBool) {
+        return evaluate_string_binary(ast, value);
+    }
+
     ConstantValue left = {0};
     ConstantValue right = {0};
     bool constant_left = evaluate_constant(ast->binary.left_expr, &left);

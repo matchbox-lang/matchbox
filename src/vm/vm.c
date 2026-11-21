@@ -1,6 +1,7 @@
 #include "vm/vm.h"
 #include "common/errors.h"
 #include "runtime/function_object.h"
+#include "runtime/string_object.h"
 #include "vm/opcode.h"
 #include <math.h>
 #include <stdlib.h>
@@ -583,6 +584,22 @@ static void run(VM* vm)
             case OpNei:
                 vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) != (int8_t)c);
                 break;
+            case OpEqString: {
+                const StringObject* left = AS_STRING_OBJECT(vm->fp[b]);
+                const StringObject* right = AS_STRING_OBJECT(vm->fp[c]);
+                bool equal = string_objects_equal(left, right);
+
+                vm->fp[a] = BOOL_VALUE(equal);
+                break;
+            }
+            case OpNeString: {
+                const StringObject* left = AS_STRING_OBJECT(vm->fp[b]);
+                const StringObject* right = AS_STRING_OBJECT(vm->fp[c]);
+                bool equal = string_objects_equal(left, right);
+
+                vm->fp[a] = BOOL_VALUE(!equal);
+                break;
+            }
             case OpLtI32:
                 vm->fp[a] = BOOL_VALUE(AS_I32(vm->fp[b]) < AS_I32(vm->fp[c]));
                 break;

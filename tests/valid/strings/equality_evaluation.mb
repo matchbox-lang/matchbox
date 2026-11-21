@@ -1,0 +1,20 @@
+var calls = 0
+
+func next(value: string, expected_call: i32) -> string {
+    calls += 1
+
+    assert(calls == expected_call)
+
+    return value
+}
+
+test "string comparison operand evaluation" {
+    let equal = next("same", 1) == next("same", 2)
+
+    assert(equal)
+
+    let different = next("left", 3) != next("right", 4)
+
+    assert(different)
+    assert(calls == 4)
+}

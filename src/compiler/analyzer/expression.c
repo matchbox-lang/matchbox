@@ -101,6 +101,13 @@ Type analyze_binary_operand_types(Token operator, Type left_type, Type right_typ
         return (Type){.kind = TypeString};
     }
 
+    if (left_type.kind == TypeString && right_type.kind == TypeString
+        && (operator_type == TokenEqualEqual || operator_type == TokenNotEqual)) {
+        *operand_type = left_type;
+
+        return (Type){.kind = TypeBool};
+    }
+
     Type common_type = {.kind = get_common_numeric_type(left_type.kind, right_type.kind)};
     bool float_operands = is_float_type(common_type.kind);
 

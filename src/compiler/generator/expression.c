@@ -385,6 +385,12 @@ static Operand emit_integer_binary_operator(
 
 Operand emit_binary_operator(Compiler* compiler, TokenType operator_type, Type type, Operand left, Operand right)
 {
+    if (type.kind == TypeString) {
+        Opcode opcode = operator_type == TokenEqualEqual ? OpEqString : OpNeString;
+
+        return emit_comparison(compiler, opcode, left, right);
+    }
+
     bool comparison = is_comparison_token(operator_type) || is_equality_token(operator_type);
 
     if (comparison) {

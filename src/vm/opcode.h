@@ -263,6 +263,8 @@ typedef enum Opcode
     OpEqi,
     OpNe,
     OpNei,
+    OpEqString,
+    OpNeString,
     OpLtI32,
     OpLtU32,
     OpLeI32,

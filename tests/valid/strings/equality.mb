@@ -1,0 +1,51 @@
+func check(left: string, right: string, expected: bool) {
+    assert((left == right) == expected)
+    assert((left != right) == not expected)
+}
+
+func join(left: string, right: string) -> string {
+    return left + right
+}
+
+func references_equal(left: &string, right: &string) -> bool {
+    return left == right
+}
+
+test "string content equality" {
+    let first = join("he", "llo")
+    let second = join("hel", "lo")
+
+    check(first, second, true)
+    check(first, first, true)
+    check(first, "hello", true)
+    check(first, "hell", false)
+    check(first, "jello", false)
+}
+
+test "empty string equality" {
+    let empty = join("", "")
+
+    check(empty, "", true)
+    check(empty, "a", false)
+    check("a", empty, false)
+}
+
+test "embedded NUL equality" {
+    check("a\0b", "a\0b", true)
+    check("a\0b", "a\0c", false)
+    check("a\0", "a", false)
+}
+
+test "Unicode equality compares encoded contents" {
+    check("é", "\u{E9}", true)
+    check("😀", "\u{1F600}", true)
+    check("é", "e\u{301}", false)
+}
+
+test "string equality through references" {
+    let left = join("he", "llo")
+    let right = join("hel", "lo")
+    let equal = references_equal(&left, &right)
+
+    assert(equal)
+}

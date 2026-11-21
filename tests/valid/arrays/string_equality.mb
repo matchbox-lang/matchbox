@@ -1,0 +1,27 @@
+func make(value: string) -> string[2] {
+    return [value + "", "tail"]
+}
+
+test "string array content equality" {
+    let first = make("hi")
+    let second = make("hi")
+
+    assert(first == second)
+    assert(not (first != second))
+
+    second[1] = "changed"
+
+    assert(first != second)
+    assert(not (first == second))
+}
+
+test "nested string array equality" {
+    let first = [["a\0b", ""], ["é", "tail"]]
+    let second = [["a\0b", ""], ["\u{E9}", "tail"]]
+
+    assert(first == second)
+
+    second[0][0] = "a\0c"
+
+    assert(first != second)
+}

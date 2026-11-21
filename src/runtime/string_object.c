@@ -61,10 +61,15 @@ bool string_object_chars_equal(const StringObject* string, const char* chars, si
 
 bool string_objects_equal(const StringObject* a, const StringObject* b)
 {
-    StringView left = get_string_view(a);
-    StringView right = get_string_view(b);
+    if (a == b) {
+        return true;
+    }
 
-    return string_views_equal(left, right);
+    if (a->length != b->length || a->hash != b->hash) {
+        return false;
+    }
+
+    return memcmp(a->chars, b->chars, a->length) == 0;
 }
 
 void print_string_object(const StringObject* string)

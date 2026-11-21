@@ -1,0 +1,27 @@
+func equal(left: string, right: string) -> bool {
+    return left == right
+}
+
+func different(left: string, right: string) -> bool {
+    return left != right
+}
+
+test "constant string equality" {
+    const EQUAL = equal("hello", "hel" + "lo")
+    const DIFFERENT = different("a\0b", "a\0c")
+    const EMPTY = "" == ""
+
+    assert(EQUAL)
+    assert(DIFFERENT)
+    assert(EMPTY)
+}
+
+test "literal string comparison conditions" {
+    let value = if "a" != "b" {
+        42
+    } else {
+        0
+    }
+
+    assert(value == 42)
+}

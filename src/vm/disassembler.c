@@ -315,6 +315,8 @@ static void print_instruction(Instruction inst, Instruction prefix)
         case OpEqi:         print_opcode_ab_i8("EQI", &operands); break;
         case OpNe:          print_opcode_abc("NE", &operands); break;
         case OpNei:         print_opcode_ab_i8("NEI", &operands); break;
+        case OpEqString:    print_opcode_abc("EQ_STRING", &operands); break;
+        case OpNeString:    print_opcode_abc("NE_STRING", &operands); break;
         case OpLtI32:       print_opcode_abc("LT_I32", &operands); break;
         case OpLtU32:       print_opcode_abc("LT_U32", &operands); break;
         case OpLeI32:       print_opcode_abc("LE_I32", &operands); break;

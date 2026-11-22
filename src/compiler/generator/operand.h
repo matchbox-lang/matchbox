@@ -4,12 +4,13 @@
 #include "compiler/compiler.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct Operand
 {
     int reg;
     bool temporary;
-    size_t slots;
+    uint8_t slots;
     bool pair;
 } Operand;
 

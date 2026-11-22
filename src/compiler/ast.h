@@ -31,6 +31,7 @@ typedef enum ReferenceType
 typedef enum ASTNodeType
 {
     ASTArray,
+    ASTSlice,
     ASTIndex,
     ASTIndexAssignment,
     ASTAssignment,
@@ -74,6 +75,16 @@ typedef struct ASTNode
 
         struct {
             Token token;
+            ASTNode* expr;
+            ASTNode* start;
+            ASTNode* end;
+            Type type_id;
+            ReferenceType reference_type;
+            Vector reference_origins;
+        } slice;
+
+        struct {
+            Token token;
             ASTNode* array;
             ASTNode* index;
             ASTNode* value;
@@ -98,6 +109,7 @@ typedef struct ASTNode
         struct {
             Token token;
             ASTNode* array;
+            ASTNode* end;
             ASTNode* index;
             ASTNode* value;
             ASTNode* body;
@@ -273,6 +285,9 @@ typedef struct ASTNode
 } ASTNode;
 
 ASTNode* create_ast_node(ASTNodeType type);
+ASTNode* create_slice_node(Token token, ASTNode* expr, ASTNode* start);
+void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type);
+void convert_string_reference_to_slice(ASTNode* ast, Type type);
 ASTNode* create_array_node(Token token, Type type, bool flat);
 ASTNode* copy_literal_node(const ASTNode* literal);
 void replace_ast_node(ASTNode* ast, ASTNode* replacement);
@@ -323,5 +338,6 @@ bool is_variable_type(const ASTNode* ast);
 bool is_none(const ASTNode* ast);
 bool is_initialized(const ASTNode* ast);
 void initialize_variable(ASTNode* ast);
+void mark_address_taken(ASTNode* symbol);
 
 #endif

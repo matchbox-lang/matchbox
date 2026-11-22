@@ -1,0 +1,16 @@
+let string_slice_limit: usize = 3
+
+func slice_with_global_limit() -> string {
+    let text = "hello"
+    let view = text[0..string_slice_limit]
+
+    return string(view)
+}
+
+test "string slices use current dynamic bounds" {
+    let exclusive = ^string_slice_limit
+    exclusive -= 1
+    let result = slice_with_global_limit()
+
+    assert(result == "he")
+}

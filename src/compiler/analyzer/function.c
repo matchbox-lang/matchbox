@@ -130,8 +130,9 @@ static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
     }
 
     Type parameter_type = parameter->parameter.type_id;
+    ReferenceType reference = is_slice_type(parameter_type.kind) ? parameter->parameter.reference_type : RefNone;
 
-    apply_declared_type(argument, parameter_type, RefNone);
+    apply_declared_type(argument, parameter_type, reference);
     analyze_node(analyzer, argument);
 
     ReferenceType argument_reference = get_reference_type(argument);
@@ -297,7 +298,9 @@ static void set_parameter_positions(ASTNode* ast)
     for (size_t i = 0; i < count; i++) {
         ASTNode* param = get_vector_at(&ast->function_definition.params, i);
         param->parameter.position = position;
-        position += get_reference_type(param) == RefNone ? get_type_slot_count(get_node_data_type(param).kind) : 1;
+        Type type = get_node_data_type(param);
+        bool value = get_reference_type(param) == RefNone || is_slice_type(type.kind);
+        position += value ? get_type_slot_count(type.kind) : 1;
     }
 }
 
@@ -430,6 +433,10 @@ static ReferenceType validate_return_reference_type(Analyzer* analyzer, ASTNode*
 
 static void track_return_origin(Analyzer* analyzer, ASTNode* ast, ASTNode* origin)
 {
+    if (origin) {
+        origin = get_reference_origin_or_self(origin);
+    }
+
     if (!can_return_reference_origin(origin)) {
         semantic_token_error("Reference to local binding cannot escape function ", ast->return_statement.token);
     }
@@ -448,6 +455,12 @@ static void track_return_reference_origin(Analyzer* analyzer, ASTNode* ast)
 {
     Vector* origins = get_reference_origins_from_expression(ast->return_statement.expr);
     size_t count = count_vector(origins);
+
+    Type type = get_node_data_type(ast->return_statement.expr);
+
+    if (!count && type.kind == TypeStringSlice && get_reference_type(ast->return_statement.expr) == RefShared) {
+        return;
+    }
 
     if (!count) {
         ASTNode* origin = get_reference_origin_from_expression(ast->return_statement.expr);

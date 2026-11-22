@@ -14,7 +14,7 @@ typedef struct FormattedArguments
     size_t count;
 } FormattedArguments;
 
-static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data);
+static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t count);
 
 static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format)
 {
@@ -26,7 +26,13 @@ static void format_argument(Writer* writer, const Value* argument, const Argumen
 
     const uint8_t* data = AS_POINTER(argument[0]);
 
-    format_array_data(writer, format->array, data);
+    size_t count = format->array->count;
+
+    if (count == SIZE_MAX) {
+        count = AS_UNSIGNED(argument[1]);
+    }
+
+    format_array_data(writer, format->array, data, count);
 }
 
 void format_arguments(Writer* writer, const Value* frame, const ArgumentFormat* formats, size_t count)
@@ -59,6 +65,10 @@ static size_t argument_capacity(const Value* frame, const ArgumentFormat* format
         format_argument(&writer, frame + format->slot, format);
 
         return writer.length;
+    }
+
+    if (format->formatter == format_string_slice_argument) {
+        return AS_UNSIGNED(frame[format->slot + 1]);
     }
 
     const StringObject* string = AS_POINTER(frame[format->slot]);
@@ -201,6 +211,14 @@ void format_string_argument(Writer* writer, const Value* argument)
     format_string(writer, value);
 }
 
+void format_string_slice_argument(Writer* writer, const Value* argument)
+{
+    const char* data = AS_POINTER(argument[0]);
+    size_t length = AS_UNSIGNED(argument[1]);
+
+    write_bytes(writer, data, length);
+}
+
 static void format_array_item(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t index)
 {
     if (index) {
@@ -208,7 +226,7 @@ static void format_array_item(Writer* writer, const ArrayFormat* format, const u
     }
 
     if (format->element.array) {
-        format_array_data(writer, format->element.array, data);
+        format_array_data(writer, format->element.array, data, format->element.array->count);
 
         return;
     }
@@ -219,11 +237,11 @@ static void format_array_item(Writer* writer, const ArrayFormat* format, const u
     format->element.formatter(writer, argument);
 }
 
-static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data)
+static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t count)
 {
     write_bytes(writer, "[", 1);
 
-    for (size_t i = 0; i < format->count; i++) {
+    for (size_t i = 0; i < count; i++) {
         format_array_item(writer, format, data + i * format->stride, i);
     }
 
@@ -261,6 +279,8 @@ static ArgumentFormat get_scalar_argument_format(TypeKind kind)
             return (ArgumentFormat){.formatter = format_char_argument, .capacity = 4};
         case TypeString:
             return (ArgumentFormat){.formatter = format_string_argument};
+        case TypeStringSlice:
+            return (ArgumentFormat){.formatter = format_string_slice_argument};
         case TypeBool:
             return (ArgumentFormat){.formatter = format_bool_argument, .capacity = 5};
         default:
@@ -270,7 +290,7 @@ static ArgumentFormat get_scalar_argument_format(TypeKind kind)
 
 ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
 {
-    if (!is_array_type(type.kind)) {
+    if (!is_contiguous_type(type.kind) || type.kind == TypeStringSlice) {
         return get_scalar_argument_format(type.kind);
     }
 
@@ -304,7 +324,7 @@ static bool matches_array_format(const ArrayFormat* format, Type type)
 
 bool matches_argument_format(const ArgumentFormat* format, Type type)
 {
-    if (is_array_type(type.kind)) {
+    if (is_contiguous_type(type.kind) && type.kind != TypeStringSlice) {
         return matches_array_format(format->array, type);
     }
 

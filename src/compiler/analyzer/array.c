@@ -2,8 +2,10 @@
 #include "common/array_type.h"
 #include "common/errors.h"
 #include "common/memory.h"
+#include "common/slice.h"
 #include "common/vector.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/variable.h"
@@ -120,9 +122,16 @@ static size_t resolve_array_count(Analyzer* analyzer, ASTNode* expression)
     return (size_t)value;
 }
 
-static void resolve_array_dimension(Analyzer* analyzer, Type* type, size_t count)
+static void resolve_array_dimension(Analyzer* analyzer, Type* type, size_t count, bool slice)
 {
     Type element_type = *type;
+
+    if (slice) {
+        *type = get_slice_type(&analyzer->array_types, element_type);
+
+        return;
+    }
+
     *type = find_array_type(&analyzer->array_types, element_type, count);
 
     if (type->kind == TypeUnknown) {
@@ -130,9 +139,24 @@ static void resolve_array_dimension(Analyzer* analyzer, Type* type, size_t count
     }
 }
 
+static size_t resolve_declared_array_count(Analyzer* analyzer, Type type, size_t index)
+{
+    if (!index && type.kind == TypeArraySlice) {
+        return SIZE_MAX;
+    }
+
+    return resolve_array_count(analyzer, type.array->dimensions->data[index]);
+}
+
 void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
-    if (type->kind != TypeArray || !type->array->dimensions) {
+    if (type->kind == TypeStringSlice) {
+        *type = get_string_slice_type(&analyzer->array_types);
+
+        return;
+    }
+
+    if (!is_contiguous_type(type->kind) || !type->array->dimensions) {
         return;
     }
 
@@ -144,7 +168,7 @@ void resolve_dimensions(Analyzer* analyzer, Type* type)
     init_vector(&counts);
 
     for (size_t i = 0; i < dimensions->count; i++) {
-        size_t count = resolve_array_count(analyzer, dimensions->data[i]);
+        size_t count = resolve_declared_array_count(analyzer, *type, i);
 
         push_vector_item(&counts, (void*)(uintptr_t)count);
     }
@@ -156,7 +180,7 @@ void resolve_dimensions(Analyzer* analyzer, Type* type)
     for (size_t i = counts.count; i > 0; i--) {
         size_t count = (size_t)(uintptr_t)counts.data[i - 1];
 
-        resolve_array_dimension(analyzer, &resolved_type, count);
+        resolve_array_dimension(analyzer, &resolved_type, count, type->kind == TypeArraySlice && i == 1);
     }
 
     free_vector(&counts);
@@ -314,19 +338,6 @@ void analyze_array(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
-static ASTNode* get_index_owner(ASTNode* ast)
-{
-    if (ast->type == ASTIndex) {
-        return get_index_owner(ast->index.array);
-    }
-
-    if (ast->type == ASTVariable) {
-        return ast->variable.symbol;
-    }
-
-    return NULL;
-}
-
 static Type get_index_literal_type(ASTNode* expression)
 {
     if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
@@ -361,7 +372,7 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
         || (is_integer_type(index_type.kind) && constant_expression);
     bool negative = is_signed_integer_type(index_type.kind) && (int64_t)value < 0;
 
-    if (!is_array_type(array_type.kind)) {
+    if (!is_contiguous_type(array_type.kind)) {
         semantic_error("Indexing requires an array", ast->index.token);
     }
 
@@ -371,6 +382,12 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
 
     const ArrayType* info = array_type.array;
     ast->index.type_id = info->element_type;
+
+    if (is_slice_type(array_type.kind)) {
+        ast->index.constant = false;
+
+        return;
+    }
 
     if (!ast->index.constant) {
         return;
@@ -383,9 +400,26 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
     ast->index.position = (size_t)value;
 }
 
-void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast)
+static ASTNode* get_index_owner(ASTNode* ast)
 {
-    analyze_index(analyzer, ast);
+    if (ast->type == ASTIndex) {
+        return get_index_owner(ast->index.array);
+    }
+
+    if (ast->type == ASTVariable) {
+        return ast->variable.symbol;
+    }
+
+    return NULL;
+}
+
+static void validate_index_mutation(ASTNode* ast)
+{
+    Type source = get_node_data_type(ast->index.array);
+
+    if (source.kind == TypeStringSlice) {
+        semantic_error("Cannot mutate string slice contents", ast->index.token);
+    }
 
     ASTNode* owner = get_index_owner(ast->index.array);
     ReferenceType reference = get_reference_type(owner);
@@ -395,10 +429,29 @@ void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast)
     if (!owner || reference == RefShared || constant || has_shared_access) {
         semantic_error("Cannot mutate this array", ast->index.token);
     }
+}
 
-    if (ast->index.operator.type != TokenEqual) {
-        semantic_error("Invalid operator for array element assignment", ast->index.operator);
+static void validate_index_assignment_operator(ASTNode* ast)
+{
+    if (ast->index.operator.type == TokenEqual) {
+        return;
     }
 
+    Token operator = ast->index.operator;
+    operator.type = get_assignment_binary_token(operator.type);
+    Type right = get_node_data_type(ast->index.value);
+    Type operand_type;
+    Type result = analyze_binary_operand_types(operator, ast->index.type_id, right, &operand_type);
+
+    if (!types_equal(result, ast->index.type_id)) {
+        semantic_error("Compound element assignment cannot change element type", operator);
+    }
+}
+
+void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast)
+{
+    analyze_index(analyzer, ast);
+    validate_index_mutation(ast);
     analyze_array_element(analyzer, ast->index.value, ast->index.type_id, ast->index.token);
+    validate_index_assignment_operator(ast);
 }

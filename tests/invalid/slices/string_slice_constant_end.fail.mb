@@ -1,0 +1,4 @@
+let text = "a\u{e9}z"
+let view = text[1..2]
+
+print(view)

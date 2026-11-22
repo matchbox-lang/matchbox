@@ -45,7 +45,7 @@ static size_t get_scalar_storage_size(TypeKind kind)
 
 size_t get_array_storage_size(Type type)
 {
-    if (!is_array_type(type.kind)) {
+    if (!is_contiguous_type(type.kind)) {
         return get_scalar_storage_size(type.kind);
     }
 

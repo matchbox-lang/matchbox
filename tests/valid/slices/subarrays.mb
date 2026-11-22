@@ -1,0 +1,14 @@
+func row_sum(rows: &i16[][2]) -> i32 {
+    return i32(rows[0][0]) + i32(rows[1][1])
+}
+
+test "slices of contiguous subarrays" {
+    let values: i16[2][2] = [[1, 2], [3, 4]]
+    let row: &i16[] = values[1]
+
+    let length = len(row)
+    let total = row_sum(values)
+
+    assert(length == 2 and row[1] == 4)
+    assert(total == 5)
+}

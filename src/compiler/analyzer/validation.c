@@ -113,6 +113,14 @@ static void validate_match(const ASTNode* ast, bool check_zero)
     }
 }
 
+static void validate_index(const ASTNode* ast, bool check_zero)
+{
+    validate_node(ast->index.array, check_zero);
+    validate_node(ast->index.index, check_zero);
+    validate_node(ast->index.value, check_zero);
+    validate_zero_divisor(ast->index.value, ast->index.operator, ast->index.type_id, check_zero);
+}
+
 static void validate_node(const ASTNode* ast, bool check_zero)
 {
     if (!ast) {
@@ -120,14 +128,18 @@ static void validate_node(const ASTNode* ast, bool check_zero)
     }
 
     switch (ast->type) {
+        case ASTSlice:
+            validate_node(ast->slice.expr, check_zero);
+            validate_node(ast->slice.start, check_zero);
+            validate_node(ast->slice.end, check_zero);
+            validate_string_slice_constant(ast);
+            break;
         case ASTArray:
             validate_nodes(&ast->array.elements, 0, check_zero);
             break;
         case ASTIndex:
         case ASTIndexAssignment:
-            validate_node(ast->index.array, check_zero);
-            validate_node(ast->index.index, check_zero);
-            validate_node(ast->index.value, check_zero);
+            validate_index(ast, check_zero);
             break;
         case ASTAssignment:
             validate_assignment(ast, check_zero);
@@ -171,6 +183,7 @@ static void validate_node(const ASTNode* ast, bool check_zero)
             break;
         case ASTFor:
             validate_node(ast->for_statement.array, check_zero);
+            validate_node(ast->for_statement.end, check_zero);
             validate_node(ast->for_statement.body, check_zero);
             break;
         case ASTWhile:

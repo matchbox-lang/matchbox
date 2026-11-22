@@ -1,0 +1,4 @@
+var values = [1, 2, 3]
+let view: ^i32[] = values
+
+view[3] = 9

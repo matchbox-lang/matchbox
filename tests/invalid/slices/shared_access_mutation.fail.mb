@@ -1,0 +1,7 @@
+var values = [1, 2, 3]
+let exclusive: ^i32[] = values
+let shared: &i32[] = exclusive
+
+exclusive[0] = 9
+
+print(shared)

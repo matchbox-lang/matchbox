@@ -1,10 +1,12 @@
 #include "compiler/analyzer/reference.h"
 #include "common/array_type.h"
+#include "common/slice.h"
 #include "common/vector.h"
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/diagnostics.h"
+#include "compiler/scope.h"
 #include "runtime/string_object.h"
 
 size_t* get_shared_access_count(ASTNode* symbol)
@@ -113,11 +115,33 @@ void merge_reference_origins(Vector* destination, Vector* source)
     }
 }
 
+static void validate_slice_lifetime(ASTNode* destination, ASTNode* origin)
+{
+    Type type = get_node_data_type(destination);
+    Scope* scope = get_scope(destination);
+
+    if (!is_slice_type(type.kind) || !scope || !origin) {
+        return;
+    }
+
+    origin = get_reference_origin_or_self(origin);
+    Scope* storage = get_scope(origin);
+
+    if (storage && storage->level > scope->level) {
+        semantic_error("Slice cannot outlive its underlying storage", destination->variable_definition.token);
+    }
+}
+
 void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expression)
 {
     Vector* destination_origins = get_reference_origins(destination);
     Vector* origins = get_reference_origins_from_expression(expression);
+
     copy_reference_origins(destination_origins, origins);
+
+    for (size_t i = 0; i < origins->count; i++) {
+        validate_slice_lifetime(destination, origins->data[i]);
+    }
 }
 
 void release_reference_access(ASTNode* reference)
@@ -180,6 +204,28 @@ static ASTNode* find_reference_symbol(Analyzer* analyzer, ASTNode* variable)
     return symbol;
 }
 
+void validate_reference_binding_access(ASTNode* symbol, ReferenceType requested, Token token)
+{
+    Token binding;
+
+    if (is_parameter(symbol)) {
+        binding = symbol->parameter.token;
+    } else {
+        binding = symbol->variable_definition.token;
+    }
+
+    binding.line = token.line;
+    binding.column = token.column;
+
+    if (requested == RefShared && has_exclusive_access(symbol)) {
+        binding_access_error("Cannot share binding ", binding, " while exclusive access is active");
+    }
+
+    if (requested == RefExclusive && (has_exclusive_access(symbol) || *get_shared_access_count(symbol))) {
+        binding_access_error("Cannot take exclusive access to binding ", binding, " while another access is active");
+    }
+}
+
 static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* symbol)
 {
     ReferenceType requested = get_reference_type(ast);
@@ -191,23 +237,20 @@ static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* 
         semantic_error("Cannot create a reference to another reference", ast->prefix.operator);
     }
 
-    if (requested == RefShared && has_exclusive_access(symbol)) {
-        binding_access_error("Cannot share binding ", variable->variable.token, " while exclusive access is active");
-    }
-
-    if (requested == RefExclusive
-        && (has_exclusive_access(symbol) || *get_shared_access_count(symbol))) {
-        binding_access_error("Cannot take exclusive access to binding ", variable->variable.token, " while another access is active");
-    }
+    validate_reference_binding_access(symbol, requested, variable->variable.token);
 }
 
-static void mark_address_taken(ASTNode* symbol)
+static void resolve_string_reference_type(Analyzer* analyzer, ASTNode* ast)
 {
-    if (!symbol || !is_variable_definition(symbol)) {
+    Type type = get_node_data_type(ast);
+
+    if (type.kind != TypeString) {
         return;
     }
 
-    symbol->variable_definition.address_taken = true;
+    type = get_string_slice_type(&analyzer->array_types);
+
+    convert_string_reference_to_slice(ast, type);
 }
 
 void analyze_reference(Analyzer* analyzer, ASTNode* ast)
@@ -226,6 +269,7 @@ void analyze_reference(Analyzer* analyzer, ASTNode* ast)
     
     add_reference_origin(origins, symbol);
     track_variable_read(symbol);
+    resolve_string_reference_type(analyzer, ast);
 }
 
 static bool reference_argument_requires_binding(ReferenceType type)
@@ -367,6 +411,23 @@ void validate_argument_accesses(ASTNode* caller, ASTNode* callee)
     }
 }
 
+static void transfer_returned_slice(ASTNode* caller, ASTNode* argument)
+{
+    Type type = get_node_data_type(caller);
+
+    if (!is_slice_type(type.kind) || get_reference_type(caller) != RefExclusive) {
+        return;
+    }
+
+    if (argument->type == ASTSlice) {
+        argument = argument->slice.expr;
+    }
+
+    if (is_variable(argument) && get_reference_type(argument) == RefExclusive) {
+        transfer_exclusive_reference(argument);
+    }
+}
+
 void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 {
     ASTNode* returned = callee->function_definition.return_reference_origin;
@@ -387,6 +448,7 @@ void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 
         ASTNode* argument = get_vector_at(&caller->function_call.args, i);
         set_reference_origins_from_expression(caller, argument);
+        transfer_returned_slice(caller, argument);
 
         return;
     }
@@ -422,7 +484,12 @@ void activate_reference_access(ASTNode* ast)
 
 void establish_reference_access(ASTNode* binding, ASTNode* expression)
 {
-    bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression);
+    if (expression->type == ASTSlice) {
+        expression = expression->slice.expr;
+    }
+
+    bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression)
+        && get_reference_type(expression) == RefExclusive;
 
     if (transfers_exclusive) {
         transfer_exclusive_reference(expression);

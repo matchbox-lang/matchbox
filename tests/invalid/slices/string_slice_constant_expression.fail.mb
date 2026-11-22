@@ -1,0 +1,6 @@
+const LIMIT: usize = 5
+
+let text = "hello"
+let view = text[0..LIMIT + 1]
+
+print(view)

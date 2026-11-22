@@ -1,0 +1,6 @@
+var values = [1, 2, 3]
+let view: &i32[] = values
+
+values[0] = 9
+
+print(view)

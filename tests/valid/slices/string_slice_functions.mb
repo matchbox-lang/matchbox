@@ -1,0 +1,27 @@
+func middle(text: &string) -> &string {
+    return text[1..4]
+}
+
+func select_text(first: &string, second: &string, select_first: bool) -> &string {
+    assert(second == "unused" and select_first)
+    
+    return first
+}
+
+func literal_text() -> &string {
+    return "hello"
+}
+
+test "string slice parameters and returns" {
+    let text = "hello"
+    let view = middle(text)
+    let selected = select_text(view, "unused", true)
+    let literal = literal_text()
+    let literal_view = middle("hello")
+    let empty = literal[0..0]
+    let length = len(selected)
+
+    assert(selected == "ell" and length == 3)
+    assert(literal == text and literal_view == view)
+    assert(empty == "")
+}

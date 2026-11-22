@@ -272,8 +272,9 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     }
 
     Type destination_type = get_node_data_type(symbol);
+    ReferenceType reference = get_reference_type(symbol);
 
-    apply_literal_type(ast->assignment.expr, destination_type);
+    apply_declared_type(ast->assignment.expr, destination_type, reference);
     analyze_node(analyzer, ast->assignment.expr);
 
     if (is_array_type(destination_type.kind) && ast->assignment.operator.type != TokenEqual) {
@@ -289,8 +290,9 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     consume_array(ast->assignment.expr);
 
     Type binding_type = get_node_data_type(symbol);
+    bool string_type = binding_type.kind == TypeString || binding_type.kind == TypeStringSlice;
 
-    if (binding_type.kind == TypeString && ast->assignment.operator.type != TokenEqual) {
+    if (string_type && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for string assignment", ast->assignment.operator);
     }
 

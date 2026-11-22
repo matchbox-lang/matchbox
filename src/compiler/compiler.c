@@ -16,6 +16,7 @@
 #include "runtime/module_object.h"
 #include "runtime/string_object.h"
 #include <stddef.h>
+#include <stdint.h>
 
 typedef void (*CompileStatements)(Compiler* compiler, Vector* nodes);
 
@@ -74,7 +75,7 @@ static void recover_compiler(Compiler* compiler)
 {
     Vector functions;
 
-    rebuild_analyzer(&compiler->analyzer, &functions);
+    rebuild_analyzer(&compiler->analyzer, &compiler->repl_submission_boundaries, &functions);
     discard_abandoned_functions(compiler, &functions);
     free_vector(&functions);
 
@@ -93,6 +94,7 @@ void init_compiler(Compiler* compiler, ModuleObject* module)
 {
     init_vector(&compiler->function_references);
     init_vector(&compiler->omitted_statements);
+    init_vector(&compiler->repl_submission_boundaries);
 
     for (size_t i = 0; i < count_vector(&module->functions); i++) {
         push_vector_item(&compiler->function_references, NULL);
@@ -121,6 +123,7 @@ void init_compiler(Compiler* compiler, ModuleObject* module)
 void free_compiler(Compiler* compiler)
 {
     free_vector(&compiler->function_references);
+    free_vector(&compiler->repl_submission_boundaries);
 
     for (size_t i = 0; i < compiler->omitted_statements.count; i++) {
         ASTNode* ast = compiler->omitted_statements.data[i];
@@ -314,6 +317,12 @@ CompileResult compile_repl(Compiler* compiler, const char* source)
         discard_repl_statements(compiler, start);
 
         return CompileIncomplete;
+    }
+
+    size_t end = compiler->ast->compound.statements.count;
+
+    if (end > start) {
+        push_vector_item(&compiler->repl_submission_boundaries, (void*)(uintptr_t)end);
     }
 
     return CompileSuccess;

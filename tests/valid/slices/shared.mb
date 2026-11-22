@@ -1,0 +1,24 @@
+func slice_sum(values: &i32[]) -> i32 {
+    var total = 0
+
+    for value in values {
+        total += value
+    }
+
+    return total
+}
+
+test "shared slices" {
+    let values = [1, 2, 3]
+    let view: &i32[] = values
+
+    let length = len(view)
+    let view_sum = slice_sum(view)
+    let values_sum = slice_sum(values)
+    let formatted = string(view)
+
+    assert(length == 3)
+    assert(view[1] == 2 and view_sum == 6)
+    assert(values_sum == 6)
+    assert(formatted == "[1, 2, 3]")
+}

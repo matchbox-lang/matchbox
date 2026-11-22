@@ -20,6 +20,7 @@ typedef struct PreviousInstruction
 
 CodeObject* get_current_code_object(Compiler* compiler);
 void emit_instruction(Compiler* compiler, Opcode opcode, int a, int b, int c);
+void emit_buffer_offset(Compiler* compiler, Operand buffer, Operand offset);
 void emit_hlt(Compiler* compiler);
 bool get_previous_instruction(Compiler* compiler, PreviousInstruction* instruction);
 void emit_mov(Compiler* compiler, int destination, int source);

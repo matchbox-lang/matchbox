@@ -78,7 +78,7 @@ Operand allocate_branch_result(Compiler* compiler, Type type)
 
     size_t slots = get_type_slot_count(type.kind);
     int reg = allocate_registers(compiler, slots);
-    Operand result = {reg, true, slots};
+    Operand result = {reg, true, slots, is_slice_type(type.kind)};
     
     compiler->local_position_offset += slots;
 

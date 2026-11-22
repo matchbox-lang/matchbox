@@ -8,6 +8,7 @@
 #include "compiler/analyzer/lifetime.h"
 #include "compiler/analyzer/match.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/slice.h"
 #include "compiler/analyzer/validation.h"
 #include "compiler/analyzer/variable.h"
 
@@ -78,6 +79,8 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
         case ASTArray:
             analyze_array(analyzer, ast);
             break;
+        case ASTSlice:
+            return analyze_slice(analyzer, ast);
         case ASTIndex:
             analyze_index(analyzer, ast);
             break;

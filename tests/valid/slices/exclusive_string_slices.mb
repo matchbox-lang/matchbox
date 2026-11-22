@@ -1,0 +1,25 @@
+func tail(text: ^string) -> ^string {
+    let length = len(text)
+    let view: ^string = text[1..length]
+
+    return view
+}
+
+func read_text(text: ^string) {
+    assert(text == "hello")
+}
+
+test "exclusive string slices retain immutable contents" {
+    var text = "hello"
+
+    read_text(text)
+    read_text(^text)
+
+    let view: ^string = text[1..4]
+    let selected = tail(view)
+    let length = len(selected)
+    let byte = selected[0]
+
+    assert(selected == "ll" and length == 2 and byte == 108)
+    print(selected)
+}

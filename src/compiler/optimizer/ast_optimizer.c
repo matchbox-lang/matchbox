@@ -503,21 +503,39 @@ static void optimize_prefix(ASTNode* ast)
     fold_prefix(ast);
 }
 
+static void optimize_slice(ASTNode* ast)
+{
+    if (ast->slice.expr->type != ASTVariable) {
+        optimize_node(ast->slice.expr);
+    }
+
+    optimize_node(ast->slice.start);
+    optimize_node(ast->slice.end);
+}
+
+static void optimize_index(ASTNode* ast)
+{
+    optimize_node(ast->index.array);
+    optimize_node(ast->index.index);
+    optimize_node(ast->index.value);
+}
+
 static void optimize_node(ASTNode* ast)
 {
+    if (!ast) {
+        return;
+    }
+
     switch (ast->type) {
         case ASTArray:
             optimize_nodes(&ast->array.elements);
             break;
+        case ASTSlice:
+            optimize_slice(ast);
+            break;
         case ASTIndex:
         case ASTIndexAssignment:
-            optimize_node(ast->index.array);
-            optimize_node(ast->index.index);
-
-            if (ast->index.value) {
-                optimize_node(ast->index.value);
-            }
-
+            optimize_index(ast);
             break;
         case ASTAssignment:
             optimize_node(ast->assignment.expr);
@@ -530,6 +548,7 @@ static void optimize_node(ASTNode* ast)
             break;
         case ASTFor:
             optimize_node(ast->for_statement.array);
+            optimize_node(ast->for_statement.end);
             optimize_nodes(&ast->for_statement.body->compound.statements);
             break;
         case ASTWhile:
@@ -726,6 +745,11 @@ static void mark_called_functions(ASTNode* ast)
         case ASTArray:
             mark_called_functions_in_vector(&ast->array.elements);
             break;
+        case ASTSlice:
+            mark_called_functions(ast->slice.expr);
+            mark_called_functions(ast->slice.start);
+            mark_called_functions(ast->slice.end);
+            break;
         case ASTIndex:
         case ASTIndexAssignment:
             mark_called_functions(ast->index.array);
@@ -744,6 +768,7 @@ static void mark_called_functions(ASTNode* ast)
             break;
         case ASTFor:
             mark_called_functions(ast->for_statement.array);
+            mark_called_functions(ast->for_statement.end);
             mark_called_functions(ast->for_statement.body);
             break;
         case ASTWhile:

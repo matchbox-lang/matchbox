@@ -1,0 +1,17 @@
+func replace_text(values: ^string[]) {
+    values[0] = "updated"
+}
+
+func first_text(values: &string[]) -> string {
+    return values[0]
+}
+
+test "string array slices retain element access" {
+    var values = ["first", "second"]
+
+    replace_text(values)
+
+    let first = first_text(values)
+
+    assert(first == "updated")
+}

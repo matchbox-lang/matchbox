@@ -17,6 +17,9 @@ ASTNode* create_ast_node(ASTNodeType type)
         case ASTArray:
             init_vector(&ast->array.elements);
             break;
+        case ASTSlice:
+            init_vector(&ast->slice.reference_origins);
+            break;
         case ASTBuiltinCall:
             init_vector(&ast->builtin_call.args);
             break;
@@ -57,6 +60,54 @@ ASTNode* create_ast_node(ASTNodeType type)
     return ast;
 }
 
+ASTNode* create_slice_node(Token token, ASTNode* expr, ASTNode* start)
+{
+    ASTNode* ast = create_ast_node(ASTSlice);
+    ast->slice.token = token;
+    ast->slice.expr = expr;
+    ast->slice.start = start;
+    ast->slice.reference_type = RefShared;
+
+    return ast;
+}
+
+void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type)
+{
+    if (ast->type == ASTSlice) {
+        ast->slice.type_id = type;
+        ast->slice.reference_type = reference_type;
+
+        return;
+    }
+
+    ASTNode* expression = allocate_memory(sizeof(ASTNode));
+    *expression = *ast;
+
+    *ast = (ASTNode){.type = ASTSlice};
+    ast->slice.expr = expression;
+    ast->slice.type_id = type;
+
+    if (expression->type == ASTVariable) {
+        ast->slice.token = expression->variable.token;
+    }
+
+    if (expression->type == ASTFunctionCall) {
+        ast->slice.token = expression->function_call.token;
+    }
+
+    if (expression->type == ASTString) {
+        ast->slice.token = expression->string_literal.token;
+    }
+
+    if (expression->type == ASTPrefix) {
+        ast->slice.token = expression->prefix.operator;
+    }
+
+    ast->slice.reference_type = reference_type;
+
+    init_vector(&ast->slice.reference_origins);
+}
+
 ASTNode* create_array_node(Token token, Type type, bool flat)
 {
     ASTNode* ast = create_ast_node(ASTArray);
@@ -85,6 +136,18 @@ void replace_ast_node(ASTNode* ast, ASTNode* replacement)
     *ast = *replacement;
 
     free_memory(replacement);
+}
+
+void convert_string_reference_to_slice(ASTNode* ast, Type type)
+{
+    ReferenceType reference = get_reference_type(ast);
+    ASTNode* slice = create_slice_node(ast->prefix.operator, ast->prefix.expr, NULL);
+    
+    slice->slice.type_id = type;
+    slice->slice.reference_type = reference;
+    slice->slice.reference_origins = ast->prefix.reference_origins;
+
+    replace_ast_node(ast, slice);
 }
 
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr)
@@ -350,7 +413,7 @@ static void free_ast_node_vector(Vector* nodes)
 
 static void free_type_dimensions(Type type)
 {
-    if (type.kind != TypeArray || !type.array->dimensions) {
+    if (!is_contiguous_type(type.kind) || !type.array || !type.array->dimensions) {
         return;
     }
 
@@ -390,6 +453,12 @@ void free_ast_node(ASTNode* ast)
         case ASTArray:
             free_type_dimensions(ast->array.type_id);
             free_ast_node_vector(&ast->array.elements);
+            break;
+        case ASTSlice:
+            free_ast_node(ast->slice.expr);
+            free_ast_node(ast->slice.start);
+            free_ast_node(ast->slice.end);
+            free_vector(&ast->slice.reference_origins);
             break;
         case ASTIndex:
         case ASTIndexAssignment:
@@ -452,6 +521,7 @@ void free_ast_node(ASTNode* ast)
             break;
         case ASTFor:
             free_ast_node(ast->for_statement.array);
+            free_ast_node(ast->for_statement.end);
             free_ast_node(ast->for_statement.index);
             free_ast_node(ast->for_statement.value);
             free_ast_node(ast->for_statement.body);
@@ -528,6 +598,8 @@ Type get_node_data_type(const ASTNode* ast)
     switch (ast->type) {
         case ASTArray:
             return ast->array.type_id;
+        case ASTSlice:
+            return ast->slice.type_id;
         case ASTIndex:
             return ast->index.type_id;
         case ASTConversion:
@@ -574,6 +646,8 @@ Vector* get_reference_origins(ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTSlice:
+            return &ast->slice.reference_origins;
         case ASTConditional:
             return &ast->conditional.reference_origins;
         case ASTFunctionCall:
@@ -631,6 +705,8 @@ ReferenceType get_reference_type(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTSlice:
+            return ast->slice.reference_type;
         case ASTConditional:
             return ast->conditional.reference_type;
         case ASTFunctionCall:
@@ -660,6 +736,7 @@ bool is_expression_statement(const ASTNode* ast)
 
     switch (ast->type) {
         case ASTArray:
+        case ASTSlice:
         case ASTIndex:
         case ASTBinary:
         case ASTBoolean:
@@ -859,4 +936,13 @@ void initialize_variable(ASTNode* ast)
         ast->variable_definition.initialized = true;
         ast->variable_definition.possibly_initialized = true;
     }
+}
+
+void mark_address_taken(ASTNode* symbol)
+{
+    if (!symbol || !is_variable_definition(symbol)) {
+        return;
+    }
+
+    symbol->variable_definition.address_taken = true;
 }

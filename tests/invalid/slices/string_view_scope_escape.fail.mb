@@ -1,0 +1,9 @@
+let text = "hello"
+var view = text[0..0]
+
+if true {
+    let inner = "world"
+    view = inner[0..1]
+}
+
+print(view)

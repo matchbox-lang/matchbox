@@ -10,6 +10,7 @@ typedef struct ConstantValue
 } ConstantValue;
 
 bool evaluate_integer_constant(const ASTNode* ast, uint64_t* value);
+bool validate_string_slice_constant(const ASTNode* ast);
 bool evaluate_constant(const ASTNode* ast, ConstantValue* value);
 ASTNode* create_constant_node(ConstantValue value, Type type, Token token);
 

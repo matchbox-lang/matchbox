@@ -1,0 +1,29 @@
+func forwarded(values: &i32[]) -> &i32[] {
+    let view = values[1..2]
+    
+    return view
+}
+
+func exclusive_tail(values: ^i32[]) -> ^i32[] {
+    return values[1..3]
+}
+
+test "exclusive transfers and shared access" {
+    var values = [1, 2, 3]
+    let first: ^i32[] = values
+    let second: ^i32[] = first
+    let shared: &i32[] = second
+
+    assert(shared[0] == 1)
+
+    second[0] = 7
+
+    let result = forwarded(values)
+
+    assert(values[0] == 7 and result[0] == 2)
+
+    let tail = exclusive_tail(values)
+    tail[0] = 8
+
+    assert(values[1] == 8)
+}

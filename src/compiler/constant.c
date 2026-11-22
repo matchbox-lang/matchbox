@@ -2,6 +2,7 @@
 #include "builtin/builtin.h"
 #include "common/array_type.h"
 #include "common/math.h"
+#include "common/string_view.h"
 #include "common/unicode.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
@@ -10,6 +11,7 @@
 #include <math.h>
 
 static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
+static bool evaluate_string_constant(const ASTNode* ast, StringView* value);
 static bool can_discard_length_argument(const ASTNode* ast);
 
 static _Noreturn void invalid_conversion_error(Token token, Type destination)
@@ -404,27 +406,32 @@ static bool evaluate_binary(const ASTNode* ast, ConstantValue* value)
     return folded;
 }
 
-static bool evaluate_variable(const ASTNode* ast, ConstantValue* value)
+static const ASTNode* get_constant_variable_initializer(const ASTNode* ast)
 {
     const ASTNode* symbol = ast->variable.symbol;
 
     if (!symbol || symbol->type != ASTVariableDefinition) {
-        return false;
+        return NULL;
     }
 
     if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
         || symbol->variable_definition.reference_type != RefNone) {
-        return false;
+        return NULL;
     }
 
     const Scope* definition_scope = symbol->variable_definition.scope;
 
     if (definition_scope->frame_scope != ast->variable.scope->frame_scope) {
-        return false;
+        return NULL;
     }
 
-    const ASTNode* initializer = symbol->variable_definition.expr;
-    Type type = symbol->variable_definition.type_id;
+    return symbol->variable_definition.expr;
+}
+
+static bool evaluate_variable(const ASTNode* ast, ConstantValue* value)
+{
+    const ASTNode* initializer = get_constant_variable_initializer(ast);
+    Type type = get_node_data_type(ast);
 
     if (!initializer || type.kind == TypeChar) {
         return false;
@@ -510,6 +517,116 @@ static bool can_discard_length_argument(const ASTNode* ast)
     return discard;
 }
 
+static bool has_local_constant_variables(const ASTNode* ast)
+{
+    if (ast->type == ASTVariable) {
+        const ASTNode* initializer = get_constant_variable_initializer(ast);
+
+        return initializer && has_local_constant_variables(initializer);
+    }
+
+    if (ast->type == ASTBinary) {
+        return has_local_constant_variables(ast->binary.left_expr)
+            && has_local_constant_variables(ast->binary.right_expr);
+    }
+
+    if (ast->type == ASTPrefix) {
+        return has_local_constant_variables(ast->prefix.expr);
+    }
+
+    if (ast->type == ASTConversion) {
+        return has_local_constant_variables(ast->conversion.expr);
+    }
+
+    return true;
+}
+
+static bool get_string_slice_constants(const ASTNode* ast, StringView* source, uint64_t* start, uint64_t* end)
+{
+    if (ast->type != ASTSlice || ast->slice.type_id.kind != TypeStringSlice || !ast->slice.start) {
+        return false;
+    }
+
+    bool constant_source = evaluate_string_constant(ast->slice.expr, source);
+
+    if (!constant_source || !has_local_constant_variables(ast->slice.start)
+        || !has_local_constant_variables(ast->slice.end)) {
+        return false;
+    }
+
+    bool constant_start = evaluate_integer_constant(ast->slice.start, start);
+    bool constant_end = evaluate_integer_constant(ast->slice.end, end);
+
+    return constant_start && constant_end;
+}
+
+static bool evaluate_string_slice_constant(const ASTNode* ast, StringView* value)
+{
+    uint64_t start = 0;
+    uint64_t end = 0;
+    bool constant = get_string_slice_constants(ast, value, &start, &end);
+
+    if (!constant || start > end || end > value->length) {
+        return false;
+    }
+
+    value->chars += (size_t)start;
+    value->length = (size_t)(end - start);
+    value->hash = 0;
+
+    return true;
+}
+
+static bool evaluate_string_constant(const ASTNode* ast, StringView* value)
+{
+    if (!ast) {
+        return false;
+    }
+
+    if (ast->type == ASTString) {
+        *value = get_string_view(ast->string_literal.value);
+
+        return true;
+    }
+
+    if (ast->type == ASTVariable) {
+        const ASTNode* initializer = get_constant_variable_initializer(ast);
+
+        return evaluate_string_constant(initializer, value);
+    }
+
+    if (ast->type == ASTPrefix && ast->prefix.operator.type == TokenKeywordConst) {
+        return evaluate_string_constant(ast->prefix.expr, value);
+    }
+
+    return evaluate_string_slice_constant(ast, value);
+}
+
+bool validate_string_slice_constant(const ASTNode* ast)
+{
+    StringView source = {0};
+    uint64_t start = 0;
+    uint64_t end = 0;
+    bool constant = get_string_slice_constants(ast, &source, &start, &end);
+
+    if (!constant) {
+        return false;
+    }
+
+    if (start > end || end > source.length) {
+        semantic_error("String slice is out of bounds", ast->slice.token);
+    }
+
+    bool valid_start = is_utf8_boundary(source.chars, (size_t)start, source.length);
+    bool valid_end = is_utf8_boundary(source.chars, (size_t)end, source.length);
+
+    if (!valid_start || !valid_end) {
+        semantic_error("String slice bound splits a UTF-8 character", ast->slice.token);
+    }
+
+    return true;
+}
+
 static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
 {
     if (ast->builtin_call.builtin->entry) {
@@ -517,13 +634,26 @@ static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
     }
 
     const ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    if (type.kind == TypeString || type.kind == TypeStringSlice) {
+        StringView string = {0};
+        bool constant = evaluate_string_constant(argument, &string);
+        value->integer = string.length;
+
+        return constant;
+    }
+
     bool discard = can_discard_length_argument(argument);
 
     if (!discard) {
         return false;
     }
 
-    Type type = get_node_data_type(argument);
+    if (is_slice_type(type.kind)) {
+        return false;
+    }
+
     value->integer = type.array->count;
 
     return true;

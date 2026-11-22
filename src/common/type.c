@@ -6,22 +6,23 @@
 static const char* get_type_kind_name(TypeKind kind)
 {
     switch (kind) {
-        case TypeI8:       return "i8";
-        case TypeI16:      return "i16";
-        case TypeI32:      return "i32";
-        case TypeI64:      return "i64";
-        case TypeU8:       return "u8";
-        case TypeU16:      return "u16";
-        case TypeU32:      return "u32";
-        case TypeU64:      return "u64";
-        case TypeIsize:    return "isize";
-        case TypeUsize:    return "usize";
-        case TypeF32:      return "f32";
-        case TypeF64:      return "f64";
-        case TypeChar:     return "char";
-        case TypeString:   return "string";
-        case TypeBool:     return "bool";
-        case TypeVoid:     return "void";
+        case TypeI8:            return "i8";
+        case TypeI16:           return "i16";
+        case TypeI32:           return "i32";
+        case TypeI64:           return "i64";
+        case TypeU8:            return "u8";
+        case TypeU16:           return "u16";
+        case TypeU32:           return "u32";
+        case TypeU64:           return "u64";
+        case TypeIsize:         return "isize";
+        case TypeUsize:         return "usize";
+        case TypeF32:           return "f32";
+        case TypeF64:           return "f64";
+        case TypeChar:          return "char";
+        case TypeString:        return "string";
+        case TypeStringSlice:   return "string view";
+        case TypeBool:          return "bool";
+        case TypeVoid:          return "void";
         default:
             return "unknown token";
     }
@@ -29,13 +30,23 @@ static const char* get_type_kind_name(TypeKind kind)
 
 const char* get_data_type_name(Type type)
 {
-    if (is_array_type(type.kind)) {
+    if (is_contiguous_type(type.kind) && type.kind != TypeStringSlice) {
         const ArrayType* info = type.array;
 
         return info->name;
     }
 
     return get_type_kind_name(type.kind);
+}
+
+bool is_slice_type(TypeKind kind)
+{
+    return kind == TypeArraySlice || kind == TypeStringSlice;
+}
+
+bool is_contiguous_type(TypeKind kind)
+{
+    return is_array_type(kind) || is_slice_type(kind);
 }
 
 bool is_float_type(TypeKind kind)
@@ -87,12 +98,12 @@ size_t get_integer_type_size(TypeKind kind)
 
 size_t get_type_slot_count(TypeKind kind)
 {
-    return kind == TypeI64 || kind == TypeU64 || kind == TypeF64 ? 2 : 1;
+    return kind == TypeI64 || kind == TypeU64 || kind == TypeF64 || is_slice_type(kind) ? 2 : 1;
 }
 
 bool is_printable_type(TypeKind kind)
 {
-    return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool || kind == TypeChar
+    return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool || kind == TypeChar || is_slice_type(kind)
         || kind == TypeString || is_array_type(kind);
 }
 
@@ -226,7 +237,7 @@ bool types_equal(Type left, Type right)
         return false;
     }
 
-    if (left.kind == TypeArray) {
+    if (is_contiguous_type(left.kind)) {
         return left.array == right.array;
     }
 

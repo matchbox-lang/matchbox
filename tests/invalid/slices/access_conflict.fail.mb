@@ -1,0 +1,7 @@
+func conflict(left: ^i32[], right: &i32[]) {
+    left[0] = right[0]
+}
+
+var values = [1, 2, 3]
+
+conflict(values, values)

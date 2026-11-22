@@ -36,5 +36,6 @@ void format_f64_argument(Writer* writer, const Value* argument);
 void format_bool_argument(Writer* writer, const Value* argument);
 void format_char_argument(Writer* writer, const Value* argument);
 void format_string_argument(Writer* writer, const Value* argument);
+void format_string_slice_argument(Writer* writer, const Value* argument);
 
 #endif

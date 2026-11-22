@@ -24,6 +24,7 @@ typedef struct Compiler
     Analyzer analyzer;
     Vector function_references;
     Vector omitted_statements;
+    Vector repl_submission_boundaries;
     ModuleObject* module;
     FunctionObject* function;
     ASTNode* ast;

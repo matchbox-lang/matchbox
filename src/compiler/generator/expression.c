@@ -8,6 +8,7 @@
 #include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/slice.h"
 #include "compiler/generator/variable.h"
 #include "compiler/lexer/token.h"
 #include "compiler/ast.h"
@@ -411,6 +412,10 @@ Operand emit_binary_operator(Compiler* compiler, TokenType operator_type, Type t
 
 Operand compile_binary(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->binary.operand_type.kind == TypeStringSlice) {
+        return compile_string_slice_comparison(compiler, ast);
+    }
+
     Type left_type = get_node_data_type(ast->binary.left_expr);
 
     if (is_array_type(left_type.kind)) {

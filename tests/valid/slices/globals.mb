@@ -1,5 +1,5 @@
 let values = [1, 2, 3, 4]
-var global_view: &i32[] = slice_values
+var global_view: &i32[] = values
 
 func global_middle() -> &i32[] {
     return global_view[1..3]

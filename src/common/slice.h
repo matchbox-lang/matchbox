@@ -12,5 +12,6 @@ typedef struct Slice
 } Slice;
 
 Type get_slice_type(Vector* array_types, Type element_type);
+Type get_string_slice_type(Vector* array_types);
 
 #endif

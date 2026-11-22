@@ -290,8 +290,9 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     consume_array(ast->assignment.expr);
 
     Type binding_type = get_node_data_type(symbol);
+    bool string_type = binding_type.kind == TypeString || binding_type.kind == TypeStringSlice;
 
-    if (binding_type.kind == TypeString && ast->assignment.operator.type != TokenEqual) {
+    if (string_type && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for string assignment", ast->assignment.operator);
     }
 

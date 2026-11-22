@@ -1,0 +1,4 @@
+var text = "hello"
+let view: ^string = text[1..4]
+
+view[0] = 65

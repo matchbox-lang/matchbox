@@ -147,6 +147,10 @@ bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_ty
         type->kind = TypeArraySlice;
     }
 
+    if (type->kind == TypeString && *reference_type != RefNone) {
+        type->kind = TypeStringSlice;
+    }
+
     return complete;
 }
 

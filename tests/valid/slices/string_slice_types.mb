@@ -1,0 +1,17 @@
+test "declared string slices and full references" {
+    let text = "hello"
+    let whole: &string = text
+    let part: &string = text[1..4]
+    let explicit = &text
+    let literal: &string = "ell"
+    let length = len(part)
+    let output = $"{whole}:{part}"
+    let joined = part + '!'
+
+    assert(whole == explicit and length == 3)
+    assert(part == literal and "ell" == part)
+    assert(part != whole and part != "hello")
+    assert(output == "hello:ell" and joined == "ell!")
+    
+    print(part)
+}

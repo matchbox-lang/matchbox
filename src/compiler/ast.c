@@ -95,6 +95,10 @@ void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type)
         ast->slice.token = expression->function_call.token;
     }
 
+    if (expression->type == ASTString) {
+        ast->slice.token = expression->string_literal.token;
+    }
+
     ast->slice.reference_type = reference_type;
 
     init_vector(&ast->slice.reference_origins);
@@ -128,6 +132,18 @@ void replace_ast_node(ASTNode* ast, ASTNode* replacement)
     *ast = *replacement;
 
     free_memory(replacement);
+}
+
+void convert_string_reference_to_slice(ASTNode* ast, Type type)
+{
+    ReferenceType reference = get_reference_type(ast);
+    ASTNode* slice = create_slice_node(ast->prefix.operator, ast->prefix.expr, NULL);
+    
+    slice->slice.type_id = type;
+    slice->slice.reference_type = reference;
+    slice->slice.reference_origins = ast->prefix.reference_origins;
+
+    replace_ast_node(ast, slice);
 }
 
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr)
@@ -393,7 +409,7 @@ static void free_ast_node_vector(Vector* nodes)
 
 static void free_type_dimensions(Type type)
 {
-    if (!is_contiguous_type(type.kind) || !type.array->dimensions) {
+    if (!is_contiguous_type(type.kind) || !type.array || !type.array->dimensions) {
         return;
     }
 

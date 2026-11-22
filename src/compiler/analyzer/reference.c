@@ -1,5 +1,6 @@
 #include "compiler/analyzer/reference.h"
 #include "common/array_type.h"
+#include "common/slice.h"
 #include "common/vector.h"
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/ownership.h"
@@ -224,6 +225,19 @@ static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* 
     }
 }
 
+static void resolve_string_reference_type(Analyzer* analyzer, ASTNode* ast)
+{
+    Type type = get_node_data_type(ast);
+
+    if (type.kind != TypeString) {
+        return;
+    }
+
+    type = get_string_slice_type(&analyzer->array_types);
+
+    convert_string_reference_to_slice(ast, type);
+}
+
 void analyze_reference(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* variable = get_reference_variable(ast);
@@ -240,6 +254,7 @@ void analyze_reference(Analyzer* analyzer, ASTNode* ast)
     
     add_reference_origin(origins, symbol);
     track_variable_read(symbol);
+    resolve_string_reference_type(analyzer, ast);
 }
 
 static bool reference_argument_requires_binding(ReferenceType type)

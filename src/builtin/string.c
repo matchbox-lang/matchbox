@@ -1,5 +1,6 @@
 #include "builtin/string.h"
 #include "common/errors.h"
+#include "common/string_view.h"
 #include "common/unicode.h"
 #include "runtime/argument_format.h"
 #include "vm/vm.h"
@@ -33,4 +34,16 @@ void builtin_validate_string_slice(VM* vm, const FunctionObject* function, Value
 
     validate_string_boundary(data, start, length);
     validate_string_boundary(data, end, length);
+}
+
+void builtin_string_slices_equal(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)vm;
+    (void)function;
+
+    StringView left = {.chars = AS_POINTER(frame[0]), .length = AS_UNSIGNED(frame[1])};
+    StringView right = {.chars = AS_POINTER(frame[2]), .length = AS_UNSIGNED(frame[3])};
+    bool equal = string_views_equal(left, right);
+    
+    frame[-2] = BOOL_VALUE(equal);
 }

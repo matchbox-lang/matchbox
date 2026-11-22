@@ -456,6 +456,12 @@ static void track_return_reference_origin(Analyzer* analyzer, ASTNode* ast)
     Vector* origins = get_reference_origins_from_expression(ast->return_statement.expr);
     size_t count = count_vector(origins);
 
+    Type type = get_node_data_type(ast->return_statement.expr);
+
+    if (!count && type.kind == TypeStringSlice && get_reference_type(ast->return_statement.expr) == RefShared) {
+        return;
+    }
+
     if (!count) {
         ASTNode* origin = get_reference_origin_from_expression(ast->return_statement.expr);
         track_return_origin(analyzer, ast, origin);

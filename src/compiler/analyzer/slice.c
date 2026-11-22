@@ -37,9 +37,25 @@ static ASTNode* get_slice_binding(ASTNode* expression)
     return NULL;
 }
 
+static bool has_static_string_storage(ASTNode* expression)
+{
+    if (expression->type == ASTString) {
+        return true;
+    }
+
+    Type type = get_node_data_type(expression);
+    Vector* origins = get_reference_origins_from_expression(expression);
+
+    return type.kind == TypeStringSlice && !origins->count;
+}
+
 static ASTNode* get_slice_origin(ASTNode* expression, ASTNode* binding, Token token)
 {
     ASTNode* origin = get_reference_origin_from_expression(expression);
+
+    if (!origin && has_static_string_storage(expression)) {
+        return NULL;
+    }
 
     if (!origin && binding) {
         origin = get_reference_origin_or_self(binding);
@@ -68,6 +84,10 @@ static void validate_exclusive_slice_access(ASTNode* ast, ASTNode* binding, ASTN
 {
     if (ast->slice.reference_type != RefExclusive) {
         return;
+    }
+
+    if (!origin) {
+        semantic_error("Exclusive slice requires underlying storage with a binding", ast->slice.token);
     }
 
     if (binding && *get_shared_access_count(binding)) {
@@ -123,19 +143,11 @@ static Type analyze_slice_source(Analyzer* analyzer, ASTNode* ast)
 
 static Type get_slice_source_type(Analyzer* analyzer, Type source)
 {
-    Type element = {.kind = TypeU8};
-
-    if (source.kind != TypeString) {
-        element = source.array->element_type;
-    }
-
-    Type type = get_slice_type(&analyzer->array_types, element);
-
     if (source.kind == TypeString || source.kind == TypeStringSlice) {
-        type.kind = TypeStringSlice;
+        return get_string_slice_type(&analyzer->array_types);
     }
 
-    return type;
+    return get_slice_type(&analyzer->array_types, source.array->element_type);
 }
 
 static void resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
@@ -145,10 +157,6 @@ static void resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
 
     if (ast->slice.type_id.kind != TypeUnknown && !types_equal(ast->slice.type_id, type)) {
         semantic_error("Slice element type does not match", ast->slice.token);
-    }
-
-    if (type.kind == TypeStringSlice && ast->slice.reference_type != RefShared) {
-        semantic_error("String views require shared access", ast->slice.token);
     }
 
     ast->slice.type_id = type;

@@ -161,3 +161,28 @@ Operand compile_slice(Compiler* compiler, ASTNode* ast)
 
     return slice;
 }
+
+Operand compile_string_slice_comparison(Compiler* compiler, ASTNode* ast)
+{
+    static const Builtin builtin = {
+        .name = "string_slices_equal",
+        .entry = builtin_string_slices_equal,
+        .param_count = 2,
+        .params = {TypeStringSlice, TypeStringSlice},
+        .return_type_id = TypeBool
+    };
+
+    Type type = {.kind = TypeStringSlice};
+    Type types[] = {type, type};
+    
+    Operand left = compile_slice_source(compiler, ast->binary.left_expr);
+    Operand right = compile_slice_source(compiler, ast->binary.right_expr);
+    Operand arguments[] = {left, right};
+    Operand result = emit_builtin_operands(compiler, &builtin, types, arguments, 2, false);
+
+    if (ast->binary.operator.type == TokenNotEqual) {
+        emit_instruction(compiler, OpNot, result.reg, result.reg, 0);
+    }
+
+    return result;
+}

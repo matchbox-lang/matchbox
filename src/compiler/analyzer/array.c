@@ -150,6 +150,12 @@ static size_t resolve_declared_array_count(Analyzer* analyzer, Type type, size_t
 
 void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
+    if (type->kind == TypeStringSlice) {
+        *type = get_string_slice_type(&analyzer->array_types);
+
+        return;
+    }
+
     if (!is_contiguous_type(type->kind) || !type->array->dimensions) {
         return;
     }
@@ -409,6 +415,12 @@ static ASTNode* get_index_owner(ASTNode* ast)
 
 static void validate_index_mutation(ASTNode* ast)
 {
+    Type source = get_node_data_type(ast->index.array);
+
+    if (source.kind == TypeStringSlice) {
+        semantic_error("Cannot mutate string slice contents", ast->index.token);
+    }
+
     ASTNode* owner = get_index_owner(ast->index.array);
     ReferenceType reference = get_reference_type(owner);
     bool constant = owner && is_variable_definition(owner) && owner->variable_definition.constant;

@@ -94,16 +94,18 @@ Type analyze_binary_operand_types(Token operator, Type left_type, Type right_typ
 {
     TokenType operator_type = operator.type;
 
-    bool left_text = left_type.kind == TypeChar || left_type.kind == TypeString;
-    bool right_text = right_type.kind == TypeChar || right_type.kind == TypeString;
+    bool left_string = left_type.kind == TypeString || left_type.kind == TypeStringSlice;
+    bool right_string = right_type.kind == TypeString || right_type.kind == TypeStringSlice;
+    bool left_text = left_type.kind == TypeChar || left_string;
+    bool right_text = right_type.kind == TypeChar || right_string;
 
     if (operator_type == TokenPlus && left_text && right_text) {
         return (Type){.kind = TypeString};
     }
 
-    if (left_type.kind == TypeString && right_type.kind == TypeString
+    if (left_string && right_string
         && (operator_type == TokenEqualEqual || operator_type == TokenNotEqual)) {
-        *operand_type = left_type;
+        *operand_type = left_type.kind == TypeStringSlice ? left_type : right_type;
 
         return (Type){.kind = TypeBool};
     }
@@ -121,7 +123,7 @@ Type analyze_binary_operand_types(Token operator, Type left_type, Type right_typ
 
     *operand_type = common_type;
 
-    if (left_type.kind == TypeString) {
+    if (left_string || right_string) {
         semantic_error("Invalid operator for string operands", operator);
     }
 

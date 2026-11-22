@@ -1,0 +1,9 @@
+func invalid() -> &string {
+    let text = "hello"
+
+    return text[1..4]
+}
+
+let view = invalid()
+
+print(view)

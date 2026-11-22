@@ -27,3 +27,12 @@ Type get_slice_type(Vector* array_types, Type element_type)
 
     return (Type){.kind = TypeArraySlice, .array = info};
 }
+
+Type get_string_slice_type(Vector* array_types)
+{
+    Type element = {.kind = TypeU8};
+    Type type = get_slice_type(array_types, element);
+    type.kind = TypeStringSlice;
+
+    return type;
+}

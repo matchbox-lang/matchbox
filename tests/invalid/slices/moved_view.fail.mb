@@ -1,0 +1,5 @@
+var values = [1, 2, 3]
+let first: ^i32[] = values
+let second: ^i32[] = first
+
+print(first[0], second[0])

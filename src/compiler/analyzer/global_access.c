@@ -234,9 +234,33 @@ static void validate_index_global_access(Analyzer* analyzer, ASTNode* ast)
     validate_node_global_access(analyzer, ast->index.value);
 }
 
+static void validate_slice_global_access(Analyzer* analyzer, ASTNode* ast)
+{
+    ASTNode* expression = ast->slice.expr;
+    ASTNode* origin = get_reference_origin(ast);
+    ReferenceType reference = get_reference_type(expression);
+
+    validate_constant_reference(analyzer, origin, ast->slice.token);
+
+    if (reference == RefNone) {
+        validate_global_binding_access(analyzer, origin, ast->slice.reference_type, ast->slice.token);
+    }
+
+    validate_node_global_access(analyzer, expression);
+    validate_node_global_access(analyzer, ast->slice.start);
+    validate_node_global_access(analyzer, ast->slice.end);
+}
+
 static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
 {
+    if (!ast) {
+        return;
+    }
+
     switch (ast->type) {
+        case ASTSlice:
+            validate_slice_global_access(analyzer, ast);
+            break;
         case ASTArray:
             validate_global_access_in_nodes(analyzer, &ast->array.elements);
             break;
@@ -260,6 +284,7 @@ static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
             break;
         case ASTFor:
             validate_node_global_access(analyzer, ast->for_statement.array);
+            validate_node_global_access(analyzer, ast->for_statement.end);
             validate_branch_global_access(analyzer, ast->for_statement.body);
             break;
         case ASTWhile:

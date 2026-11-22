@@ -1,0 +1,9 @@
+func identity(values: ^i32[]) -> ^i32[] {
+    return values
+}
+
+var values = [1, 2, 3]
+let first: ^i32[] = values
+let second = identity(first)
+
+print(first[0], second[0])

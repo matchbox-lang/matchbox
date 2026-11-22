@@ -45,6 +45,7 @@ typedef struct ForOperands
     Operand index;
     size_t stride;
     size_t step;
+    bool range;
 } ForOperands;
 
 static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, size_t offset);
@@ -112,39 +113,6 @@ static Operand compile_array_new(Compiler* compiler, Type type)
     compile_usize_literal(compiler, size);
 
     return close_call_area(compiler, function, position, call, false);
-}
-
-static void reserve_pointer_padding(Compiler* compiler)
-{
-    if (sizeof(void*) == sizeof(uint64_t)) {
-        allocate_register(compiler);
-    }
-}
-
-static void release_pointer_padding(Compiler* compiler)
-{
-    if (sizeof(void*) == sizeof(uint64_t)) {
-        release_register(compiler);
-    }
-}
-
-static Opcode get_pointer_add_opcode(void)
-{
-    if (sizeof(void*) == sizeof(uint64_t)) {
-        return OpAddI64;
-    }
-
-    return OpAddI32;
-}
-
-static void emit_buffer_offset(Compiler* compiler, Operand buffer, Operand offset)
-{
-    Opcode opcode = get_pointer_add_opcode();
-
-    reserve_pointer_padding(compiler);
-    emit_instruction(compiler, opcode, buffer.reg, buffer.reg, offset.reg);
-    release_pointer_padding(compiler);
-    release_operand(compiler, offset);
 }
 
 static Operand offset_buffer(Compiler* compiler, Operand buffer, size_t offset)
@@ -240,7 +208,7 @@ static void copy_array_element(Compiler* compiler, Operand buffer, Operand sourc
     emit_memory_access(compiler, load, destination, source.reg, position);
     emit_memory_access(compiler, store, destination, buffer.reg, offset + position);
 
-    Operand value = {destination, true, slots};
+    Operand value = {destination, true, slots, false};
 
     release_operand(compiler, value);
 }
@@ -336,7 +304,7 @@ static Operand load_array_binary_element(Compiler* compiler, Operand buffer, Ope
 
     emit_instruction(compiler, opcode, reg, buffer.reg, offset.reg);
 
-    Operand value = {reg, true, slots};
+    Operand value = {reg, true, slots, false};
     value = normalize_integer_operand(compiler, value, type);
     value.temporary = false;
 
@@ -579,7 +547,8 @@ static void compile_array_fill_loop(Compiler* compiler, Operand array, Operand v
     Operand step = compile_usize_literal(compiler, stride);
     int condition = allocate_register(compiler);
     Opcode compare = OpCmpU32;
-    Opcode add = get_pointer_add_opcode();
+    Type index_type = {.kind = TypeUsize};
+    Opcode add = get_integer_opcode(index_type, IntAdd);
     Opcode store = get_memory_store_opcode(type);
 
     if (sizeof(void*) == sizeof(uint64_t)) {
@@ -638,7 +607,7 @@ Operand compile_array(Compiler* compiler, ASTNode* ast)
     return array;
 }
 
-static void scale_array_index(Compiler* compiler, Operand index, size_t stride)
+void scale_array_index(Compiler* compiler, Operand index, size_t stride)
 {
     if (stride == 1) {
         return;
@@ -683,7 +652,9 @@ static uint64_t read_compiled_integer_constant(Compiler* compiler, ASTNode* ast)
 
 static void resolve_index_constant(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->index.constant) {
+    Type source = get_node_data_type(ast->index.array);
+
+    if (ast->index.constant || source.kind == TypeSlice) {
         return;
     }
 
@@ -710,7 +681,7 @@ static void resolve_index_constant(Compiler* compiler, ASTNode* ast)
     ast->index.position = (size_t)value;
 }
 
-static void compile_index_panic(Compiler* compiler)
+void compile_index_panic(Compiler* compiler)
 {
     static const char message[] = "Array index is out of bounds";
     size_t constant = find_string_constant(compiler->module, message, sizeof(message) - 1);
@@ -735,11 +706,10 @@ static void compile_index_panic(Compiler* compiler)
     compile_call_with_argument(compiler, function, position, argument, true);
 }
 
-static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t count)
+static void compile_index_bounds_check(Compiler* compiler, Operand index, Operand length)
 {
     Type type = {.kind = TypeUsize};
     index.temporary = false;
-    Operand length = compile_usize_literal(compiler, count);
     Operand condition = emit_numeric_comparison(compiler, TokenGreaterEqual, type, index, length);
     size_t valid_jump = emit_condition_jump(compiler, condition);
 
@@ -748,7 +718,7 @@ static void compile_index_bounds_check(Compiler* compiler, Operand index, size_t
     patch_jump(compiler, valid_jump);
 }
 
-static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast)
+static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast, Operand buffer)
 {
     Type type = get_node_data_type(ast->index.array);
     const ArrayType* info = type.array;
@@ -759,7 +729,16 @@ static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast)
     index = materialize_operand(compiler, index);
 
     reserve_pointer_padding(compiler);
-    compile_index_bounds_check(compiler, index, info->count);
+
+    Operand length;
+
+    if (type.kind == TypeSlice) {
+        length = make_operand(buffer.reg + 1, false);
+    } else {
+        length = compile_usize_literal(compiler, info->count);
+    }
+
+    compile_index_bounds_check(compiler, index, length);
     scale_array_index(compiler, index, stride);
     release_pointer_padding(compiler);
 
@@ -770,7 +749,7 @@ static void offset_buffer_by_runtime_index(Compiler* compiler, Operand buffer, A
 {
     reserve_pointer_padding(compiler);
 
-    Operand offset = compile_runtime_index_offset(compiler, ast);
+    Operand offset = compile_runtime_index_offset(compiler, ast, buffer);
 
     emit_buffer_offset(compiler, buffer, offset);
     release_pointer_padding(compiler);
@@ -780,7 +759,14 @@ static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast)
 {
     Operand buffer = compile_expression(compiler, ast->index.array, false);
     buffer = materialize_operand(compiler, buffer);
+
     offset_buffer_by_runtime_index(compiler, buffer, ast);
+
+    if (buffer.pair) {
+        release_register(compiler);
+
+        buffer = make_operand(buffer.reg, true);
+    }
 
     return buffer;
 }
@@ -826,7 +812,7 @@ static void compile_runtime_index_load(Compiler* compiler, ASTNode* ast, int des
     Operand buffer = compile_expression(compiler, ast->index.array, false);
     buffer = materialize_operand(compiler, buffer);
 
-    Operand offset = compile_runtime_index_offset(compiler, ast);
+    Operand offset = compile_runtime_index_offset(compiler, ast, buffer);
     Opcode opcode = get_memory_load_opcode(ast->index.type_id);
 
     emit_instruction(compiler, opcode, destination, buffer.reg, offset.reg);
@@ -863,9 +849,35 @@ Operand compile_index(Compiler* compiler, ASTNode* ast)
 
     compile_index_load(compiler, ast, destination);
 
-    Operand result = {destination, true, slots};
+    Operand result = {destination, true, slots, false};
 
     return normalize_integer_operand(compiler, result, ast->index.type_id);
+}
+
+static Operand compile_index_value(Compiler* compiler, ASTNode* ast, Operand buffer, size_t offset)
+{
+    Type type = ast->index.type_id;
+
+    if (ast->index.operator.type == TokenEqual) {
+        return compile_converted_expression(compiler, ast->index.value, type, false);
+    }
+
+    size_t slots = get_type_slot_count(type.kind);
+    int reg = allocate_registers(compiler, slots);
+    Opcode opcode = get_memory_load_opcode(type);
+    Operand left = {reg, true, slots, false};
+
+    emit_memory_access(compiler, opcode, reg, buffer.reg, offset);
+
+    left = normalize_integer_operand(compiler, left, type);
+    Operand right = compile_converted_expression(compiler, ast->index.value, type, false);
+    TokenType operator = get_assignment_binary_token(ast->index.operator.type);
+
+    if (operator == TokenPower) {
+        return emit_binary_builtin(compiler, operator, type, type, left, right);
+    }
+
+    return emit_binary_operator(compiler, operator, type, left, right);
 }
 
 void compile_index_assignment(Compiler* compiler, ASTNode* ast)
@@ -873,7 +885,7 @@ void compile_index_assignment(Compiler* compiler, ASTNode* ast)
     size_t offset;
     Operand buffer = compile_index_buffer(compiler, ast, &offset);
     buffer = materialize_operand(compiler, buffer);
-    Operand value = compile_converted_expression(compiler, ast->index.value, ast->index.type_id, false);
+    Operand value = compile_index_value(compiler, ast, buffer, offset);
 
     store_array_value(compiler, buffer, value, offset, ast->index.type_id);
     release_operand(compiler, value);
@@ -902,7 +914,7 @@ static void compile_for_index(Compiler* compiler, ASTNode* index, ForOperands* l
         return;
     }
 
-    if (loop->step != 1) {
+    if (loop->step != 1 || loop->range) {
         loop->index = compile_usize_literal(compiler, 0);
         loop->index.temporary = false;
     }
@@ -919,13 +931,22 @@ static void compile_for_index(Compiler* compiler, ASTNode* index, ForOperands* l
 
 static ForOperands compile_for_operands(Compiler* compiler, ASTNode* ast, Type type)
 {
-    ForOperands loop;
+    ForOperands loop = {0};
     loop.source = compile_expression(compiler, ast->for_statement.array, false);
     loop.source = materialize_operand(compiler, loop.source);
     size_t limit = get_for_limit(&loop, type);
     loop.offset = compile_usize_literal(compiler, 0);
     loop.offset.temporary = false;
-    loop.end = compile_usize_literal(compiler, limit);
+
+    if (type.kind == TypeSlice) {
+        Operand length = make_operand(loop.source.reg + 1, false);
+        loop.end = materialize_operand(compiler, length);
+
+        scale_array_index(compiler, loop.end, loop.step);
+    } else {
+        loop.end = compile_usize_literal(compiler, limit);
+    }
+
     loop.end.temporary = false;
 
     compile_for_index(compiler, ast->for_statement.index, &loop);
@@ -943,7 +964,8 @@ static Operand compile_for_element_address(Compiler* compiler, const ForOperands
         return address;
     }
 
-    Opcode opcode = get_pointer_add_opcode();
+    Type type = {.kind = TypeUsize};
+    Opcode opcode = get_integer_opcode(type, IntAdd);
 
     reserve_pointer_padding(compiler);
     emit_instruction(compiler, opcode, address.reg, address.reg, loop->offset.reg);
@@ -962,6 +984,10 @@ static Operand compile_for_array_element(Compiler* compiler, const ForOperands* 
 
 static Operand compile_for_element(Compiler* compiler, const ForOperands* loop, Type type)
 {
+    if (loop->range) {
+        return loop->offset;
+    }
+
     if (is_array_type(type.kind)) {
         return compile_for_array_element(compiler, loop, type);
     }
@@ -1054,21 +1080,65 @@ static void compile_for_body(Compiler* compiler, ASTNode* ast, const ForOperands
     end_loop(compiler, &loop);
 }
 
+static ForOperands compile_range_operands(Compiler* compiler, ASTNode* ast)
+{
+    Type type = {.kind = TypeUsize};
+    ForOperands loop = {.step = 1, .range = true};
+
+    loop.offset = compile_converted_expression(compiler, ast->for_statement.array, type, false);
+    loop.offset = materialize_operand(compiler, loop.offset);
+    loop.offset.temporary = false;
+    loop.end = compile_converted_expression(compiler, ast->for_statement.end, type, false);
+    loop.end = materialize_operand(compiler, loop.end);
+    loop.end.temporary = false;
+
+    compile_for_index(compiler, ast->for_statement.index, &loop);
+
+    return loop;
+}
+
+static ForOperands compile_for_header(Compiler* compiler, ASTNode* ast, Type type, Type* element_type)
+{
+    if (ast->for_statement.end) {
+        *element_type = (Type){.kind = TypeUsize};
+
+        return compile_range_operands(compiler, ast);
+    }
+
+    *element_type = type.array->element_type;
+
+    return compile_for_operands(compiler, ast, type);
+}
+
+static size_t compile_for_entry(Compiler* compiler, const ForOperands* operands)
+{
+    Type type = {.kind = TypeUsize};
+    Operand condition = emit_numeric_comparison(compiler, TokenLess, type, operands->offset, operands->end);
+    size_t skip = emit_condition_jump(compiler, condition);
+
+    release_operand(compiler, condition);
+
+    return skip;
+}
+
 void compile_for(Compiler* compiler, ASTNode* ast)
 {
     int previous_register_count = compiler->register_count;
     Type type = get_node_data_type(ast->for_statement.array);
 
-    if (!type.array->count) {
+    if (!ast->for_statement.end && type.kind == TypeArray && !type.array->count) {
         compile_expression(compiler, ast->for_statement.array, true);
 
         return;
     }
 
-    ForOperands operands = compile_for_operands(compiler, ast, type);
+    Type element_type;
+    ForOperands operands = compile_for_header(compiler, ast, type, &element_type);
+    size_t skip = compile_for_entry(compiler, &operands);
 
     allocate_for_binding(compiler, ast->for_statement.value);
-    compile_for_body(compiler, ast, &operands, type.array->element_type);
+    compile_for_body(compiler, ast, &operands, element_type);
+    patch_jump(compiler, skip);
 
     compiler->register_count = previous_register_count;
 }

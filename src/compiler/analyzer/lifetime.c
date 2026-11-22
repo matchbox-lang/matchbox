@@ -175,7 +175,8 @@ static void add_for_shadowed_bindings(ASTNode* ast, ScopedUses* scope)
 
 static bool visit_for_uses(ASTNode* ast, VisitId visit, void* context)
 {
-    if (visit_node_uses(ast->for_statement.array, visit, context)) {
+    if (visit_node_uses(ast->for_statement.array, visit, context)
+        || visit_node_uses(ast->for_statement.end, visit, context)) {
         return true;
     }
 
@@ -199,6 +200,10 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
     switch (ast->type) {
         case ASTArray:
             return visit_node_list_uses(&ast->array.elements, visit, context);
+        case ASTSlice:
+            return visit_node_uses(ast->slice.expr, visit, context)
+                || visit_node_uses(ast->slice.start, visit, context)
+                || visit_node_uses(ast->slice.end, visit, context);
         case ASTIndex:
         case ASTIndexAssignment:
             return visit_node_uses(ast->index.array, visit, context)

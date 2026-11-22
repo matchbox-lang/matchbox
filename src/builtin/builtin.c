@@ -125,7 +125,9 @@ static bool builtin_argument_matches(const Builtin* builtin, const Type* argumen
     TypeKind argument_type = argument_types[position].kind;
     TypeKind parameter_type = builtin->params[position];
 
-    return argument_type == TypeUnknown
+    bool slice_length = argument_type == TypeSlice && parameter_type == TypeArray && !builtin->entry;
+
+    return slice_length || argument_type == TypeUnknown
         || argument_type == parameter_type
         || can_implicitly_widen_type(argument_type, parameter_type);
 }

@@ -1,5 +1,6 @@
 #include "compiler/generator/emitter.h"
 #include "common/errors.h"
+#include "compiler/generator/expression.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "runtime/code_object.h"
@@ -50,6 +51,17 @@ void emit_instruction(Compiler* compiler, Opcode opcode, int a, int b, int c)
     }
 
     emit_instruction_word(compiler, opcode, a, b, c);
+}
+
+void emit_buffer_offset(Compiler* compiler, Operand buffer, Operand offset)
+{
+    Type type = {.kind = TypeUsize};
+    Opcode opcode = get_integer_opcode(type, IntAdd);
+
+    reserve_pointer_padding(compiler);
+    emit_instruction(compiler, opcode, buffer.reg, buffer.reg, offset.reg);
+    release_pointer_padding(compiler);
+    release_operand(compiler, offset);
 }
 
 void emit_hlt(Compiler* compiler)
@@ -104,6 +116,13 @@ void emit_mov(Compiler* compiler, int destination, int source)
 
 void emit_operand_mov(Compiler* compiler, int destination, Operand operand)
 {
+    if (operand.pair) {
+        emit_mov(compiler, destination, operand.reg);
+        emit_mov(compiler, destination + 1, operand.reg + 1);
+
+        return;
+    }
+
     if (operand.slots != 2) {
         emit_mov(compiler, destination, operand.reg);
         return;
@@ -184,7 +203,7 @@ bool retarget_temporary(Compiler* compiler, Operand value, int destination)
 {
     PreviousInstruction previous;
 
-    if (!value.temporary || destination > (int)UINT8_MAX) {
+    if (value.pair || !value.temporary || destination > (int)UINT8_MAX) {
         return false;
     }
 

@@ -1,0 +1,21 @@
+test "slice bindings and conditional views" {
+    let first = [1, 2]
+    let second = [3, 4, 5]
+    var view: &i32[] = first
+
+    let length = len(view)
+
+    assert(length == 2)
+
+    view = second
+
+    let alias: &i32[] = view
+    var choose = false
+    let selected: &i32[] = if choose { first } else { second }
+
+    let alias_length = len(alias)
+    let selected_length = len(selected)
+
+    assert(alias_length == 3 and alias[2] == 5)
+    assert(selected_length == 3 and selected[0] == 3)
+}

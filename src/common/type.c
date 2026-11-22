@@ -29,13 +29,18 @@ static const char* get_type_kind_name(TypeKind kind)
 
 const char* get_data_type_name(Type type)
 {
-    if (is_array_type(type.kind)) {
+    if (is_contiguous_type(type.kind)) {
         const ArrayType* info = type.array;
 
         return info->name;
     }
 
     return get_type_kind_name(type.kind);
+}
+
+bool is_contiguous_type(TypeKind kind)
+{
+    return is_array_type(kind) || kind == TypeSlice;
 }
 
 bool is_float_type(TypeKind kind)
@@ -87,12 +92,12 @@ size_t get_integer_type_size(TypeKind kind)
 
 size_t get_type_slot_count(TypeKind kind)
 {
-    return kind == TypeI64 || kind == TypeU64 || kind == TypeF64 ? 2 : 1;
+    return kind == TypeI64 || kind == TypeU64 || kind == TypeF64 || kind == TypeSlice ? 2 : 1;
 }
 
 bool is_printable_type(TypeKind kind)
 {
-    return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool || kind == TypeChar
+    return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool || kind == TypeChar || kind == TypeSlice
         || kind == TypeString || is_array_type(kind);
 }
 
@@ -226,7 +231,7 @@ bool types_equal(Type left, Type right)
         return false;
     }
 
-    if (left.kind == TypeArray) {
+    if (is_contiguous_type(left.kind)) {
         return left.array == right.array;
     }
 

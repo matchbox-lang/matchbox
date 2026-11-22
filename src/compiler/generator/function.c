@@ -9,6 +9,7 @@
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/slice.h"
 #include "compiler/optimizer/bytecode_optimizer.h"
 #include "compiler/ast.h"
 #include "compiler/scope.h"
@@ -70,7 +71,7 @@ Operand close_call_area(
     emit_call_instruction(compiler, call.frame_register, function_position);
 
     if (!discard && function->return_count) {
-        Operand result = {call.frame_register - 2, true, function->return_count};
+        Operand result = {call.frame_register - 2, true, function->return_count, false};
 
         emit_operand_mov(compiler, call.result_register, result);
         result.reg = call.result_register;
@@ -441,6 +442,11 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
         function->return_count = 0;
     }
 
+    if (ast->function_definition.return_type_id.kind == TypeSlice) {
+        function->param_count++;
+        function->return_count = 0;
+    }
+
     function->local_count = get_max_local_count(body->compound.scope);
     int base = get_call_area_count(function);
 
@@ -507,9 +513,47 @@ uint16_t get_function_position(Compiler* compiler, ASTNode* ast)
     return 0;
 }
 
+static bool returns_slice(Compiler* compiler, uint16_t position)
+{
+    ASTNode* definition = compiler->function_references.data[position];
+
+    return definition && definition->function_definition.return_type_id.kind == TypeSlice;
+}
+
+static Operand compile_slice_call(Compiler* compiler, FunctionObject* function, uint16_t position,
+    Vector* args, Vector* params, bool discard)
+{
+    int result = allocate_registers(compiler, 2);
+    CallArea call = open_call_area(compiler);
+    bool reserved = compile_arguments(compiler, args, params);
+    int output = allocate_register(compiler);
+
+    emit_instruction(compiler, OpRefl, output, result, 0);
+
+    if (reserved) {
+        relocate_call_area(compiler, &call, function->param_count);
+    }
+
+    close_call_area(compiler, function, position, call, true);
+
+    if (discard) {
+        compiler->register_count = result;
+
+        return no_operand();
+    }
+
+    compiler->register_count = result + 2;
+
+    return make_slice_operand(result, true);
+}
+
 Operand compile_call(Compiler* compiler, FunctionObject* function, uint16_t function_position,
     Vector* args, Vector* params, bool discard)
 {
+    if (returns_slice(compiler, function_position)) {
+        return compile_slice_call(compiler, function, function_position, args, params, discard);
+    }
+
     size_t argument_count = count_vector(args);
 
     if (function->type == FuncBuiltin && !function->return_count && argument_count == 1) {
@@ -582,12 +626,24 @@ static Operand compile_typed_builtin_call(Compiler* compiler, ASTNode* ast, Func
     return close_call_area(compiler, function, position, call, discard);
 }
 
+static Operand compile_length(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    if (type.kind == TypeSlice) {
+        return compile_slice_length(compiler, ast, discard);
+    }
+
+    return compile_array_length(compiler, ast, discard);
+}
+
 Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
 {
     const Builtin* builtin = ast->builtin_call.builtin;
 
     if (!builtin->entry) {
-        return compile_array_length(compiler, ast, discard);
+        return compile_length(compiler, ast, discard);
     }
 
     if (builtin->entry == builtin_copy_array) {
@@ -616,7 +672,9 @@ Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
     Vector* params = &ast->function_call.symbol->function_definition.params;
     Operand result = compile_call(compiler, function, position, &ast->function_call.args, params, discard);
 
-    if (discard || get_reference_type(ast) == RefNone) {
+    Type type = get_node_data_type(ast);
+
+    if (discard || get_reference_type(ast) == RefNone || type.kind == TypeSlice) {
         return result;
     }
 
@@ -688,7 +746,17 @@ void compile_return_statement(Compiler* compiler, ASTNode* ast)
     Type return_type = function->function_definition.return_type_id;
     Operand value = compile_converted_expression(compiler, ast->return_statement.expr, return_type, reference);
 
-    emit_retv(compiler, value);
+    if (return_type.kind == TypeSlice) {
+        int output = compiler->function->param_count - 1;
+        Opcode store = sizeof(Value) == 8 ? OpStmi64 : OpStmi32;
+
+        emit_instruction(compiler, OpStr, value.reg, output, 0);
+        emit_instruction(compiler, store, value.reg + 1, output, sizeof(Value));
+        emit_ret(compiler);
+    } else {
+        emit_retv(compiler, value);
+    }
+
     release_operand(compiler, value);
     compiler->register_count = compiler->frame_base_count;
 }

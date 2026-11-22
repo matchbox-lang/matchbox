@@ -223,6 +223,12 @@ static bool parse_for_header(Parser* parser, ASTNode* ast)
         return false;
     }
 
+    if (parser->current_token.type == TokenRange) {
+        consume(parser, TokenRange);
+
+        ast->for_statement.end = parse_expression(parser);
+    }
+
     if (parenthesized) {
         consume(parser, TokenRparen);
     }

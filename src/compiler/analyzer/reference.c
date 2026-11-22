@@ -5,6 +5,7 @@
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/diagnostics.h"
+#include "compiler/scope.h"
 #include "runtime/string_object.h"
 
 size_t* get_shared_access_count(ASTNode* symbol)
@@ -113,11 +114,33 @@ void merge_reference_origins(Vector* destination, Vector* source)
     }
 }
 
+static void validate_slice_lifetime(ASTNode* destination, ASTNode* origin)
+{
+    Type type = get_node_data_type(destination);
+    Scope* scope = get_scope(destination);
+
+    if (type.kind != TypeSlice || !scope || !origin) {
+        return;
+    }
+
+    origin = get_reference_origin_or_self(origin);
+    Scope* storage = get_scope(origin);
+
+    if (storage && storage->level > scope->level) {
+        semantic_error("Slice cannot outlive its underlying storage", destination->variable_definition.token);
+    }
+}
+
 void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expression)
 {
     Vector* destination_origins = get_reference_origins(destination);
     Vector* origins = get_reference_origins_from_expression(expression);
+
     copy_reference_origins(destination_origins, origins);
+
+    for (size_t i = 0; i < origins->count; i++) {
+        validate_slice_lifetime(destination, origins->data[i]);
+    }
 }
 
 void release_reference_access(ASTNode* reference)
@@ -367,6 +390,23 @@ void validate_argument_accesses(ASTNode* caller, ASTNode* callee)
     }
 }
 
+static void transfer_returned_slice(ASTNode* caller, ASTNode* argument)
+{
+    Type type = get_node_data_type(caller);
+
+    if (type.kind != TypeSlice || get_reference_type(caller) != RefExclusive) {
+        return;
+    }
+
+    if (argument->type == ASTSlice) {
+        argument = argument->slice.expr;
+    }
+
+    if (is_variable(argument) && get_reference_type(argument) == RefExclusive) {
+        transfer_exclusive_reference(argument);
+    }
+}
+
 void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 {
     ASTNode* returned = callee->function_definition.return_reference_origin;
@@ -387,6 +427,7 @@ void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
 
         ASTNode* argument = get_vector_at(&caller->function_call.args, i);
         set_reference_origins_from_expression(caller, argument);
+        transfer_returned_slice(caller, argument);
 
         return;
     }
@@ -422,7 +463,12 @@ void activate_reference_access(ASTNode* ast)
 
 void establish_reference_access(ASTNode* binding, ASTNode* expression)
 {
-    bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression);
+    if (expression->type == ASTSlice) {
+        expression = expression->slice.expr;
+    }
+
+    bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression)
+        && get_reference_type(expression) == RefExclusive;
 
     if (transfers_exclusive) {
         transfer_exclusive_reference(expression);

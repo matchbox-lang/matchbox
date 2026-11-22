@@ -70,6 +70,12 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
     }
 
     switch (ast->type) {
+        case ASTSlice:
+            ast->slice.reference_origins.count = 0;
+            clear_node_analysis(ast->slice.expr, functions);
+            clear_node_analysis(ast->slice.start, functions);
+            clear_node_analysis(ast->slice.end, functions);
+            break;
         case ASTArray:
             clear_analysis_vector(&ast->array.elements, functions);
             break;
@@ -128,6 +134,7 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
             break;
         case ASTFor:
             clear_node_analysis(ast->for_statement.array, functions);
+            clear_node_analysis(ast->for_statement.end, functions);
             clear_node_analysis(ast->for_statement.index, functions);
             clear_node_analysis(ast->for_statement.value, functions);
             clear_node_analysis(ast->for_statement.body, functions);

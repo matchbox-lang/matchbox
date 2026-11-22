@@ -2,6 +2,7 @@
 #include "common/vector.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
+#include "compiler/parser/slice.h"
 #include "compiler/parser/type.h"
 
 ASTNode* parse_array_initializer(Parser* parser, Token token, TypeKind kind)
@@ -86,6 +87,10 @@ ASTNode* parse_index(Parser* parser, ASTNode* array)
     consume(parser, TokenLsquare);
 
     ast->index.index = parse_expression(parser);
+
+    if (parser->current_token.type == TokenRange) {
+        return parse_slice(parser, ast);
+    }
 
     if (!ast->index.index || is_end_of_file(parser)) {
         free_ast_node(ast);

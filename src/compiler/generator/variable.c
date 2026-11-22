@@ -67,6 +67,16 @@ static Operand load_global_with_store_forwarding(Compiler* compiler, size_t posi
 static Operand load_global_variable(Compiler* compiler, ASTNode* ast)
 {
     size_t position = ast->variable_definition.position;
+    Type type = get_node_data_type(ast);
+
+    if (type.kind == TypeSlice) {
+        int reg = emit_ldg(compiler, position);
+
+        emit_ldg(compiler, position + 1);
+
+        return make_slice_operand(reg, true);
+    }
+
     bool wide = get_node_slot_count(ast) == 2;
 
     if (wide) {
@@ -82,6 +92,12 @@ static Operand load_global_variable(Compiler* compiler, ASTNode* ast)
 static Operand load_local_variable(Compiler* compiler, ASTNode* ast)
 {
     int position = get_local_position(compiler, ast);
+
+    Type type = get_node_data_type(ast);
+
+    if (type.kind == TypeSlice) {
+        return make_slice_operand(position, false);
+    }
 
     return get_node_slot_count(ast) == 2
         ? make_wide_operand(position, false)
@@ -121,11 +137,12 @@ Operand load_variable_value(Compiler* compiler, ASTNode* symbol)
 {
     Operand value = load_variable(compiler, symbol);
 
-    if (get_reference_type(symbol) == RefNone) {
+    Type type = get_node_data_type(symbol);
+
+    if (get_reference_type(symbol) == RefNone || type.kind == TypeSlice) {
         return value;
     }
 
-    Type type = get_node_data_type(symbol);
     size_t slots = get_type_slot_count(type.kind);
 
     return dereference_operand(compiler, value, slots);
@@ -134,6 +151,13 @@ Operand load_variable_value(Compiler* compiler, ASTNode* symbol)
 static void store_global_variable(Compiler* compiler, ASTNode* ast, Operand value)
 {
     size_t position = ast->variable_definition.position;
+
+    if (value.pair) {
+        emit_global_instruction(compiler, OpStg, value.reg, position);
+        emit_global_instruction(compiler, OpStg, value.reg + 1, position + 1);
+
+        return;
+    }
 
     if (value.slots == 2) {
         emit_global_instruction(compiler, OpStg64, value.reg, position);

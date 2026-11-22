@@ -346,7 +346,7 @@ static Type analyze_for_array(Analyzer* analyzer, ASTNode* ast)
 
     Type type = get_node_data_type(array);
 
-    if (!is_array_type(type.kind)) {
+    if (!is_contiguous_type(type.kind)) {
         semantic_error("For iteration requires an array", ast->for_statement.token);
     }
 
@@ -400,8 +400,31 @@ static void analyze_for_ownership(Analyzer* analyzer, ASTNode* ast, Type element
     free_ownership_states(&body_states);
 }
 
+static void analyze_range_bound(Analyzer* analyzer, ASTNode* bound, Token token)
+{
+    Type type = {.kind = TypeUsize};
+
+    apply_literal_type(bound, type);
+    analyze_node(analyzer, bound);
+
+    Type actual = get_node_data_type(bound);
+    bool compatible = can_implicitly_widen_integer(actual.kind, TypeUsize);
+
+    if (!compatible || get_reference_type(bound) != RefNone) {
+        semantic_error("Range bound requires usize", token);
+    }
+}
+
 void analyze_for(Analyzer* analyzer, ASTNode* ast)
 {
+    if (ast->for_statement.end) {
+        analyze_range_bound(analyzer, ast->for_statement.array, ast->for_statement.token);
+        analyze_range_bound(analyzer, ast->for_statement.end, ast->for_statement.token);
+        analyze_for_ownership(analyzer, ast, (Type){.kind = TypeUsize});
+
+        return;
+    }
+
     Type type = analyze_for_array(analyzer, ast);
     Vector origins = {0};
 

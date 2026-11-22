@@ -23,7 +23,8 @@ typedef enum TypeKind
     TypeString,
     TypeBool,
     TypeVoid,
-    TypeArray
+    TypeArray,
+    TypeSlice
 } TypeKind;
 
 typedef struct ArrayType ArrayType;
@@ -38,6 +39,7 @@ typedef struct Type
 } Type;
 
 const char* get_data_type_name(Type type);
+bool is_contiguous_type(TypeKind kind);
 bool is_integer_type(TypeKind kind);
 bool is_float_type(TypeKind kind);
 bool is_signed_integer_type(TypeKind kind);

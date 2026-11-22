@@ -272,8 +272,9 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     }
 
     Type destination_type = get_node_data_type(symbol);
+    ReferenceType reference = get_reference_type(symbol);
 
-    apply_literal_type(ast->assignment.expr, destination_type);
+    apply_declared_type(ast->assignment.expr, destination_type, reference);
     analyze_node(analyzer, ast->assignment.expr);
 
     if (is_array_type(destination_type.kind) && ast->assignment.operator.type != TokenEqual) {

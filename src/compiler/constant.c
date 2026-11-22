@@ -524,6 +524,10 @@ static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
     }
 
     Type type = get_node_data_type(argument);
+    if (type.kind == TypeSlice) {
+        return false;
+    }
+
     value->integer = type.array->count;
 
     return true;

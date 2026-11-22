@@ -194,6 +194,66 @@ void apply_literal_type(ASTNode* expression, Type type)
     expression->float_literal.type_id = type;
 }
 
+static void apply_slice_branch_type(ASTNode* branch, Type type, ReferenceType reference_type)
+{
+    if (!branch || type.kind != TypeSlice) {
+        return;
+    }
+
+    if (branch->type == ASTConditional) {
+        apply_declared_type(branch, type, reference_type);
+
+        return;
+    }
+
+    Vector* statements = &branch->compound.statements;
+
+    if (statements->count) {
+        apply_declared_type(statements->data[statements->count - 1], type, reference_type);
+    }
+}
+
+static void apply_match_slice_type(ASTNode* expression, Type type, ReferenceType reference_type)
+{
+    for (size_t i = 0; i < expression->match.arms.count; i++) {
+        MatchArm* arm = expression->match.arms.data[i];
+
+        apply_slice_branch_type(arm->branch, type, reference_type);
+    }
+}
+
+static void apply_conditional_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
+{
+    apply_literal_type(expression, type);
+
+    expression->conditional.type_id = type;
+    expression->conditional.reference_type = reference_type;
+
+    apply_slice_branch_type(expression->conditional.then_branch, type, reference_type);
+    apply_slice_branch_type(expression->conditional.else_branch, type, reference_type);
+}
+
+static void apply_match_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
+{
+    apply_literal_type(expression, type);
+
+    expression->match.type_id = type;
+    expression->match.reference_type = reference_type;
+
+    apply_match_slice_type(expression, type, reference_type);
+}
+
+static void apply_value_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
+{
+    if (type.kind == TypeSlice) {
+        apply_slice_type(expression, type, reference_type);
+
+        return;
+    }
+
+    apply_literal_type(expression, type);
+}
+
 void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
 {
     if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenKeywordConst) {
@@ -206,16 +266,16 @@ void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference
         return;
     }
 
-    apply_literal_type(expression, type);
-
-    if (expression->type == ASTConditional) {
-        expression->conditional.type_id = type;
-        expression->conditional.reference_type = reference_type;
-    }
-
-    if (expression->type == ASTMatch) {
-        expression->match.type_id = type;
-        expression->match.reference_type = reference_type;
+    switch (expression->type) {
+        case ASTConditional:
+            apply_conditional_declared_type(expression, type, reference_type);
+            break;
+        case ASTMatch:
+            apply_match_declared_type(expression, type, reference_type);
+            break;
+        default:
+            apply_value_declared_type(expression, type, reference_type);
+            break;
     }
 }
 

@@ -12,6 +12,7 @@
 #include "compiler/generator/function.h"
 #include "compiler/generator/match.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/slice.h"
 #include "compiler/generator/variable.h"
 #include "compiler/ast.h"
 #include "runtime/function_object.h"
@@ -30,6 +31,12 @@ static _Noreturn void unresolved_repl_expression_type_error(void)
 
 Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
 {
+    Type type = get_node_data_type(ast);
+
+    if (type.kind == TypeSlice) {
+        return compile_expression(compiler, ast, false);
+    }
+
     if (ast->type == ASTConditional) {
         return compile_conditional(compiler, ast, true);
     }
@@ -128,6 +135,8 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
 static Operand compile_value_expression(Compiler* compiler, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTSlice:
+            return compile_slice(compiler, ast);
         case ASTArray:
             return compile_array(compiler, ast);
         case ASTIndex:

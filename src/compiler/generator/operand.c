@@ -82,16 +82,37 @@ int allocate_registers(Compiler* compiler, size_t count)
     return first;
 }
 
+void reserve_pointer_padding(Compiler* compiler)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        allocate_register(compiler);
+    }
+}
+
+void release_pointer_padding(Compiler* compiler)
+{
+    if (sizeof(void*) == sizeof(uint64_t)) {
+        release_register(compiler);
+    }
+}
+
 Operand make_operand(int reg, bool temporary)
 {
-    Operand operand = {reg, temporary, 1};
+    Operand operand = {reg, temporary, 1, false};
 
     return operand;
 }
 
 Operand make_wide_operand(int reg, bool temporary)
 {
-    Operand operand = {reg, temporary, 2};
+    Operand operand = {reg, temporary, 2, false};
+
+    return operand;
+}
+
+Operand make_slice_operand(int reg, bool temporary)
+{
+    Operand operand = {reg, temporary, 2, true};
 
     return operand;
 }
@@ -115,14 +136,20 @@ Operand materialize_operand(Compiler* compiler, Operand operand)
     }
 
     int reg = allocate_registers(compiler, operand.slots);
+
     emit_operand_mov(compiler, reg, operand);
 
-    return operand.slots == 2 ? make_wide_operand(reg, true) : make_operand(reg, true);
+    operand.reg = reg;
+    operand.temporary = true;
+
+    return operand;
 }
 
 size_t get_node_slot_count(ASTNode* ast)
 {
-    if (get_reference_type(ast) != RefNone) {
+    Type type = get_node_data_type(ast);
+
+    if (get_reference_type(ast) != RefNone && type.kind != TypeSlice) {
         return 1;
     }
 

@@ -55,7 +55,9 @@ static size_t get_symbol_slot_count(const ASTNode* symbol)
         return 0;
     }
 
-    if (get_reference_type(symbol) != RefNone) {
+    Type type = get_node_data_type(symbol);
+
+    if (get_reference_type(symbol) != RefNone && type.kind != TypeSlice) {
         return 1;
     }
 

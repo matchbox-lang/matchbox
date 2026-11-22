@@ -10,6 +10,7 @@ typedef struct Operand
     int reg;
     bool temporary;
     size_t slots;
+    bool pair;
 } Operand;
 
 _Noreturn void function_register_index_overflow_error(const char* name);
@@ -19,8 +20,11 @@ bool is_compiling_top_level(Compiler* compiler);
 int allocate_register(Compiler* compiler);
 int release_register(Compiler* compiler);
 int allocate_registers(Compiler* compiler, size_t count);
+void reserve_pointer_padding(Compiler* compiler);
+void release_pointer_padding(Compiler* compiler);
 Operand make_operand(int reg, bool temporary);
 Operand make_wide_operand(int reg, bool temporary);
+Operand make_slice_operand(int reg, bool temporary);
 Operand no_operand(void);
 void release_operand(Compiler* compiler, Operand operand);
 Operand materialize_operand(Compiler* compiler, Operand operand);

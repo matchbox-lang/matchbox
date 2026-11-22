@@ -1,0 +1,9 @@
+func double(values: ^i32[]) {
+    for i in 0..values.length {
+        values[i] *= 2
+    }
+}
+
+var values = [1, 2, 3]
+
+double(values)

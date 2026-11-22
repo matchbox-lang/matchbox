@@ -1,0 +1,8 @@
+func change(values: ^i32[]) {
+    values[0] = 9
+}
+
+let values = [1, 2, 3]
+let view: &i32[] = values
+
+change(view)

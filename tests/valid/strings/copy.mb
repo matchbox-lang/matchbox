@@ -1,0 +1,14 @@
+test "copy creates owning strings" {
+    const COPIED_LITERAL = copy("literal")
+
+    var text = "a\u{e9}\0z"
+    let copied: string = copy(text)
+    let copied_length = len(copied)
+
+    text = "updated"
+
+    assert(copied == "a\u{e9}\0z" and copied_length == 5)
+    assert(COPIED_LITERAL == "literal" and text == "updated")
+    
+    copy(text)
+}

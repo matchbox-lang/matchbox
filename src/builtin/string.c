@@ -3,11 +3,23 @@
 #include "common/string_view.h"
 #include "common/unicode.h"
 #include "runtime/argument_format.h"
+#include "runtime/string_object.h"
 #include "vm/vm.h"
 
 void builtin_string(VM* vm, const FunctionObject* function, Value* frame)
 {
     StringObject* string = concatenate_arguments(frame, function->argument_formats, function->argument_count);
+
+    push_vector_item(&vm->module->objects, string);
+    frame[-2] = POINTER_VALUE(string);
+}
+
+void builtin_copy_string(VM* vm, const FunctionObject* function, Value* frame)
+{
+    (void)function;
+
+    StringObject* source = AS_POINTER(frame[0]);
+    StringObject* string = create_string_object(source->chars, source->length, source->hash);
 
     push_vector_item(&vm->module->objects, string);
     frame[-2] = POINTER_VALUE(string);

@@ -1,6 +1,7 @@
 #include "compiler/analyzer/recovery.h"
 #include "common/vector.h"
 #include "compiler/scope.h"
+#include <stdint.h>
 
 static void clear_node_analysis(ASTNode* ast, Vector* functions);
 
@@ -162,7 +163,26 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
     }
 }
 
-void rebuild_analyzer(Analyzer* analyzer, Vector* functions)
+static void analyze_submissions(Analyzer* analyzer, const Vector* submission_boundaries)
+{
+    Vector* nodes = &analyzer->top_level->compound.statements;
+    size_t count = nodes->count;
+    size_t start = 0;
+
+    for (size_t i = 0; i < submission_boundaries->count; i++) {
+        nodes->count = (size_t)(uintptr_t)submission_boundaries->data[i];
+
+        analyze(analyzer, start);
+
+        start = nodes->count;
+    }
+
+    nodes->count = count;
+
+    analyze(analyzer, start);
+}
+
+void rebuild_analyzer(Analyzer* analyzer, const Vector* submission_boundaries, Vector* functions)
 {
     ASTNode* ast = analyzer->top_level;
     Vector array_types = analyzer->array_types;
@@ -175,5 +195,5 @@ void rebuild_analyzer(Analyzer* analyzer, Vector* functions)
     init_analyzer(analyzer, ast);
     analyzer->array_types = array_types;
 
-    analyze(analyzer, 0);
+    analyze_submissions(analyzer, submission_boundaries);
 }

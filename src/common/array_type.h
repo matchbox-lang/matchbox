@@ -15,7 +15,6 @@ typedef struct ArrayType
 
 bool is_array_type(TypeKind kind);
 bool array_shapes_equal(Type left, Type right);
-// Returns TypeUnknown when the array type is not registered
 Type find_array_type(const Vector* array_types, Type element_type, size_t count);
 Type add_array_type(Vector* array_types, Type element_type, size_t count);
 Type get_array_leaf_type(Type type);

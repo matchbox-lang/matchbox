@@ -99,6 +99,10 @@ void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type)
         ast->slice.token = expression->string_literal.token;
     }
 
+    if (expression->type == ASTPrefix) {
+        ast->slice.token = expression->prefix.operator;
+    }
+
     ast->slice.reference_type = reference_type;
 
     init_vector(&ast->slice.reference_origins);

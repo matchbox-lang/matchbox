@@ -1,0 +1,4 @@
+var number = 1
+let view: &string = &number
+
+print(view)

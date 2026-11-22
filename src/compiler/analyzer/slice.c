@@ -68,18 +68,6 @@ static ASTNode* get_slice_origin(ASTNode* expression, ASTNode* binding, Token to
     return origin;
 }
 
-static void validate_slice_storage_access(Analyzer* analyzer, ASTNode* ast, ASTNode* origin, ReferenceType existing)
-{
-    ReferenceType requested = ast->slice.reference_type;
-
-    validate_constant_mutation(origin, requested, ast->slice.token);
-    validate_constant_reference(analyzer, origin, ast->slice.token);
-
-    if (existing == RefNone) {
-        validate_global_binding_access(analyzer, origin, requested, ast->slice.token);
-    }
-}
-
 static void validate_exclusive_slice_access(ASTNode* ast, ASTNode* binding, ASTNode* origin, ReferenceType existing)
 {
     if (ast->slice.reference_type != RefExclusive) {
@@ -91,15 +79,29 @@ static void validate_exclusive_slice_access(ASTNode* ast, ASTNode* binding, ASTN
     }
 
     if (binding && *get_shared_access_count(binding)) {
-        semantic_error("Cannot create an exclusive slice while shared access is active", ast->slice.token);
+        validate_reference_binding_access(binding, RefExclusive, ast->slice.token);
     }
 
     if (existing == RefShared) {
         semantic_error("Cannot create an exclusive slice through shared access", ast->slice.token);
     }
 
-    if (existing == RefNone && (*get_shared_access_count(origin) || has_exclusive_access(origin))) {
-        semantic_error("Cannot create an exclusive slice while another access is active", ast->slice.token);
+    if (existing == RefNone) {
+        validate_reference_binding_access(origin, RefExclusive, ast->slice.token);
+    }
+}
+
+static void validate_slice_storage_access(Analyzer* analyzer, ASTNode* ast, ASTNode* binding,
+    ASTNode* origin, ReferenceType existing)
+{
+    ReferenceType requested = ast->slice.reference_type;
+
+    validate_constant_mutation(origin, requested, ast->slice.token);
+    validate_constant_reference(analyzer, origin, ast->slice.token);
+    validate_exclusive_slice_access(ast, binding, origin, existing);
+
+    if (existing == RefNone) {
+        validate_global_binding_access(analyzer, origin, requested, ast->slice.token);
     }
 }
 
@@ -123,22 +125,30 @@ static void validate_slice_access(Analyzer* analyzer, ASTNode* ast)
     ReferenceType existing = get_reference_type(binding ? binding : expression);
     ASTNode* origin = get_slice_origin(expression, binding, ast->slice.token);
 
-    validate_slice_storage_access(analyzer, ast, origin, existing);
-    validate_exclusive_slice_access(ast, binding, origin, existing);
+    validate_slice_storage_access(analyzer, ast, binding, origin, existing);
     set_slice_reference_origins(ast, binding, origin, existing);
 }
 
-static Type analyze_slice_source(Analyzer* analyzer, ASTNode* ast)
+static bool remove_incompatible_string_slice(ASTNode* ast, Type source)
 {
-    analyze_node(analyzer, ast->slice.expr);
-
-    Type source = get_node_data_type(ast->slice.expr);
-
-    if (!is_contiguous_type(source.kind) && source.kind != TypeString) {
-        semantic_error("Slice requires an array, string, or slice", ast->slice.token);
+    if (ast->slice.start || ast->slice.type_id.kind != TypeStringSlice) {
+        return false;
     }
 
-    return source;
+    bool string_source = source.kind == TypeString || source.kind == TypeStringSlice;
+    ReferenceType reference = get_reference_type(ast->slice.expr);
+    bool shared_to_exclusive = reference == RefShared && ast->slice.reference_type == RefExclusive;
+
+    if (string_source && !shared_to_exclusive) {
+        return false;
+    }
+
+    ASTNode* expression = ast->slice.expr;
+
+    free_vector(&ast->slice.reference_origins);
+    replace_ast_node(ast, expression);
+
+    return true;
 }
 
 static Type get_slice_source_type(Analyzer* analyzer, Type source)
@@ -150,9 +160,20 @@ static Type get_slice_source_type(Analyzer* analyzer, Type source)
     return get_slice_type(&analyzer->array_types, source.array->element_type);
 }
 
-static void resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
+static bool resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
 {
-    Type source = analyze_slice_source(analyzer, ast);
+    analyze_node(analyzer, ast->slice.expr);
+
+    Type source = get_node_data_type(ast->slice.expr);
+
+    if (remove_incompatible_string_slice(ast, source)) {
+        return false;
+    }
+
+    if (!is_contiguous_type(source.kind) && source.kind != TypeString) {
+        semantic_error("Slice requires an array, string, or slice", ast->slice.token);
+    }
+
     Type type = get_slice_source_type(analyzer, source);
 
     if (ast->slice.type_id.kind != TypeUnknown && !types_equal(ast->slice.type_id, type)) {
@@ -160,11 +181,16 @@ static void resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
     }
 
     ast->slice.type_id = type;
+
+    return true;
 }
 
 void analyze_slice(Analyzer* analyzer, ASTNode* ast)
 {
-    resolve_slice_type(analyzer, ast);
+    if (!resolve_slice_type(analyzer, ast)) {
+        return;
+    }
+
     validate_slice_access(analyzer, ast);
     analyze_slice_bound(analyzer, ast->slice.start, ast->slice.token);
     analyze_slice_bound(analyzer, ast->slice.end, ast->slice.token);

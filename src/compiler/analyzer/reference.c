@@ -204,6 +204,28 @@ static ASTNode* find_reference_symbol(Analyzer* analyzer, ASTNode* variable)
     return symbol;
 }
 
+void validate_reference_binding_access(ASTNode* symbol, ReferenceType requested, Token token)
+{
+    Token binding;
+
+    if (is_parameter(symbol)) {
+        binding = symbol->parameter.token;
+    } else {
+        binding = symbol->variable_definition.token;
+    }
+
+    binding.line = token.line;
+    binding.column = token.column;
+
+    if (requested == RefShared && has_exclusive_access(symbol)) {
+        binding_access_error("Cannot share binding ", binding, " while exclusive access is active");
+    }
+
+    if (requested == RefExclusive && (has_exclusive_access(symbol) || *get_shared_access_count(symbol))) {
+        binding_access_error("Cannot take exclusive access to binding ", binding, " while another access is active");
+    }
+}
+
 static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* symbol)
 {
     ReferenceType requested = get_reference_type(ast);
@@ -215,14 +237,7 @@ static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* 
         semantic_error("Cannot create a reference to another reference", ast->prefix.operator);
     }
 
-    if (requested == RefShared && has_exclusive_access(symbol)) {
-        binding_access_error("Cannot share binding ", variable->variable.token, " while exclusive access is active");
-    }
-
-    if (requested == RefExclusive
-        && (has_exclusive_access(symbol) || *get_shared_access_count(symbol))) {
-        binding_access_error("Cannot take exclusive access to binding ", variable->variable.token, " while another access is active");
-    }
+    validate_reference_binding_access(symbol, requested, variable->variable.token);
 }
 
 static void resolve_string_reference_type(Analyzer* analyzer, ASTNode* ast)

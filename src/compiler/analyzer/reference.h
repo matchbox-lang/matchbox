@@ -17,6 +17,7 @@ void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expres
 void release_reference_access(ASTNode* reference);
 void release_inactive_reference_access(Vector* references);
 void analyze_reference(Analyzer* analyzer, ASTNode* ast);
+void validate_reference_binding_access(ASTNode* symbol, ReferenceType requested, Token token);
 void validate_call_argument_access(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, Token token);
 void validate_argument_accesses(ASTNode* caller, ASTNode* callee);
 void set_call_reference_origins(ASTNode* caller, ASTNode* callee);

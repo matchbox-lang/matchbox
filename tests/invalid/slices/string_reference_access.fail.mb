@@ -1,0 +1,6 @@
+var text = "hello"
+let shared = &text
+let exclusive: ^string = text
+
+print(shared)
+print(exclusive)

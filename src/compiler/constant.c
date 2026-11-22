@@ -524,7 +524,7 @@ static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
     }
 
     Type type = get_node_data_type(argument);
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind) || type.kind == TypeString) {
         return false;
     }
 

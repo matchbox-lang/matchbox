@@ -1,16 +1,57 @@
 #include "compiler/generator/slice.h"
+#include "builtin/string.h"
 #include "common/array_type.h"
 #include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
+#include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
+#include "runtime/string_object.h"
+#include <stddef.h>
+#include <stdint.h>
+
+static Operand compile_string_slice_source(Compiler* compiler, ASTNode* expression)
+{
+    Operand buffer = compile_expression(compiler, expression, false);
+    buffer = materialize_operand(compiler, buffer);
+    int length = allocate_register(compiler);
+    Opcode load = sizeof(size_t) == sizeof(uint64_t) ? OpLdmi64 : OpLdmi32;
+
+    emit_instruction(compiler, load, length, buffer.reg, offsetof(StringObject, length));
+
+    Operand offset = compile_usize_literal(compiler, offsetof(StringObject, chars));
+
+    emit_buffer_offset(compiler, buffer, offset);
+
+    return make_slice_operand(buffer.reg, true);
+}
+
+static Operand compile_slice_source(Compiler* compiler, ASTNode* expression)
+{
+    Type source = get_node_data_type(expression);
+
+    if (source.kind == TypeString) {
+        return compile_string_slice_source(compiler, expression);
+    }
+
+    Operand buffer = compile_expression(compiler, expression, false);
+    buffer = materialize_operand(compiler, buffer);
+
+    if (is_slice_type(source.kind)) {
+        return buffer;
+    }
+
+    compile_usize_literal(compiler, source.array->count);
+
+    return make_slice_operand(buffer.reg, true);
+}
 
 Operand compile_slice_length(Compiler* compiler, ASTNode* ast, bool discard)
 {
     ASTNode* argument = ast->builtin_call.args.data[0];
-    Operand slice = compile_expression(compiler, argument, false);
+    Operand slice = compile_slice_source(compiler, argument);
     int reg = slice.reg;
 
     release_operand(compiler, slice);
@@ -47,19 +88,32 @@ static void compile_slice_bounds(Compiler* compiler, Operand start, Operand end,
     patch_jump(compiler, bounded);
 }
 
-static Operand compile_slice_source(Compiler* compiler, ASTNode* expression)
+static void compile_string_slice_bounds(Compiler* compiler, ASTNode* ast, Operand slice, Operand start, Operand end)
 {
-    Type source = get_node_data_type(expression);
-    Operand buffer = compile_expression(compiler, expression, false);
-    buffer = materialize_operand(compiler, buffer);
-
-    if (source.kind == TypeSlice) {
-        return buffer;
+    if (ast->slice.type_id.kind != TypeStringSlice) {
+        return;
     }
 
-    compile_usize_literal(compiler, source.array->count);
+    static const Builtin builtin = {
+        .name = "validate_string_slice",
+        .entry = builtin_validate_string_slice,
+        .param_count = 4,
+        .params = {TypeUsize, TypeUsize, TypeUsize, TypeUsize},
+        .return_type_id = TypeVoid
+    };
 
-    return make_slice_operand(buffer.reg, true);
+    Type type = {.kind = TypeUsize};
+    Type types[] = {type, type, type, type};
+
+    Operand arguments[4];
+    arguments[0] = make_operand(slice.reg, false);
+    arguments[1] = start;
+    arguments[1].temporary = false;
+    arguments[2] = end;
+    arguments[2].temporary = false;
+    arguments[3] = make_operand(slice.reg + 1, false);
+
+    emit_builtin_operands(compiler, &builtin, types, arguments, 4, true);
 }
 
 Operand compile_slice(Compiler* compiler, ASTNode* ast)
@@ -78,6 +132,7 @@ Operand compile_slice(Compiler* compiler, ASTNode* ast)
     Operand length = make_operand(slice.reg + 1, false);
 
     compile_slice_bounds(compiler, start, end, length);
+    compile_string_slice_bounds(compiler, ast, slice, start, end);
 
     Opcode subtract = get_integer_opcode(type, IntSub);
 

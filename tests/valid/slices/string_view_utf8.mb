@@ -1,0 +1,15 @@
+test "string view UTF-8 boundaries and empty ranges" {
+    let text = "a\u{e9}\u{1f642}z"
+    let view = text[1..7]
+    let nested = view[2..6]
+    let empty = view[6..6]
+    let output = string(view, nested, empty)
+    let length = len(view)
+    let empty_length = len(empty)
+    let blank = ""
+    let blank_view = blank[0..0]
+    let blank_length = len(blank_view)
+
+    assert(output == "\u{e9}\u{1f642}\u{1f642}")
+    assert(length == 6 and empty_length == 0 and blank_length == 0)
+}

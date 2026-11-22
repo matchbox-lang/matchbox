@@ -119,7 +119,7 @@ static void validate_slice_lifetime(ASTNode* destination, ASTNode* origin)
     Type type = get_node_data_type(destination);
     Scope* scope = get_scope(destination);
 
-    if (type.kind != TypeSlice || !scope || !origin) {
+    if (!is_slice_type(type.kind) || !scope || !origin) {
         return;
     }
 
@@ -222,15 +222,6 @@ static void validate_reference_access(ASTNode* ast, ASTNode* variable, ASTNode* 
         && (has_exclusive_access(symbol) || *get_shared_access_count(symbol))) {
         binding_access_error("Cannot take exclusive access to binding ", variable->variable.token, " while another access is active");
     }
-}
-
-static void mark_address_taken(ASTNode* symbol)
-{
-    if (!symbol || !is_variable_definition(symbol)) {
-        return;
-    }
-
-    symbol->variable_definition.address_taken = true;
 }
 
 void analyze_reference(Analyzer* analyzer, ASTNode* ast)
@@ -394,7 +385,7 @@ static void transfer_returned_slice(ASTNode* caller, ASTNode* argument)
 {
     Type type = get_node_data_type(caller);
 
-    if (type.kind != TypeSlice || get_reference_type(caller) != RefExclusive) {
+    if (!is_slice_type(type.kind) || get_reference_type(caller) != RefExclusive) {
         return;
     }
 

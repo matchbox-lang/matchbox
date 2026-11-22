@@ -144,7 +144,7 @@ bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_ty
     bool complete = parse_dimensions(parser, type);
 
     if (type->kind == TypeArray && *reference_type != RefNone && !type->array->dimensions->data[0]) {
-        type->kind = TypeSlice;
+        type->kind = TypeArraySlice;
     }
 
     return complete;

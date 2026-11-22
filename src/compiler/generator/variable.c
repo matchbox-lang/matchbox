@@ -69,7 +69,7 @@ static Operand load_global_variable(Compiler* compiler, ASTNode* ast)
     size_t position = ast->variable_definition.position;
     Type type = get_node_data_type(ast);
 
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind)) {
         int reg = emit_ldg(compiler, position);
 
         emit_ldg(compiler, position + 1);
@@ -95,7 +95,7 @@ static Operand load_local_variable(Compiler* compiler, ASTNode* ast)
 
     Type type = get_node_data_type(ast);
 
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind)) {
         return make_slice_operand(position, false);
     }
 
@@ -139,7 +139,7 @@ Operand load_variable_value(Compiler* compiler, ASTNode* symbol)
 
     Type type = get_node_data_type(symbol);
 
-    if (get_reference_type(symbol) == RefNone || type.kind == TypeSlice) {
+    if (get_reference_type(symbol) == RefNone || is_slice_type(type.kind)) {
         return value;
     }
 

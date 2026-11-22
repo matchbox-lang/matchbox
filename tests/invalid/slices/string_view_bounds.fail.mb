@@ -1,0 +1,4 @@
+let text = "hello"
+let view = text[1..6]
+
+print(view)

@@ -1,0 +1,5 @@
+let text = "a\u{e9}z"
+let view = text[1..3]
+let nested = view[0..1]
+
+print(nested)

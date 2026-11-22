@@ -917,3 +917,12 @@ void initialize_variable(ASTNode* ast)
         ast->variable_definition.possibly_initialized = true;
     }
 }
+
+void mark_address_taken(ASTNode* symbol)
+{
+    if (!symbol || !is_variable_definition(symbol)) {
+        return;
+    }
+
+    symbol->variable_definition.address_taken = true;
+}

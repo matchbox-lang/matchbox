@@ -130,8 +130,7 @@ static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
     }
 
     Type parameter_type = parameter->parameter.type_id;
-
-    ReferenceType reference = parameter_type.kind == TypeSlice ? parameter->parameter.reference_type : RefNone;
+    ReferenceType reference = is_slice_type(parameter_type.kind) ? parameter->parameter.reference_type : RefNone;
 
     apply_declared_type(argument, parameter_type, reference);
     analyze_node(analyzer, argument);
@@ -300,7 +299,7 @@ static void set_parameter_positions(ASTNode* ast)
         ASTNode* param = get_vector_at(&ast->function_definition.params, i);
         param->parameter.position = position;
         Type type = get_node_data_type(param);
-        bool value = get_reference_type(param) == RefNone || type.kind == TypeSlice;
+        bool value = get_reference_type(param) == RefNone || is_slice_type(type.kind);
         position += value ? get_type_slot_count(type.kind) : 1;
     }
 }

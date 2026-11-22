@@ -654,7 +654,7 @@ static void resolve_index_constant(Compiler* compiler, ASTNode* ast)
 {
     Type source = get_node_data_type(ast->index.array);
 
-    if (ast->index.constant || source.kind == TypeSlice) {
+    if (ast->index.constant || is_slice_type(source.kind)) {
         return;
     }
 
@@ -732,7 +732,7 @@ static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast, Op
 
     Operand length;
 
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind)) {
         length = make_operand(buffer.reg + 1, false);
     } else {
         length = compile_usize_literal(compiler, info->count);
@@ -938,7 +938,7 @@ static ForOperands compile_for_operands(Compiler* compiler, ASTNode* ast, Type t
     loop.offset = compile_usize_literal(compiler, 0);
     loop.offset.temporary = false;
 
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind)) {
         Operand length = make_operand(loop.source.reg + 1, false);
         loop.end = materialize_operand(compiler, length);
 

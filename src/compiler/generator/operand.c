@@ -149,7 +149,7 @@ size_t get_node_slot_count(ASTNode* ast)
 {
     Type type = get_node_data_type(ast);
 
-    if (get_reference_type(ast) != RefNone && type.kind != TypeSlice) {
+    if (get_reference_type(ast) != RefNone && !is_slice_type(type.kind)) {
         return 1;
     }
 

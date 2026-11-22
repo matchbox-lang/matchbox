@@ -1,0 +1,13 @@
+let string_storage = ["first", "second"]
+let string_view = string_storage[1][1..4]
+
+func format_string_view() -> string {
+    return string(string_view)
+}
+
+test "string view storage and globals" {
+    let result = format_string_view()
+    let length = len(string_view)
+
+    assert(result == "eco" and length == 3)
+}

@@ -141,7 +141,7 @@ static void resolve_array_dimension(Analyzer* analyzer, Type* type, size_t count
 
 static size_t resolve_declared_array_count(Analyzer* analyzer, Type type, size_t index)
 {
-    if (!index && type.kind == TypeSlice) {
+    if (!index && type.kind == TypeArraySlice) {
         return SIZE_MAX;
     }
 
@@ -174,7 +174,7 @@ void resolve_dimensions(Analyzer* analyzer, Type* type)
     for (size_t i = counts.count; i > 0; i--) {
         size_t count = (size_t)(uintptr_t)counts.data[i - 1];
 
-        resolve_array_dimension(analyzer, &resolved_type, count, type->kind == TypeSlice && i == 1);
+        resolve_array_dimension(analyzer, &resolved_type, count, type->kind == TypeArraySlice && i == 1);
     }
 
     free_vector(&counts);
@@ -377,7 +377,7 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
     const ArrayType* info = array_type.array;
     ast->index.type_id = info->element_type;
 
-    if (array_type.kind == TypeSlice) {
+    if (is_slice_type(array_type.kind)) {
         ast->index.constant = false;
 
         return;

@@ -67,6 +67,10 @@ static size_t argument_capacity(const Value* frame, const ArgumentFormat* format
         return writer.length;
     }
 
+    if (format->formatter == format_string_slice_argument) {
+        return AS_UNSIGNED(frame[format->slot + 1]);
+    }
+
     const StringObject* string = AS_POINTER(frame[format->slot]);
 
     return string->length;
@@ -207,6 +211,14 @@ void format_string_argument(Writer* writer, const Value* argument)
     format_string(writer, value);
 }
 
+void format_string_slice_argument(Writer* writer, const Value* argument)
+{
+    const char* data = AS_POINTER(argument[0]);
+    size_t length = AS_UNSIGNED(argument[1]);
+
+    write_bytes(writer, data, length);
+}
+
 static void format_array_item(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t index)
 {
     if (index) {
@@ -267,6 +279,8 @@ static ArgumentFormat get_scalar_argument_format(TypeKind kind)
             return (ArgumentFormat){.formatter = format_char_argument, .capacity = 4};
         case TypeString:
             return (ArgumentFormat){.formatter = format_string_argument};
+        case TypeStringSlice:
+            return (ArgumentFormat){.formatter = format_string_slice_argument};
         case TypeBool:
             return (ArgumentFormat){.formatter = format_bool_argument, .capacity = 5};
         default:
@@ -276,7 +290,7 @@ static ArgumentFormat get_scalar_argument_format(TypeKind kind)
 
 ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
 {
-    if (!is_contiguous_type(type.kind)) {
+    if (!is_contiguous_type(type.kind) || type.kind == TypeStringSlice) {
         return get_scalar_argument_format(type.kind);
     }
 
@@ -310,7 +324,7 @@ static bool matches_array_format(const ArrayFormat* format, Type type)
 
 bool matches_argument_format(const ArgumentFormat* format, Type type)
 {
-    if (is_contiguous_type(type.kind)) {
+    if (is_contiguous_type(type.kind) && type.kind != TypeStringSlice) {
         return matches_array_format(format->array, type);
     }
 

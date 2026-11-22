@@ -125,7 +125,8 @@ static bool builtin_argument_matches(const Builtin* builtin, const Type* argumen
     TypeKind argument_type = argument_types[position].kind;
     TypeKind parameter_type = builtin->params[position];
 
-    bool slice_length = argument_type == TypeSlice && parameter_type == TypeArray && !builtin->entry;
+    bool slice_length = (is_slice_type(argument_type) || argument_type == TypeString)
+        && parameter_type == TypeArray && !builtin->entry;
 
     return slice_length || argument_type == TypeUnknown
         || argument_type == parameter_type

@@ -33,7 +33,7 @@ Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
 {
     Type type = get_node_data_type(ast);
 
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind)) {
         return compile_expression(compiler, ast, false);
     }
 

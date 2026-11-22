@@ -5,5 +5,6 @@
 #include "runtime/value.h"
 
 void builtin_string(VM* vm, const FunctionObject* function, Value* frame);
+void builtin_validate_string_slice(VM* vm, const FunctionObject* function, Value* frame);
 
 #endif

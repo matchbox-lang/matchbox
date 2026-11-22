@@ -442,7 +442,7 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
         function->return_count = 0;
     }
 
-    if (ast->function_definition.return_type_id.kind == TypeSlice) {
+    if (is_slice_type(ast->function_definition.return_type_id.kind)) {
         function->param_count++;
         function->return_count = 0;
     }
@@ -517,7 +517,7 @@ static bool returns_slice(Compiler* compiler, uint16_t position)
 {
     ASTNode* definition = compiler->function_references.data[position];
 
-    return definition && definition->function_definition.return_type_id.kind == TypeSlice;
+    return definition && is_slice_type(definition->function_definition.return_type_id.kind);
 }
 
 static Operand compile_slice_call(Compiler* compiler, FunctionObject* function, uint16_t position,
@@ -631,7 +631,7 @@ static Operand compile_length(Compiler* compiler, ASTNode* ast, bool discard)
     ASTNode* argument = ast->builtin_call.args.data[0];
     Type type = get_node_data_type(argument);
 
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind) || type.kind == TypeString) {
         return compile_slice_length(compiler, ast, discard);
     }
 
@@ -674,7 +674,7 @@ Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
 
     Type type = get_node_data_type(ast);
 
-    if (discard || get_reference_type(ast) == RefNone || type.kind == TypeSlice) {
+    if (discard || get_reference_type(ast) == RefNone || is_slice_type(type.kind)) {
         return result;
     }
 
@@ -746,7 +746,7 @@ void compile_return_statement(Compiler* compiler, ASTNode* ast)
     Type return_type = function->function_definition.return_type_id;
     Operand value = compile_converted_expression(compiler, ast->return_statement.expr, return_type, reference);
 
-    if (return_type.kind == TypeSlice) {
+    if (is_slice_type(return_type.kind)) {
         int output = compiler->function->param_count - 1;
         Opcode store = sizeof(Value) == 8 ? OpStmi64 : OpStmi32;
 

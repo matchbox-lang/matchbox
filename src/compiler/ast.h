@@ -337,5 +337,6 @@ bool is_variable_type(const ASTNode* ast);
 bool is_none(const ASTNode* ast);
 bool is_initialized(const ASTNode* ast);
 void initialize_variable(ASTNode* ast);
+void mark_address_taken(ASTNode* symbol);
 
 #endif

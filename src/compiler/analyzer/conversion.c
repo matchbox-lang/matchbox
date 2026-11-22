@@ -196,7 +196,7 @@ void apply_literal_type(ASTNode* expression, Type type)
 
 static void apply_slice_branch_type(ASTNode* branch, Type type, ReferenceType reference_type)
 {
-    if (!branch || type.kind != TypeSlice) {
+    if (!branch || !is_slice_type(type.kind)) {
         return;
     }
 
@@ -245,7 +245,7 @@ static void apply_match_declared_type(ASTNode* expression, Type type, ReferenceT
 
 static void apply_value_declared_type(ASTNode* expression, Type type, ReferenceType reference_type)
 {
-    if (type.kind == TypeSlice) {
+    if (is_slice_type(type.kind)) {
         apply_slice_type(expression, type, reference_type);
 
         return;

@@ -10,7 +10,7 @@ Type get_slice_type(Vector* array_types, Type element_type)
     Type type = find_array_type(array_types, element_type, SIZE_MAX);
 
     if (type.kind != TypeUnknown) {
-        type.kind = TypeSlice;
+        type.kind = TypeArraySlice;
 
         return type;
     }
@@ -25,5 +25,5 @@ Type get_slice_type(Vector* array_types, Type element_type)
     snprintf(info->name, length, "%s[]", name);
     push_vector_item(array_types, info);
 
-    return (Type){.kind = TypeSlice, .array = info};
+    return (Type){.kind = TypeArraySlice, .array = info};
 }

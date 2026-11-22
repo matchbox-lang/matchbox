@@ -1,0 +1,6 @@
+var text = "hello"
+let view = text[1..4]
+
+text = "world"
+
+print(view)

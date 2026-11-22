@@ -58,6 +58,7 @@ static void validate_slice_storage_access(Analyzer* analyzer, ASTNode* ast, ASTN
 
     validate_constant_mutation(origin, requested, ast->slice.token);
     validate_constant_reference(analyzer, origin, ast->slice.token);
+    mark_address_taken(origin);
 
     if (existing == RefNone) {
         validate_global_binding_access(analyzer, origin, requested, ast->slice.token);
@@ -114,20 +115,41 @@ static Type analyze_slice_source(Analyzer* analyzer, ASTNode* ast)
 
     Type source = get_node_data_type(ast->slice.expr);
 
-    if (!is_contiguous_type(source.kind)) {
-        semantic_error("Slice requires an array or slice", ast->slice.token);
+    if (!is_contiguous_type(source.kind) && source.kind != TypeString) {
+        semantic_error("Slice requires an array, string, or slice", ast->slice.token);
     }
 
     return source;
 }
 
+static Type get_slice_source_type(Analyzer* analyzer, Type source)
+{
+    Type element = {.kind = TypeU8};
+
+    if (source.kind != TypeString) {
+        element = source.array->element_type;
+    }
+
+    Type type = get_slice_type(&analyzer->array_types, element);
+
+    if (source.kind == TypeString || source.kind == TypeStringSlice) {
+        type.kind = TypeStringSlice;
+    }
+
+    return type;
+}
+
 static void resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
 {
     Type source = analyze_slice_source(analyzer, ast);
-    Type type = get_slice_type(&analyzer->array_types, source.array->element_type);
+    Type type = get_slice_source_type(analyzer, source);
 
     if (ast->slice.type_id.kind != TypeUnknown && !types_equal(ast->slice.type_id, type)) {
         semantic_error("Slice element type does not match", ast->slice.token);
+    }
+
+    if (type.kind == TypeStringSlice && ast->slice.reference_type != RefShared) {
+        semantic_error("String views require shared access", ast->slice.token);
     }
 
     ast->slice.type_id = type;

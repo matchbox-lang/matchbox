@@ -1,5 +1,20 @@
 #include "common/unicode.h"
 
+bool is_utf8_boundary(const char* chars, size_t index, size_t length)
+{
+    if (index == length) {
+        return true;
+    }
+
+    if (index > length) {
+        return false;
+    }
+
+    unsigned char byte = (unsigned char)chars[index];
+
+    return (byte & 0xc0) != 0x80;
+}
+
 bool is_unicode_scalar(uint32_t value)
 {
     return value <= 0x10FFFF && (value < 0xD800 || value > 0xDFFF);

@@ -503,6 +503,23 @@ static void optimize_prefix(ASTNode* ast)
     fold_prefix(ast);
 }
 
+static void optimize_slice(ASTNode* ast)
+{
+    if (ast->slice.expr->type != ASTVariable) {
+        optimize_node(ast->slice.expr);
+    }
+
+    optimize_node(ast->slice.start);
+    optimize_node(ast->slice.end);
+}
+
+static void optimize_index(ASTNode* ast)
+{
+    optimize_node(ast->index.array);
+    optimize_node(ast->index.index);
+    optimize_node(ast->index.value);
+}
+
 static void optimize_node(ASTNode* ast)
 {
     if (!ast) {
@@ -514,19 +531,11 @@ static void optimize_node(ASTNode* ast)
             optimize_nodes(&ast->array.elements);
             break;
         case ASTSlice:
-            optimize_node(ast->slice.expr);
-            optimize_node(ast->slice.start);
-            optimize_node(ast->slice.end);
+            optimize_slice(ast);
             break;
         case ASTIndex:
         case ASTIndexAssignment:
-            optimize_node(ast->index.array);
-            optimize_node(ast->index.index);
-
-            if (ast->index.value) {
-                optimize_node(ast->index.value);
-            }
-
+            optimize_index(ast);
             break;
         case ASTAssignment:
             optimize_node(ast->assignment.expr);

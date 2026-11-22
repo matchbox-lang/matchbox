@@ -58,7 +58,6 @@ static void validate_slice_storage_access(Analyzer* analyzer, ASTNode* ast, ASTN
 
     validate_constant_mutation(origin, requested, ast->slice.token);
     validate_constant_reference(analyzer, origin, ast->slice.token);
-    mark_address_taken(origin);
 
     if (existing == RefNone) {
         validate_global_binding_access(analyzer, origin, requested, ast->slice.token);

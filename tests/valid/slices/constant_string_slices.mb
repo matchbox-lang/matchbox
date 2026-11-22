@@ -1,0 +1,13 @@
+test "constant string slices with aliases and length bounds" {
+    const START: usize = 2
+    
+    let text = "\u{e9}hello"
+    let alias = text
+    let length = len(alias)
+    let from_h = alias[START..length]
+    let from_e = text[START + 1..length]
+    let nested = text[0..length][2..5]
+    let output = string(from_h, " ", from_e, " ", nested)
+
+    assert(length == 7 and output == "hello ello hel")
+}

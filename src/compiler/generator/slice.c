@@ -8,6 +8,7 @@
 #include "compiler/generator/expression.h"
 #include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
+#include "compiler/constant.h"
 #include "runtime/string_object.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -116,6 +117,20 @@ static void compile_string_slice_bounds(Compiler* compiler, ASTNode* ast, Operan
     emit_builtin_operands(compiler, &builtin, types, arguments, 4, true);
 }
 
+static void compile_slice_checks(Compiler* compiler, ASTNode* ast, Operand slice, Operand start, Operand end)
+{
+    bool constant = validate_string_slice_constant(ast);
+
+    if (constant) {
+        return;
+    }
+
+    Operand length = make_operand(slice.reg + 1, false);
+
+    compile_slice_bounds(compiler, start, end, length);
+    compile_string_slice_bounds(compiler, ast, slice, start, end);
+}
+
 Operand compile_slice(Compiler* compiler, ASTNode* ast)
 {
     Operand slice = compile_slice_source(compiler, ast->slice.expr);
@@ -129,14 +144,13 @@ Operand compile_slice(Compiler* compiler, ASTNode* ast)
     start = materialize_operand(compiler, start);
     Operand end = compile_converted_expression(compiler, ast->slice.end, type, false);
     end = materialize_operand(compiler, end);
-    Operand length = make_operand(slice.reg + 1, false);
 
-    compile_slice_bounds(compiler, start, end, length);
-    compile_string_slice_bounds(compiler, ast, slice, start, end);
+    compile_slice_checks(compiler, ast, slice, start, end);
 
     Opcode subtract = get_integer_opcode(type, IntSub);
+    int length = slice.reg + 1;
 
-    emit_instruction(compiler, subtract, length.reg, end.reg, start.reg);
+    emit_instruction(compiler, subtract, length, end.reg, start.reg);
     release_operand(compiler, end);
 
     size_t stride = get_array_storage_size(ast->slice.type_id.array->element_type);

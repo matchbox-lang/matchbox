@@ -132,6 +132,7 @@ static void validate_node(const ASTNode* ast, bool check_zero)
             validate_node(ast->slice.expr, check_zero);
             validate_node(ast->slice.start, check_zero);
             validate_node(ast->slice.end, check_zero);
+            validate_string_slice_constant(ast);
             break;
         case ASTArray:
             validate_nodes(&ast->array.elements, 0, check_zero);

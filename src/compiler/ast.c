@@ -9,6 +9,33 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+static void free_ast_node_vector(Vector* nodes);
+static void free_match_arms(Vector* arms);
+static void free_type_dimensions(Type type);
+
+ASTNode* create_array_node(Token token, Type type, bool flat)
+{
+    ASTNode* ast = create_ast_node(ASTArray);
+    ast->array.token = token;
+    ast->array.type_id = type;
+    ast->array.flat = flat;
+
+    return ast;
+}
+
+ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr)
+{
+    ASTNode* ast = create_ast_node(ASTAssignment);
+    ast->assignment.scope = NULL;
+    ast->assignment.operator = operator;
+    ast->assignment.token = token;
+    ast->assignment.symbol = NULL;
+    ast->assignment.expr = expr;
+    ast->assignment.initializes_binding = false;
+
+    return ast;
+}
+
 ASTNode* create_ast_node(ASTNodeType type)
 {
     ASTNode* ast = allocate_zeroed_memory(1, sizeof(ASTNode));
@@ -61,29 +88,6 @@ ASTNode* create_ast_node(ASTNodeType type)
     return ast;
 }
 
-ASTNode* create_array_node(Token token, Type type, bool flat)
-{
-    ASTNode* ast = create_ast_node(ASTArray);
-    ast->array.token = token;
-    ast->array.type_id = type;
-    ast->array.flat = flat;
-
-    return ast;
-}
-
-ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr)
-{
-    ASTNode* ast = create_ast_node(ASTAssignment);
-    ast->assignment.scope = NULL;
-    ast->assignment.operator = operator;
-    ast->assignment.token = token;
-    ast->assignment.symbol = NULL;
-    ast->assignment.expr = expr;
-    ast->assignment.initializes_binding = false;
-
-    return ast;
-}
-
 ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token)
 {
     if (!right_expr) {
@@ -95,15 +99,6 @@ ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token
     ast->binary.operator = token;
     ast->binary.right_expr = right_expr;
     ast->binary.type_id = (Type){.kind = TypeUnknown};
-
-    return ast;
-}
-
-ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type)
-{
-    ASTNode* ast = create_binary_node(left, right, token);
-    ast->binary.operand_type = operand_type;
-    ast->binary.type_id = result_type;
 
     return ast;
 }
@@ -296,13 +291,11 @@ ASTNode* create_string_node(Token token, StringObject* value)
     return ast;
 }
 
-ASTNode* create_variable_node(Token token)
+ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type)
 {
-    ASTNode* ast = create_ast_node(ASTVariable);
-    ast->variable.scope = NULL;
-    ast->variable.id = copy_string_object(token.chars, token.length);
-    ast->variable.token = token;
-    ast->variable.symbol = NULL;
+    ASTNode* ast = create_binary_node(left, right, token);
+    ast->binary.operand_type = operand_type;
+    ast->binary.type_id = result_type;
 
     return ast;
 }
@@ -322,6 +315,17 @@ ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fix
     return ast;
 }
 
+ASTNode* create_variable_node(Token token)
+{
+    ASTNode* ast = create_ast_node(ASTVariable);
+    ast->variable.scope = NULL;
+    ast->variable.id = copy_string_object(token.chars, token.length);
+    ast->variable.token = token;
+    ast->variable.symbol = NULL;
+
+    return ast;
+}
+
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body)
 {
     ASTNode* ast = create_ast_node(ASTWhile);
@@ -330,56 +334,6 @@ ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body)
     ast->while_statement.body = body;
 
     return ast;
-}
-
-void replace_ast_node(ASTNode* ast, ASTNode* replacement)
-{
-    *ast = *replacement;
-
-    free_memory(replacement);
-}
-
-static void free_ast_node_vector(Vector* nodes)
-{
-    size_t count = count_vector(nodes);
-
-    for (size_t i = 0; i < count; i++) {
-        free_ast_node(nodes->data[i]);
-    }
-
-    free_vector(nodes);
-}
-
-static void free_type_dimensions(Type type)
-{
-    if (!is_contiguous_type(type.kind) || !type.array || !type.array->dimensions) {
-        return;
-    }
-
-    const ArrayType* array_type = type.array;
-    Vector* dimensions = array_type->dimensions;
-
-    free_type_dimensions(array_type->element_type);
-    free_ast_node_vector(dimensions);
-    free_memory(dimensions);
-    free_memory((void*)array_type);
-}
-
-static void free_match_arms(Vector* arms)
-{
-    size_t count = count_vector(arms);
-
-    for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = get_vector_at(arms, i);
-
-        free_ast_node(arm->pattern);
-        free_ast_node(arm->binding);
-        free_ast_node(arm->guard);
-        free_ast_node(arm->branch);
-        free_memory(arm);
-    }
-
-    free_vector(arms);
 }
 
 void free_ast_node(ASTNode* ast)
@@ -491,9 +445,59 @@ void free_ast_node(ASTNode* ast)
     free_memory(ast);
 }
 
-bool is_none(const ASTNode* ast)
+static void free_ast_node_vector(Vector* nodes)
 {
-    return ast && ast->type == ASTNone;
+    size_t count = count_vector(nodes);
+
+    for (size_t i = 0; i < count; i++) {
+        free_ast_node(nodes->data[i]);
+    }
+
+    free_vector(nodes);
+}
+
+static void free_match_arms(Vector* arms)
+{
+    size_t count = count_vector(arms);
+
+    for (size_t i = 0; i < count; i++) {
+        MatchArm* arm = get_vector_at(arms, i);
+
+        free_ast_node(arm->pattern);
+        free_ast_node(arm->binding);
+        free_ast_node(arm->guard);
+        free_ast_node(arm->branch);
+        free_memory(arm);
+    }
+
+    free_vector(arms);
+}
+
+static void free_type_dimensions(Type type)
+{
+    if (!is_contiguous_type(type.kind) || !type.array || !type.array->dimensions) {
+        return;
+    }
+
+    const ArrayType* array_type = type.array;
+    Vector* dimensions = array_type->dimensions;
+
+    free_type_dimensions(array_type->element_type);
+    free_ast_node_vector(dimensions);
+    free_memory(dimensions);
+    free_memory((void*)array_type);
+}
+
+void replace_ast_node(ASTNode* ast, ASTNode* replacement)
+{
+    *ast = *replacement;
+
+    free_memory(replacement);
+}
+
+bool is_constant_index(const ASTNode* ast)
+{
+    return is_index(ast) && ast->index.constant;
 }
 
 bool is_expression_statement(const ASTNode* ast)
@@ -540,9 +544,9 @@ bool is_index(const ASTNode* ast)
     return ast && (ast->type == ASTIndex || ast->type == ASTIndexAssignment);
 }
 
-bool is_constant_index(const ASTNode* ast)
+bool is_none(const ASTNode* ast)
 {
-    return is_index(ast) && ast->index.constant;
+    return ast && ast->type == ASTNone;
 }
 
 bool is_parameter(const ASTNode* ast)
@@ -598,32 +602,6 @@ bool is_variable_type(const ASTNode* ast)
     return ast && (ast->type == ASTParameter || ast->type == ASTVariableDefinition);
 }
 
-Scope* get_scope(const ASTNode* ast)
-{
-    if (!ast) {
-        return NULL;
-    }
-
-    switch (ast->type) {
-        case ASTAssignment:
-            return ast->assignment.scope;
-        case ASTCompound:
-            return ast->compound.scope;
-        case ASTFunctionCall:
-            return ast->function_call.scope;
-        case ASTFunctionDefinition:
-            return ast->function_definition.scope;
-        case ASTParameter:
-            return ast->parameter.scope;
-        case ASTVariable:
-            return ast->variable.scope;
-        case ASTVariableDefinition:
-            return ast->variable_definition.scope;
-        default:
-            return NULL;
-    }
-}
-
 static Type get_builtin_return_type(const ASTNode* ast)
 {
     TypeKind kind = ast->builtin_call.builtin->return_type_id;
@@ -633,6 +611,34 @@ static Type get_builtin_return_type(const ASTNode* ast)
     }
 
     return (Type){.kind = kind};
+}
+
+ASTNode* get_index_constant_expression(ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    if (ast->type == ASTPrefix && ast->prefix.operator.type == TokenKeywordConst) {
+        return ast;
+    }
+
+    if (ast->type != ASTVariable) {
+        return NULL;
+    }
+
+    ASTNode* symbol = ast->variable.symbol;
+
+    if (!is_variable_definition(symbol)) {
+        return NULL;
+    }
+
+    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+        || symbol->variable_definition.reference_type != RefNone) {
+        return NULL;
+    }
+
+    return get_index_constant_expression(symbol->variable_definition.expr);
 }
 
 Type get_node_data_type(const ASTNode* ast)
@@ -698,55 +704,71 @@ ASTNode* get_root_binding(const ASTNode* ast)
     return NULL;
 }
 
-ASTNode* get_index_constant_expression(ASTNode* ast)
+Scope* get_scope(const ASTNode* ast)
 {
     if (!ast) {
         return NULL;
-    }
-
-    if (ast->type == ASTPrefix && ast->prefix.operator.type == TokenKeywordConst) {
-        return ast;
-    }
-
-    if (ast->type != ASTVariable) {
-        return NULL;
-    }
-
-    ASTNode* symbol = ast->variable.symbol;
-
-    if (!is_variable_definition(symbol)) {
-        return NULL;
-    }
-
-    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
-        || symbol->variable_definition.reference_type != RefNone) {
-        return NULL;
-    }
-
-    return get_index_constant_expression(symbol->variable_definition.expr);
-}
-
-bool is_literal(const ASTNode* ast)
-{
-    if (!ast) {
-        return false;
     }
 
     switch (ast->type) {
-        case ASTInteger:
-        case ASTFloat:
-        case ASTString:
-        case ASTCharacter:
-        case ASTBoolean:
-            return true;
+        case ASTAssignment:
+            return ast->assignment.scope;
+        case ASTCompound:
+            return ast->compound.scope;
+        case ASTFunctionCall:
+            return ast->function_call.scope;
+        case ASTFunctionDefinition:
+            return ast->function_definition.scope;
+        case ASTParameter:
+            return ast->parameter.scope;
+        case ASTVariable:
+            return ast->variable.scope;
+        case ASTVariableDefinition:
+            return ast->variable_definition.scope;
         default:
-            return false;
+            return NULL;
     }
 }
 
-bool is_text_literal(const ASTNode* ast)
+void copy_flattened_array_literals(ASTNode* ast, Vector* literals)
 {
-    return ast && (ast->type == ASTString || ast->type == ASTCharacter);
+    if (ast->type != ASTArray) {
+        ASTNode* literal = copy_literal_node(ast);
+
+        push_vector_item(literals, literal);
+
+        return;
+    }
+
+    for (size_t i = 0; i < ast->array.elements.count; i++) {
+        copy_flattened_array_literals(ast->array.elements.data[i], literals);
+    }
+}
+
+ASTNode* copy_literal_node(const ASTNode* literal)
+{
+    ASTNode* copy = create_ast_node(literal->type);
+    *copy = *literal;
+
+    if (literal->type == ASTString) {
+        StringObject* string = literal->string_literal.value;
+        copy->string_literal.value = copy_string_object(string->chars, string->length);
+    }
+
+    return copy;
+}
+
+ASTNode* get_float_literal(ASTNode* expression)
+{
+    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenMinus) {
+        expression = expression->prefix.expr;
+    }
+
+    if (expression->type != ASTFloat) {
+        return NULL;
+    }
+
+    return expression;
 }
 
 ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
@@ -772,26 +794,41 @@ ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
     return expression->prefix.expr;
 }
 
-ASTNode* get_float_literal(ASTNode* expression)
+bool is_literal(const ASTNode* ast)
 {
-    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenMinus) {
-        expression = expression->prefix.expr;
+    if (!ast) {
+        return false;
     }
 
-    if (expression->type != ASTFloat) {
-        return NULL;
+    switch (ast->type) {
+        case ASTInteger:
+        case ASTFloat:
+        case ASTString:
+        case ASTCharacter:
+        case ASTBoolean:
+            return true;
+        default:
+            return false;
     }
-
-    return expression;
 }
 
-bool is_numeric_literal(ASTNode* argument)
+bool is_literal_array_tree(ASTNode* ast)
 {
-    bool negative;
-    ASTNode* integer = get_integer_literal(argument, &negative);
-    ASTNode* floating = get_float_literal(argument);
+    if (is_literal(ast)) {
+        return true;
+    }
 
-    return integer || floating;
+    if (ast->type != ASTArray || ast->array.fill) {
+        return false;
+    }
+
+    bool literal = true;
+
+    for (size_t i = 0; i < ast->array.elements.count && literal; i++) {
+        literal = is_literal_array_tree(ast->array.elements.data[i]);
+    }
+
+    return literal;
 }
 
 bool is_literal_of_type(ASTNode* ast, Type type)
@@ -803,6 +840,20 @@ bool is_literal_of_type(ASTNode* ast, Type type)
     Type literal_type = get_node_data_type(ast);
 
     return types_equal(literal_type, type);
+}
+
+bool is_numeric_literal(ASTNode* argument)
+{
+    bool negative;
+    ASTNode* integer = get_integer_literal(argument, &negative);
+    ASTNode* floating = get_float_literal(argument);
+
+    return integer || floating;
+}
+
+bool is_text_literal(const ASTNode* ast)
+{
+    return ast && (ast->type == ASTString || ast->type == ASTCharacter);
 }
 
 void set_literal_token(ASTNode* ast, Token token)
@@ -828,67 +879,26 @@ void set_literal_token(ASTNode* ast, Token token)
     }
 }
 
-ASTNode* copy_literal_node(const ASTNode* literal)
+static bool are_simple_match_values(const Vector* values)
 {
-    ASTNode* copy = create_ast_node(literal->type);
-    *copy = *literal;
+    size_t index = 0;
 
-    if (literal->type == ASTString) {
-        StringObject* string = literal->string_literal.value;
-        copy->string_literal.value = copy_string_object(string->chars, string->length);
+    while (index < values->count && is_simple_match_value(values->data[index])) {
+        index++;
     }
 
-    return copy;
+    return index == values->count;
 }
 
-bool is_literal_array_tree(ASTNode* ast)
+static ASTNode* find_conditional_return(ASTNode* ast)
 {
-    if (is_literal(ast)) {
-        return true;
+    ASTNode* result = find_node_return(ast->conditional.then_branch);
+
+    if (result) {
+        return result;
     }
 
-    if (ast->type != ASTArray || ast->array.fill) {
-        return false;
-    }
-
-    bool literal = true;
-
-    for (size_t i = 0; i < ast->array.elements.count && literal; i++) {
-        literal = is_literal_array_tree(ast->array.elements.data[i]);
-    }
-
-    return literal;
-}
-
-void copy_flattened_array_literals(ASTNode* ast, Vector* literals)
-{
-    if (ast->type != ASTArray) {
-        ASTNode* literal = copy_literal_node(ast);
-
-        push_vector_item(literals, literal);
-
-        return;
-    }
-
-    for (size_t i = 0; i < ast->array.elements.count; i++) {
-        copy_flattened_array_literals(ast->array.elements.data[i], literals);
-    }
-}
-
-ASTNode* get_branch_result(ASTNode* branch)
-{
-    if (branch->type == ASTConditional) {
-        return branch;
-    }
-
-    Vector* statements = &branch->compound.statements;
-    size_t count = count_vector(statements);
-
-    if (!count) {
-        return NULL;
-    }
-
-    return get_vector_at(statements, count - 1);
+    return find_node_return(ast->conditional.else_branch);
 }
 
 static ASTNode* find_function_return(Vector* statements)
@@ -904,17 +914,6 @@ static ASTNode* find_function_return(Vector* statements)
     }
 
     return result;
-}
-
-static ASTNode* find_conditional_return(ASTNode* ast)
-{
-    ASTNode* result = find_node_return(ast->conditional.then_branch);
-
-    if (result) {
-        return result;
-    }
-
-    return find_node_return(ast->conditional.else_branch);
 }
 
 static ASTNode* find_match_return(ASTNode* ast)
@@ -956,9 +955,20 @@ ASTNode* find_node_return(ASTNode* ast)
     }
 }
 
-bool is_match_alternative(ASTNode* pattern)
+ASTNode* get_branch_result(ASTNode* branch)
 {
-    return pattern->type == ASTBinary && pattern->binary.operator.type == TokenPipe;
+    if (branch->type == ASTConditional) {
+        return branch;
+    }
+
+    Vector* statements = &branch->compound.statements;
+    size_t count = count_vector(statements);
+
+    if (!count) {
+        return NULL;
+    }
+
+    return get_vector_at(statements, count - 1);
 }
 
 bool is_literal_match_pattern(ASTNode* pattern)
@@ -974,15 +984,9 @@ bool is_literal_match_pattern(ASTNode* pattern)
     return is_literal_match_pattern(pattern->binary.left_expr) && is_literal_match_pattern(pattern->binary.right_expr);
 }
 
-static bool are_simple_match_values(const Vector* values)
+bool is_match_alternative(ASTNode* pattern)
 {
-    size_t index = 0;
-
-    while (index < values->count && is_simple_match_value(values->data[index])) {
-        index++;
-    }
-
-    return index == values->count;
+    return pattern->type == ASTBinary && pattern->binary.operator.type == TokenPipe;
 }
 
 bool is_simple_match_value(const ASTNode* ast)
@@ -1020,162 +1024,6 @@ bool match_has_wildcard(ASTNode* ast)
     return wildcard;
 }
 
-static ReferenceType get_prefix_reference_type(TokenType type)
-{
-    if (type == TokenAmpersand) {
-        return RefShared;
-    }
-
-    if (type == TokenCircumflex) {
-        return RefExclusive;
-    }
-
-    return RefNone;
-}
-
-ReferenceType get_reference_type(const ASTNode* ast)
-{
-    if (!ast) {
-        return RefNone;
-    }
-
-    switch (ast->type) {
-        case ASTSlice:
-            return ast->slice.reference_type;
-        case ASTConditional:
-            return ast->conditional.reference_type;
-        case ASTFunctionCall:
-            return ast->function_call.symbol->function_definition.return_reference_type;
-        case ASTFunctionDefinition:
-            return ast->function_definition.return_reference_type;
-        case ASTMatch:
-            return ast->match.reference_type;
-        case ASTParameter:
-            return ast->parameter.reference_type;
-        case ASTPrefix:
-            return get_prefix_reference_type(ast->prefix.operator.type);
-        case ASTVariable:
-            return get_reference_type(ast->variable.symbol);
-        case ASTVariableDefinition:
-            return ast->variable_definition.reference_type;
-        default:
-            return RefNone;
-    }
-}
-
-void set_expression_reference_type(ASTNode* ast, ReferenceType type)
-{
-    if (ast->type == ASTConditional) {
-        ast->conditional.reference_type = type;
-
-        return;
-    }
-
-    ast->match.reference_type = type;
-}
-
-Vector* get_reference_origins(ASTNode* ast)
-{
-    if (!ast) {
-        return NULL;
-    }
-
-    switch (ast->type) {
-        case ASTSlice:
-            return &ast->slice.reference_origins;
-        case ASTConditional:
-            return &ast->conditional.reference_origins;
-        case ASTFunctionCall:
-            return &ast->function_call.reference_origins;
-        case ASTMatch:
-            return &ast->match.reference_origins;
-        case ASTParameter:
-            return &ast->parameter.reference_origins;
-        case ASTPrefix:
-            return &ast->prefix.reference_origins;
-        case ASTVariable:
-            return get_reference_origins(ast->variable.symbol);
-        case ASTVariableDefinition:
-            return &ast->variable_definition.reference_origins;
-        default:
-            return NULL;
-    }
-}
-
-ASTNode* get_reference_origin(const ASTNode* ast)
-{
-    if (!ast) {
-        return NULL;
-    }
-
-    Vector* origins = get_reference_origins((ASTNode*)ast);
-    if (origins && origins->count) {
-        return origins->data[0];
-    }
-
-    if (ast->type == ASTVariable) {
-        return get_reference_origin(ast->variable.symbol);
-    }
-
-    return NULL;
-}
-
-ASTNode* get_reference_origin_or_self(ASTNode* symbol)
-{
-    ASTNode* origin = get_reference_origin(symbol);
-    if (origin) {
-        return origin;
-    }
-
-    return symbol;
-}
-
-ASTNode* get_reference_origin_from_expression(ASTNode* ast)
-{
-    if (ast->type == ASTPrefix && is_variable(ast->prefix.expr)) {
-        ASTNode* symbol = ast->prefix.expr->variable.symbol;
-
-        return get_reference_origin_or_self(symbol);
-    }
-
-    return get_reference_origin(ast);
-}
-
-Vector* get_reference_origins_from_expression(ASTNode* ast)
-{
-    Vector* origins = get_reference_origins(ast);
-    if (origins) {
-        return origins;
-    }
-
-    static Vector empty;
-
-    return &empty;
-}
-
-ASTNode* get_argument_reference_origin(ASTNode* argument)
-{
-    ASTNode* origin = get_reference_origin_from_expression(argument);
-
-    if (origin || !is_variable(argument)) {
-        return origin;
-    }
-
-    return get_reference_origin_or_self(argument->variable.symbol);
-}
-
-bool contains_reference_origin(Vector* origins, ASTNode* origin)
-{
-    size_t count = count_vector(origins);
-    size_t index = 0;
-
-    while (index < count && origins->data[index] != origin) {
-        index++;
-    }
-
-    return index < count;
-}
-
 void add_reference_origin(Vector* origins, ASTNode* origin)
 {
     if (!origin || contains_reference_origin(origins, origin)) {
@@ -1183,57 +1031,6 @@ void add_reference_origin(Vector* origins, ASTNode* origin)
     }
 
     push_vector_item(origins, origin);
-}
-
-void merge_reference_origins(Vector* destination, Vector* source)
-{
-    size_t count = count_vector(source);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* origin = get_vector_at(source, i);
-
-        add_reference_origin(destination, origin);
-    }
-}
-
-void copy_reference_origins(Vector* destination, Vector* source)
-{
-    if (destination == source) {
-        return;
-    }
-
-    destination->count = 0;
-
-    merge_reference_origins(destination, source);
-}
-
-size_t* get_shared_access_count(ASTNode* symbol)
-{
-    if (is_parameter(symbol)) {
-        return &symbol->parameter.shared_access_count;
-    }
-
-    return &symbol->variable_definition.shared_access_count;
-}
-
-bool has_exclusive_access(ASTNode* symbol)
-{
-    if (is_parameter(symbol)) {
-        return symbol->parameter.exclusive_access_active;
-    }
-
-    return symbol->variable_definition.exclusive_access_active;
-}
-
-void set_exclusive_access(ASTNode* symbol, bool active)
-{
-    if (is_parameter(symbol)) {
-        symbol->parameter.exclusive_access_active = active;
-
-        return;
-    }
-
-    symbol->variable_definition.exclusive_access_active = active;
 }
 
 void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type)
@@ -1273,6 +1070,18 @@ void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type)
     init_vector(&ast->slice.reference_origins);
 }
 
+bool contains_reference_origin(Vector* origins, ASTNode* origin)
+{
+    size_t count = count_vector(origins);
+    size_t index = 0;
+
+    while (index < count && origins->data[index] != origin) {
+        index++;
+    }
+
+    return index < count;
+}
+
 void convert_string_reference_to_slice(ASTNode* ast, Type type)
 {
     ReferenceType reference = get_reference_type(ast);
@@ -1283,6 +1092,214 @@ void convert_string_reference_to_slice(ASTNode* ast, Type type)
     slice->slice.reference_origins = ast->prefix.reference_origins;
 
     replace_ast_node(ast, slice);
+}
+
+void copy_reference_origins(Vector* destination, Vector* source)
+{
+    if (destination == source) {
+        return;
+    }
+
+    destination->count = 0;
+
+    merge_reference_origins(destination, source);
+}
+
+ASTNode* get_argument_reference_origin(ASTNode* argument)
+{
+    ASTNode* origin = get_reference_origin_from_expression(argument);
+
+    if (origin || !is_variable(argument)) {
+        return origin;
+    }
+
+    return get_reference_origin_or_self(argument->variable.symbol);
+}
+
+static ReferenceType get_prefix_reference_type(TokenType type)
+{
+    if (type == TokenAmpersand) {
+        return RefShared;
+    }
+
+    if (type == TokenCircumflex) {
+        return RefExclusive;
+    }
+
+    return RefNone;
+}
+
+ASTNode* get_reference_origin(const ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    Vector* origins = get_reference_origins((ASTNode*)ast);
+    if (origins && origins->count) {
+        return origins->data[0];
+    }
+
+    if (ast->type == ASTVariable) {
+        return get_reference_origin(ast->variable.symbol);
+    }
+
+    return NULL;
+}
+
+ASTNode* get_reference_origin_from_expression(ASTNode* ast)
+{
+    if (ast->type == ASTPrefix && is_variable(ast->prefix.expr)) {
+        ASTNode* symbol = ast->prefix.expr->variable.symbol;
+
+        return get_reference_origin_or_self(symbol);
+    }
+
+    return get_reference_origin(ast);
+}
+
+ASTNode* get_reference_origin_or_self(ASTNode* symbol)
+{
+    ASTNode* origin = get_reference_origin(symbol);
+    if (origin) {
+        return origin;
+    }
+
+    return symbol;
+}
+
+Vector* get_reference_origins(ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    switch (ast->type) {
+        case ASTSlice:
+            return &ast->slice.reference_origins;
+        case ASTConditional:
+            return &ast->conditional.reference_origins;
+        case ASTFunctionCall:
+            return &ast->function_call.reference_origins;
+        case ASTMatch:
+            return &ast->match.reference_origins;
+        case ASTParameter:
+            return &ast->parameter.reference_origins;
+        case ASTPrefix:
+            return &ast->prefix.reference_origins;
+        case ASTVariable:
+            return get_reference_origins(ast->variable.symbol);
+        case ASTVariableDefinition:
+            return &ast->variable_definition.reference_origins;
+        default:
+            return NULL;
+    }
+}
+
+Vector* get_reference_origins_from_expression(ASTNode* ast)
+{
+    Vector* origins = get_reference_origins(ast);
+    if (origins) {
+        return origins;
+    }
+
+    static Vector empty;
+
+    return &empty;
+}
+
+ReferenceType get_reference_type(const ASTNode* ast)
+{
+    if (!ast) {
+        return RefNone;
+    }
+
+    switch (ast->type) {
+        case ASTSlice:
+            return ast->slice.reference_type;
+        case ASTConditional:
+            return ast->conditional.reference_type;
+        case ASTFunctionCall:
+            return ast->function_call.symbol->function_definition.return_reference_type;
+        case ASTFunctionDefinition:
+            return ast->function_definition.return_reference_type;
+        case ASTMatch:
+            return ast->match.reference_type;
+        case ASTParameter:
+            return ast->parameter.reference_type;
+        case ASTPrefix:
+            return get_prefix_reference_type(ast->prefix.operator.type);
+        case ASTVariable:
+            return get_reference_type(ast->variable.symbol);
+        case ASTVariableDefinition:
+            return ast->variable_definition.reference_type;
+        default:
+            return RefNone;
+    }
+}
+
+size_t* get_shared_access_count(ASTNode* symbol)
+{
+    if (is_parameter(symbol)) {
+        return &symbol->parameter.shared_access_count;
+    }
+
+    return &symbol->variable_definition.shared_access_count;
+}
+
+bool has_exclusive_access(ASTNode* symbol)
+{
+    if (is_parameter(symbol)) {
+        return symbol->parameter.exclusive_access_active;
+    }
+
+    return symbol->variable_definition.exclusive_access_active;
+}
+
+void merge_reference_origins(Vector* destination, Vector* source)
+{
+    size_t count = count_vector(source);
+
+    for (size_t i = 0; i < count; i++) {
+        ASTNode* origin = get_vector_at(source, i);
+
+        add_reference_origin(destination, origin);
+    }
+}
+
+void set_exclusive_access(ASTNode* symbol, bool active)
+{
+    if (is_parameter(symbol)) {
+        symbol->parameter.exclusive_access_active = active;
+
+        return;
+    }
+
+    symbol->variable_definition.exclusive_access_active = active;
+}
+
+void set_expression_reference_type(ASTNode* ast, ReferenceType type)
+{
+    if (ast->type == ASTConditional) {
+        ast->conditional.reference_type = type;
+
+        return;
+    }
+
+    ast->match.reference_type = type;
+}
+
+bool has_no_value_reads(ASTNode* ast)
+{
+    return ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
+}
+
+void initialize_variable(ASTNode* ast)
+{
+    if (is_variable_definition(ast)) {
+        ast->variable_definition.initialized = true;
+        ast->variable_definition.possibly_initialized = true;
+    }
 }
 
 bool is_initialized(const ASTNode* ast)
@@ -1298,14 +1315,6 @@ bool is_initialized(const ASTNode* ast)
     return ast->type == ASTParameter;
 }
 
-void initialize_variable(ASTNode* ast)
-{
-    if (is_variable_definition(ast)) {
-        ast->variable_definition.initialized = true;
-        ast->variable_definition.possibly_initialized = true;
-    }
-}
-
 bool is_moved(ASTNode* symbol)
 {
     if (is_parameter(symbol)) {
@@ -1313,6 +1322,15 @@ bool is_moved(ASTNode* symbol)
     }
 
     return symbol->variable_definition.moved;
+}
+
+void mark_address_taken(ASTNode* symbol)
+{
+    if (!symbol || !is_variable_definition(symbol)) {
+        return;
+    }
+
+    symbol->variable_definition.address_taken = true;
 }
 
 void set_moved_state(ASTNode* symbol, bool moved)
@@ -1326,15 +1344,6 @@ void set_moved_state(ASTNode* symbol, bool moved)
     symbol->variable_definition.moved = moved;
 }
 
-void mark_address_taken(ASTNode* symbol)
-{
-    if (!symbol || !is_variable_definition(symbol)) {
-        return;
-    }
-
-    symbol->variable_definition.address_taken = true;
-}
-
 void track_variable_read(ASTNode* symbol)
 {
     if (!is_variable_definition(symbol)) {
@@ -1342,9 +1351,4 @@ void track_variable_read(ASTNode* symbol)
     }
 
     symbol->variable_definition.read_count++;
-}
-
-bool has_no_value_reads(ASTNode* ast)
-{
-    return ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
 }

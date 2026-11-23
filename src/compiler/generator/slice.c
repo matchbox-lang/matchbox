@@ -2,13 +2,13 @@
 #include "builtin/string.h"
 #include "common/array_type.h"
 #include "compiler/ast/query.h"
-#include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
 #include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
+#include "compiler/generator/index.h"
 #include "compiler/constant.h"
 #include "runtime/string_object.h"
 #include <stddef.h>
@@ -157,7 +157,7 @@ Operand compile_slice(Compiler* compiler, ASTNode* ast)
     size_t stride = get_array_storage_size(ast->slice.type_id.array->element_type);
     Operand pointer = make_operand(slice.reg, false);
 
-    scale_array_index(compiler, start, stride);
+    scale_index(compiler, start, stride);
     emit_buffer_offset(compiler, pointer, start);
 
     return slice;

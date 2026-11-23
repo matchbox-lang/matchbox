@@ -14,6 +14,8 @@
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
 #include "compiler/generator/function.h"
+#include "compiler/generator/index.h"
+#include "compiler/generator/iteration.h"
 #include "compiler/generator/match.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/slice.h"

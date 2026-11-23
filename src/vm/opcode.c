@@ -214,6 +214,22 @@ static const uint8_t opcode_flags[OpCount] = {
     [OpMovLdg] = OpFlagRegAB
 };
 
+Opcode get_immediate_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpLdm8:    return OpLdmi8;
+        case OpLdm16:   return OpLdmi16;
+        case OpLdm32:   return OpLdmi32;
+        case OpLdm64:   return OpLdmi64;
+        case OpStm8:    return OpStmi8;
+        case OpStm16:   return OpStmi16;
+        case OpStm32:   return OpStmi32;
+        case OpStm64:   return OpStmi64;
+        default:
+            return opcode;
+    }
+}
+
 uint8_t get_opcode_register_flags(Opcode opcode)
 {
     if ((unsigned)opcode >= OpCount) {

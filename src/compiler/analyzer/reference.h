@@ -3,16 +3,6 @@
 
 #include "compiler/analyzer/analyzer.h"
 
-size_t* get_shared_access_count(ASTNode* symbol);
-bool has_exclusive_access(ASTNode* symbol);
-void set_exclusive_access(ASTNode* symbol, bool active);
-ASTNode* get_reference_origin_or_self(ASTNode* symbol);
-ASTNode* get_reference_origin_from_expression(ASTNode* ast);
-Vector* get_reference_origins_from_expression(ASTNode* ast);
-bool contains_reference_origin(Vector* origins, ASTNode* origin);
-void add_reference_origin(Vector* origins, ASTNode* origin);
-void copy_reference_origins(Vector* destination, Vector* source);
-void merge_reference_origins(Vector* destination, Vector* source);
 void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expression);
 void release_reference_access(ASTNode* reference);
 void release_inactive_reference_access(Vector* references);

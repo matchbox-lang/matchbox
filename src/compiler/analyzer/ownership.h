@@ -15,8 +15,6 @@ typedef struct OwnershipState
     bool reference_access_active;
 } OwnershipState;
 
-bool is_moved(ASTNode* symbol);
-void set_moved_state(ASTNode* symbol, bool moved);
 void consume_array(ASTNode* ast);
 void capture_ownership_states(Vector* states, Scope* scope);
 void copy_ownership_states(Vector* destination, Vector* source);

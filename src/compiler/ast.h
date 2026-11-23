@@ -284,13 +284,9 @@ typedef struct ASTNode
     };
 } ASTNode;
 
+// Construction
 ASTNode* create_ast_node(ASTNodeType type);
-ASTNode* create_slice_node(Token token, ASTNode* expr, ASTNode* start);
-void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type);
-void convert_string_reference_to_slice(ASTNode* ast, Type type);
 ASTNode* create_array_node(Token token, Type type, bool flat);
-ASTNode* copy_literal_node(const ASTNode* literal);
-void replace_ast_node(ASTNode* ast, ASTNode* replacement);
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
 ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token);
 ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type);
@@ -301,44 +297,91 @@ ASTNode* create_compound_node(Scope* scope);
 ASTNode* create_conditional_node(Token token, ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch);
 ASTNode* create_conversion_node(Token token, ASTNode* expr, Type type_id);
 ASTNode* create_float_node(Token token, double value, Type type_id);
+ASTNode* create_for_node(Token token);
 ASTNode* create_function_call_node(Token token);
 ASTNode* create_function_definition_node(Token token, StringObject* id);
 ASTNode* create_integer_node(Token token, uint64_t value, Type type_id);
+ASTNode* create_loop_control_node(Token token);
 ASTNode* create_match_node(Token token);
 ASTNode* create_parameter_node(Token token, StringObject* id);
 ASTNode* create_prefix_node(Token token, ASTNode* expr);
 ASTNode* create_return_node(Token token, ASTNode* expr);
+ASTNode* create_slice_node(Token token, ASTNode* expr, ASTNode* start);
 ASTNode* create_string_node(Token token, StringObject* value);
-ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed);
 ASTNode* create_variable_node(Token token);
+ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed);
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
-ASTNode* create_for_node(Token token);
-ASTNode* create_loop_control_node(Token token);
+
+// Lifetime
+void replace_ast_node(ASTNode* ast, ASTNode* replacement);
 void free_ast_node(ASTNode* ast);
-Scope* get_scope(const ASTNode* ast);
-Type get_node_data_type(const ASTNode* ast);
-ASTNode* get_index_constant_expression(ASTNode* ast);
-ASTNode* get_reference_origin(const ASTNode* ast);
-Vector* get_reference_origins(ASTNode* ast);
-ReferenceType get_reference_type(const ASTNode* ast);
-ASTNode* get_root_binding(const ASTNode* ast);
+
+// Predicates
+bool is_none(const ASTNode* ast);
 bool is_expression_statement(const ASTNode* ast);
-bool is_index(const ASTNode* ast);
-bool is_constant_index(const ASTNode* ast);
-bool is_simple_match_value(const ASTNode* ast);
-bool is_literal(const ASTNode* ast);
-bool is_text_literal(const ASTNode* ast);
 bool is_function_call(const ASTNode* ast);
 bool is_function_definition(const ASTNode* ast);
+bool is_index(const ASTNode* ast);
+bool is_constant_index(const ASTNode* ast);
 bool is_parameter(const ASTNode* ast);
 bool is_prefix(const ASTNode* ast);
 bool is_prefix_operand(const ASTNode* ast);
 bool is_variable(const ASTNode* ast);
 bool is_variable_definition(const ASTNode* ast);
 bool is_variable_type(const ASTNode* ast);
-bool is_none(const ASTNode* ast);
+
+// Queries
+Scope* get_scope(const ASTNode* ast);
+Type get_node_data_type(const ASTNode* ast);
+ASTNode* get_root_binding(const ASTNode* ast);
+ASTNode* get_index_constant_expression(ASTNode* ast);
+
+// Literals
+bool is_literal(const ASTNode* ast);
+bool is_text_literal(const ASTNode* ast);
+ASTNode* get_integer_literal(ASTNode* expression, bool* negative);
+ASTNode* get_float_literal(ASTNode* expression);
+bool is_numeric_literal(ASTNode* argument);
+bool is_literal_of_type(ASTNode* ast, Type type);
+void set_literal_token(ASTNode* ast, Token token);
+ASTNode* copy_literal_node(const ASTNode* literal);
+bool is_literal_array_tree(ASTNode* ast);
+void copy_flattened_array_literals(ASTNode* ast, Vector* literals);
+
+// Control flow
+ASTNode* get_branch_result(ASTNode* branch);
+ASTNode* find_node_return(ASTNode* ast);
+bool is_match_alternative(ASTNode* pattern);
+bool is_literal_match_pattern(ASTNode* pattern);
+bool is_simple_match_value(const ASTNode* ast);
+bool match_has_wildcard(ASTNode* ast);
+
+// Reference metadata
+ReferenceType get_reference_type(const ASTNode* ast);
+void set_expression_reference_type(ASTNode* ast, ReferenceType type);
+Vector* get_reference_origins(ASTNode* ast);
+ASTNode* get_reference_origin(const ASTNode* ast);
+ASTNode* get_reference_origin_or_self(ASTNode* symbol);
+ASTNode* get_reference_origin_from_expression(ASTNode* ast);
+Vector* get_reference_origins_from_expression(ASTNode* ast);
+ASTNode* get_argument_reference_origin(ASTNode* argument);
+bool contains_reference_origin(Vector* origins, ASTNode* origin);
+void add_reference_origin(Vector* origins, ASTNode* origin);
+void merge_reference_origins(Vector* destination, Vector* source);
+void copy_reference_origins(Vector* destination, Vector* source);
+size_t* get_shared_access_count(ASTNode* symbol);
+bool has_exclusive_access(ASTNode* symbol);
+void set_exclusive_access(ASTNode* symbol, bool active);
+void apply_slice_type(ASTNode* ast, Type type, ReferenceType reference_type);
+void convert_string_reference_to_slice(ASTNode* ast, Type type);
+
+// Binding metadata
 bool is_initialized(const ASTNode* ast);
 void initialize_variable(ASTNode* ast);
+bool is_moved(ASTNode* symbol);
+void set_moved_state(ASTNode* symbol, bool moved);
 void mark_address_taken(ASTNode* symbol);
+void track_variable_read(ASTNode* symbol);
+bool has_no_value_reads(ASTNode* ast);
 
 #endif

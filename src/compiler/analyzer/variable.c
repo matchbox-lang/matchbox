@@ -52,15 +52,6 @@ ASTNode* find_symbol(Analyzer* analyzer, StringView id)
     return get_local_symbol(analyzer->top_level->compound.scope, id);
 }
 
-void track_variable_read(ASTNode* symbol)
-{
-    if (!is_variable_definition(symbol)) {
-        return;
-    }
-
-    symbol->variable_definition.read_count++;
-}
-
 void validate_constant_binding(Analyzer* analyzer, ASTNode* symbol, Token token)
 {
     if (!analyzer->constant_scope || (is_variable_definition(symbol) && symbol->variable_definition.constant)) {

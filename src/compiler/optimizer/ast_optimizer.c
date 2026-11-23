@@ -104,40 +104,6 @@ static void fold_binary(ASTNode* ast)
     replace_ast_node(ast, replacement);
 }
 
-static bool is_literal_of_type(ASTNode* ast, Type type)
-{
-    if (!is_literal(ast)) {
-        return false;
-    }
-
-    Type literal_type = get_node_data_type(ast);
-
-    return types_equal(literal_type, type);
-}
-
-static void set_literal_token(ASTNode* ast, Token token)
-{
-    switch (ast->type) {
-        case ASTInteger:
-            ast->integer_literal.token = token;
-            break;
-        case ASTBoolean:
-            ast->boolean_literal.token = token;
-            break;
-        case ASTFloat:
-            ast->float_literal.token = token;
-            break;
-        case ASTString:
-            ast->string_literal.token = token;
-            break;
-        case ASTCharacter:
-            ast->character_literal.token = token;
-            break;
-        default:
-            break;
-    }
-}
-
 static void propagate_literal_let(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
@@ -395,40 +361,6 @@ static void optimize_conversion(ASTNode* ast)
     replace_ast_node(ast, expression);
 }
 
-static bool is_literal_array_tree(ASTNode* ast)
-{
-    if (is_literal(ast)) {
-        return true;
-    }
-
-    if (ast->type != ASTArray || ast->array.fill) {
-        return false;
-    }
-
-    bool literal = true;
-
-    for (size_t i = 0; i < ast->array.elements.count && literal; i++) {
-        literal = is_literal_array_tree(ast->array.elements.data[i]);
-    }
-
-    return literal;
-}
-
-static void copy_array_literals(ASTNode* ast, Vector* literals)
-{
-    if (ast->type != ASTArray) {
-        ASTNode* literal = copy_literal_node(ast);
-
-        push_vector_item(literals, literal);
-
-        return;
-    }
-
-    for (size_t i = 0; i < ast->array.elements.count; i++) {
-        copy_array_literals(ast->array.elements.data[i], literals);
-    }
-}
-
 static void append_array_binary_element(ASTNode* result, ASTNode* binary, ASTNode* left, ASTNode* right)
 {
     Type result_type = get_array_leaf_type(binary->binary.type_id);
@@ -463,8 +395,8 @@ static bool expand_literal_array_binary(ASTNode* ast)
 
     init_vector(&left_literals);
     init_vector(&right_literals);
-    copy_array_literals(left, &left_literals);
-    copy_array_literals(right, &right_literals);
+    copy_flattened_array_literals(left, &left_literals);
+    copy_flattened_array_literals(right, &right_literals);
 
     ASTNode* result = create_array_node(ast->binary.operator, type, true);
 
@@ -596,11 +528,6 @@ void optimize_ast(ASTNode* ast, size_t start)
 
         optimize_node(node);
     }
-}
-
-static bool has_no_value_reads(ASTNode* ast)
-{
-    return ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
 }
 
 static void remove_unread_initializer_reads(ASTNode* ast)

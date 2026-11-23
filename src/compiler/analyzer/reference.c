@@ -9,112 +9,6 @@
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
-size_t* get_shared_access_count(ASTNode* symbol)
-{
-    if (is_parameter(symbol)) {
-        return &symbol->parameter.shared_access_count;
-    }
-
-    return &symbol->variable_definition.shared_access_count;
-}
-
-bool has_exclusive_access(ASTNode* symbol)
-{
-    if (is_parameter(symbol)) {
-        return symbol->parameter.exclusive_access_active;
-    }
-
-    return symbol->variable_definition.exclusive_access_active;
-}
-
-void set_exclusive_access(ASTNode* symbol, bool active)
-{
-    if (is_parameter(symbol)) {
-        symbol->parameter.exclusive_access_active = active;
-
-        return;
-    }
-
-    symbol->variable_definition.exclusive_access_active = active;
-}
-
-ASTNode* get_reference_origin_or_self(ASTNode* symbol)
-{
-    ASTNode* origin = get_reference_origin(symbol);
-
-    if (origin) {
-        return origin;
-    }
-
-    return symbol;
-}
-
-ASTNode* get_reference_origin_from_expression(ASTNode* ast)
-{
-    if (ast->type == ASTPrefix && is_variable(ast->prefix.expr)) {
-        ASTNode* symbol = ast->prefix.expr->variable.symbol;
-
-        return get_reference_origin_or_self(symbol);
-    }
-
-    return get_reference_origin(ast);
-}
-
-Vector* get_reference_origins_from_expression(ASTNode* ast)
-{
-    Vector* origins = get_reference_origins(ast);
-
-    if (origins) {
-        return origins;
-    }
-
-    static Vector empty;
-
-    return &empty;
-}
-
-bool contains_reference_origin(Vector* origins, ASTNode* origin)
-{
-    size_t count = count_vector(origins);
-
-    for (size_t i = 0; i < count; i++) {
-        if (get_vector_at(origins, i) == origin) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void add_reference_origin(Vector* origins, ASTNode* origin)
-{
-    if (!origin || contains_reference_origin(origins, origin)) {
-        return;
-    }
-
-    push_vector_item(origins, origin);
-}
-
-void copy_reference_origins(Vector* destination, Vector* source)
-{
-    if (destination == source) {
-        return;
-    }
-
-    destination->count = 0;
-
-    merge_reference_origins(destination, source);
-}
-
-void merge_reference_origins(Vector* destination, Vector* source)
-{
-    size_t count = count_vector(source);
-
-    for (size_t i = 0; i < count; i++) {
-        add_reference_origin(destination, get_vector_at(source, i));
-    }
-}
-
 static void validate_slice_lifetime(ASTNode* destination, ASTNode* origin)
 {
     Type type = get_node_data_type(destination);
@@ -275,17 +169,6 @@ void analyze_reference(Analyzer* analyzer, ASTNode* ast)
 static bool reference_argument_requires_binding(ReferenceType type)
 {
     return type == RefExclusive;
-}
-
-static ASTNode* get_argument_reference_origin(ASTNode* argument)
-{
-    ASTNode* origin = get_reference_origin_from_expression(argument);
-
-    if (origin || !is_variable(argument)) {
-        return origin;
-    }
-
-    return get_reference_origin_or_self(argument->variable.symbol);
 }
 
 void validate_call_argument_access(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, Token token)

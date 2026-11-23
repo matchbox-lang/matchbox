@@ -106,18 +106,9 @@ static void convert_builtin_call(ASTNode* ast, const Builtin* builtin)
     ast->builtin_call.token = token;
 }
 
-static bool is_numeric_literal_argument(ASTNode* argument)
-{
-    bool negative;
-    ASTNode* integer = get_integer_literal(argument, &negative);
-    ASTNode* floating = get_float_literal(argument);
-
-    return integer || floating;
-}
-
 static Type get_nonliteral_argument_type(ASTNode* argument)
 {
-    bool literal = is_numeric_literal_argument(argument);
+    bool literal = is_numeric_literal(argument);
 
     if (literal) {
         return (Type){.kind = TypeUnknown};

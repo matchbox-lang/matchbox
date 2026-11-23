@@ -11,26 +11,6 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 
-bool is_moved(ASTNode* symbol)
-{
-    if (is_parameter(symbol)) {
-        return symbol->parameter.moved;
-    }
-
-    return symbol->variable_definition.moved;
-}
-
-void set_moved_state(ASTNode* symbol, bool moved)
-{
-    if (is_parameter(symbol)) {
-        symbol->parameter.moved = moved;
-
-        return;
-    }
-
-    symbol->variable_definition.moved = moved;
-}
-
 static void consume_array_variable(ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;

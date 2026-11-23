@@ -7,20 +7,6 @@
 
 static void update_boolean_match_coverage(MatchArm* arm, bool* covers_false, bool* covers_true);
 
-static bool match_has_wildcard(ASTNode* ast)
-{
-    size_t count = count_vector(&ast->match.arms);
-
-    for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = get_vector_at(&ast->match.arms, i);
-        if (!arm->pattern && !arm->guard) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 static bool update_alternative_boolean_coverage(ASTNode* pattern, bool* covers_false, bool* covers_true)
 {
     if (pattern->type != ASTBinary || pattern->binary.operator.type != TokenPipe) {

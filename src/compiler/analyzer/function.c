@@ -13,8 +13,6 @@
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
-static ASTNode* find_node_return(ASTNode* ast);
-
 static _Noreturn void return_outside_function_error(Token token)
 {
     fatal_source_error(token.line, token.column, "Return statement is only valid inside a function");
@@ -200,76 +198,9 @@ void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
     set_call_reference_origins(ast, symbol);
 }
 
-static ASTNode* find_function_return(Vector* statements)
+static Type get_function_return_value_type(ASTNode* body)
 {
-    size_t count = count_vector(statements);
-
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* statement = get_vector_at(statements, i);
-        ASTNode* result = find_node_return(statement);
-
-        if (result) {
-            return result;
-        }
-    }
-
-    return NULL;
-}
-
-static ASTNode* find_conditional_return(ASTNode* ast)
-{
-    ASTNode* result = find_node_return(ast->conditional.then_branch);
-
-    if (result) {
-        return result;
-    }
-
-    return find_node_return(ast->conditional.else_branch);
-}
-
-static ASTNode* find_match_return(ASTNode* ast)
-{
-    size_t count = count_vector(&ast->match.arms);
-
-    for (size_t i = 0; i < count; i++) {
-        MatchArm* arm = get_vector_at(&ast->match.arms, i);
-        ASTNode* result = find_node_return(arm->branch);
-
-        if (result) {
-            return result;
-        }
-    }
-
-    return NULL;
-}
-
-static ASTNode* find_node_return(ASTNode* ast)
-{
-    if (!ast) {
-        return NULL;
-    }
-
-    switch (ast->type) {
-        case ASTReturn:
-            return ast;
-        case ASTCompound:
-            return find_function_return(&ast->compound.statements);
-        case ASTFor:
-            return find_node_return(ast->for_statement.body);
-        case ASTWhile:
-            return find_node_return(ast->while_statement.body);
-        case ASTConditional:
-            return find_conditional_return(ast);
-        case ASTMatch:
-            return find_match_return(ast);
-        default:
-            return NULL;
-    }
-}
-
-static Type get_function_return_value_type(Vector* statements)
-{
-    ASTNode* result = find_function_return(statements);
+    ASTNode* result = find_node_return(body);
 
     if (!result) {
         return (Type){.kind = TypeVoid};
@@ -306,7 +237,7 @@ static void set_parameter_positions(ASTNode* ast)
 
 static void resolve_function_return_value_type(ASTNode* ast)
 {
-    Type type = get_function_return_value_type(&ast->function_definition.body->compound.statements);
+    Type type = get_function_return_value_type(ast->function_definition.body);
 
     if (ast->function_definition.has_explicit_return_type) {
         validate_function_return_value_type(ast, type);

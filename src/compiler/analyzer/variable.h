@@ -5,7 +5,6 @@
 #include "compiler/analyzer/analyzer.h"
 
 ASTNode* find_symbol(Analyzer* analyzer, StringView id);
-void track_variable_read(ASTNode* symbol);
 void validate_constant_binding(Analyzer* analyzer, ASTNode* symbol, Token token);
 void validate_constant_reference(Analyzer* analyzer, ASTNode* symbol, Token token);
 void validate_constant_mutation(ASTNode* symbol, ReferenceType type, Token token);

@@ -42,29 +42,6 @@ static _Noreturn void unsupported_explicit_conversion_error(Token token, Type so
         source_name, destination_name);
 }
 
-ASTNode* get_integer_literal(ASTNode* expression, bool* negative)
-{
-    *negative = false;
-
-    if (expression->type == ASTInteger && is_signed_integer_type(expression->integer_literal.type_id.kind)
-        && expression->integer_literal.value > INT64_MAX) {
-        return NULL;
-    }
-
-    if (expression->type == ASTInteger) {
-        return expression;
-    }
-
-    if (expression->type != ASTPrefix || expression->prefix.operator.type != TokenMinus
-        || expression->prefix.expr->type != ASTInteger) {
-        return NULL;
-    }
-
-    *negative = true;
-
-    return expression->prefix.expr;
-}
-
 bool integer_literal_fits_type(uint64_t value, bool negative, Type type)
 {
     size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
@@ -139,19 +116,6 @@ bool apply_integer_literal_type(ASTNode* expression, Type type)
     literal->integer_literal.type_id = type;
 
     return true;
-}
-
-ASTNode* get_float_literal(ASTNode* expression)
-{
-    if (expression->type == ASTPrefix && expression->prefix.operator.type == TokenMinus) {
-        expression = expression->prefix.expr;
-    }
-
-    if (expression->type != ASTFloat) {
-        return NULL;
-    }
-
-    return expression;
 }
 
 static void apply_array_type(ASTNode* ast, Type type)

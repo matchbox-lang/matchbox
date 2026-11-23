@@ -28,11 +28,6 @@ static Operand compile_match_subject(Compiler* compiler, ASTNode* subject)
     return value;
 }
 
-static bool is_match_alternative(ASTNode* pattern)
-{
-    return pattern->type == ASTBinary && pattern->binary.operator.type == TokenPipe;
-}
-
 static Operand compile_subject_match_condition(Compiler* compiler, ASTNode* pattern, Operand subject)
 {
     if (!is_match_alternative(pattern)) {
@@ -86,19 +81,6 @@ static bool can_use_direct_match_branch(MatchArm* arm)
     ASTNode* statement = get_vector_at(&arm->branch->compound.statements, 0);
 
     return is_simple_match_value(statement);
-}
-
-static bool is_literal_match_pattern(ASTNode* pattern)
-{
-    if (pattern->type == ASTInteger || pattern->type == ASTBoolean) {
-        return true;
-    }
-
-    if (!is_match_alternative(pattern)) {
-        return false;
-    }
-
-    return is_literal_match_pattern(pattern->binary.left_expr) && is_literal_match_pattern(pattern->binary.right_expr);
 }
 
 static size_t compile_match_alternative_jumps(

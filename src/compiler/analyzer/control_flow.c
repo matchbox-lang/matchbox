@@ -9,33 +9,6 @@
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
-ASTNode* get_branch_result(ASTNode* branch)
-{
-    if (branch->type == ASTConditional) {
-        return branch;
-    }
-
-    Vector* statements = &branch->compound.statements;
-    size_t count = count_vector(statements);
-
-    if (!count) {
-        return NULL;
-    }
-
-    return get_vector_at(statements, count - 1);
-}
-
-static void set_expression_reference_type(ASTNode* ast, ReferenceType type)
-{
-    if (ast->type == ASTConditional) {
-        ast->conditional.reference_type = type;
-
-        return;
-    }
-
-    ast->match.reference_type = type;
-}
-
 void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_expected_type, Token token)
 {
     ReferenceType type = get_reference_type(result);

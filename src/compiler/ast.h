@@ -321,6 +321,7 @@ ASTNode* get_index_constant_expression(ASTNode* ast);
 ASTNode* get_reference_origin(const ASTNode* ast);
 Vector* get_reference_origins(ASTNode* ast);
 ReferenceType get_reference_type(const ASTNode* ast);
+ASTNode* get_root_binding(const ASTNode* ast);
 bool is_expression_statement(const ASTNode* ast);
 bool is_index(const ASTNode* ast);
 bool is_constant_index(const ASTNode* ast);

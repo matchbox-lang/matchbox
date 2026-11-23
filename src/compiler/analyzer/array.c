@@ -400,19 +400,6 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
     ast->index.position = (size_t)value;
 }
 
-static ASTNode* get_index_owner(ASTNode* ast)
-{
-    if (ast->type == ASTIndex) {
-        return get_index_owner(ast->index.array);
-    }
-
-    if (ast->type == ASTVariable) {
-        return ast->variable.symbol;
-    }
-
-    return NULL;
-}
-
 static void validate_index_mutation(ASTNode* ast)
 {
     Type source = get_node_data_type(ast->index.array);
@@ -421,7 +408,7 @@ static void validate_index_mutation(ASTNode* ast)
         semantic_error("Cannot mutate string slice contents", ast->index.token);
     }
 
-    ASTNode* owner = get_index_owner(ast->index.array);
+    ASTNode* owner = get_root_binding(ast->index.array);
     ReferenceType reference = get_reference_type(owner);
     bool constant = owner && is_variable_definition(owner) && owner->variable_definition.constant;
     bool has_shared_access = owner && *get_shared_access_count(owner);

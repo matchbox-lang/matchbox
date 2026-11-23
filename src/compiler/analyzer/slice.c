@@ -24,19 +24,6 @@ static void analyze_slice_bound(Analyzer* analyzer, ASTNode* bound, Token token)
     }
 }
 
-static ASTNode* get_slice_binding(ASTNode* expression)
-{
-    if (expression->type == ASTIndex) {
-        return get_slice_binding(expression->index.array);
-    }
-
-    if (is_variable(expression)) {
-        return expression->variable.symbol;
-    }
-
-    return NULL;
-}
-
 static bool has_static_string_storage(ASTNode* expression)
 {
     if (expression->type == ASTString) {
@@ -121,7 +108,7 @@ static void set_slice_reference_origins(ASTNode* ast, ASTNode* binding, ASTNode*
 static void validate_slice_access(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* expression = ast->slice.expr;
-    ASTNode* binding = get_slice_binding(expression);
+    ASTNode* binding = get_root_binding(expression);
     ReferenceType existing = get_reference_type(binding ? binding : expression);
     ASTNode* origin = get_slice_origin(expression, binding, ast->slice.token);
 

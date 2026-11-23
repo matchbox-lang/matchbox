@@ -728,6 +728,19 @@ ReferenceType get_reference_type(const ASTNode* ast)
     }
 }
 
+ASTNode* get_root_binding(const ASTNode* ast)
+{
+    if (ast->type == ASTIndex) {
+        return get_root_binding(ast->index.array);
+    }
+
+    if (ast->type == ASTVariable) {
+        return ast->variable.symbol;
+    }
+
+    return NULL;
+}
+
 bool is_expression_statement(const ASTNode* ast)
 {
     if (!ast) {

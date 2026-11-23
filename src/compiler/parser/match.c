@@ -1,6 +1,7 @@
 #include "compiler/parser/match.h"
 #include "common/memory.h"
 #include "common/vector.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/control_flow.h"
 #include "compiler/parser/expression.h"
 #include "compiler/diagnostics.h"

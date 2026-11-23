@@ -1,7 +1,7 @@
 #ifndef VALIDATION_H
 #define VALIDATION_H
 
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
 #include <stddef.h>
 
 void validate_constant_expressions(const ASTNode* ast, size_t start);

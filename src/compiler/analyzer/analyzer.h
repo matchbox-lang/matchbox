@@ -1,7 +1,7 @@
 #ifndef ANALYZER_H
 #define ANALYZER_H
 
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
 #include <stddef.h>
 
 typedef struct ReferenceLifetimes ReferenceLifetimes;

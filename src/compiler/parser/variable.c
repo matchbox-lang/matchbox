@@ -1,5 +1,6 @@
 #include "compiler/parser/variable.h"
 #include "common/array_type.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/type.h"

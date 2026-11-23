@@ -5,6 +5,9 @@
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/variable.h"
+#include "compiler/ast/ast.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
 
 static void analyze_slice_bound(Analyzer* analyzer, ASTNode* bound, Token token)

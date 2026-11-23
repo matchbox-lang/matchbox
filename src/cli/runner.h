@@ -2,7 +2,7 @@
 #define RUNNER_H
 
 #include "common/memory.h"
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
 #include <stdbool.h>
 
 typedef bool (*RunnerAction)(const void* data, MemoryGroup* result_memory);

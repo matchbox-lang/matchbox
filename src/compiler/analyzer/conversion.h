@@ -1,7 +1,7 @@
 #ifndef ANALYZER_CONVERSION_H
 #define ANALYZER_CONVERSION_H
 
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
 
 bool integer_literal_fits_type(uint64_t value, bool negative, Type type);
 bool integer_literal_fits_float(uint64_t value, Type type);

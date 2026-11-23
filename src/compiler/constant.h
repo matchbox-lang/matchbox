@@ -1,7 +1,7 @@
 #ifndef CONSTANT_H
 #define CONSTANT_H
 
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
 
 typedef struct ConstantValue
 {

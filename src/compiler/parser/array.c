@@ -1,5 +1,6 @@
 #include "compiler/parser/array.h"
 #include "common/vector.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/slice.h"

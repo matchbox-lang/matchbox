@@ -3,6 +3,10 @@
 #include "common/array_type.h"
 #include "common/errors.h"
 #include "common/vector.h"
+#include "compiler/ast/ast.h"
+#include "compiler/ast/predicate.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/control_flow.h"
@@ -14,7 +18,6 @@
 #include "compiler/generator/operand.h"
 #include "compiler/generator/slice.h"
 #include "compiler/generator/variable.h"
-#include "compiler/ast.h"
 #include "runtime/function_object.h"
 #include <stddef.h>
 #include <stdint.h>

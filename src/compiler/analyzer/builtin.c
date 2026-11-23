@@ -5,6 +5,8 @@
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/ast/literal.h"
+#include "compiler/ast/query.h"
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <float.h>

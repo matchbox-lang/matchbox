@@ -1,5 +1,6 @@
 #include "compiler/parser/function.h"
 #include "common/vector.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"

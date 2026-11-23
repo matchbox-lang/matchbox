@@ -3,7 +3,7 @@
 
 #include "compiler/lexer/lexer.h"
 #include "compiler/lexer/token.h"
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
 
 typedef struct Parser
 {

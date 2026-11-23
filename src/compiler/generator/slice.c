@@ -1,6 +1,7 @@
 #include "compiler/generator/slice.h"
 #include "builtin/string.h"
 #include "common/array_type.h"
+#include "compiler/ast/query.h"
 #include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"

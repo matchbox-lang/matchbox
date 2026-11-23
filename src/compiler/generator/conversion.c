@@ -1,10 +1,11 @@
 #include "compiler/generator/conversion.h"
+#include "compiler/ast/ast.h"
+#include "compiler/ast/query.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
-#include "compiler/ast.h"
 #include <stddef.h>
 #include <stdint.h>
 

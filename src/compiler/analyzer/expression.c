@@ -3,6 +3,9 @@
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/function.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/ast/literal.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/lexer/token.h"
 #include "compiler/diagnostics.h"
 

@@ -1,4 +1,5 @@
 #include "compiler/analyzer/validation.h"
+#include "compiler/ast/query.h"
 #include "compiler/constant.h"
 #include "compiler/diagnostics.h"
 

@@ -3,6 +3,7 @@
 #include "builtin/string.h"
 #include "common/memory.h"
 #include "common/vector.h"
+#include "compiler/ast/ast.h"
 #include "compiler/lexer/literal.h"
 #include "compiler/parser/expression.h"
 #include "compiler/diagnostics.h"

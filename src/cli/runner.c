@@ -3,6 +3,7 @@
 #include "common/errors.h"
 #include "common/io.h"
 #include "compiler/analyzer/analyzer.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/parser.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"

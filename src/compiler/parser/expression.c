@@ -1,4 +1,6 @@
 #include "compiler/parser/expression.h"
+#include "compiler/ast/ast.h"
+#include "compiler/ast/predicate.h"
 #include "compiler/lexer/token.h"
 #include "compiler/parser/array.h"
 #include "compiler/parser/control_flow.h"

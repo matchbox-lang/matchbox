@@ -4,6 +4,8 @@
 #include "common/table.h"
 #include "common/vector.h"
 #include "compiler/analyzer/control_flow.h"
+#include "compiler/ast/predicate.h"
+#include "compiler/ast/reference.h"
 #include "runtime/string_object.h"
 
 typedef bool (*VisitId)(StringView id, void* context);

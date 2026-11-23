@@ -1,6 +1,9 @@
 #include "compiler/analyzer/conversion.h"
 #include "common/array_type.h"
 #include "common/vector.h"
+#include "compiler/ast/literal.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <float.h>

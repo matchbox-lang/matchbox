@@ -1,4 +1,5 @@
 #include "compiler/parser/slice.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/expression.h"
 
 ASTNode* parse_slice(Parser* parser, ASTNode* index)

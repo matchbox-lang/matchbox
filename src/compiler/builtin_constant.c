@@ -1,4 +1,5 @@
 #include "compiler/builtin_constant.h"
+#include "compiler/ast/ast.h"
 #include "compiler/constant.h"
 #include <float.h>
 #include <math.h>

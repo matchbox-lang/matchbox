@@ -8,6 +8,10 @@
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/lifetime.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/ast/binding.h"
+#include "compiler/ast/predicate.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 

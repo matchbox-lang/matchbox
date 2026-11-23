@@ -2,7 +2,10 @@
 #include "common/math.h"
 #include "common/memory.h"
 #include "common/table.h"
-#include "compiler/ast.h"
+#include "compiler/ast/ast.h"
+#include "compiler/ast/predicate.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include <stdbool.h>
 #include <stddef.h>
 

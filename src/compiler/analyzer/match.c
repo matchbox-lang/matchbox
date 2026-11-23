@@ -3,6 +3,8 @@
 #include "compiler/analyzer/control_flow.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/ownership.h"
+#include "compiler/ast/control_flow.h"
+#include "compiler/ast/query.h"
 #include "compiler/diagnostics.h"
 
 static void update_boolean_match_coverage(MatchArm* arm, bool* covers_false, bool* covers_true);

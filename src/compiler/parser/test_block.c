@@ -1,4 +1,5 @@
 #include "compiler/parser/test_block.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/string.h"
 #include "compiler/diagnostics.h"

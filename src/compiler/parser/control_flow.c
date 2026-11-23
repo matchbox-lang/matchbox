@@ -1,5 +1,6 @@
 #include "compiler/parser/control_flow.h"
 #include "common/vector.h"
+#include "compiler/ast/ast.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"

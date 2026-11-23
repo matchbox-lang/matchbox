@@ -6,6 +6,9 @@
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/variable.h"
+#include "compiler/ast/binding.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 

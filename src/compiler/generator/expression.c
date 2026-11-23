@@ -1,5 +1,8 @@
 #include "compiler/generator/expression.h"
 #include "common/array_type.h"
+#include "compiler/ast/ast.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/control_flow.h"
@@ -11,7 +14,6 @@
 #include "compiler/generator/slice.h"
 #include "compiler/generator/variable.h"
 #include "compiler/lexer/token.h"
-#include "compiler/ast.h"
 #include "runtime/code_object.h"
 #include <stddef.h>
 #include <stdint.h>

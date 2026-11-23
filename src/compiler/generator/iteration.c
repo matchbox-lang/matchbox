@@ -29,11 +29,11 @@ typedef struct ForOperands
 
 static size_t get_for_limit(ForOperands* loop, Type type)
 {
-    loop->stride = get_array_storage_size(type.array->element_type);
+    loop->stride = get_type_storage_size(type.array->element_type);
     loop->step = loop->stride;
 
     if (loop->stride) {
-        return get_array_storage_size(type);
+        return get_type_storage_size(type);
     }
 
     loop->step = 1;

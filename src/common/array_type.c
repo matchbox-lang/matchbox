@@ -5,11 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-bool is_array_type(TypeKind kind)
-{
-    return kind == TypeArray;
-}
-
 bool array_shapes_equal(Type left, Type right)
 {
     bool left_array = is_array_type(left.kind);
@@ -24,34 +19,6 @@ bool array_shapes_equal(Type left, Type right)
     }
 
     return array_shapes_equal(left.array->element_type, right.array->element_type);
-}
-
-static size_t get_scalar_storage_size(TypeKind kind)
-{
-    switch (kind) {
-        case TypeBool:
-            return sizeof(uint8_t);
-        case TypeChar:
-        case TypeF32:
-            return sizeof(uint32_t);
-        case TypeF64:
-            return sizeof(uint64_t);
-        case TypeString:
-            return sizeof(void*);
-        default:
-            return get_integer_type_size(kind);
-    }
-}
-
-size_t get_array_storage_size(Type type)
-{
-    if (!is_contiguous_type(type.kind)) {
-        return get_scalar_storage_size(type.kind);
-    }
-
-    const ArrayType* info = type.array;
-
-    return info->size;
 }
 
 Type get_array_leaf_type(Type type)
@@ -102,7 +69,7 @@ static void format_array_type_name(ArrayType* info, const char* element_name, si
 
 static ArrayType* create_array_type(Type element_type, size_t count)
 {
-    size_t element_size = get_array_storage_size(element_type);
+    size_t element_size = get_type_storage_size(element_type);
 
     if (element_size && count > (SIZE_MAX - 128) / element_size) {
         fatal_error("Array size exceeds supported storage");

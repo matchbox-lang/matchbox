@@ -49,7 +49,7 @@ static Operand compile_array_new(Compiler* compiler, Type type)
         .constant_evaluable = true
     };
 
-    size_t size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(type);
     size_t position = find_builtin_function_position(compiler, &builtin);
 
     if (position == SIZE_MAX) {
@@ -100,9 +100,9 @@ static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const 
     Type result_leaf = get_array_leaf_type(operation->result_type);
 
     ArrayBinaryOffsets offsets;
-    offsets.left_stride = get_array_storage_size(left_leaf);
-    offsets.right_stride = get_array_storage_size(right_leaf);
-    offsets.result_stride = get_array_storage_size(result_leaf);
+    offsets.left_stride = get_type_storage_size(left_leaf);
+    offsets.right_stride = get_type_storage_size(right_leaf);
+    offsets.result_stride = get_type_storage_size(result_leaf);
     offsets.left = create_array_binary_offset(compiler, offsets.left_stride, 0, (Operand){0});
     offsets.right = create_array_binary_offset(compiler, offsets.right_stride, offsets.left_stride, offsets.left);
     offsets.result = offsets.left;
@@ -140,8 +140,8 @@ static void advance_array_binary_offsets(Compiler* compiler, const ArrayBinaryOf
 static void compile_array_prefix_loop(Compiler* compiler, ASTNode* ast, Operand source, Operand result, Type type)
 {
     Type leaf = get_array_leaf_type(type);
-    size_t stride = get_array_storage_size(leaf);
-    size_t size = get_array_storage_size(type);
+    size_t stride = get_type_storage_size(leaf);
+    size_t size = get_type_storage_size(type);
     Operand offset = compile_usize_literal(compiler, 0);
     offset.temporary = false;
 
@@ -214,7 +214,7 @@ static void compile_array_binary_loop(Compiler* compiler, const ArrayBinaryOpera
     Operand left, Operand right, Operand result)
 {
     Type left_type = operation->left_type;
-    size_t size = get_array_storage_size(left_type);
+    size_t size = get_type_storage_size(left_type);
     int previous_register_count = compiler->register_count;
     ArrayBinaryOffsets offsets = create_array_binary_offsets(compiler, operation);
     Operand end = compile_usize_literal(compiler, size);
@@ -258,7 +258,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
         type = get_array_leaf_type(ast->array.type_id);
     }
 
-    size_t stride = get_array_storage_size(type);
+    size_t stride = get_type_storage_size(type);
     offset += position * stride;
     ASTNode* element = ast->array.elements.data[position];
 
@@ -277,7 +277,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
 static void compile_array_fill_loop(Compiler* compiler, Operand array, Operand value, Type type, size_t offset,
     size_t size)
 {
-    size_t stride = get_array_storage_size(type);
+    size_t stride = get_type_storage_size(type);
     Operand index = compile_usize_literal(compiler, offset);
     Operand end = compile_usize_literal(compiler, offset + size);
     Operand step = compile_usize_literal(compiler, stride);
@@ -315,7 +315,7 @@ static void compile_array_fill_into(Compiler* compiler, ASTNode* ast, Operand ar
     Type leaf = get_array_leaf_type(type);
     ASTNode* expression = ast->array.elements.data[0];
     Operand value = compile_converted_expression(compiler, expression, leaf, false);
-    size_t size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(type);
 
     compile_array_fill_loop(compiler, array, value, leaf, offset, size);
     release_operand(compiler, value);
@@ -440,7 +440,7 @@ Operand compile_array_prefix(Compiler* compiler, ASTNode* ast)
 Operand emit_array_copy(Compiler* compiler, const Builtin* definition, Type type, Operand source, bool discard)
 {
     Type types[] = {type, {.kind = TypeUsize}};
-    size_t size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(type);
 
     Builtin builtin = *definition;
     builtin.param_count = 2;
@@ -464,8 +464,8 @@ void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t
     }
 
     Type leaf = get_array_leaf_type(type);
-    size_t size = get_array_storage_size(leaf);
-    size_t total_size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(leaf);
+    size_t total_size = get_type_storage_size(type);
 
     for (size_t position = 0; position < total_size; position += size) {
         copy_array_element(compiler, buffer, value, offset, position, leaf);

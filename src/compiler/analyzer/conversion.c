@@ -7,8 +7,6 @@
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <float.h>
-#include <limits.h>
-#include <stdint.h>
 
 static _Noreturn void float_literal_out_of_range_error(Token token, Type type)
 {
@@ -43,53 +41,6 @@ static _Noreturn void unsupported_explicit_conversion_error(Token token, Type so
 
     fatal_source_error(token.line, token.column, "Unsupported explicit conversion from %s to %s",
         source_name, destination_name);
-}
-
-bool integer_literal_fits_type(uint64_t value, bool negative, Type type)
-{
-    size_t bits = get_integer_type_size(type.kind) * CHAR_BIT;
-
-    if (!bits || (!is_signed_integer_type(type.kind) && negative)) {
-        return false;
-    }
-
-    if (!is_signed_integer_type(type.kind)) {
-        return bits == 64 || value <= (UINT64_C(1) << bits) - 1;
-    }
-
-    uint64_t limit = UINT64_C(1) << (bits - 1);
-
-    return negative ? value <= limit : value < limit;
-}
-
-bool integer_literal_fits_float(uint64_t value, Type type)
-{
-    size_t precision;
-
-    if (type.kind == TypeF32) {
-        precision = FLT_MANT_DIG;
-    } else if (type.kind == TypeF64) {
-        precision = DBL_MANT_DIG;
-    } else {
-        return false;
-    }
-
-    size_t bits = 0;
-    uint64_t remaining = value;
-
-    while (remaining) {
-        bits++;
-        remaining >>= 1;
-    }
-
-    if (bits <= precision) {
-        return true;
-    }
-
-    size_t discarded_bits = bits - precision;
-    uint64_t mask = (UINT64_C(1) << discarded_bits) - 1;
-
-    return (value & mask) == 0;
 }
 
 bool apply_integer_literal_type(ASTNode* expression, Type type)

@@ -103,7 +103,7 @@ static Operand compile_runtime_index_offset(Compiler* compiler, ASTNode* ast, Op
 {
     Type type = get_node_data_type(ast->index.array);
     const ArrayType* info = type.array;
-    size_t stride = get_array_storage_size(info->element_type);
+    size_t stride = get_type_storage_size(info->element_type);
     Type index_type = {.kind = TypeUsize};
     Operand index = compile_converted_expression(compiler, ast->index.index, index_type, false);
 
@@ -160,7 +160,7 @@ static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
     while (is_constant_index(base)) {
         Type type = get_node_data_type(base->index.array);
         const ArrayType* info = type.array;
-        size_t stride = get_array_storage_size(info->element_type);
+        size_t stride = get_type_storage_size(info->element_type);
         *offset += base->index.position * stride;
         base = base->index.array;
     }

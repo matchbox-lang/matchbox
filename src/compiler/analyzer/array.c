@@ -271,8 +271,8 @@ static Type resolve_array_initializer_type(Analyzer* analyzer, ASTNode* ast, siz
     }
 
     type = get_array_leaf_type(declared);
-    size_t size = get_array_storage_size(declared);
-    size_t leaf_size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(declared);
+    size_t leaf_size = get_type_storage_size(type);
     *count = size / leaf_size;
 
     return type;

@@ -17,15 +17,6 @@ static _Noreturn void binary_type_error(Token token, Type left, Type right)
     fatal_source_error(token.line, token.column, "No lossless common numeric type for %s and %s", left_name, right_name);
 }
 
-static Type get_float_binary_type(Type left_type, Type right_type)
-{
-    if (left_type.kind == TypeF64 || right_type.kind == TypeF64) {
-        return (Type){.kind = TypeF64};
-    }
-
-    return (Type){.kind = TypeF32};
-}
-
 static void apply_binary_float_literal_types(ASTNode* left, ASTNode* right)
 {
     Type left_type = get_node_data_type(left);
@@ -35,7 +26,8 @@ static void apply_binary_float_literal_types(ASTNode* left, ASTNode* right)
         return;
     }
 
-    Type type = get_float_binary_type(left_type, right_type);
+    TypeKind kind = get_common_numeric_type(left_type.kind, right_type.kind);
+    Type type = {.kind = kind};
 
     if (!get_float_literal(left)) {
         type = left_type;

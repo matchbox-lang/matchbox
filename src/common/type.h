@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef enum TypeKind
 {
@@ -39,21 +40,25 @@ typedef struct Type
     };
 } Type;
 
-const char* get_data_type_name(Type type);
-bool is_slice_type(TypeKind kind);
-bool is_contiguous_type(TypeKind kind);
-bool is_integer_type(TypeKind kind);
-bool is_float_type(TypeKind kind);
-bool is_signed_integer_type(TypeKind kind);
-size_t get_integer_type_size(TypeKind kind);
-size_t get_type_slot_count(TypeKind kind);
-bool is_printable_type(TypeKind kind);
-bool can_implicitly_widen_integer(TypeKind source, TypeKind destination);
+bool can_explicitly_convert_type(TypeKind source, TypeKind destination);
 bool can_implicitly_convert_integer_to_float(TypeKind source, TypeKind destination);
 bool can_implicitly_widen_float(TypeKind source, TypeKind destination);
+bool can_implicitly_widen_integer(TypeKind source, TypeKind destination);
 bool can_implicitly_widen_type(TypeKind source, TypeKind destination);
-bool can_explicitly_convert_type(TypeKind source, TypeKind destination);
 TypeKind get_common_numeric_type(TypeKind left, TypeKind right);
+const char* get_data_type_name(Type type);
+size_t get_integer_type_size(TypeKind kind);
+size_t get_type_slot_count(TypeKind kind);
+size_t get_type_storage_size(Type type);
+bool integer_literal_fits_float(uint64_t value, Type type);
+bool integer_literal_fits_type(uint64_t value, bool negative, Type type);
+bool is_array_type(TypeKind kind);
+bool is_contiguous_type(TypeKind kind);
+bool is_float_type(TypeKind kind);
+bool is_integer_type(TypeKind kind);
+bool is_printable_type(TypeKind kind);
+bool is_signed_integer_type(TypeKind kind);
+bool is_slice_type(TypeKind kind);
 bool types_equal(Type left, Type right);
 
 #endif

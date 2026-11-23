@@ -154,7 +154,7 @@ Operand compile_slice(Compiler* compiler, ASTNode* ast)
     emit_instruction(compiler, subtract, length, end.reg, start.reg);
     release_operand(compiler, end);
 
-    size_t stride = get_array_storage_size(ast->slice.type_id.array->element_type);
+    size_t stride = get_type_storage_size(ast->slice.type_id.array->element_type);
     Operand pointer = make_operand(slice.reg, false);
 
     scale_index(compiler, start, stride);

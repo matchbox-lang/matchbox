@@ -1,5 +1,5 @@
 #include "compiler/generator/memory.h"
-#include "common/array_type.h"
+#include "common/type.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
@@ -65,7 +65,7 @@ Operand load_memory_value(Compiler* compiler, Operand buffer, Operand offset, Ty
 
 Opcode get_memory_load_opcode(Type type)
 {
-    size_t size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(type);
 
     switch (size) {
         case 1:
@@ -81,7 +81,7 @@ Opcode get_memory_load_opcode(Type type)
 
 Opcode get_memory_store_opcode(Type type)
 {
-    size_t size = get_array_storage_size(type);
+    size_t size = get_type_storage_size(type);
 
     switch (size) {
         case 1:

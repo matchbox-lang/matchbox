@@ -297,7 +297,7 @@ ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
     const ArrayType* info = type.array;
     ArrayFormat* format = ALLOCATE_OBJECT(ArrayFormat, ObjArrayFormat);
     format->count = info->count;
-    format->stride = get_array_storage_size(info->element_type);
+    format->stride = get_type_storage_size(info->element_type);
 
     push_vector_item(&module->objects, format);
 
@@ -313,7 +313,7 @@ static bool matches_array_format(const ArrayFormat* format, Type type)
     }
 
     const ArrayType* info = type.array;
-    size_t stride = get_array_storage_size(info->element_type);
+    size_t stride = get_type_storage_size(info->element_type);
 
     if (format->count != info->count || format->stride != stride) {
         return false;

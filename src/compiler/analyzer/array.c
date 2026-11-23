@@ -153,6 +153,50 @@ static size_t resolve_declared_array_count(Analyzer* analyzer, Type type, size_t
     return resolve_array_count(analyzer, type.array->dimensions->data[index]);
 }
 
+static void resolve_dimension_counts(Analyzer* analyzer, Type type, Vector* counts)
+{
+    Vector* dimensions = type.array->dimensions;
+
+    init_vector(counts);
+
+    for (size_t i = 0; i < dimensions->count; i++) {
+        size_t count = resolve_declared_array_count(analyzer, type, i);
+
+        push_vector_item(counts, (void*)(uintptr_t)count);
+    }
+}
+
+static Type resolve_dimension_types(Analyzer* analyzer, Type type, Vector* counts)
+{
+    Type resolved_type = type.array->element_type;
+
+    if (resolved_type.kind == TypeVoid || is_array_type(resolved_type.kind)) {
+        fatal_error("Invalid array element type");
+    }
+
+    for (size_t i = counts->count; i > 0; i--) {
+        size_t count = (size_t)(uintptr_t)counts->data[i - 1];
+        bool slice = type.kind == TypeArraySlice && i == 1;
+
+        resolve_array_dimension(analyzer, &resolved_type, count, slice);
+    }
+
+    return resolved_type;
+}
+
+static void free_array_dimensions(const ArrayType* array_type)
+{
+    Vector* dimensions = array_type->dimensions;
+
+    for (size_t i = 0; i < dimensions->count; i++) {
+        free_ast_node(dimensions->data[i]);
+    }
+
+    free_vector(dimensions);
+    free_memory(dimensions);
+    free_memory((void*)array_type);
+}
+
 void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
     if (type->kind == TypeStringSlice) {
@@ -165,38 +209,14 @@ void resolve_dimensions(Analyzer* analyzer, Type* type)
         return;
     }
 
-    const ArrayType* array_type = type->array;
-    Vector* dimensions = array_type->dimensions;
-    Type resolved_type = array_type->element_type;
     Vector counts;
 
-    init_vector(&counts);
+    resolve_dimension_counts(analyzer, *type, &counts);
 
-    for (size_t i = 0; i < dimensions->count; i++) {
-        size_t count = resolve_declared_array_count(analyzer, *type, i);
-
-        push_vector_item(&counts, (void*)(uintptr_t)count);
-    }
-
-    if (resolved_type.kind == TypeVoid || is_array_type(resolved_type.kind)) {
-        fatal_error("Invalid array element type");
-    }
-
-    for (size_t i = counts.count; i > 0; i--) {
-        size_t count = (size_t)(uintptr_t)counts.data[i - 1];
-
-        resolve_array_dimension(analyzer, &resolved_type, count, type->kind == TypeArraySlice && i == 1);
-    }
+    Type resolved_type = resolve_dimension_types(analyzer, *type, &counts);
 
     free_vector(&counts);
-
-    for (size_t i = 0; i < dimensions->count; i++) {
-        free_ast_node(dimensions->data[i]);
-    }
-
-    free_vector(dimensions);
-    free_memory(dimensions);
-    free_memory((void*)array_type);
+    free_array_dimensions(type->array);
 
     *type = resolved_type;
 }

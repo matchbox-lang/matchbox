@@ -251,6 +251,45 @@ static void analyze_array_compound_assignment(ASTNode* ast, ASTNode* symbol)
     validate_compound_assignment_target(ast, symbol);
 }
 
+static Type analyze_assignment_expression(Analyzer* analyzer, ASTNode* ast, ASTNode* symbol)
+{
+    if (ast->assignment.operator.type == TokenEqual && is_variable_definition(symbol)
+        && is_initialized(symbol) && symbol->variable_definition.reference_access_active) {
+        release_reference_access(symbol);
+    }
+
+    Type destination_type = get_node_data_type(symbol);
+    ReferenceType reference = get_reference_type(symbol);
+
+    apply_declared_type(ast->assignment.expr, destination_type, reference);
+    analyze_node(analyzer, ast->assignment.expr);
+
+    return destination_type;
+}
+
+static void validate_assignment_operator(ASTNode* ast, ASTNode* symbol)
+{
+    Type binding_type = get_node_data_type(symbol);
+    bool string_type = binding_type.kind == TypeString || binding_type.kind == TypeStringSlice;
+
+    if (string_type && ast->assignment.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for string assignment", ast->assignment.operator);
+    }
+
+    if (binding_type.kind == TypeChar && ast->assignment.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for char assignment", ast->assignment.operator);
+    }
+
+    if (is_float_type(binding_type.kind)
+        && !is_float_assignment_token(ast->assignment.operator.type)) {
+        semantic_error("Invalid operands for assignment", ast->assignment.operator);
+    }
+
+    if (ast->assignment.operator.type == TokenPowerEqual && binding_type.kind != TypeI32) {
+        semantic_error("Invalid operands for assignment", ast->assignment.operator);
+    }
+}
+
 void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = find_assignment_symbol(analyzer, ast);
@@ -261,16 +300,7 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     validate_compound_assignment_target(ast, symbol);
     track_variable_read(symbol);
 
-    if (ast->assignment.operator.type == TokenEqual && is_variable_definition(symbol)
-        && !initializes_binding && symbol->variable_definition.reference_access_active) {
-        release_reference_access(symbol);
-    }
-
-    Type destination_type = get_node_data_type(symbol);
-    ReferenceType reference = get_reference_type(symbol);
-
-    apply_declared_type(ast->assignment.expr, destination_type, reference);
-    analyze_node(analyzer, ast->assignment.expr);
+    Type destination_type = analyze_assignment_expression(analyzer, ast, symbol);
 
     if (is_array_type(destination_type.kind) && ast->assignment.operator.type != TokenEqual) {
         analyze_array_compound_assignment(ast, symbol);
@@ -283,26 +313,7 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
 
     validate_assignment_type(ast, symbol);
     consume_array(ast->assignment.expr);
-
-    Type binding_type = get_node_data_type(symbol);
-    bool string_type = binding_type.kind == TypeString || binding_type.kind == TypeStringSlice;
-
-    if (string_type && ast->assignment.operator.type != TokenEqual) {
-        semantic_error("Invalid operator for string assignment", ast->assignment.operator);
-    }
-
-    if (binding_type.kind == TypeChar && ast->assignment.operator.type != TokenEqual) {
-        semantic_error("Invalid operator for char assignment", ast->assignment.operator);
-    }
-
-    if (is_float_type(get_node_data_type(symbol).kind)
-        && !is_float_assignment_token(ast->assignment.operator.type)) {
-        semantic_error("Invalid operands for assignment", ast->assignment.operator);
-    }
-
-    if (ast->assignment.operator.type == TokenPowerEqual && get_node_data_type(symbol).kind != TypeI32) {
-        semantic_error("Invalid operands for assignment", ast->assignment.operator);
-    }
+    validate_assignment_operator(ast, symbol);
 
     ast->assignment.scope = analyzer->current_scope;
     ast->assignment.symbol = symbol;

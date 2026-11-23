@@ -85,10 +85,8 @@ static Type array_binary_result_type(Analyzer* analyzer, Type shape, Type leaf)
     return add_array_type(&analyzer->array_types, element, shape.array->count);
 }
 
-Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type)
+static Type analyze_text_binary_types(TokenType operator_type, Type left_type, Type right_type, Type* operand_type)
 {
-    TokenType operator_type = operator.type;
-
     bool left_string = left_type.kind == TypeString || left_type.kind == TypeStringSlice;
     bool right_string = right_type.kind == TypeString || right_type.kind == TypeStringSlice;
     bool left_text = left_type.kind == TypeChar || left_string;
@@ -105,8 +103,12 @@ Type analyze_binary_operand_types(Token operator, Type left_type, Type right_typ
         return (Type){.kind = TypeBool};
     }
 
+    return (Type){.kind = TypeUnknown};
+}
+
+static Type resolve_binary_operand_type(Token operator, Type left_type, Type right_type)
+{
     Type common_type = {.kind = get_common_numeric_type(left_type.kind, right_type.kind)};
-    bool float_operands = is_float_type(common_type.kind);
 
     if (!types_equal(left_type, right_type) && common_type.kind == TypeUnknown) {
         binary_type_error(operator, left_type, right_type);
@@ -116,7 +118,14 @@ Type analyze_binary_operand_types(Token operator, Type left_type, Type right_typ
         common_type = left_type;
     }
 
-    *operand_type = common_type;
+    return common_type;
+}
+
+static void validate_binary_operator(Token operator, Type left_type, Type right_type, bool float_operands)
+{
+    TokenType operator_type = operator.type;
+    bool left_string = left_type.kind == TypeString || left_type.kind == TypeStringSlice;
+    bool right_string = right_type.kind == TypeString || right_type.kind == TypeStringSlice;
 
     if (left_string || right_string) {
         semantic_error("Invalid operator for string operands", operator);
@@ -144,18 +153,35 @@ Type analyze_binary_operand_types(Token operator, Type left_type, Type right_typ
         && !is_equality_token(operator_type)) {
         semantic_error("Invalid operands for binary operator", operator);
     }
+}
 
-    Type result_type = common_type;
-
+static Type resolve_binary_result_type(TokenType operator_type, Type operand_type)
+{
     if (operator_type == TokenSpaceship) {
-        result_type = (Type){.kind = TypeI32};
+        return (Type){.kind = TypeI32};
     }
 
     if (is_bool_operator_token(operator_type)) {
-        result_type = (Type){.kind = TypeBool};
+        return (Type){.kind = TypeBool};
     }
 
-    return result_type;
+    return operand_type;
+}
+
+Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type)
+{
+    Type text_type = analyze_text_binary_types(operator.type, left_type, right_type, operand_type);
+
+    if (text_type.kind != TypeUnknown) {
+        return text_type;
+    }
+
+    *operand_type = resolve_binary_operand_type(operator, left_type, right_type);
+    bool float_operands = is_float_type(operand_type->kind);
+
+    validate_binary_operator(operator, left_type, right_type, float_operands);
+
+    return resolve_binary_result_type(operator.type, *operand_type);
 }
 
 static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type)

@@ -328,8 +328,12 @@ typedef enum Opcode
     OpCount
 } Opcode;
 
+Opcode get_arithmetic_immediate_opcode(Opcode opcode);
 Opcode get_immediate_opcode(Opcode opcode);
+Opcode get_jump_comparison_opcode(Opcode opcode);
 uint8_t get_opcode_register_flags(Opcode opcode);
+Opcode load_call_opcode(Opcode opcode);
+Opcode move_load_opcode(Opcode opcode);
 bool opcode_writes_a(Opcode opcode);
 
 #endif

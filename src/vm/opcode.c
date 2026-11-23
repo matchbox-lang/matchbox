@@ -214,6 +214,50 @@ static const uint8_t opcode_flags[OpCount] = {
     [OpMovLdg] = OpFlagRegAB
 };
 
+Opcode get_arithmetic_immediate_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpAddI64:    return OpAddiI64;
+        case OpAddI32:    return OpAddiI32;
+        case OpAddI16:    return OpAddiI16;
+        case OpAddI8:     return OpAddiI8;
+        case OpSubI64:    return OpSubiI64;
+        case OpSubI32:    return OpSubiI32;
+        case OpSubI16:    return OpSubiI16;
+        case OpSubI8:     return OpSubiI8;
+        case OpMulI64:    return OpMuliI64;
+        case OpMulI32:    return OpMuliI32;
+        case OpMulI16:    return OpMuliI16;
+        case OpMulI8:     return OpMuliI8;
+        case OpBandI64:   return OpBandiI64;
+        case OpBandI32:   return OpBandiI32;
+        case OpBandI16:   return OpBandiI16;
+        case OpBandI8:    return OpBandiI8;
+        case OpBorI64:    return OpBoriI64;
+        case OpBorI32:    return OpBoriI32;
+        case OpBorI16:    return OpBoriI16;
+        case OpBorI8:     return OpBoriI8;
+        case OpBxorI64:   return OpBxoriI64;
+        case OpBxorI32:   return OpBxoriI32;
+        case OpBxorI16:   return OpBxoriI16;
+        case OpBxorI8:    return OpBxoriI8;
+        case OpLslI64:    return OpLsliI64;
+        case OpLslI32:    return OpLsliI32;
+        case OpLslI16:    return OpLsliI16;
+        case OpLslI8:     return OpLsliI8;
+        case OpLsrI64:    return OpLsriI64;
+        case OpLsrI32:    return OpLsriI32;
+        case OpLsrI16:    return OpLsriI16;
+        case OpLsrI8:     return OpLsriI8;
+        case OpAsrI64:    return OpAsriI64;
+        case OpAsrI32:    return OpAsriI32;
+        case OpAsrI16:    return OpAsriI16;
+        case OpAsrI8:     return OpAsriI8;
+        default:
+            return OpHlt;
+    }
+}
+
 Opcode get_immediate_opcode(Opcode opcode)
 {
     switch (opcode) {
@@ -230,6 +274,22 @@ Opcode get_immediate_opcode(Opcode opcode)
     }
 }
 
+Opcode get_jump_comparison_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpBeq:     return OpNe;
+        case OpBeqi:    return OpNei;
+        case OpBne:     return OpEq;
+        case OpBnei:    return OpEqi;
+        case OpBltI32:  return OpLeI32;
+        case OpBltU32:  return OpLeU32;
+        case OpBleI32:  return OpLtI32;
+        case OpBleU32:  return OpLtU32;
+        default:
+            return OpHlt;
+    }
+}
+
 uint8_t get_opcode_register_flags(Opcode opcode)
 {
     if ((unsigned)opcode >= OpCount) {
@@ -237,6 +297,34 @@ uint8_t get_opcode_register_flags(Opcode opcode)
     }
 
     return opcode_flags[opcode] & OpFlagRegABC;
+}
+
+Opcode load_call_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpLdi:     return OpLdiCall;
+        case OpLdc:     return OpLdcCall;
+        case OpLdg:     return OpLdgCall;
+        case OpLdr:     return OpLdrCall;
+        case OpLdc64:   return OpLdc64Call;
+        case OpLdg64:   return OpLdg64Call;
+        default:
+            return OpHlt;
+    }
+}
+
+Opcode move_load_opcode(Opcode opcode)
+{
+    switch (opcode) {
+        case OpLdi:
+            return OpMovLdi;
+        case OpLdc:
+            return OpMovLdc;
+        case OpLdg:
+            return OpMovLdg;
+        default:
+            return OpHlt;
+    }
 }
 
 bool opcode_writes_a(Opcode opcode)

@@ -4,6 +4,7 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "runtime/code_object.h"
+#include "vm/opcode.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -237,22 +238,6 @@ size_t emit_jump(Compiler* compiler, Opcode opcode, int condition_register)
     emit_instruction(compiler, opcode, condition_register, 0, 0);
 
     return position;
-}
-
-static Opcode get_jump_comparison_opcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OpBeq:     return OpNe;
-        case OpBeqi:    return OpNei;
-        case OpBne:     return OpEq;
-        case OpBnei:    return OpEqi;
-        case OpBltI32:  return OpLeI32;
-        case OpBltU32:  return OpLeU32;
-        case OpBleI32:  return OpLtI32;
-        case OpBleU32:  return OpLtU32;
-        default:
-            return OpHlt;
-    }
 }
 
 static Opcode expand_condition_jump(CodeObject* code, size_t position, Opcode opcode, ptrdiff_t offset)

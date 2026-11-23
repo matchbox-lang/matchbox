@@ -152,50 +152,6 @@ static void decode_words(const CodeObject* code, OptimizationWord* words, size_t
     }
 }
 
-static Opcode immediate_opcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OpAddI64:    return OpAddiI64;
-        case OpAddI32:    return OpAddiI32;
-        case OpAddI16:    return OpAddiI16;
-        case OpAddI8:     return OpAddiI8;
-        case OpSubI64:    return OpSubiI64;
-        case OpSubI32:    return OpSubiI32;
-        case OpSubI16:    return OpSubiI16;
-        case OpSubI8:     return OpSubiI8;
-        case OpMulI64:    return OpMuliI64;
-        case OpMulI32:    return OpMuliI32;
-        case OpMulI16:    return OpMuliI16;
-        case OpMulI8:     return OpMuliI8;
-        case OpBandI64:   return OpBandiI64;
-        case OpBandI32:   return OpBandiI32;
-        case OpBandI16:   return OpBandiI16;
-        case OpBandI8:    return OpBandiI8;
-        case OpBorI64:    return OpBoriI64;
-        case OpBorI32:    return OpBoriI32;
-        case OpBorI16:    return OpBoriI16;
-        case OpBorI8:     return OpBoriI8;
-        case OpBxorI64:   return OpBxoriI64;
-        case OpBxorI32:   return OpBxoriI32;
-        case OpBxorI16:   return OpBxoriI16;
-        case OpBxorI8:    return OpBxoriI8;
-        case OpLslI64:    return OpLsliI64;
-        case OpLslI32:    return OpLsliI32;
-        case OpLslI16:    return OpLsliI16;
-        case OpLslI8:     return OpLsliI8;
-        case OpLsrI64:    return OpLsriI64;
-        case OpLsrI32:    return OpLsriI32;
-        case OpLsrI16:    return OpLsriI16;
-        case OpLsrI8:     return OpLsriI8;
-        case OpAsrI64:    return OpAsriI64;
-        case OpAsrI32:    return OpAsriI32;
-        case OpAsrI16:    return OpAsriI16;
-        case OpAsrI8:     return OpAsriI8;
-        default:
-            return OpHlt;
-    }
-}
-
 static bool invalidates_constants(Opcode opcode)
 {
     bool end = ends_block(opcode);
@@ -210,7 +166,7 @@ static bool invalidates_constants(Opcode opcode)
 static void select_immediate_arithmetic(OptimizationWord* word, const KnownConstant* known)
 {
     KnownConstant right = known[word->c];
-    Opcode immediate = immediate_opcode(word->opcode);
+    Opcode immediate = get_arithmetic_immediate_opcode(word->opcode);
     bool signed_operand = word->opcode >= OpAddI64 && word->opcode <= OpMuliI8;
     int64_t minimum = signed_operand ? INT8_MIN : 0;
     int64_t maximum = signed_operand ? INT8_MAX : UINT8_MAX;
@@ -314,7 +270,7 @@ static bool supports_wide_constants(Opcode opcode)
         return true;
     }
 
-    Opcode immediate = immediate_opcode(opcode);
+    Opcode immediate = get_arithmetic_immediate_opcode(opcode);
 
     return immediate != OpHlt;
 }
@@ -370,7 +326,7 @@ static bool update_wide_liveness(OptimizationWord* word, bool* live)
 {
     bool immediate = is_wide_immediate_arithmetic(word->opcode);
     bool pairs = uses_register_pairs(word->opcode);
-    Opcode selected = immediate_opcode(word->opcode);
+    Opcode selected = get_arithmetic_immediate_opcode(word->opcode);
     bool binary = pairs && selected != OpHlt;
     bool constant = word->opcode == OpLdc64;
     bool load = constant || word->opcode == OpLdg64;
@@ -661,20 +617,6 @@ static bool fuse_loads(OptimizationWord* first, OptimizationWord* second)
     return true;
 }
 
-static Opcode move_load_opcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OpLdi:
-            return OpMovLdi;
-        case OpLdc:
-            return OpMovLdc;
-        case OpLdg:
-            return OpMovLdg;
-        default:
-            return OpHlt;
-    }
-}
-
 static bool fuse_move_load(OptimizationWord* first, OptimizationWord* second)
 {
     bool small = load_operand_fits_byte(second);
@@ -688,20 +630,6 @@ static bool fuse_move_load(OptimizationWord* first, OptimizationWord* second)
     first->c = second->c;
 
     return true;
-}
-
-static Opcode load_call_opcode(Opcode opcode)
-{
-    switch (opcode) {
-        case OpLdi:     return OpLdiCall;
-        case OpLdc:     return OpLdcCall;
-        case OpLdg:     return OpLdgCall;
-        case OpLdr:     return OpLdrCall;
-        case OpLdc64:   return OpLdc64Call;
-        case OpLdg64:   return OpLdg64Call;
-        default:
-            return OpHlt;
-    }
 }
 
 static bool fuse_load_call(OptimizationWord* first, OptimizationWord* second)

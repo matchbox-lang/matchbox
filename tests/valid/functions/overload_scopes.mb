@@ -1,0 +1,37 @@
+func recursive(value: i32) -> i32 = value
+func recursive(value: f32) -> i32 {
+    if value <= 0.0 {
+        return recursive(7)
+    }
+
+    return recursive(value - 1.0)
+}
+
+func outer() {
+    func local(value: i32) {
+        return value + 1
+    }
+
+    func local(value: string) {
+        return value + "!"
+    }
+
+    return local("hello")
+}
+
+test "overloaded recursion and nested declarations" {
+    let recursive_value = recursive(3.0)
+    let nested = outer()
+
+    assert(recursive_value == 7 and nested == "hello!")
+}
+
+test "inner scope overload sets shadow outer declarations" {
+    func recursive(value: bool) {
+        return value
+    }
+
+    let local = recursive(true)
+
+    assert(local)
+}

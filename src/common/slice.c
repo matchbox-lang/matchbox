@@ -5,6 +5,19 @@
 #include <stdio.h>
 #include <string.h>
 
+bool can_slice_type(Type source, Type destination)
+{
+    if (destination.kind == TypeStringSlice) {
+        return source.kind == TypeString || source.kind == TypeStringSlice;
+    }
+
+    if (destination.kind != TypeArraySlice || !is_contiguous_type(source.kind)) {
+        return false;
+    }
+
+    return types_equal(source.array->element_type, destination.array->element_type);
+}
+
 Type get_slice_type(Vector* array_types, Type element_type)
 {
     Type type = find_array_type(array_types, element_type, SIZE_MAX);

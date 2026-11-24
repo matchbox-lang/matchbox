@@ -37,6 +37,7 @@ static void clear_function_analysis(ASTNode* ast, Vector* functions)
     ast->function_definition.array_possible_initializations.count = 0;
     ast->function_definition.array_uninitialized_returns.count = 0;
     ast->function_definition.scope = NULL;
+    ast->function_definition.next_overload = NULL;
     ast->function_definition.return_reference_origin = NULL;
     ast->function_definition.call_count = 0;
 

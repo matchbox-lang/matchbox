@@ -1,0 +1,62 @@
+func defaults(value: i32 = 7) {
+    return value
+}
+
+func defaults(value: string) {
+    return value
+}
+
+func variadic(...values: i32) {
+    return len(values)
+}
+
+func variadic(value: string) {
+    return value
+}
+
+func array(value: i32[2]) {
+    return value[0]
+}
+
+func array(value: i32[3]) {
+    return value[2]
+}
+
+func bytes(value: u8[2]) {
+    return value[0]
+}
+
+func bytes(value: string) {
+    return 0
+}
+
+func view(value: &string) {
+    return len(value)
+}
+
+func view(value: i32) {
+    return value
+}
+
+func access(value: &i32) {
+    return 1
+}
+
+func access(value: ^i32) {
+    return 2
+}
+
+test "overloads preserve defaults, variadics, arrays and references" {
+    let default_value = defaults()
+    let many = variadic(1, 2, 3)
+    let first = array([5, 6])
+    let last = array([1, 2, 9])
+    let length = view("hello")
+    let byte = bytes([7, 8])
+    var value = 4
+    let shared = access(&value)
+    let exclusive = access(^value)
+
+    assert(default_value == 7 and many == 3 and first == 5 and last == 9)
+    assert(length == 5 and byte == 7 and shared == 1 and exclusive == 2)
+}

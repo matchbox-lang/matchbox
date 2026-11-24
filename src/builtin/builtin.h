@@ -20,6 +20,7 @@ typedef struct Builtin
 } Builtin;
 
 bool is_builtin_name(const char* name);
+const Builtin* resolve_builtin_overload(const char* name, const Type* types, size_t count, bool* ambiguous);
 const Builtin* resolve_builtin(const char* name, const Type* argument_types, size_t argument_count);
 
 #endif

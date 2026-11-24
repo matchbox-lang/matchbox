@@ -200,6 +200,7 @@ typedef struct ASTNode
             ReferenceType return_reference_type;
             ASTNode* return_reference_origin;
             ASTNode* body;
+            ASTNode* next_overload;
             size_t call_count;
         } function_definition;
 
@@ -314,6 +315,7 @@ ASTNode* create_variable_node(Token token);
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
 
 // Queries
+bool function_signatures_equal(ASTNode* left, ASTNode* right);
 Type get_parameter_argument_type(ASTNode* parameter);
 
 // Lifetime

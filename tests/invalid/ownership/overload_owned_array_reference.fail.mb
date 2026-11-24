@@ -1,0 +1,10 @@
+func consume(value: i32[2]) {
+    return value[0]
+}
+
+func consume(value: string) {
+    return value
+}
+
+let values = [1, 2]
+let result = consume(&values)

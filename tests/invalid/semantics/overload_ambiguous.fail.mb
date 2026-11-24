@@ -1,0 +1,9 @@
+func select(first: i32, second: f64) {
+    return first
+}
+
+func select(first: f64, second: i32) {
+    return second
+}
+
+select(1, 2)

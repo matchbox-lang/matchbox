@@ -1,0 +1,2 @@
+func duplicate(value: i32) -> i32 = value
+func duplicate(value: i32) -> f64 = value

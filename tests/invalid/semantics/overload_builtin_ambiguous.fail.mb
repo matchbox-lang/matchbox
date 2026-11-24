@@ -1,0 +1,2 @@
+let value: i8 = 1
+let result = sqrt(value)

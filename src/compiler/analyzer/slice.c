@@ -152,8 +152,6 @@ static Type get_slice_source_type(Analyzer* analyzer, Type source)
 
 static bool resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
 {
-    analyze_node(analyzer, ast->slice.expr);
-
     Type source = get_node_data_type(ast->slice.expr);
 
     if (remove_incompatible_string_slice(ast, source)) {
@@ -175,7 +173,7 @@ static bool resolve_slice_type(Analyzer* analyzer, ASTNode* ast)
     return true;
 }
 
-void analyze_slice(Analyzer* analyzer, ASTNode* ast)
+void analyze_slice_argument(Analyzer* analyzer, ASTNode* ast)
 {
     if (!resolve_slice_type(analyzer, ast)) {
         return;
@@ -184,4 +182,10 @@ void analyze_slice(Analyzer* analyzer, ASTNode* ast)
     validate_slice_access(analyzer, ast);
     analyze_slice_bound(analyzer, ast->slice.start, ast->slice.token);
     analyze_slice_bound(analyzer, ast->slice.end, ast->slice.token);
+}
+
+void analyze_slice(Analyzer* analyzer, ASTNode* ast)
+{
+    analyze_node(analyzer, ast->slice.expr);
+    analyze_slice_argument(analyzer, ast);
 }

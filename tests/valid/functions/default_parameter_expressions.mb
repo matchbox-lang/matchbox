@@ -4,10 +4,12 @@ func computed(n = BASE * 2 + 1) = n
 
 func text(value: string = "de" + "fault") = value
 
-func countdown(n = 3) -> i32 = if n <= 0 {
-    0
-} else {
-    countdown(n - 1) + 1
+func countdown(n = 3) -> i32 {
+    return if n <= 0 {
+        0
+    } else {
+        countdown(n - 1) + 1
+    }
 }
 
 func outer() {

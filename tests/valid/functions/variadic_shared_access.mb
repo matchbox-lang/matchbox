@@ -1,0 +1,22 @@
+func arrays(...values: i32[2]) -> i32 {
+    return values[0][0] + values[1][1]
+}
+
+func texts(...values: &string) -> usize {
+    let first = values[0]
+    let second = values[1]
+    let first_length = len(first)
+    let second_length = len(second)
+
+    return first_length + second_length
+}
+
+test "shared variadic arrays and string views" {
+    var pair = [1, 2]
+    let total = arrays(pair, pair)
+    let length = texts("hello", "world")
+
+    pair[0] = 3
+    
+    assert(total == 3 and pair[0] == 3 and length == 10)
+}

@@ -1,0 +1,5 @@
+func take(first: ^i32[2], ...values: i32[2]) {}
+
+var pair = [1, 2]
+
+take(pair, [3, 4], pair)

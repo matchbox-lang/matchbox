@@ -1,0 +1,17 @@
+func offset(base: i32 = 10, ...numbers: i32) -> i32 {
+    var total = base
+
+    for n in numbers {
+        total += n
+    }
+
+    return total
+}
+
+test "default parameter before variadic arguments" {
+    let default_value = offset()
+    let fixed = offset(5)
+    let many = offset(5, 1, 2)
+
+    assert(default_value == 10 and fixed == 5 and many == 8)
+}

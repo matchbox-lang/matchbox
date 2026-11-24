@@ -1,6 +1,7 @@
 #include "compiler/parser/function.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
+#include "compiler/diagnostics.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"
@@ -95,6 +96,10 @@ static bool parse_parameter_default(Parser* parser, ASTNode* ast)
 
 static bool parse_parameter_type(Parser* parser, ASTNode* ast)
 {
+    if (ast->parameter.variadic && parser->current_token.type != TokenColon) {
+        expected_token_error(TokenColon, parser->current_token);
+    }
+
     if (parser->current_token.type != TokenColon) {
         return true;
     }
@@ -104,10 +109,12 @@ static bool parse_parameter_type(Parser* parser, ASTNode* ast)
     return parse_declared_type(parser, &ast->parameter.type_id, &ast->parameter.reference_type);
 }
 
-static ASTNode* parse_parameter(Parser* parser)
+static ASTNode* parse_parameter_binding(Parser* parser)
 {
-    if (is_end_of_file(parser)) {
-        return NULL;
+    bool variadic = parser->current_token.type == TokenSpread;
+
+    if (variadic) {
+        consume(parser, TokenSpread);
     }
 
     Token token = parser->current_token;
@@ -116,6 +123,18 @@ static ASTNode* parse_parameter(Parser* parser)
     consume(parser, TokenIdentifier);
 
     ASTNode* ast = create_parameter_node(token, id);
+    ast->parameter.variadic = variadic;
+
+    return ast;
+}
+
+static ASTNode* parse_parameter(Parser* parser)
+{
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
+    ASTNode* ast = parse_parameter_binding(parser);
 
     if (!parse_parameter_type(parser, ast) || !parse_parameter_default(parser, ast)) {
         free_ast_node(ast);
@@ -132,6 +151,13 @@ static bool parse_parameter_list_item(Parser* parser, Vector* params)
 
     if (!param) {
         return false;
+    }
+
+    size_t count = count_vector(params);
+    ASTNode* previous = get_vector_at(params, count - 1);
+
+    if (previous && previous->parameter.variadic) {
+        semantic_token_error("Variadic parameter must be last: ", previous->parameter.token);
     }
 
     push_vector_item(params, param);

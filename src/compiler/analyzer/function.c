@@ -1,5 +1,6 @@
 #include "compiler/analyzer/function.h"
 #include "common/array_type.h"
+#include "common/slice.h"
 #include "common/vector.h"
 #include "compiler/analyzer/array.h"
 #include "compiler/analyzer/builtin.h"
@@ -49,9 +50,28 @@ static void analyze_parameter_default(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
+static void resolve_variadic_parameter(Analyzer* analyzer, ASTNode* ast)
+{
+    if (!ast->parameter.variadic) {
+        return;
+    }
+
+    Type element = ast->parameter.type_id;
+    ReferenceType reference = ast->parameter.reference_type;
+
+    if (ast->parameter.default_value || element.kind == TypeVoid || reference == RefExclusive
+        || (reference != RefNone && !is_slice_type(element.kind))) {
+        semantic_token_error("Invalid variadic element type or default: ", ast->parameter.token);
+    }
+
+    ast->parameter.type_id = get_slice_type(&analyzer->array_types, element);
+    ast->parameter.reference_type = RefShared;
+}
+
 void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 {
     resolve_dimensions(analyzer, &ast->parameter.type_id);
+    resolve_variadic_parameter(analyzer, ast);
 
     StringView id = get_string_view(ast->parameter.id);
 
@@ -79,7 +99,7 @@ static bool has_required_omitted_parameter(ASTNode* callee, size_t count, size_t
 
     ASTNode* first_omitted = get_vector_at(&callee->function_definition.params, count);
 
-    return !first_omitted->parameter.default_value;
+    return !first_omitted->parameter.default_value && !first_omitted->parameter.variadic;
 }
 
 static void apply_argument_literal_type(ASTNode* argument, Type type)
@@ -95,24 +115,27 @@ static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token
 {
     size_t count = count_vector(&caller->function_call.args);
     size_t param_count = count_vector(&callee->function_definition.params);
+    ASTNode* last = get_vector_at(&callee->function_definition.params, param_count - 1);
+    bool variadic = last && last->parameter.variadic;
 
-    if (count > param_count || has_required_omitted_parameter(callee, count, param_count)) {
+    if ((!variadic && count > param_count) || has_required_omitted_parameter(callee, count, param_count)) {
         semantic_token_error("Invalid arguments to function ", token);
     }
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = get_vector_at(&caller->function_call.args, i);
-        ASTNode* param = get_vector_at(&callee->function_definition.params, i);
-        apply_argument_literal_type(arg, param->parameter.type_id);
+        ASTNode* param = get_call_parameter(&callee->function_definition.params, i);
+        Type parameter_value_type = get_parameter_argument_type(param);
+
+        apply_argument_literal_type(arg, parameter_value_type);
 
         ReferenceType argument_type = get_reference_type(arg);
-        ReferenceType parameter_type = get_reference_type(param);
+        ReferenceType parameter_type = get_parameter_argument_reference(param);
         bool value_parameter = parameter_type == RefNone;
         bool implicit_access = argument_type == RefNone;
         bool compatible_reference = value_parameter || implicit_access || argument_type == parameter_type
             || (argument_type == RefExclusive && parameter_type == RefShared);
         Type argument_value_type = get_node_data_type(arg);
-        Type parameter_value_type = param->parameter.type_id;
         bool compatible_value = types_equal(argument_value_type, parameter_value_type)
             || (argument_type == RefNone && parameter_type == RefNone
                 && can_implicitly_widen_type(argument_value_type.kind, parameter_value_type.kind));
@@ -131,20 +154,21 @@ static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
         return;
     }
 
-    Type parameter_type = parameter->parameter.type_id;
-    ReferenceType reference = is_slice_type(parameter_type.kind) ? parameter->parameter.reference_type : RefNone;
+    Type parameter_type = get_parameter_argument_type(parameter);
+    ReferenceType parameter_reference = get_parameter_argument_reference(parameter);
+    ReferenceType reference = is_slice_type(parameter_type.kind) ? parameter_reference : RefNone;
 
     apply_declared_type(argument, parameter_type, reference);
     analyze_node(analyzer, argument);
 
     ReferenceType argument_reference = get_reference_type(argument);
-    bool owned_array = is_array_type(parameter_type.kind) && parameter->parameter.reference_type == RefNone;
+    bool owned_array = is_array_type(parameter_type.kind) && parameter_reference == RefNone;
 
     if (owned_array && argument_reference != RefNone) {
         semantic_error("Cannot transfer array ownership through a reference", parameter->parameter.token);
     }
 
-    if (parameter->parameter.reference_type == RefNone) {
+    if (parameter_reference == RefNone && !parameter->parameter.variadic) {
         consume_array(argument);
     }
 }
@@ -161,7 +185,7 @@ static void analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
     }
 
     for (size_t i = 0; i < ast->function_call.args.count; i++) {
-        ASTNode* parameter = get_vector_at(&symbol->function_definition.params, i);
+        ASTNode* parameter = get_call_parameter(&symbol->function_definition.params, i);
 
         analyze_call_argument(analyzer, ast->function_call.args.data[i], parameter);
     }
@@ -259,7 +283,7 @@ static void validate_parameter_order(ASTNode* parameter, bool* has_default)
         return;
     }
 
-    if (*has_default) {
+    if (*has_default && !parameter->parameter.variadic) {
         semantic_token_error("Required parameter cannot follow a default parameter: ", parameter->parameter.token);
     }
 }
@@ -336,7 +360,7 @@ static bool can_return_reference_origin(ASTNode* origin)
         return true;
     }
 
-    return is_parameter(origin) && get_reference_type(origin) != RefNone;
+    return is_parameter(origin) && !origin->parameter.variadic && get_reference_type(origin) != RefNone;
 }
 
 static ReferenceType get_expected_return_reference_type(Analyzer* analyzer)

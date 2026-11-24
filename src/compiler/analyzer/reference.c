@@ -180,8 +180,8 @@ void validate_call_argument_access(Analyzer* analyzer, ASTNode* caller, ASTNode*
     size_t count = count_vector(&caller->function_call.args);
 
     for (size_t i = 0; i < count; i++) {
-        ASTNode* param = get_vector_at(&callee->function_definition.params, i);
-        ReferenceType type = get_reference_type(param);
+        ASTNode* param = get_call_parameter(&callee->function_definition.params, i);
+        ReferenceType type = get_parameter_argument_reference(param);
 
         if (type == RefNone) {
             continue;
@@ -213,7 +213,7 @@ static ReferenceType get_argument_reference_type(ASTNode* argument, ASTNode* par
         return type;
     }
 
-    ReferenceType parameter_type = get_reference_type(parameter);
+    ReferenceType parameter_type = get_parameter_argument_reference(parameter);
     Type value_type = get_node_data_type(argument);
 
     if (parameter_type == RefNone && is_array_type(value_type.kind)) {
@@ -249,7 +249,7 @@ static void validate_argument_origin_access(Vector* arguments, Vector* parameter
 
     for (size_t i = position + 1; i < count; i++) {
         ASTNode* right = get_vector_at(arguments, i);
-        ASTNode* right_parameter = get_vector_at(parameters, i);
+        ASTNode* right_parameter = get_call_parameter(parameters, i);
 
         if (!reference_access_conflicts(left_origin, left_type, right, right_parameter)) {
             continue;
@@ -262,7 +262,7 @@ static void validate_argument_origin_access(Vector* arguments, Vector* parameter
 static void validate_argument_access(Vector* arguments, Vector* parameters, size_t position, Token token)
 {
     ASTNode* left = get_vector_at(arguments, position);
-    ASTNode* left_parameter = get_vector_at(parameters, position);
+    ASTNode* left_parameter = get_call_parameter(parameters, position);
     ReferenceType left_type = get_argument_reference_type(left, left_parameter);
 
     if (left_type == RefNone) {
@@ -329,7 +329,7 @@ void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
     size_t count = count_vector(&callee->function_definition.params);
 
     for (size_t i = 0; i < count; i++) {
-        if (get_vector_at(&callee->function_definition.params, i) != returned) {
+        if (get_call_parameter(&callee->function_definition.params, i) != returned) {
             continue;
         }
 

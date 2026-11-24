@@ -371,6 +371,15 @@ ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body)
     return ast;
 }
 
+Type get_parameter_argument_type(ASTNode* parameter)
+{
+    if (parameter->parameter.variadic) {
+        return parameter->parameter.type_id.array->element_type;
+    }
+
+    return parameter->parameter.type_id;
+}
+
 void free_ast_node(ASTNode* ast)
 {
     if (!ast) {

@@ -1,0 +1,3 @@
+func take(...values: i32) {}
+
+take(1, "bad")

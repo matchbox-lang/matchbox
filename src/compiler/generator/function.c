@@ -1,6 +1,7 @@
 #include "compiler/generator/function.h"
 #include "builtin/builtin.h"
 #include "builtin/memory.h"
+#include "common/array_type.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
@@ -9,6 +10,7 @@
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
 #include "compiler/generator/array.h"
+#include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/generator.h"
@@ -398,33 +400,128 @@ static void compile_argument(Compiler* compiler, Vector* args, Vector* params, s
     store_argument(compiler, argument, destination, reserved);
 }
 
-static bool compile_arguments(Compiler* compiler, Vector* args, Vector* params)
+static void compile_variadic_element(Compiler* compiler, ASTNode* argument, Type type, Operand buffer, size_t offset)
 {
-    size_t count = args->count;
+    Operand value = compile_converted_expression(compiler, argument, type, false);
 
-    if (params) {
-        count = params->count;
+    store_array_value(compiler, buffer, value, offset, type);
+    release_operand(compiler, value);
+}
+
+static size_t get_argument_slot_count(Vector* layout)
+{
+    size_t count = 0;
+
+    for (size_t i = 0; i < layout->count; i++) {
+        count += get_node_slot_count(layout->data[i]);
     }
 
-    size_t slot_count = 0;
+    return count;
+}
+
+static void compile_argument_list(Compiler* compiler, Vector* args, Vector* params, size_t count,
+    int first_register, bool reserved)
+{
+    Vector* layout = params ? params : args;
+
+    for (size_t i = 0, offset = 0; i < count; i++) {
+        compile_argument(compiler, args, params, i, first_register, offset, reserved);
+        offset += get_node_slot_count(layout->data[i]);
+    }
+}
+
+static size_t get_variadic_argument_count(Vector* args, size_t fixed_count)
+{
+    if (args->count <= fixed_count) {
+        return 0;
+    }
+
+    return args->count - fixed_count;
+}
+
+static Operand reserve_variadic_buffer(Compiler* compiler, Type type, size_t count, int slice_register)
+{
+    size_t stride = get_type_storage_size(type);
+
+    if (count && stride > ((size_t)UINT16_MAX + 1) * sizeof(Value) / count) {
+        check_register_count(compiler, (int)UINT16_MAX + 2);
+    }
+
+    size_t slots = (count * stride + sizeof(Value) - 1) / sizeof(Value);
+    int storage = allocate_registers(compiler, slots);
+    Operand buffer = make_operand(slice_register, false);
+
+    emit_instruction(compiler, OpRefl, slice_register, storage, 0);
+
+    Operand length = compile_usize_literal(compiler, count);
+
+    emit_mov(compiler, slice_register + 1, length.reg);
+    release_operand(compiler, length);
+
+    return buffer;
+}
+
+static void compile_variadic_elements(Compiler* compiler, Vector* args, size_t fixed_count, Type type, Operand buffer)
+{
+    size_t count = get_variadic_argument_count(args, fixed_count);
+    size_t stride = get_type_storage_size(type);
+
+    for (size_t i = 0; i < count; i++) {
+        compile_variadic_element(compiler, args->data[fixed_count + i], type, buffer, i * stride);
+    }
+}
+
+static void compile_variadic_arguments(Compiler* compiler, Vector* args, Vector* params)
+{
+    size_t fixed_count = params->count - 1;
+    ASTNode* parameter = params->data[fixed_count];
+    Type type = parameter->parameter.type_id.array->element_type;
+    size_t count = get_variadic_argument_count(args, fixed_count);
+    size_t offset = parameter->parameter.position;
+    int first_register = compiler->register_count;
+    int slice_register = first_register + offset;
+
+    allocate_registers(compiler, offset + 2);
+
+    Operand buffer = reserve_variadic_buffer(compiler, type, count, slice_register);
+
+    compile_argument_list(compiler, args, params, fixed_count, first_register, true);
+    compile_variadic_elements(compiler, args, fixed_count, type, buffer);
+}
+
+static bool has_variadic_parameter(Vector* params)
+{
+    if (!params || !params->count) {
+        return false;
+    }
+
+    ASTNode* last = params->data[params->count - 1];
+
+    return last->parameter.variadic;
+}
+
+static bool compile_fixed_arguments(Compiler* compiler, Vector* args, Vector* params)
+{
+    Vector* layout = params ? params : args;
+    size_t slot_count = get_argument_slot_count(layout);
     bool reserved = requires_reserved_arguments(args, params);
     int first_register = compiler->register_count;
 
-    for (size_t i = 0; i < count; i++) {
-        ASTNode* node = params ? get_vector_at(params, i) : get_vector_at(args, i);
-        slot_count += get_node_slot_count(node);
-    }
-
     reserve_argument_registers(compiler, slot_count, reserved);
-
-    for (size_t i = 0, offset = 0; i < count; i++) {
-        ASTNode* layout = params ? get_vector_at(params, i) : get_vector_at(args, i);
-
-        compile_argument(compiler, args, params, i, first_register, offset, reserved);
-        offset += get_node_slot_count(layout);
-    }
+    compile_argument_list(compiler, args, params, layout->count, first_register, reserved);
 
     return reserved;
+}
+
+static bool compile_arguments(Compiler* compiler, Vector* args, Vector* params)
+{
+    if (has_variadic_parameter(params)) {
+        compile_variadic_arguments(compiler, args, params);
+
+        return true;
+    }
+
+    return compile_fixed_arguments(compiler, args, params);
 }
 
 static FunctionObject* create_defined_function_object(ASTNode* ast)
@@ -529,14 +626,14 @@ static Operand compile_slice_call(Compiler* compiler, FunctionObject* function, 
     int result = allocate_registers(compiler, 2);
     CallArea call = open_call_area(compiler);
     bool reserved = compile_arguments(compiler, args, params);
+
+    if (reserved) {
+        relocate_call_area(compiler, &call, function->param_count - 1);
+    }
+
     int output = allocate_register(compiler);
 
     emit_instruction(compiler, OpRefl, output, result, 0);
-
-    if (reserved) {
-        relocate_call_area(compiler, &call, function->param_count);
-    }
-
     close_call_area(compiler, function, position, call, true);
 
     if (discard) {

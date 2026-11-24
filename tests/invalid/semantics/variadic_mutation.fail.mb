@@ -1,0 +1,3 @@
+func take(...values: i32) {
+    values[0] = 2
+}

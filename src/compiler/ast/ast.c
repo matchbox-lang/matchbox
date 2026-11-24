@@ -380,6 +380,31 @@ Type get_parameter_argument_type(ASTNode* parameter)
     return parameter->parameter.type_id;
 }
 
+static bool parameter_signatures_equal(ASTNode* left, ASTNode* right)
+{
+    return left->parameter.variadic == right->parameter.variadic
+        && left->parameter.reference_type == right->parameter.reference_type
+        && types_equal(left->parameter.type_id, right->parameter.type_id);
+}
+
+bool function_signatures_equal(ASTNode* left, ASTNode* right)
+{
+    Vector* left_params = &left->function_definition.params;
+    Vector* right_params = &right->function_definition.params;
+
+    if (left_params->count != right_params->count) {
+        return false;
+    }
+
+    bool equal = true;
+
+    for (size_t i = 0; i < left_params->count && equal; i++) {
+        equal = parameter_signatures_equal(left_params->data[i], right_params->data[i]);
+    }
+
+    return equal;
+}
+
 void free_ast_node(ASTNode* ast)
 {
     if (!ast) {

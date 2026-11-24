@@ -135,7 +135,7 @@ static bool builtin_argument_matches(const Builtin* builtin, const Type* argumen
 }
 
 static bool typed_variadic_matches(
-    const Builtin* builtin, const Type* argument_types, size_t argument_count, bool exact)
+    const Builtin* builtin, const Type* argument_types, size_t argument_count)
 {
     if (!argument_count || !argument_types) {
         return false;
@@ -147,7 +147,7 @@ static bool typed_variadic_matches(
         TypeKind argument_type = argument_types[i].kind;
         TypeKind parameter_type = builtin->params[0];
         matches = argument_type == parameter_type
-            || (!exact && can_implicitly_widen_type(argument_type, parameter_type));
+            || can_implicitly_widen_type(argument_type, parameter_type);
     }
 
     return matches;
@@ -160,7 +160,7 @@ static bool builtin_matches(const Builtin* builtin, const Type* argument_types, 
     }
 
     if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
-        return typed_variadic_matches(builtin, argument_types, argument_count, false);
+        return typed_variadic_matches(builtin, argument_types, argument_count);
     }
 
     if ((size_t)builtin->param_count != argument_count) {
@@ -183,84 +183,74 @@ static bool builtin_call_matches(
         && builtin_matches(builtin, argument_types, argument_count);
 }
 
-static const Builtin* match_exact_typed_variadic_builtin(
-    const Builtin* builtin, const Type* argument_types, size_t argument_count)
+static size_t get_builtin_argument_cost(TypeKind source, TypeKind destination, size_t count)
 {
-    bool matches = typed_variadic_matches(builtin, argument_types, argument_count, true);
+    size_t cost = get_implicit_conversion_cost(source, destination);
 
-    if (!matches) {
-        return NULL;
+    if (!cost || cost == SIZE_MAX) {
+        return 0;
     }
+
+    return count * MAX_IMPLICIT_CONVERSION_COST + cost;
+}
+
+static size_t get_builtin_conversion_cost(const Builtin* builtin, const Type* types, size_t count)
+{
+    if (builtin->param_count == BUILTIN_VARIADIC) {
+        return SIZE_MAX - 1;
+    }
+
+    size_t cost = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        size_t position = builtin->param_count == BUILTIN_TYPED_VARIADIC ? 0 : i;
+        cost += get_builtin_argument_cost(types[i].kind, builtin->params[position], count);
+    }
+
+    return cost;
+}
+
+static const Builtin* consider_builtin_overload(const Builtin* builtin, const char* name,
+    const Type* types, size_t count, const Builtin* best, size_t* best_cost, bool* ambiguous)
+{
+    if (!builtin_call_matches(builtin, name, types, count)) {
+        return best;
+    }
+
+    size_t cost = get_builtin_conversion_cost(builtin, types, count);
+
+    if (cost > *best_cost) {
+        return best;
+    }
+
+    *ambiguous = cost == *best_cost;
+    *best_cost = cost;
 
     return builtin;
 }
 
-static const Builtin* match_exact_builtin(
-    const Builtin* builtin, const char* name, const Type* argument_types, size_t argument_count)
+const Builtin* resolve_builtin_overload(const char* name, const Type* types, size_t count, bool* ambiguous)
 {
-    if (strcmp(name, builtin->name) != 0) {
+    const Builtin* best = NULL;
+    size_t best_cost = SIZE_MAX;
+    *ambiguous = false;
+
+    for (int i = 0; i < BUILTINS_MAX; i++) {
+        best = consider_builtin_overload(&builtins[i], name, types, count, best, &best_cost, ambiguous);
+    }
+
+    if (*ambiguous) {
         return NULL;
     }
 
-    if (builtin->param_count == BUILTIN_TYPED_VARIADIC) {
-        return match_exact_typed_variadic_builtin(builtin, argument_types, argument_count);
-    }
-
-    if ((size_t)builtin->param_count != argument_count) {
-        return NULL;
-    }
-
-    bool matches = true;
-
-    for (size_t i = 0; i < argument_count && matches; i++) {
-        matches = argument_types[i].kind == builtin->params[i];
-    }
-
-    if (!matches) {
-        return NULL;
-    }
-
-    return builtin;
-}
-
-static const Builtin* resolve_exact_builtin(const char* name, const Type* argument_types, size_t argument_count)
-{
-    const Builtin* exact = NULL;
-
-    for (int i = 0; i < BUILTINS_MAX && !exact; i++) {
-        exact = match_exact_builtin(&builtins[i], name, argument_types, argument_count);
-    }
-
-    return exact;
+    return best;
 }
 
 const Builtin* resolve_builtin(const char* name, const Type* argument_types, size_t argument_count)
 {
-    const Builtin* exact = resolve_exact_builtin(name, argument_types, argument_count);
+    bool ambiguous;
 
-    if (exact) {
-        return exact;
-    }
-
-    const Builtin* variadic = NULL;
-
-    for (int i = 0; i < BUILTINS_MAX; i++) {
-        const Builtin* builtin = &builtins[i];
-
-        if (!builtin_call_matches(builtin, name, argument_types, argument_count)) {
-            continue;
-        }
-
-        if (builtin->param_count == BUILTIN_VARIADIC) {
-            variadic = builtin;
-
-            continue;
-        }
-
-        return builtin;
-    }
-
-    return variadic;
+    return resolve_builtin_overload(name, argument_types, argument_count, &ambiguous);
 }
 
 bool is_builtin_name(const char* name)

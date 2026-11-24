@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define MAX_IMPLICIT_CONVERSION_COST 16
+
 typedef enum TypeKind
 {
     TypeUnknown,
@@ -45,6 +47,7 @@ bool can_implicitly_convert_integer_to_float(TypeKind source, TypeKind destinati
 bool can_implicitly_widen_float(TypeKind source, TypeKind destination);
 bool can_implicitly_widen_integer(TypeKind source, TypeKind destination);
 bool can_implicitly_widen_type(TypeKind source, TypeKind destination);
+size_t get_implicit_conversion_cost(TypeKind source, TypeKind destination);
 TypeKind get_common_numeric_type(TypeKind left, TypeKind right);
 const char* get_data_type_name(Type type);
 size_t get_integer_type_size(TypeKind kind);

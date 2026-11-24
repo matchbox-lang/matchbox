@@ -9,8 +9,10 @@
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/slice.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/control_flow.h"
+#include "compiler/ast/literal.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
@@ -146,6 +148,22 @@ static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token
     }
 }
 
+static void finish_call_argument(ASTNode* argument, ASTNode* parameter)
+{
+    Type type = get_parameter_argument_type(parameter);
+    ReferenceType reference = get_parameter_argument_reference(parameter);
+    ReferenceType argument_reference = get_reference_type(argument);
+    bool owned_array = is_array_type(type.kind) && reference == RefNone;
+
+    if (owned_array && argument_reference != RefNone) {
+        semantic_error("Cannot transfer array ownership through a reference", parameter->parameter.token);
+    }
+
+    if (reference == RefNone && !parameter->parameter.variadic) {
+        consume_array(argument);
+    }
+}
+
 static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode* parameter)
 {
     if (!parameter) {
@@ -161,19 +179,159 @@ static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
     apply_declared_type(argument, parameter_type, reference);
     analyze_node(analyzer, argument);
 
-    ReferenceType argument_reference = get_reference_type(argument);
-    bool owned_array = is_array_type(parameter_type.kind) && parameter_reference == RefNone;
-
-    if (owned_array && argument_reference != RefNone) {
-        semantic_error("Cannot transfer array ownership through a reference", parameter->parameter.token);
-    }
-
-    if (parameter_reference == RefNone && !parameter->parameter.variadic) {
-        consume_array(argument);
-    }
+    finish_call_argument(argument, parameter);
 }
 
-static void analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
+static size_t get_argument_reference_cost(ASTNode* argument, ASTNode* parameter)
+{
+    ReferenceType argument_reference = get_reference_type(argument);
+    ReferenceType parameter_reference = get_parameter_argument_reference(parameter);
+    bool compatible = parameter_reference == RefNone || argument_reference == RefNone
+        || argument_reference == parameter_reference
+        || (argument_reference == RefExclusive && parameter_reference == RefShared);
+
+    if (!compatible) {
+        return SIZE_MAX;
+    }
+
+    return argument_reference != parameter_reference;
+}
+
+static size_t get_overload_value_cost(ASTNode* argument, ASTNode* parameter, size_t reference_cost)
+{
+    Type source = get_node_data_type(argument);
+    Type type = get_parameter_argument_type(parameter);
+
+    if (types_equal(source, type)) {
+        return reference_cost;
+    }
+
+    if (is_slice_type(type.kind) && can_slice_type(source, type)) {
+        return 1 + reference_cost;
+    }
+
+    ReferenceType argument_reference = get_reference_type(argument);
+    ReferenceType parameter_reference = get_parameter_argument_reference(parameter);
+    bool literal = is_numeric_literal(argument);
+
+    if (argument_reference != RefNone || (parameter_reference != RefNone && !literal)) {
+        return SIZE_MAX;
+    }
+
+    return get_argument_conversion_cost(argument, type);
+}
+
+static size_t get_overload_argument_cost(ASTNode* argument, ASTNode* parameter)
+{
+    size_t reference_cost = get_argument_reference_cost(argument, parameter);
+
+    if (reference_cost == SIZE_MAX) {
+        return SIZE_MAX;
+    }
+
+    return get_overload_value_cost(argument, parameter, reference_cost);
+}
+
+static size_t add_overload_argument_cost(size_t cost, ASTNode* argument, ASTNode* parameter, size_t count)
+{
+    size_t argument_cost = get_overload_argument_cost(argument, parameter);
+
+    if (argument_cost == SIZE_MAX) {
+        return SIZE_MAX;
+    }
+
+    if (!argument_cost) {
+        return cost;
+    }
+
+    return cost + count * MAX_IMPLICIT_CONVERSION_COST + argument_cost;
+}
+
+static size_t get_overload_cost(ASTNode* caller, ASTNode* callee)
+{
+    size_t count = caller->function_call.args.count;
+    Vector* params = &callee->function_definition.params;
+    ASTNode* last = get_vector_at(params, params->count - 1);
+    bool variadic = last && last->parameter.variadic;
+
+    if ((!variadic && count > params->count) || has_required_omitted_parameter(callee, count, params->count)) {
+        return SIZE_MAX;
+    }
+
+    size_t cost = 0;
+
+    for (size_t i = 0; i < count && cost != SIZE_MAX; i++) {
+        ASTNode* parameter = get_call_parameter(params, i);
+        cost = add_overload_argument_cost(cost, caller->function_call.args.data[i], parameter, count);
+    }
+
+    return cost;
+}
+
+static ASTNode* consider_function_overload(ASTNode* caller, ASTNode* candidate, ASTNode* best,
+    size_t* best_cost, bool* ambiguous)
+{
+    size_t cost = get_overload_cost(caller, candidate);
+
+    if (cost == SIZE_MAX || cost > *best_cost) {
+        return best;
+    }
+
+    *ambiguous = cost == *best_cost;
+    *best_cost = cost;
+
+    return candidate;
+}
+
+static ASTNode* resolve_function_overload(ASTNode* caller, ASTNode* symbol)
+{
+    ASTNode* best = NULL;
+    size_t best_cost = SIZE_MAX;
+    bool ambiguous = false;
+
+    for (ASTNode* candidate = symbol; candidate; candidate = candidate->function_definition.next_overload) {
+        best = consider_function_overload(caller, candidate, best, &best_cost, &ambiguous);
+    }
+
+    if (!best) {
+        semantic_token_error("No compatible overload for function ", caller->function_call.token);
+    }
+
+    if (ambiguous) {
+        semantic_token_error("Ambiguous overload for function ", caller->function_call.token);
+    }
+
+    return best;
+}
+
+static void apply_overload_argument(Analyzer* analyzer, ASTNode* argument, ASTNode* parameter)
+{
+    Type type = get_parameter_argument_type(parameter);
+    ReferenceType reference = get_parameter_argument_reference(parameter);
+
+    Type source = get_node_data_type(argument);
+
+    if (is_slice_type(type.kind) && !types_equal(source, type)) {
+        apply_declared_type(argument, type, reference);
+        analyze_slice_argument(analyzer, argument);
+    }
+
+    apply_analyzed_argument_type(argument, type);
+    finish_call_argument(argument, parameter);
+}
+
+static void prepare_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode* parameter, bool overloaded)
+{
+    if (overloaded) {
+        apply_overload_argument(analyzer, argument, parameter);
+
+        return;
+    }
+
+    analyze_call_argument(analyzer, argument, parameter);
+}
+
+static ASTNode* analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
 {
     StringView id = get_string_view(ast->function_call.id);
     ASTNode* symbol = find_symbol(analyzer, id);
@@ -181,20 +339,32 @@ static void analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
     if (!symbol || symbol->type != ASTFunctionDefinition) {
         analyze_expression_nodes(analyzer, &ast->function_call.args);
 
-        return;
+        return symbol;
+    }
+
+    bool overloaded = symbol->function_definition.next_overload != NULL;
+
+    if (overloaded) {
+        analyze_expression_nodes(analyzer, &ast->function_call.args);
+
+        symbol = resolve_function_overload(ast, symbol);
     }
 
     for (size_t i = 0; i < ast->function_call.args.count; i++) {
         ASTNode* parameter = get_call_parameter(&symbol->function_definition.params, i);
+        ASTNode* argument = ast->function_call.args.data[i];
 
-        analyze_call_argument(analyzer, ast->function_call.args.data[i], parameter);
+        prepare_call_argument(analyzer, argument, parameter, overloaded);
     }
+
+    return symbol;
 }
 
 void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
 {
     infer_conversion_literal(ast);
-    analyze_call_arguments(analyzer, ast);
+
+    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
 
     TypeKind called_type = get_token_data_type(ast->function_call.token.type);
 
@@ -204,9 +374,6 @@ void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    StringView id = get_string_view(ast->function_call.id);
-    ASTNode* symbol = find_symbol(analyzer, id);
-    
     if (!symbol) {
         analyze_builtin_call(analyzer, ast);
         return;
@@ -300,6 +467,19 @@ static void analyze_parameters(Analyzer* analyzer, Vector* parameters)
     }
 }
 
+static void validate_overload_signature(ASTNode* ast, ASTNode* previous)
+{
+    ASTNode* candidate = previous;
+
+    while (candidate && !function_signatures_equal(ast, candidate)) {
+        candidate = candidate->function_definition.next_overload;
+    }
+
+    if (candidate) {
+        redefinition_error("Function signature", ast->function_definition.token);
+    }
+}
+
 void analyze_function(Analyzer* analyzer, ASTNode* ast)
 {
     resolve_dimensions(analyzer, &ast->function_definition.return_type_id);
@@ -310,7 +490,9 @@ void analyze_function(Analyzer* analyzer, ASTNode* ast)
 
     StringView id = get_string_view(ast->function_definition.id);
 
-    if (get_local_symbol(analyzer->current_scope, id)) {
+    ASTNode* previous = get_local_symbol(analyzer->current_scope, id);
+
+    if (previous && previous->type != ASTFunctionDefinition) {
         redefinition_error("Function", ast->function_definition.token);
     }
 
@@ -331,9 +513,18 @@ void analyze_function(Analyzer* analyzer, ASTNode* ast)
     analyzer->function = ast;
     analyzer->loop_path = NULL;
 
-    set_local_symbol(scope, id, ast);
+    ASTNode* symbol = previous ? previous : ast;
+
+    set_local_symbol(scope, id, symbol);
     analyze_parameters(analyzer, &ast->function_definition.params);
     set_parameter_positions(ast);
+    validate_overload_signature(ast, previous);
+
+    if (previous) {
+        ast->function_definition.next_overload = previous->function_definition.next_overload;
+        previous->function_definition.next_overload = ast;
+    }
+
     set_local_symbol(parent, id, ast);
 
     FunctionPath path = {ast, analyzer->function_path};

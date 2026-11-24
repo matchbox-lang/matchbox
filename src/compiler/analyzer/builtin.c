@@ -217,9 +217,14 @@ static const Builtin* resolve_builtin_call(ASTNode* ast)
         argument_types[i] = get_builtin_argument_type(ast->function_call.args.data[i]);
     }
 
-    const Builtin* builtin = resolve_builtin(ast->function_call.id->chars, argument_types, count);
+    bool ambiguous;
+    const Builtin* builtin = resolve_builtin_overload(ast->function_call.id->chars, argument_types, count, &ambiguous);
 
     free_memory(argument_types);
+
+    if (ambiguous) {
+        semantic_token_error("Ambiguous overload for builtin ", ast->function_call.token);
+    }
 
     return builtin;
 }

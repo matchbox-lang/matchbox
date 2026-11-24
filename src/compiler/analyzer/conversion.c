@@ -43,6 +43,77 @@ static _Noreturn void unsupported_explicit_conversion_error(Token token, Type so
         source_name, destination_name);
 }
 
+static size_t get_array_argument_conversion_cost(ASTNode* argument, Type type)
+{
+    if (argument->array.fill || argument->array.elements.count != type.array->count) {
+        return SIZE_MAX;
+    }
+
+    size_t cost = 0;
+
+    for (size_t i = 0; i < argument->array.elements.count && cost != SIZE_MAX; i++) {
+        cost = get_argument_conversion_cost(argument->array.elements.data[i], type.array->element_type);
+    }
+
+    return cost == SIZE_MAX ? SIZE_MAX : 1;
+}
+
+void apply_analyzed_argument_type(ASTNode* argument, Type type)
+{
+    apply_literal_type(argument, type);
+
+    if (argument->type != ASTArray || type.kind != TypeArray || argument->array.fill) {
+        return;
+    }
+
+    for (size_t i = 0; i < argument->array.elements.count; i++) {
+        apply_analyzed_argument_type(argument->array.elements.data[i], type.array->element_type);
+    }
+}
+
+static size_t get_scalar_argument_conversion_cost(ASTNode* argument, Type source, Type destination)
+{
+    bool negative;
+    ASTNode* integer = get_integer_literal(argument, &negative);
+
+    if (integer) {
+        bool fits_integer = integer_literal_fits_type(integer->integer_literal.value, negative, destination);
+        bool fits_float = integer_literal_fits_float(integer->integer_literal.value, destination);
+
+        return fits_integer || fits_float ? 1 : SIZE_MAX;
+    }
+
+    ASTNode* floating = get_float_literal(argument);
+
+    if (floating) {
+        bool fits = destination.kind == TypeF64
+            || (destination.kind == TypeF32 && floating->float_literal.value <= FLT_MAX);
+
+        return fits ? 1 : SIZE_MAX;
+    }
+
+    return get_implicit_conversion_cost(source.kind, destination.kind);
+}
+
+size_t get_argument_conversion_cost(ASTNode* argument, Type type)
+{
+    Type source = get_node_data_type(argument);
+
+    if (types_equal(source, type)) {
+        return 0;
+    }
+
+    if (argument->type == ASTArray && type.kind == TypeArray) {
+        return get_array_argument_conversion_cost(argument, type);
+    }
+
+    if (source.kind == type.kind) {
+        return SIZE_MAX;
+    }
+
+    return get_scalar_argument_conversion_cost(argument, source, type);
+}
+
 bool apply_integer_literal_type(ASTNode* expression, Type type)
 {
     bool negative;

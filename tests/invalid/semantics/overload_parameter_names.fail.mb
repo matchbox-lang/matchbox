@@ -1,0 +1,7 @@
+func duplicate(first: i32) {
+    return first
+}
+
+func duplicate(second: i32) {
+    return second
+}

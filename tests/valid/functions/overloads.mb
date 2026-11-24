@@ -1,0 +1,21 @@
+func abs(value: i32) -> i32 {
+    return if (value < 0) -value else value
+}
+
+func abs(value: f32) -> f32 {
+    return if (value < 0.0) -value else value
+}
+
+func abs(first: i32, second: i32) -> i32 {
+    return first + second
+}
+
+test "overloads by type and argument count" {
+    const CONSTANT = abs(-7)
+    
+    let integer = abs(-10)
+    let floating = abs(-2.5)
+    let pair = abs(10, 20)
+
+    assert(integer == 10 and floating == 2.5 and pair == 30 and CONSTANT == 7)
+}

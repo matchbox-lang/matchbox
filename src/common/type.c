@@ -134,6 +134,27 @@ bool can_implicitly_widen_type(TypeKind source, TypeKind destination)
     return can_implicitly_widen_float(source, destination);
 }
 
+size_t get_implicit_conversion_cost(TypeKind source, TypeKind destination)
+{
+    if (source == destination) {
+        return 0;
+    }
+
+    if (!can_implicitly_widen_type(source, destination)) {
+        return SIZE_MAX;
+    }
+
+    if (is_integer_type(source) && is_integer_type(destination)) {
+        return get_integer_type_size(destination);
+    }
+
+    if (is_float_type(source)) {
+        return 1;
+    }
+
+    return MAX_IMPLICIT_CONVERSION_COST;
+}
+
 TypeKind get_common_numeric_type(TypeKind left, TypeKind right)
 {
     bool left_numeric = is_integer_type(left) || is_float_type(left);

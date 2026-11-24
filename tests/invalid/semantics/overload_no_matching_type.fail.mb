@@ -1,0 +1,9 @@
+func select(value: i32) {
+    return value
+}
+
+func select(value: string) {
+    return value
+}
+
+select(true)

@@ -1,0 +1,57 @@
+func select(value: f64) {
+    return 64
+}
+
+func select(value: i32) {
+    return 32
+}
+
+func select(value: f32) {
+    return 16
+}
+
+func widen(value: i64) {
+    return value
+}
+
+func widen(value: string) {
+    return value
+}
+
+func mixed(first: i32, second: f64) {
+    return 1
+}
+
+func mixed(first: i64, second: i16) {
+    return 2
+}
+
+test "exact matches precede conversions regardless of declaration order" {
+    let integer = select(1)
+    let floating = select(1.5)
+    let wide: f64 = 1.5
+    let selected = select(wide)
+    let small: i8 = 4
+    let widened = widen(small)
+    let contextual = widen(9223372036854775807)
+
+    assert(integer == 32 and floating == 16 and selected == 64)
+    assert(widened == 4 and contextual == 9223372036854775807)
+}
+
+test "builtin overloads prefer exact types and support different counts" {
+    let value: f64 = -2.5
+    let absolute = abs(value)
+    let small: i8 = -2
+    let promoted = sign(small)
+
+    assert(absolute == 2.5 and promoted == -1, "builtin overloads")
+}
+
+test "exact arguments take priority over cheaper conversions" {
+    let first: i32 = 1
+    let second: i8 = 2
+    let result = mixed(first, second)
+
+    assert(result == 1)
+}

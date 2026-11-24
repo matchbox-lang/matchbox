@@ -14,5 +14,6 @@ test "while body call" {
         count += 1
     }
 
-    assert(count == 2 and iterations == 2)
+    assert(count == 2)
+    assert(iterations == 2)
 }

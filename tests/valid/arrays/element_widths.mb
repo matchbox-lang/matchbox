@@ -8,9 +8,14 @@ test "narrow signed array element storage" {
     let widened_byte: i64 = bytes[0]
     let widened_short: i32 = shorts[1]
 
-    assert(bytes[0] == -128 and bytes[1] == -1 and bytes[2] == 127)
-    assert(shorts[0] == -32768 and shorts[1] == -2 and shorts[2] == 32767)
-    assert(widened_byte == -128 and widened_short == -2)
+    assert(bytes[0] == -128)
+    assert(bytes[1] == -1)
+    assert(bytes[2] == 127)
+    assert(shorts[0] == -32768)
+    assert(shorts[1] == -2)
+    assert(shorts[2] == 32767)
+    assert(widened_byte == -128)
+    assert(widened_short == -2)
 
     let byte_text = string(bytes)
 
@@ -28,8 +33,10 @@ test "narrow unsigned array element storage" {
     unsigned_bytes[0] = 254
     unsigned_shorts[0] = 65534
 
-    assert(unsigned_bytes[0] == 254 and unsigned_bytes[1] == 255)
-    assert(unsigned_shorts[0] == 65534 and unsigned_shorts[1] == 65535)
+    assert(unsigned_bytes[0] == 254)
+    assert(unsigned_bytes[1] == 255)
+    assert(unsigned_shorts[0] == 65534)
+    assert(unsigned_shorts[1] == 65535)
 
     let byte_text = string(unsigned_bytes)
 
@@ -44,7 +51,8 @@ test "single precision array element storage" {
     let singles: f32[2] = [1.25, -2.5]
     singles[0] = -3.75
 
-    assert(singles[0] == -3.75 and singles[1] == -2.5)
+    assert(singles[0] == -3.75)
+    assert(singles[1] == -2.5)
 
     let text = string(singles)
 

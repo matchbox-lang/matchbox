@@ -8,7 +8,8 @@ test "runtime index subarrays" {
     var column: usize = 2
 
     assert(matrix[row][column] == 6)
-    assert(matrix[0][column] == 3 and matrix[row][0] == 4)
+    assert(matrix[0][column] == 3)
+    assert(matrix[row][0] == 4)
 
     matrix[row][column] = 9
     matrix[0][column] = 8
@@ -20,12 +21,17 @@ test "runtime index subarrays" {
     let copied = copy(matrix[row])
     let length = len(matrix[row])
 
-    assert(matrix[0][2] == 8 and matrix[1][2] == 12)
-    assert(copied[0] == 10 and copied[2] == 12 and length == 3 and selected == 12)
+    assert(matrix[0][2] == 8)
+    assert(matrix[1][2] == 12)
+    assert(copied[0] == 10)
+    assert(copied[2] == 12)
+    assert(length == 3)
+    assert(selected == 12)
 
     let cube: i32[2][2][2] = [1, 2, 3, 4, 5, 6, 7, 8]
     column = 1
     cube[row][column][0] = 20
 
-    assert(cube[row][column][0] == 20 and cube[row][column][column] == 8)
+    assert(cube[row][column][0] == 20)
+    assert(cube[row][column][column] == 8)
 }

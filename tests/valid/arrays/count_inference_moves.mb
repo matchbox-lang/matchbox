@@ -13,7 +13,8 @@ test "count inference moves" {
 
     let c: i8[] = take(b)
 
-    assert(c[0] == 1 and c[2] == 3)
+    assert(c[0] == 1)
+    assert(c[2] == 3)
 
     let empty: char[0] = []
     let moved_empty: char[] = empty

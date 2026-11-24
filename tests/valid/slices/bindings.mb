@@ -16,6 +16,8 @@ test "slice bindings and conditional views" {
     let alias_length = len(alias)
     let selected_length = len(selected)
 
-    assert(alias_length == 3 and alias[2] == 5)
-    assert(selected_length == 3 and selected[0] == 3)
+    assert(alias_length == 3)
+    assert(alias[2] == 5)
+    assert(selected_length == 3)
+    assert(selected[0] == 3)
 }

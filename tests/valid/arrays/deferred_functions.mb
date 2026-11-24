@@ -23,5 +23,6 @@ test "deferred functions" {
     let status = initialize()
 
     assert(status == 0)
-    assert(global[0] == 7 and global[1] == 9)
+    assert(global[0] == 7)
+    assert(global[1] == 9)
 }

@@ -2,12 +2,14 @@ test "array element storage types" {
     let wide: i64[2] = [5000000000, -6000000000]
     wide[1] = 7000000000
 
-    assert(wide[0] == 5000000000 and wide[1] == 7000000000)
+    assert(wide[0] == 5000000000)
+    assert(wide[1] == 7000000000)
 
     let floats: f64[2] = [1.5, 2.5]
     floats[0] = 3.5
 
-    assert(floats[0] == 3.5 and floats[1] == 2.5)
+    assert(floats[0] == 3.5)
+    assert(floats[1] == 2.5)
 
     let text: string[2]
     text = ["", ""]
@@ -16,7 +18,8 @@ test "array element storage types" {
     let flags = [true, false]
     let chars = ['a', 'b']
 
-    assert(flags[0] and chars[1] == 'b')
+    assert(flags[0])
+    assert(chars[1] == 'b')
     assert(text == ["hi", ""])
     assert(flags == [true, false])
     assert(chars == ['a', 'b'])
@@ -45,5 +48,6 @@ test "independent floating point array copies" {
     let float_copy = copy(floats)
     floats[0] = 4.5
 
-    assert(float_copy[0] == 3.5 and float_copy[1] == 2.5)
+    assert(float_copy[0] == 3.5)
+    assert(float_copy[1] == 2.5)
 }

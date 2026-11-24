@@ -13,8 +13,16 @@ test "offsets" {
     wide[31] = -6000000000
     wide[32] = 7000000000
 
-    assert(bytes[255] == 255 and bytes[256] == 128 and bytes[254] == 0)
-    assert(shorts[127] == -32768 and shorts[128] == 32767 and shorts[126] == 0)
-    assert(integers[63] == -1000 and integers[64] == 6000 and integers[62] == 0)
-    assert(wide[31] == -6000000000 and wide[32] == 7000000000 and wide[30] == 0)
+    assert(bytes[255] == 255)
+    assert(bytes[256] == 128)
+    assert(bytes[254] == 0)
+    assert(shorts[127] == -32768)
+    assert(shorts[128] == 32767)
+    assert(shorts[126] == 0)
+    assert(integers[63] == -1000)
+    assert(integers[64] == 6000)
+    assert(integers[62] == 0)
+    assert(wide[31] == -6000000000)
+    assert(wide[32] == 7000000000)
+    assert(wide[30] == 0)
 }

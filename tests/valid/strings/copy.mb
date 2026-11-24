@@ -7,8 +7,10 @@ test "copy creates owning strings" {
 
     text = "updated"
 
-    assert(copied == "a\u{e9}\0z" and copied_length == 5)
-    assert(COPIED_LITERAL == "literal" and text == "updated")
+    assert(copied == "a\u{e9}\0z")
+    assert(copied_length == 5)
+    assert(COPIED_LITERAL == "literal")
+    assert(text == "updated")
     
     copy(text)
 }

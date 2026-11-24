@@ -16,5 +16,8 @@ test "zero, one, many and variable variadic arguments" {
     let last = sum(3, 4)
     let combined = sum(first, empty, last)
 
-    assert(empty == 0 and one == 10 and many == 6 and combined == 10)
+    assert(empty == 0)
+    assert(one == 10)
+    assert(many == 6)
+    assert(combined == 10)
 }

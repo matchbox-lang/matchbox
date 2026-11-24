@@ -20,7 +20,8 @@ test "exclusive transfers and shared access" {
 
     let result = forwarded(values)
 
-    assert(values[0] == 7 and result[0] == 2)
+    assert(values[0] == 7)
+    assert(result[0] == 2)
 
     let tail = exclusive_tail(values)
     tail[0] = 8

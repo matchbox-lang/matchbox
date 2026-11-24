@@ -7,18 +7,28 @@ func preserve_small(value: i8) -> i8 {
 }
 
 test "builtin integer range constants" {
-    assert(i8.MIN == -128 and i8.MAX == 127)
-    assert(i16.MIN == -32768 and i16.MAX == 32767)
-    assert(i32.MIN == -2147483648 and i32.MAX == 2147483647)
-    assert(i64.MIN == -9223372036854775808 and i64.MAX == 9223372036854775807)
-    assert(u8.MIN == 0 and u8.MAX == 255)
-    assert(u16.MIN == 0 and u16.MAX == 65535)
-    assert(u32.MIN == 0 and u32.MAX == 4294967295)
-    assert(u64.MIN == 0 and u64.MAX == 18446744073709551615)
-    assert(usize.MIN == 0 and usize.MAX == usize(-1))
+    assert(i8.MIN == -128)
+    assert(i8.MAX == 127)
+    assert(i16.MIN == -32768)
+    assert(i16.MAX == 32767)
+    assert(i32.MIN == -2147483648)
+    assert(i32.MAX == 2147483647)
+    assert(i64.MIN == -9223372036854775808)
+    assert(i64.MAX == 9223372036854775807)
+    assert(u8.MIN == 0)
+    assert(u8.MAX == 255)
+    assert(u16.MIN == 0)
+    assert(u16.MAX == 65535)
+    assert(u32.MIN == 0)
+    assert(u32.MAX == 4294967295)
+    assert(u64.MIN == 0)
+    assert(u64.MAX == 18446744073709551615)
+    assert(usize.MIN == 0)
+    assert(usize.MAX == usize(-1))
     assert(isize.MAX == isize(usize.MAX >> 1))
     assert(isize.MIN == -isize.MAX - 1)
-    assert(char.MIN == '\0' and char.MAX == '\u{10FFFF}')
+    assert(char.MIN == '\0')
+    assert(char.MAX == '\u{10FFFF}')
 }
 
 test "range constants in bindings and arithmetic" {
@@ -29,9 +39,12 @@ test "range constants in bindings and arithmetic" {
 
     copied += 1
 
-    assert(LOW == i64.MIN and HIGH == u64.MAX)
-    assert(widened == 127 and copied == -127)
-    assert(-i8.MAX == -127 and -i64.MAX == i64.MIN + 1)
+    assert(LOW == i64.MIN)
+    assert(HIGH == u64.MAX)
+    assert(widened == 127)
+    assert(copied == -127)
+    assert(-i8.MAX == -127)
+    assert(-i64.MAX == i64.MIN + 1)
 }
 
 test "range constants in default arguments" {

@@ -57,6 +57,12 @@ test "overloads preserve defaults, variadics, arrays and references" {
     let shared = access(&value)
     let exclusive = access(^value)
 
-    assert(default_value == 7 and many == 3 and first == 5 and last == 9)
-    assert(length == 5 and byte == 7 and shared == 1 and exclusive == 2)
+    assert(default_value == 7)
+    assert(many == 3)
+    assert(first == 5)
+    assert(last == 9)
+    assert(length == 5)
+    assert(byte == 7)
+    assert(shared == 1)
+    assert(exclusive == 2)
 }

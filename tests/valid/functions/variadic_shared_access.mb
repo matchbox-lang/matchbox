@@ -18,5 +18,7 @@ test "shared variadic arrays and string views" {
 
     pair[0] = 3
     
-    assert(total == 3 and pair[0] == 3 and length == 10)
+    assert(total == 3)
+    assert(pair[0] == 3)
+    assert(length == 10)
 }

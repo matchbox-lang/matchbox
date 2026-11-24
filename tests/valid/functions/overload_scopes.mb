@@ -23,7 +23,8 @@ test "overloaded recursion and nested declarations" {
     let recursive_value = recursive(3.0)
     let nested = outer()
 
-    assert(recursive_value == 7 and nested == "hello!")
+    assert(recursive_value == 7)
+    assert(nested == "hello!")
 }
 
 test "inner scope overload sets shadow outer declarations" {

@@ -10,7 +10,8 @@ test "deferred branches" {
 
     arr[1] = 10
 
-    assert(arr[0] == 1 and arr[1] == 10)
+    assert(arr[0] == 1)
+    assert(arr[1] == 10)
 
     let matched: i32[1]
 

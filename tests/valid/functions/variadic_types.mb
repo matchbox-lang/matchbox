@@ -17,5 +17,7 @@ test "packed elements, widening and strings" {
     let float_sum = wide(narrow, 2.5)
     let text = words("hello", " world")
 
-    assert(byte_sum == 6 and float_sum == 4.0 and text == "hello world")
+    assert(byte_sum == 6)
+    assert(float_sum == 4.0)
+    assert(text == "hello world")
 }

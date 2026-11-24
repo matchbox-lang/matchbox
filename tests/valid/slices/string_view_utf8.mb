@@ -11,5 +11,7 @@ test "string view UTF-8 boundaries and empty ranges" {
     let blank_length = len(blank_view)
 
     assert(output == "\u{e9}\u{1f642}\u{1f642}")
-    assert(length == 6 and empty_length == 0 and blank_length == 0)
+    assert(length == 6)
+    assert(empty_length == 0)
+    assert(blank_length == 0)
 }

@@ -8,5 +8,6 @@ test "compound shapes" {
     empty_matrix *= empty_matrix
 
     assert(matrix == [[5, 5], [5, 5]])
-    assert(len(empty) == 0 and len(empty_matrix) == 2)
+    assert(len(empty) == 0)
+    assert(len(empty_matrix) == 2)
 }

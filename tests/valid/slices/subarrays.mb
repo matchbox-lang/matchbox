@@ -9,6 +9,7 @@ test "slices of contiguous subarrays" {
     let length = len(row)
     let total = row_sum(values)
 
-    assert(length == 2 and row[1] == 4)
+    assert(length == 2)
+    assert(row[1] == 4)
     assert(total == 5)
 }

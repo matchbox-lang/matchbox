@@ -9,5 +9,6 @@ test "for rows" {
         row[128] = 0
     }
 
-    assert(total == 4 and matrix[1][128] == 3)
+    assert(total == 4)
+    assert(matrix[1][128] == 3)
 }

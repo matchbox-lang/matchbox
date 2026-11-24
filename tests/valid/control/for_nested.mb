@@ -12,5 +12,6 @@ test "for nested" {
         }
     }
 
-    assert(total == 21 and index_total == 36)
+    assert(total == 21)
+    assert(index_total == 36)
 }

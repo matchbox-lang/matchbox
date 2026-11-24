@@ -12,5 +12,7 @@ test "dimension inference sources" {
     let second = [3, 4]
     let rows: i32[][] = [first, second]
 
-    assert(moved[1][1] == 4 and filled[1][1] == 7 and rows == moved)
+    assert(moved[1][1] == 4)
+    assert(filled[1][1] == 7)
+    assert(rows == moved)
 }

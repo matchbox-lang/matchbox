@@ -27,5 +27,7 @@ test "while for control" {
         }
     }
 
-    assert(outer == 4 and inner_total == 40 and outer_total == 4)
+    assert(outer == 4)
+    assert(inner_total == 40)
+    assert(outer_total == 4)
 }

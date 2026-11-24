@@ -15,7 +15,9 @@ test "fill evaluation" {
     let empty = i32[0](next_value())
     let empty_rows = i32[2][0](next_value())
 
-    assert(calls == 3 and matrix[0][0] == 1 and matrix[1][2] == 1)
+    assert(calls == 3)
+    assert(matrix[0][0] == 1)
+    assert(matrix[1][2] == 1)
 
     let expected_empty: i32[0] = []
 
@@ -29,5 +31,6 @@ test "fill evaluation" {
     let count: usize = 100000
     let large = u8[count](255)
 
-    assert(result[2] == 7 and large[99999] == 255)
+    assert(result[2] == 7)
+    assert(large[99999] == 255)
 }

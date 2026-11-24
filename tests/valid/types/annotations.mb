@@ -16,13 +16,14 @@ test "annotations" {
     let square_root: f32 = sqrt(9.0)
     let order: i32 = byteorder()
 
-    assert(inverse_hyperbolic_cosine >= 1.316958 - 0.00001 and inverse_hyperbolic_cosine <= 1.316958 + 0.00001)
-    assert(
-
-        inverse_hyperbolic_sine >= 0.8813735842704773 - 0.00001
-        and inverse_hyperbolic_sine <= 0.8813735842704773 + 0.00001)
-    assert(inverse_hyperbolic_tangent >= 0.54930615 - 0.00001 and inverse_hyperbolic_tangent <= 0.54930615 + 0.00001)
-    assert(cube_root >= -2.0 - 0.00001 and cube_root <= -2.0 + 0.00001)
+    assert(inverse_hyperbolic_cosine >= 1.316958 - 0.00001)
+    assert(inverse_hyperbolic_cosine <= 1.316958 + 0.00001)
+    assert(inverse_hyperbolic_sine >= 0.8813735842704773 - 0.00001)
+    assert(inverse_hyperbolic_sine <= 0.8813735842704773 + 0.00001)
+    assert(inverse_hyperbolic_tangent >= 0.54930615 - 0.00001)
+    assert(inverse_hyperbolic_tangent <= 0.54930615 + 0.00001)
+    assert(cube_root >= -2.0 - 0.00001)
+    assert(cube_root <= -2.0 + 0.00001)
     assert(rounded_up == 2.0)
     assert(rounded_down == 1.0)
     assert(square_root == 3.0)

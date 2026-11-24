@@ -8,10 +8,14 @@ test "declared string slices and full references" {
     let output = $"{whole}:{part}"
     let joined = part + '!'
 
-    assert(whole == explicit and length == 3)
-    assert(part == literal and "ell" == part)
-    assert(part != whole and part != "hello")
-    assert(output == "hello:ell" and joined == "ell!")
+    assert(whole == explicit)
+    assert(length == 3)
+    assert(part == literal)
+    assert("ell" == part)
+    assert(part != whole)
+    assert(part != "hello")
+    assert(output == "hello:ell")
+    assert(joined == "ell!")
     
     print(part)
 }

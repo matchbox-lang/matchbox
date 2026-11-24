@@ -9,7 +9,8 @@ test "count inference" {
     let expected: &i32[3] = &inferred
     let narrow: i8[] = [1, 2, 3]
 
-    assert(expected[2] == 3 and narrow[1] == 2)
+    assert(expected[2] == 3)
+    assert(narrow[1] == 2)
 
     let local_values = inferred_local()
 

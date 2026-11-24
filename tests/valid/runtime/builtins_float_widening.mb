@@ -11,7 +11,8 @@ test "mixed width float bounds and powers" {
     assert(clamped == 1.5)
     assert(minimum == 1.0)
     assert(maximum == 4.5)
-    assert(power >= 3.375 - 0.00001 and power <= 3.375 + 0.00001)
+    assert(power >= 3.375 - 0.00001)
+    assert(power <= 3.375 + 0.00001)
     assert(upper == 1.5)
 }
 
@@ -25,8 +26,10 @@ test "mixed width float math functions" {
     let scaled: f64 = ldexp(wide, exponent)
 
     assert(absolute == 1.5)
-    assert(angle >= 0.5880026035475675 - 0.00001 and angle <= 0.5880026035475675 + 0.00001)
-    assert(hypotenuse >= 2.704163456597992 - 0.00001 and hypotenuse <= 2.704163456597992 + 0.00001)
+    assert(angle >= 0.5880026035475675 - 0.00001)
+    assert(angle <= 0.5880026035475675 + 0.00001)
+    assert(hypotenuse >= 2.704163456597992 - 0.00001)
+    assert(hypotenuse <= 2.704163456597992 + 0.00001)
     assert(scaled == 0.5625)
 }
 

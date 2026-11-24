@@ -17,5 +17,8 @@ test "overloads by type and argument count" {
     let floating = abs(-2.5)
     let pair = abs(10, 20)
 
-    assert(integer == 10 and floating == 2.5 and pair == 30 and CONSTANT == 7)
+    assert(integer == 10)
+    assert(floating == 2.5)
+    assert(pair == 30)
+    assert(CONSTANT == 7)
 }

@@ -14,6 +14,7 @@ test "while branches" {
         count += 1
     }
 
-    assert(count == 5 and iterations == 5)
+    assert(count == 5)
+    assert(iterations == 5)
     assert(middle_count == 1)
 }

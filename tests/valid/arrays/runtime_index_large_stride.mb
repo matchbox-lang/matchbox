@@ -6,10 +6,12 @@ test "runtime index large stride" {
 
     matrix[row] = replacement
 
-    assert(matrix[row][column] == -1234 and matrix[0][column] == 0)
+    assert(matrix[row][column] == -1234)
+    assert(matrix[0][column] == 0)
 
     matrix[row][column] = 1234
     let selected = copy(matrix[row])
 
-    assert(selected[column] == 1234 and selected[0] == -1234)
+    assert(selected[column] == 1234)
+    assert(selected[0] == -1234)
 }

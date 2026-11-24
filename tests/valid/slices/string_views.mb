@@ -14,6 +14,8 @@ test "string views use byte lengths and print as text" {
 
     print(view)
     assert(output == ">ell<ll")
-    assert(length == 3 and text_length == 5)
-    assert(view[0] == 101 and total == 317)
+    assert(length == 3)
+    assert(text_length == 5)
+    assert(view[0] == 101)
+    assert(total == 317)
 }

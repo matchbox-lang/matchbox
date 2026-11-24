@@ -28,5 +28,6 @@ test "for while control" {
         }
     }
 
-    assert(inner_total == 40 and outer_total == 4)
+    assert(inner_total == 40)
+    assert(outer_total == 4)
 }

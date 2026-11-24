@@ -14,6 +14,8 @@ test "length references" {
     let shared_length = len(&numbers)
     let exclusive_length = len(^numbers)
 
-    assert(parameter_length == 2 and returned_length == 2)
-    assert(shared_length == 2 and exclusive_length == 2)
+    assert(parameter_length == 2)
+    assert(returned_length == 2)
+    assert(shared_length == 2)
+    assert(exclusive_length == 2)
 }

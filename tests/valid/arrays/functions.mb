@@ -45,18 +45,21 @@ test "array copies returned from functions" {
 
     numbers[0] = 8
 
-    assert(duplicate_numbers[0] == 7 and duplicate_numbers[1] == 2)
+    assert(duplicate_numbers[0] == 7)
+    assert(duplicate_numbers[1] == 2)
 }
 
 test "array literal copies" {
     let literal_copy = copy([30, 40])
 
-    assert(literal_copy[0] == 30 and literal_copy[1] == 40)
+    assert(literal_copy[0] == 30)
+    assert(literal_copy[1] == 40)
 }
 
 test "copies of returned arrays" {
     let made = make()
     let returned_copy = copy(made)
 
-    assert(returned_copy[0] == 10 and returned_copy[1] == 20)
+    assert(returned_copy[0] == 10)
+    assert(returned_copy[1] == 20)
 }

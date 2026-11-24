@@ -10,12 +10,16 @@ test "compile time index bindings" {
     let signed_position: i32 = 1
     let forwarded_position = evaluated_position
 
-    assert(values[evaluated_position] == 20 and values[typed_position] == 20)
-    assert(values[inferred_position] == 20 and values[signed_position] == 20)
-    assert(values[forwarded_position] == 20 and values[const index()] == 20)
+    assert(values[evaluated_position] == 20)
+    assert(values[typed_position] == 20)
+    assert(values[inferred_position] == 20)
+    assert(values[signed_position] == 20)
+    assert(values[forwarded_position] == 20)
+    assert(values[const index()] == 20)
 
     values[inferred_position] = 30
     values[evaluated_position] = 40
 
-    assert(values[1] == 40 and values[0] == 10)
+    assert(values[1] == 40)
+    assert(values[0] == 10)
 }

@@ -17,7 +17,9 @@ test "runtime index parameter" {
     let first = read(&values, 0)
     let last = read(&values, 1)
 
-    assert(first == 10 and last == 20)
+    assert(first == 10)
+    assert(last == 20)
+    
     write(^values, 1, 30)
     assert(values[1] == 30)
 }

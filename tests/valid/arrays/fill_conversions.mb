@@ -5,8 +5,11 @@ func check_widening(signed: i8, unsigned: u8, integer: i32, floating: f32) {
     let integer_floats = f64[2](integer)
     let wide_floats = f64[2](floating)
 
-    assert(signed_values[1] == -25 and unsigned_values[1] == 255)
-    assert(small_floats[1] == -25.0 and integer_floats[1] == 1000.0 and wide_floats[1] == 1.5)
+    assert(signed_values[1] == -25)
+    assert(unsigned_values[1] == 255)
+    assert(small_floats[1] == -25.0)
+    assert(integer_floats[1] == 1000.0)
+    assert(wide_floats[1] == 1.5)
 }
 
 test "fill conversions" {
@@ -17,7 +20,9 @@ test "fill conversions" {
     let exact = f32[2](16777216)
     let characters = char[2]('x')
 
-    assert(minimum[1] == -128 and maximum[1] == 255 and exact[1] == 16777216.0)
+    assert(minimum[1] == -128)
+    assert(maximum[1] == 255)
+    assert(exact[1] == 16777216.0)
     assert(characters[1] == 'x')
 
     let wrapped_value = u8(-25)
@@ -29,6 +34,8 @@ test "fill conversions" {
     let truncated = i32[2](truncated_value)
     let converted_chars = char[2](converted_char)
 
-    assert(wrapped[2] == 231 and narrowed[1] == -1 and truncated[1] == 1)
+    assert(wrapped[2] == 231)
+    assert(narrowed[1] == -1)
+    assert(truncated[1] == 1)
     assert(converted_chars[1] == 'x')
 }

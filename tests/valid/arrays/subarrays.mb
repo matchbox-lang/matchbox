@@ -42,5 +42,6 @@ test "independent subarray copies" {
     assert(matrix_copy[1][0] == 9000000000)
     assert(matrix[0][0] == 5000000000)
     assert(matrix[1][1] == 10000000000)
-    assert(row_copy[0] == 9000000000 and row_copy[1] == 13)
+    assert(row_copy[0] == 9000000000)
+    assert(row_copy[1] == 13)
 }

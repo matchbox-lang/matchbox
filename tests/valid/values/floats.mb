@@ -61,13 +61,20 @@ test "floating point math functions" {
     let cosine = cos(0.5)
     let tangent = tan(0.5)
 
-    assert(exponential >= 2.7182817 - 0.00001 and exponential <= 2.7182817 + 0.00001)
-    assert(natural_logarithm >= 0.6931472 - 0.00001 and natural_logarithm <= 0.6931472 + 0.00001)
-    assert(decimal_logarithm >= 2.0 - 0.00001 and decimal_logarithm <= 2.0 + 0.00001)
-    assert(binary_logarithm >= 3.0 - 0.00001 and binary_logarithm <= 3.0 + 0.00001)
-    assert(sine >= 0.47942555 - 0.00001 and sine <= 0.47942555 + 0.00001)
-    assert(cosine >= 0.87758255 - 0.00001 and cosine <= 0.87758255 + 0.00001)
-    assert(tangent >= 0.5463025 - 0.00001 and tangent <= 0.5463025 + 0.00001)
+    assert(exponential >= 2.7182817 - 0.00001)
+    assert(exponential <= 2.7182817 + 0.00001)
+    assert(natural_logarithm >= 0.6931472 - 0.00001)
+    assert(natural_logarithm <= 0.6931472 + 0.00001)
+    assert(decimal_logarithm >= 2.0 - 0.00001)
+    assert(decimal_logarithm <= 2.0 + 0.00001)
+    assert(binary_logarithm >= 3.0 - 0.00001)
+    assert(binary_logarithm <= 3.0 + 0.00001)
+    assert(sine >= 0.47942555 - 0.00001)
+    assert(sine <= 0.47942555 + 0.00001)
+    assert(cosine >= 0.87758255 - 0.00001)
+    assert(cosine <= 0.87758255 + 0.00001)
+    assert(tangent >= 0.5463025 - 0.00001)
+    assert(tangent <= 0.5463025 + 0.00001)
 }
 
 test "whole floating point values" {

@@ -80,10 +80,16 @@ test "arithmetic with floating point math results" {
     let hyperbolic_difference = cosh(1.0) - sinh(1.0)
     let doubled_hyperbolic_tangent = tanh(0.5) * 2.0
 
-    assert(half_turn >= 1.5707964 - 0.00001 and half_turn <= 1.5707964 + 0.00001)
-    assert(degrees >= 58.29578 - 0.00001 and degrees <= 58.29578 + 0.00001)
-    assert(complementary_angles >= 1.5707964 - 0.00001 and complementary_angles <= 1.5707964 + 0.00001)
-    assert(full_turn >= 6.2831855 - 0.00001 and full_turn <= 6.2831855 + 0.00001)
-    assert(hyperbolic_difference >= 0.3678795 - 0.00001 and hyperbolic_difference <= 0.3678795 + 0.00001)
-    assert(doubled_hyperbolic_tangent >= 0.92423433 - 0.00001 and doubled_hyperbolic_tangent <= 0.92423433 + 0.00001)
+    assert(half_turn >= 1.5707964 - 0.00001)
+    assert(half_turn <= 1.5707964 + 0.00001)
+    assert(degrees >= 58.29578 - 0.00001)
+    assert(degrees <= 58.29578 + 0.00001)
+    assert(complementary_angles >= 1.5707964 - 0.00001)
+    assert(complementary_angles <= 1.5707964 + 0.00001)
+    assert(full_turn >= 6.2831855 - 0.00001)
+    assert(full_turn <= 6.2831855 + 0.00001)
+    assert(hyperbolic_difference >= 0.3678795 - 0.00001)
+    assert(hyperbolic_difference <= 0.3678795 + 0.00001)
+    assert(doubled_hyperbolic_tangent >= 0.92423433 - 0.00001)
+    assert(doubled_hyperbolic_tangent <= 0.92423433 + 0.00001)
 }

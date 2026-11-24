@@ -9,7 +9,8 @@ func recursive(depth: i32, ...values: i32) -> i32 {
 }
 
 func select_text(text: &string, ...values: i32) -> &string {
-    assert(values[0] == 1 and values[1] == 2)
+    assert(values[0] == 1)
+    assert(values[1] == 2)
 
     return text
 }
@@ -25,5 +26,8 @@ test "recursive calls, fixed references and slice returns" {
     let selected = select_text("hello", 1, 2)
     let added = add(1 + 2, 4)
     
-    assert(total == 10 and selected == "hello" and added == 7 and CONSTANT_TOTAL == 6)
+    assert(CONSTANT_TOTAL == 6)
+    assert(total == 10)
+    assert(selected == "hello")
+    assert(added == 7)
 }

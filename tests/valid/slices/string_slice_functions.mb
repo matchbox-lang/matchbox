@@ -3,7 +3,8 @@ func middle(text: &string) -> &string {
 }
 
 func select_text(first: &string, second: &string, select_first: bool) -> &string {
-    assert(second == "unused" and select_first)
+    assert(second == "unused")
+    assert(select_first)
     
     return first
 }
@@ -21,7 +22,9 @@ test "string slice parameters and returns" {
     let empty = literal[0..0]
     let length = len(selected)
 
-    assert(selected == "ell" and length == 3)
-    assert(literal == text and literal_view == view)
+    assert(selected == "ell")
+    assert(length == 3)
+    assert(literal == text)
+    assert(literal_view == view)
     assert(empty == "")
 }

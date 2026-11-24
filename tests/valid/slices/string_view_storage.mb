@@ -9,5 +9,6 @@ test "string view storage and globals" {
     let result = format_string_view()
     let length = len(string_view)
 
-    assert(result == "eco" and length == 3)
+    assert(result == "eco")
+    assert(length == 3)
 }

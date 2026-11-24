@@ -7,7 +7,8 @@ test "array iteration index references" {
     let bytes: u8[3] = [10, 20, 30]
 
     for index, value in bytes {
-        assert(index == count and value == bytes[count])
+        assert(index == count)
+        assert(value == bytes[count])
 
         count += 1
 
@@ -24,7 +25,8 @@ test "literal iteration index references" {
     var count: usize = 0
 
     for index, value in [10, 20, 30] {
-        assert(index == count and value == 10 + i32(count) * 10)
+        assert(index == count)
+        assert(value == 10 + i32(count) * 10)
 
         count += 1
 
@@ -41,7 +43,8 @@ test "empty row iteration index references" {
     let rows: i32[3][0] = [[], [], []]
 
     for index, row in rows {
-        assert(index == count and len(row) == 0)
+        assert(index == count)
+        assert(len(row) == 0)
 
         count += 1
 

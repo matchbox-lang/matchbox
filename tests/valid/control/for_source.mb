@@ -18,5 +18,6 @@ func sum() -> i32 {
 }
 
 test "for source" {
-    assert(sum() == 26 and calls == 1)
+    assert(sum() == 26)
+    assert(calls == 1)
 }

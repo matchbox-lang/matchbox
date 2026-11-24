@@ -19,8 +19,12 @@ test "integer power" {
     let small = pow(5, 2)
     let floating = pow(5.0, 2.0)
 
-    assert(minimum_power == minimum and wrapped == 0)
-    assert(even == 1 and truncated == 0)
-    assert(negative == -125 and small == 25)
-    assert(floating >= 25.0 - 0.00001 and floating <= 25.0 + 0.00001)
+    assert(minimum_power == minimum)
+    assert(wrapped == 0)
+    assert(even == 1)
+    assert(truncated == 0)
+    assert(negative == -125)
+    assert(small == 25)
+    assert(floating >= 25.0 - 0.00001)
+    assert(floating <= 25.0 + 0.00001)
 }

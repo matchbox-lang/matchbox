@@ -19,5 +19,6 @@ test "while nested" {
         outer += 1
     }
 
-    assert(outer == 2 and iterations == 4)
+    assert(outer == 2)
+    assert(iterations == 4)
 }

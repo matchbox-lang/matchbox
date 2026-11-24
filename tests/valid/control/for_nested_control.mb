@@ -17,5 +17,6 @@ test "for nested control" {
         outer_total += outer
     }
 
-    assert(total == 24 and outer_total == 6)
+    assert(total == 24)
+    assert(outer_total == 6)
 }

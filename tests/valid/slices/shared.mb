@@ -18,7 +18,8 @@ test "shared slices" {
     let formatted = string(view)
 
     assert(length == 3)
-    assert(view[1] == 2 and view_sum == 6)
+    assert(view[1] == 2)
+    assert(view_sum == 6)
     assert(values_sum == 6)
     assert(formatted == "[1, 2, 3]")
 }

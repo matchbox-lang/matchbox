@@ -6,7 +6,8 @@ test "for values" {
         total += value
     }
 
-    assert(total == 9 and values[0] == -2)
+    assert(total == 9)
+    assert(values[0] == -2)
 
     for value in [10, 20] {
         total += value
@@ -14,5 +15,6 @@ test "for values" {
 
     values[0] = 5
 
-    assert(total == 39 and values[0] == 5)
+    assert(total == 39)
+    assert(values[0] == 5)
 }

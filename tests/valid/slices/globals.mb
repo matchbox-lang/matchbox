@@ -13,5 +13,7 @@ test "global slice and returned views" {
     let view = global_middle()
     let view_length = len(view)
 
-    assert(view_length == 2 and view[0] == 2 and view[1] == 3)
+    assert(view_length == 2)
+    assert(view[0] == 2)
+    assert(view[1] == 3)
 }

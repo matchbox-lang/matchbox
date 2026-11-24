@@ -8,7 +8,8 @@ test "fill values" {
 
     assert(wide[1] == -6000000000)
     assert(unsigned[1] == 18446744073709551615)
-    assert(floats[1] == -1.5 and flags[1])
+    assert(floats[1] == -1.5)
+    assert(flags[1])
     assert(chars[1] == 'x')
     assert(text == ["hello", "hello"])
 }

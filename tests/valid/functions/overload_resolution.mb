@@ -35,8 +35,11 @@ test "exact matches precede conversions regardless of declaration order" {
     let widened = widen(small)
     let contextual = widen(9223372036854775807)
 
-    assert(integer == 32 and floating == 16 and selected == 64)
-    assert(widened == 4 and contextual == 9223372036854775807)
+    assert(integer == 32)
+    assert(floating == 16)
+    assert(selected == 64)
+    assert(widened == 4)
+    assert(contextual == 9223372036854775807)
 }
 
 test "builtin overloads prefer exact types and support different counts" {
@@ -45,7 +48,8 @@ test "builtin overloads prefer exact types and support different counts" {
     let small: i8 = -2
     let promoted = sign(small)
 
-    assert(absolute == 2.5 and promoted == -1, "builtin overloads")
+    assert(absolute == 2.5, "builtin overloads")
+    assert(promoted == -1, "builtin overloads")
 }
 
 test "exact arguments take priority over cheaper conversions" {

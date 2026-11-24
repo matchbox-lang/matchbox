@@ -19,7 +19,9 @@ test "array arithmetic result independence" {
     let a = [1, 2, 3]
     let b = [1, 2, 3]
     let sum = a + b
+    
     sum[0] = 9
 
-    assert(a[0] == 1 and b[0] == 1)
+    assert(a[0] == 1)
+    assert(b[0] == 1)
 }

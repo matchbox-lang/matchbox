@@ -22,7 +22,8 @@ func local() {
 
 test "compound evaluation" {
     update()
-    assert(calls == 1 and values == [4, 6])
+    assert(calls == 1)
+    assert(values == [4, 6])
 
     local()
     assert(calls == 2)

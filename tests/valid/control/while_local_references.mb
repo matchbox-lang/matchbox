@@ -12,5 +12,6 @@ test "while local references" {
         count += 1
     }
 
-    assert(count == 5 and iterations == 5)
+    assert(count == 5)
+    assert(iterations == 5)
 }

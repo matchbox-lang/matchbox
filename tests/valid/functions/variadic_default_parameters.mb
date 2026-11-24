@@ -13,5 +13,7 @@ test "default parameter before variadic arguments" {
     let fixed = offset(5)
     let many = offset(5, 1, 2)
 
-    assert(default_value == 10 and fixed == 5 and many == 8)
+    assert(default_value == 10)
+    assert(fixed == 5)
+    assert(many == 8)
 }

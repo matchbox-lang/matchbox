@@ -18,5 +18,7 @@ test "compile time index subarrays" {
     let selected = copy(matrix[row])
     let value = read(matrix[row])
 
-    assert(matrix[row][column] == 50 and selected[column] == 50 and value == 50)
+    assert(matrix[row][column] == 50)
+    assert(selected[column] == 50)
+    assert(value == 50)
 }

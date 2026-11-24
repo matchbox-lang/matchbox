@@ -18,10 +18,18 @@ test "sign of finite numbers" {
     let zero_wide_float: f64 = sign(wide_float_zero)
     let positive_wide_float: f64 = sign(wide_positive)
 
-    assert(negative_int == -1 and zero_int == 0 and positive_int == 1)
-    assert(negative_wide_int == -1 and zero_wide_int == 0 and positive_wide_int == 1)
-    assert(negative_float == -1.0 and zero_float == 0.0 and positive_float == 1.0)
-    assert(negative_wide_float == -1.0 and zero_wide_float == 0.0 and positive_wide_float == 1.0)
+    assert(negative_int == -1)
+    assert(zero_int == 0)
+    assert(positive_int == 1)
+    assert(negative_wide_int == -1)
+    assert(zero_wide_int == 0)
+    assert(positive_wide_int == 1)
+    assert(negative_float == -1.0)
+    assert(zero_float == 0.0)
+    assert(positive_float == 1.0)
+    assert(negative_wide_float == -1.0)
+    assert(zero_wide_float == 0.0)
+    assert(positive_wide_float == 1.0)
 }
 
 test "sign of special floating point values" {
@@ -37,9 +45,13 @@ test "sign of special floating point values" {
     let negative_wide_zero = sign(wide_negative_zero)
     let widened: i32 = sign(narrow_negative)
 
-    assert(nan_float != nan_float and nan_wide_float != nan_wide_float)
-    assert(negative_infinity == -1.0 and positive_infinity == 1.0)
-    assert(negative_wide_infinity == -1.0 and positive_wide_infinity == 1.0)
-    assert(negative_zero == 0.0 and negative_wide_zero == 0.0)
+    assert(nan_float != nan_float)
+    assert(nan_wide_float != nan_wide_float)
+    assert(negative_infinity == -1.0)
+    assert(positive_infinity == 1.0)
+    assert(negative_wide_infinity == -1.0)
+    assert(positive_wide_infinity == 1.0)
+    assert(negative_zero == 0.0)
+    assert(negative_wide_zero == 0.0)
     assert(widened == -1)
 }

@@ -20,6 +20,8 @@ test "exclusive string slices retain immutable contents" {
     let length = len(selected)
     let byte = selected[0]
 
-    assert(selected == "ll" and length == 2 and byte == 108)
+    assert(selected == "ll")
+    assert(length == 2)
+    assert(byte == 108)
     print(selected)
 }

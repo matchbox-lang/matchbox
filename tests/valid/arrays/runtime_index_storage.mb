@@ -6,8 +6,10 @@ test "runtime index storage" {
     let strings = ["first", "last"]
     let flags = [false, true]
 
-    assert(bytes[index] == 127 and wide[index] == 6000000000)
-    assert(floats[index] == 2.5 and flags[index])
+    assert(bytes[index] == 127)
+    assert(wide[index] == 6000000000)
+    assert(floats[index] == 2.5)
+    assert(flags[index])
     assert(strings[index] == "last")
 
     bytes[index] = -1
@@ -16,12 +18,15 @@ test "runtime index storage" {
     strings[index] = "changed"
     flags[index] = false
 
-    assert(bytes[index] == -1 and wide[index] == 7000000000)
-    assert(floats[index] == 3.5 and not flags[index])
+    assert(bytes[index] == -1)
+    assert(wide[index] == 7000000000)
+    assert(floats[index] == 3.5)
+    assert(not flags[index])
     assert(strings[index] == "changed")
 
     let rows: i32[2][0] = [[], []]
     let length = len(rows[index])
 
-    assert(length == 0 and index == 1)
+    assert(length == 0)
+    assert(index == 1)
 }

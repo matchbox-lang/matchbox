@@ -1,7 +1,6 @@
 const BASE = 4
 
 func computed(n = BASE * 2 + 1) = n
-
 func text(value: string = "de" + "fault") = value
 
 func countdown(n = 3) -> i32 {
@@ -21,7 +20,6 @@ func outer() {
 }
 
 func constant_value() = 7
-
 func from_function(n = constant_value()) = n
 
 test "computed default arguments" {

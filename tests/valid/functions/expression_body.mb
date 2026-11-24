@@ -1,5 +1,4 @@
 func neg(n) = -n
-
 func typed_neg(n: i32) -> i32 = -n
 
 func block_neg(n: i32) -> i32 {

@@ -231,6 +231,7 @@ typedef struct ASTNode
             bool moved;
             int position;
             ASTNode* default_value;
+            bool variadic;
         } parameter;
 
         struct {
@@ -311,6 +312,9 @@ ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Ty
 ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed);
 ASTNode* create_variable_node(Token token);
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
+
+// Queries
+Type get_parameter_argument_type(ASTNode* parameter);
 
 // Lifetime
 void free_ast_node(ASTNode* ast);

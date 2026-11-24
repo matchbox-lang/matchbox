@@ -1,0 +1,20 @@
+func sum(...numbers: i32) -> i32 {
+    var total = 0
+
+    for n in numbers {
+        total += n
+    }
+
+    return total
+}
+
+test "zero, one, many and variable variadic arguments" {
+    let empty = sum()
+    let one = sum(10)
+    let many = sum(1, 2, 3)
+    let first = sum(1, 2)
+    let last = sum(3, 4)
+    let combined = sum(first, empty, last)
+
+    assert(empty == 0 and one == 10 and many == 6 and combined == 10)
+}

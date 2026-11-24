@@ -1,0 +1,3 @@
+func take(first: i32, ...values: i32) {}
+
+take()

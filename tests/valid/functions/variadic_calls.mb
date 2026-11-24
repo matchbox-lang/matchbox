@@ -1,0 +1,29 @@
+func recursive(depth: i32, ...values: i32) -> i32 {
+    if depth == 0 {
+        return values[0]
+    }
+
+    let inner = recursive(depth - 1, values[0] + 1)
+
+    return inner + values[0]
+}
+
+func select_text(text: &string, ...values: i32) -> &string {
+    assert(values[0] == 1 and values[1] == 2)
+
+    return text
+}
+
+func add(base: &i32, ...values: i32) -> i32 {
+    return base + values[0]
+}
+
+test "recursive calls, fixed references and slice returns" {
+    const CONSTANT_TOTAL = recursive(2, 1)
+    
+    let total = recursive(3, 1)
+    let selected = select_text("hello", 1, 2)
+    let added = add(1 + 2, 4)
+    
+    assert(total == 10 and selected == "hello" and added == 7 and CONSTANT_TOTAL == 6)
+}

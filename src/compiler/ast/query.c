@@ -1,6 +1,9 @@
 #include "compiler/ast/query.h"
 #include "builtin/builtin.h"
+#include "common/array_type.h"
+#include "common/vector.h"
 #include "compiler/ast/predicate.h"
+#include "compiler/ast/reference.h"
 
 static Type get_builtin_return_type(const ASTNode* ast)
 {
@@ -11,6 +14,19 @@ static Type get_builtin_return_type(const ASTNode* ast)
     }
 
     return (Type){.kind = kind};
+}
+
+ASTNode* get_call_parameter(Vector* parameters, size_t position)
+{
+    ASTNode* parameter = get_vector_at(parameters, position);
+
+    if (parameter || !parameters->count) {
+        return parameter;
+    }
+
+    parameter = parameters->data[parameters->count - 1];
+
+    return parameter->parameter.variadic ? parameter : NULL;
 }
 
 ASTNode* get_index_constant_expression(ASTNode* ast)
@@ -89,6 +105,17 @@ Type get_node_data_type(const ASTNode* ast)
         default:
             return (Type){.kind = TypeVoid};
     }
+}
+
+ReferenceType get_parameter_argument_reference(ASTNode* parameter)
+{
+    if (!parameter || !parameter->parameter.variadic) {
+        return get_reference_type(parameter);
+    }
+
+    Type type = get_parameter_argument_type(parameter);
+
+    return is_contiguous_type(type.kind) ? RefShared : RefNone;
 }
 
 ASTNode* get_root_binding(const ASTNode* ast)

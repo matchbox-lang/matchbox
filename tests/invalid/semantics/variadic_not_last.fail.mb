@@ -1,0 +1,1 @@
+func invalid(...values: i32, last: i32) {}

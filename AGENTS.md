@@ -22,6 +22,8 @@ These rules apply to implementation code, tests, and verification scripts.
 - Place return statements on a new line unless the return is the only statement
 - Separate assignment groups from standalone function calls with a blank line, both before and after the calls
 - Prefer shorter functions. Extract helpers as needed to keep functions short, readable, and maintainable
+- Place helpers in the module that owns their data or responsibility, with declarations in the matching header when shared. Inspect existing helpers and module boundaries before choosing a file; reuse or extend them whenever possible
+- Keep reusable AST logic in the appropriate `src/compiler/ast` files, including parameter type helpers in `ast.c` and `ast.h`. Keep general type operations in `src/common/type.c` and `type.h`, and specialized array or slice operations in their existing modules. Do not place reusable AST or type helpers in the parser, analyzer, or generator solely because that is their first caller
 - Don't use ternary expressions unless the logic is compact and fits on a single line
 - Start comments with capital letters and not end with a period
 - Add forward declarations only when required for a use before a function or type definition. Do not declare functions already defined before their first use or types already available through included headers. Remove declarations made redundant by changes to definition order or includes

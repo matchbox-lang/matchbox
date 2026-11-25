@@ -2,9 +2,26 @@
 #include "common/array_type.h"
 #include "common/memory.h"
 #include "common/vector.h"
+#include "compiler/ast/function.h"
 #include "compiler/ast/generic.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
+
+void clear_function_array_effects(ASTNode* function)
+{
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        return;
+    }
+
+    free_vector(&effects->moves);
+    free_vector(&effects->initializations);
+    free_vector(&effects->possible_initializations);
+    free_vector(&effects->uninitialized_returns);
+    free_memory(effects);
+
+    function->function_definition.array_effects = NULL;
+}
 
 static void free_ast_node_vector(Vector* nodes)
 {
@@ -113,6 +130,19 @@ void finish_function_generics(ASTNode* function)
     function->function_definition.generics = NULL;
 }
 
+FunctionArrayEffects* create_function_array_effects(ASTNode* function)
+{
+    FunctionArrayEffects* effects = allocate_zeroed_memory(1, sizeof(FunctionArrayEffects));
+    function->function_definition.array_effects = effects;
+
+    init_vector(&effects->moves);
+    init_vector(&effects->initializations);
+    init_vector(&effects->possible_initializations);
+    init_vector(&effects->uninitialized_returns);
+
+    return effects;
+}
+
 ASTNode* create_array_node(Token token, Type type, bool flat)
 {
     ASTNode* ast = create_ast_node(ASTArray);
@@ -164,10 +194,6 @@ ASTNode* create_ast_node(ASTNodeType type)
             break;
         case ASTFunctionDefinition:
             init_vector(&ast->function_definition.params);
-            init_vector(&ast->function_definition.array_moves);
-            init_vector(&ast->function_definition.array_initializations);
-            init_vector(&ast->function_definition.array_possible_initializations);
-            init_vector(&ast->function_definition.array_uninitialized_returns);
             break;
         case ASTMatch:
             init_vector(&ast->match.arms);
@@ -596,10 +622,7 @@ void free_ast_node(ASTNode* ast)
             free_type_dimensions(ast->function_definition.return_type_id);
             free_string_object(ast->function_definition.id);
             free_ast_node_vector(&ast->function_definition.params);
-            free_vector(&ast->function_definition.array_moves);
-            free_vector(&ast->function_definition.array_initializations);
-            free_vector(&ast->function_definition.array_possible_initializations);
-            free_vector(&ast->function_definition.array_uninitialized_returns);
+            clear_function_array_effects(ast);
             free_ast_node(ast->function_definition.body);
             break;
         case ASTTestBlock:

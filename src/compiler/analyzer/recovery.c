@@ -75,11 +75,8 @@ static void clear_generic_analysis(ASTNode* ast, Vector* functions)
 static void clear_function_analysis(ASTNode* ast, Vector* functions)
 {
     discard_incomplete_specializations(ast);
+    clear_function_array_effects(ast);
 
-    ast->function_definition.array_moves.count = 0;
-    ast->function_definition.array_initializations.count = 0;
-    ast->function_definition.array_possible_initializations.count = 0;
-    ast->function_definition.array_uninitialized_returns.count = 0;
     ast->function_definition.scope = NULL;
     ast->function_definition.next_overload = NULL;
     ast->function_definition.return_reference_origin = NULL;

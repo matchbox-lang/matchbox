@@ -9,6 +9,7 @@
 #include "compiler/analyzer/lifetime.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/ast/binding.h"
+#include "compiler/ast/function.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
@@ -286,19 +287,49 @@ static void record_function_array_initialization(ASTNode* function, OwnershipSta
     ASTNode* symbol = state->symbol;
     bool initialized = is_initialized(symbol);
     bool possible = symbol->variable_definition.possibly_initialized;
-    bool uninitialized_return = contains_binding(
-        &function->function_definition.array_uninitialized_returns, symbol);
+    bool uninitialized_return = false;
 
-    if (!state->initialized && initialized && !uninitialized_return) {
-        push_vector_item(&function->function_definition.array_initializations, symbol);
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (effects) {
+        uninitialized_return = contains_binding(&effects->uninitialized_returns, symbol);
     }
 
-    if (!state->possibly_initialized && possible) {
-        push_vector_item(&function->function_definition.array_possible_initializations, symbol);
-    }
-
+    bool initializes = !state->initialized && initialized && !uninitialized_return;
+    bool possibly_initializes = !state->possibly_initialized && possible;
     symbol->variable_definition.initialized = state->initialized;
     symbol->variable_definition.possibly_initialized = state->possibly_initialized;
+
+    if (!initializes && !possibly_initializes) {
+        return;
+    }
+
+    if (!effects) {
+        effects = create_function_array_effects(function);
+    }
+
+    if (initializes) {
+        push_vector_item(&effects->initializations, symbol);
+    }
+
+    if (possibly_initializes) {
+        push_vector_item(&effects->possible_initializations, symbol);
+    }
+}
+
+static void record_array_move_effect(ASTNode* function, OwnershipState* state)
+{
+    bool moved = is_moved(state->symbol);
+
+    if (!moved || state->moved) {
+        return;
+    }
+
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        effects = create_function_array_effects(function);
+    }
+
+    push_vector_item(&effects->moves, state->symbol);
 }
 
 static void record_function_array_move(ASTNode* function, OwnershipState* state)
@@ -311,12 +342,7 @@ static void record_function_array_move(ASTNode* function, OwnershipState* state)
         return;
     }
 
-    bool moved = is_moved(symbol);
-
-    if (moved && !state->moved) {
-        push_vector_item(&function->function_definition.array_moves, symbol);
-    }
-
+    record_array_move_effect(function, state);
     set_moved_state(symbol, state->moved);
     record_function_array_initialization(function, state);
 }
@@ -340,7 +366,12 @@ static void record_uninitialized_array_return(ASTNode* function, OwnershipState*
         return;
     }
 
-    push_vector_item(&function->function_definition.array_uninitialized_returns, symbol);
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        effects = create_function_array_effects(function);
+    }
+
+    push_vector_item(&effects->uninitialized_returns, symbol);
 }
 
 void record_array_return_initializations(Analyzer* analyzer)

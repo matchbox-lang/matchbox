@@ -10,6 +10,7 @@
 
 typedef struct ASTNode ASTNode;
 typedef struct Builtin Builtin;
+typedef struct FunctionArrayEffects FunctionArrayEffects;
 typedef struct GenericFunction GenericFunction;
 typedef struct Scope Scope;
 typedef struct StringObject StringObject;
@@ -192,11 +193,8 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             Vector params;
+            FunctionArrayEffects* array_effects;
             GenericFunction* generics;
-            Vector array_moves;
-            Vector array_initializations;
-            Vector array_possible_initializations;
-            Vector array_uninitialized_returns;
             bool has_explicit_return_type;
             bool signature_resolved;
             Type return_type_id;
@@ -299,6 +297,7 @@ typedef struct ASTNode
 // Construction
 void initialize_function_generics(ASTNode* function, GenericBindings* parent, Vector* types, Token source);
 void finish_function_generics(ASTNode* function);
+FunctionArrayEffects* create_function_array_effects(ASTNode* function);
 ASTNode* create_array_node(Token token, Type type, bool flat);
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
 ASTNode* create_ast_node(ASTNodeType type);
@@ -337,6 +336,7 @@ Type add_implicit_generic_parameter(ASTNode* function, Token token);
 Type get_parameter_argument_type(ASTNode* parameter);
 
 // Lifetime
+void clear_function_array_effects(ASTNode* function);
 void free_ast_node(ASTNode* ast);
 void replace_ast_node(ASTNode* ast, ASTNode* replacement);
 

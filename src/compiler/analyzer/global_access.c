@@ -7,6 +7,7 @@
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/binding.h"
+#include "compiler/ast/function.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
@@ -63,7 +64,12 @@ static void validate_global_access_in_nodes(Analyzer* analyzer, Vector* nodes)
 
 static void validate_function_array_moves(Analyzer* analyzer, ASTNode* function)
 {
-    Vector* moves = &function->function_definition.array_moves;
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        return;
+    }
+
+    Vector* moves = &effects->moves;
 
     for (size_t i = 0; i < moves->count; i++) {
         validate_global_binding_access(analyzer, moves->data[i], RefExclusive, function->function_definition.token);
@@ -72,7 +78,12 @@ static void validate_function_array_moves(Analyzer* analyzer, ASTNode* function)
 
 static void apply_function_array_moves(ASTNode* function)
 {
-    Vector* moves = &function->function_definition.array_moves;
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        return;
+    }
+
+    Vector* moves = &effects->moves;
 
     for (size_t i = 0; i < moves->count; i++) {
         set_moved_state(moves->data[i], true);
@@ -101,7 +112,12 @@ static void validate_function_array_initialization(ASTNode* function, ASTNode* s
 
 static void validate_function_array_initializations(ASTNode* function, bool recursive)
 {
-    Vector* bindings = &function->function_definition.array_possible_initializations;
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        return;
+    }
+
+    Vector* bindings = &effects->possible_initializations;
 
     for (size_t i = 0; i < bindings->count; i++) {
         validate_function_array_initialization(function, bindings->data[i], recursive);
@@ -110,7 +126,12 @@ static void validate_function_array_initializations(ASTNode* function, bool recu
 
 static void apply_function_possible_initializations(ASTNode* function)
 {
-    Vector* bindings = &function->function_definition.array_possible_initializations;
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        return;
+    }
+
+    Vector* bindings = &effects->possible_initializations;
 
     for (size_t i = 0; i < bindings->count; i++) {
         ASTNode* symbol = bindings->data[i];
@@ -120,7 +141,12 @@ static void apply_function_possible_initializations(ASTNode* function)
 
 static void apply_function_array_initializations(ASTNode* function)
 {
-    Vector* bindings = &function->function_definition.array_initializations;
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    if (!effects) {
+        return;
+    }
+
+    Vector* bindings = &effects->initializations;
 
     apply_function_possible_initializations(function);
 

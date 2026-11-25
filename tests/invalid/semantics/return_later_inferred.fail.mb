@@ -1,0 +1,8 @@
+func value(flag: bool) {
+    match flag {
+        case true:
+            return 1
+        case false:
+            return "wrong"
+    }
+}

@@ -1,0 +1,19 @@
+func value(flag: bool) {
+    if flag {
+        let small: i8 = 7
+
+        return small
+    }
+
+    let large: i64 = 2147483648
+
+    return large
+}
+
+test "inferred return widening" {
+    let small: i64 = value(true)
+    let large: i64 = value(false)
+
+    assert(small == 7)
+    assert(large == 2147483648)
+}

@@ -400,25 +400,68 @@ static void set_parameter_positions(ASTNode* ast)
     }
 }
 
-static void resolve_function_return_value_type(ASTNode* ast)
+static void merge_function_return_value_type(ASTNode* function, Type type)
 {
-    if (is_function_specialization(ast) && !ast->function_definition.has_explicit_return_type
-        && ast->function_definition.return_type_id.kind != TypeUnknown) {
+    Type previous = function->function_definition.return_type_id;
+
+    if (function->function_definition.has_explicit_return_type) {
+        validate_function_return_value_type(function, type);
+
         return;
     }
 
+    if (previous.kind == TypeUnknown) {
+        function->function_definition.return_type_id = type;
+
+        return;
+    }
+
+    TypeKind common = get_common_numeric_type(previous.kind, type.kind);
+
+    if (common != TypeUnknown) {
+        function->function_definition.return_type_id = (Type){.kind = common};
+
+        return;
+    }
+
+    validate_function_return_value_type(function, type);
+}
+
+static bool merge_function_return(ASTNode* ast, void* context)
+{
+    ASTNode* function = context;
+    Type type = get_node_data_type(ast->return_statement.expr);
+
+    merge_function_return_value_type(function, type);
+
+    return true;
+}
+
+static void prepare_function_return_value_type(ASTNode* ast)
+{
     Type type = get_function_return_value_type(ast->function_definition.body);
 
     if (ast->function_definition.has_explicit_return_type) {
         validate_function_return_value_type(ast, type);
+
         return;
     }
 
-    if (type.kind == TypeUnknown) {
-        semantic_token_error("Cannot infer recursive return type for function ", ast->function_definition.token);
+    if (is_function_specialization(ast) && ast->function_definition.return_type_id.kind != TypeUnknown) {
+        return;
     }
 
     ast->function_definition.return_type_id = type;
+}
+
+static void resolve_function_return_value_type(ASTNode* ast)
+{
+    prepare_function_return_value_type(ast);
+    visit_node_returns(ast->function_definition.body, merge_function_return, ast);
+
+    if (ast->function_definition.return_type_id.kind == TypeUnknown) {
+        semantic_token_error("Cannot infer recursive return type for function ", ast->function_definition.token);
+    }
 }
 
 static void validate_parameter_order(ASTNode* parameter, bool* has_default)
@@ -780,29 +823,8 @@ static void resolve_specialized_return_type(ASTNode* function, ASTNode* expressi
     }
 
     Type type = get_node_data_type(expression);
-    Type previous = function->function_definition.return_type_id;
 
-    if (function->function_definition.has_explicit_return_type) {
-        validate_function_return_value_type(function, type);
-
-        return;
-    }
-
-    if (previous.kind == TypeUnknown) {
-        function->function_definition.return_type_id = type;
-
-        return;
-    }
-
-    TypeKind common = get_common_numeric_type(previous.kind, type.kind);
-
-    if (common != TypeUnknown) {
-        function->function_definition.return_type_id = (Type){.kind = common};
-
-        return;
-    }
-
-    validate_function_return_value_type(function, type);
+    merge_function_return_value_type(function, type);
 }
 
 void analyze_return(Analyzer* analyzer, ASTNode* ast)

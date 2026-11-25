@@ -17,7 +17,7 @@ test "fixed integer binding widths" {
     assert(wide_copy == 4294967296)
 }
 
-test "fixed floating point bindings" {
+test "fixed float bindings" {
     let floating: f32 = 10
     let floating_copy = floating
 
@@ -35,7 +35,7 @@ test "fixed integer arithmetic results" {
     assert((negative / 2) == -5)
 }
 
-test "fixed string and character bindings" {
+test "fixed string and char bindings" {
     let name = "Alice"
     let name_copy = name
     let punctuation = '!'

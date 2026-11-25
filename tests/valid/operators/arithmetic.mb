@@ -12,7 +12,7 @@ test "integer binary arithmetic" {
     -a
 }
 
-test "integer arithmetic width preservation" {
+test "integer arithmetic widths" {
     let signed8: i8 = 4
     let signed16: i16 = 4
     let signed32: i32 = 4

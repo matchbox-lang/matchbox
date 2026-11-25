@@ -1,4 +1,4 @@
-test "unary array operations preserve inputs" {
+test "unary array input preservation" {
     let values: i8[3] = [-128, 0, 127]
     let negative = -values
     let complemented = ~values

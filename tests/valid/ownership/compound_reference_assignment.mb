@@ -45,7 +45,7 @@ func rebind() {
     }
 }
 
-test "compound assignment through reference parameters" {
+test "compound reference parameters" {
     var wide: i64 = 4294967296
     var floating: f64 = 1.5
 
@@ -65,10 +65,10 @@ test "compound assignment through reference parameters" {
     }
 }
 
-test "compound assignment through local references" {
+test "compound local references" {
     local_reference()
 }
 
-test "compound assignment after reference rebinding" {
+test "compound rebound references" {
     rebind()
 }

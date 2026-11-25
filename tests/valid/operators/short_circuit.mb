@@ -10,7 +10,7 @@ func protected(value: bool) -> bool {
     return value or (1 / 0 == 0)
 }
 
-test "logical expression side effect order" {
+test "logical side effect order" {
     let skipped_and = probe(false) and probe(true)
     let skipped_or = probe(true) or probe(false)
     let required_and = probe(true) and probe(false)
@@ -38,7 +38,7 @@ test "logical expression side effect order" {
     }
 }
 
-test "short circuiting in function returns" {
+test "short circuit returns" {
     let safe = protected(true)
 
     if not safe {
@@ -46,7 +46,7 @@ test "short circuiting in function returns" {
     }
 }
 
-test "short circuiting invalid arithmetic" {
+test "short circuit invalid arithmetic" {
     let false_condition = 1 == 2
     let true_condition = not false_condition
     let skipped_division = false_condition and (1 / (2 - 2) == 0)

@@ -1,4 +1,4 @@
-test "declared string slices and full references" {
+test "typed string slices and references" {
     let text = "hello"
     let whole: &string = text
     let part: &string = text[1..4]

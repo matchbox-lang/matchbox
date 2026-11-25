@@ -1,4 +1,4 @@
-test "array equality and shape comparisons" {
+test "array equality and shapes" {
     let a = [1, 2, 3]
     let b = [1, 2, 3]
     let c = [[1, 2, 3]]
@@ -15,7 +15,7 @@ test "array equality and shape comparisons" {
     assert(not (a !== b))
 }
 
-test "array arithmetic result independence" {
+test "independent array results" {
     let a = [1, 2, 3]
     let b = [1, 2, 3]
     let sum = a + b

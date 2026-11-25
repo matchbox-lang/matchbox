@@ -31,7 +31,7 @@ test "integer width widening" {
     widen_return(signed8)
 }
 
-test "integer to floating point widening" {
+test "integer to float widening" {
     let signed8: i8 = -25
     let signed16: i16 = signed8
     let signed32: i32 = signed16
@@ -49,7 +49,7 @@ test "integer to floating point widening" {
     assert(unsigned_float64 == 25.0)
 }
 
-test "integer literal floating point contexts" {
+test "integer literals in float contexts" {
     let literal_float32: f32 = 4
     let literal_float64: f64 = 16777217
     var assigned_float: f32
@@ -60,7 +60,7 @@ test "integer literal floating point contexts" {
     assert(assigned_float == 4.0)
 }
 
-test "integer widening through floating point parameters" {
+test "integer widening in float calls" {
     let signed8: i8 = -25
     let signed16: i16 = signed8
     let signed32: i32 = signed16

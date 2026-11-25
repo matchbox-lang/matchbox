@@ -19,7 +19,7 @@ func add(base: &i32, ...values: i32) -> i32 {
     return base + values[0]
 }
 
-test "recursive calls, fixed references and slice returns" {
+test "variadic recursion, references and returns" {
     const CONSTANT_TOTAL = recursive(2, 1)
     
     let total = recursive(3, 1)

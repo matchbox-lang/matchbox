@@ -1,4 +1,4 @@
-test "comparison integer literal widening" {
+test "comparison literal widening" {
     assert((10 <=> 10245556888996) == -1)
     assert((10245556888996 <=> 10) == 1)
     assert((-10 <=> 10245556888996) == -1)

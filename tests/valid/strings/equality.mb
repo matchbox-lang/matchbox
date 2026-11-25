@@ -36,7 +36,7 @@ test "embedded NUL equality" {
     check("a\0", "a", false)
 }
 
-test "Unicode equality compares encoded contents" {
+test "Unicode content equality" {
     check("é", "\u{E9}", true)
     check("😀", "\u{1F600}", true)
     check("é", "e\u{301}", false)

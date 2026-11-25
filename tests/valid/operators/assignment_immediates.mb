@@ -93,7 +93,7 @@ test "short integer compound assignment" {
     assert(value16 == 4)
 }
 
-test "integer arithmetic compound assignment" {
+test "integer compound arithmetic" {
     var value32: i32 = 2
     value32 = 2
     value32 += 3
@@ -121,7 +121,7 @@ test "integer arithmetic compound assignment" {
     assert(value32 == 2)
 }
 
-test "integer bitwise compound assignment" {
+test "integer compound bitwise ops" {
     var value32: i32 = 2
 
     value32 &= 3
@@ -149,7 +149,7 @@ test "integer bitwise compound assignment" {
     assert(value32 == 1)
 }
 
-test "negative integer assignment operands" {
+test "negative assignment operands" {
     var value32: i32 = 2
 
     value32 += -128
@@ -167,7 +167,7 @@ test "negative integer assignment operands" {
     assert(value32 == -256)
 }
 
-test "integer assignment operand boundaries" {
+test "assignment operand bounds" {
     var value32: i32 = 2
 
     value32 += 127

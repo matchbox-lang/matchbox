@@ -8,7 +8,7 @@ func offset(base: i32 = 10, ...numbers: i32) -> i32 {
     return total
 }
 
-test "default parameter before variadic arguments" {
+test "defaults before variadics" {
     let default_value = offset()
     let fixed = offset(5)
     let many = offset(5, 1, 2)

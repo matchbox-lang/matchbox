@@ -1,4 +1,4 @@
-test "multidimensional array declarations" {
+test "multidimensional arrays" {
     let rows = 2
     let cols = 3
     let matrix: i32[rows][cols] = [1, 2, 3, 4, 5, 6]

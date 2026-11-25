@@ -1,4 +1,4 @@
-test "string views use byte lengths and print as text" {
+test "string view byte lengths and printing" {
     let text = "hello"
     let view = text[1..4]
     let nested = view[1..3]

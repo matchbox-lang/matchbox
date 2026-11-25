@@ -8,7 +8,7 @@ func sum(...numbers: i32) -> i32 {
     return total
 }
 
-test "zero, one, many and variable variadic arguments" {
+test "variadic argument counts" {
     let empty = sum()
     let one = sum(10)
     let many = sum(1, 2, 3)

@@ -32,7 +32,7 @@ test "sign of finite numbers" {
     assert(positive_wide_float == 1.0)
 }
 
-test "sign of special floating point values" {
+test "special float signs" {
     let wide_negative_zero: f64 = -0.0
     let narrow_negative: i8 = -1
     let nan_float = sign(f32.NAN)

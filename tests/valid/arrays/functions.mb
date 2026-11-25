@@ -39,7 +39,7 @@ test "inferred nested array returns" {
     assert(matrix[1][1] == 4)
 }
 
-test "array copies returned from functions" {
+test "returned array copies" {
     let numbers = [7, 2]
     let duplicate_numbers = duplicate(&numbers)
 

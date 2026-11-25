@@ -1,4 +1,4 @@
-test "exclusive reassignment releases origin" {
+test "exclusive rebind releases origin" {
     var first = 10
     var second = 20
     var exclusive = ^first

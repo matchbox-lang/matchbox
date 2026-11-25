@@ -1,4 +1,4 @@
-test "continued variable and constant annotations" {
+test "multiline binding annotations" {
     let value:
 
         i32

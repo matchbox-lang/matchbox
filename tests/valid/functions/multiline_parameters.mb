@@ -27,13 +27,13 @@ test "parameter types on following lines" {
     assert(total == 7)
 }
 
-test "continued parameter types with defaults" {
+test "multiline default parameter types" {
     let result = add(3)
 
     assert(result == 5)
 }
 
-test "continued reference parameter types" {
+test "multiline reference parameters" {
     var value = 7
     let result = read(&value)
 

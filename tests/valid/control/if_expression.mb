@@ -4,7 +4,7 @@ func check(value: bool) {
     }
 }
 
-test "inline conditional expression precedence" {
+test "inline conditional precedence" {
     check(if (true) true else false)
     check(not (if (false) true else false))
     check((if (false) 1 else if (false) 2 else 3) == 3)
@@ -29,7 +29,7 @@ test "multiline conditional expressions" {
     check(mixed == 2)
 }
 
-test "conditional expressions inside match" {
+test "conditionals in match" {
     let from_match = match 2 {
         case 1: 0
         case _: if (true) -4 else 1 + 2
@@ -38,7 +38,7 @@ test "conditional expressions inside match" {
     check(from_match == -4)
 }
 
-test "match expressions inside conditionals" {
+test "match in conditionals" {
     let from_if = if (false)
         0
     else

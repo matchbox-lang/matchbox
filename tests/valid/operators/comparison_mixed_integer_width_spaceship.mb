@@ -1,4 +1,4 @@
-test "comparison mixed integer width spaceship" {
+test "mixed integer width spaceship" {
     let left: i16 = 20
     let right: i32 = 20
 

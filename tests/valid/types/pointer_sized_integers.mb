@@ -10,7 +10,7 @@ func read(value: &usize) -> usize {
     return value + 0
 }
 
-test "pointer sized bindings and references" {
+test "pointer sized bindings and refs" {
     let negative: isize = -123
     var unsigned: usize = 200
     let returned = preserve(negative, 42, unsigned)

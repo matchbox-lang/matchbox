@@ -8,7 +8,7 @@ func exclusive_tail(values: ^i32[]) -> ^i32[] {
     return values[1..3]
 }
 
-test "exclusive transfers and shared access" {
+test "exclusive moves and shared access" {
     var values = [1, 2, 3]
     let first: ^i32[] = values
     let second: ^i32[] = first

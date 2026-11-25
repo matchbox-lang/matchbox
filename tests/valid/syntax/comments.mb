@@ -25,7 +25,7 @@ test "multiline comments in functions" {
     assert(result == 42)
 }
 
-test "multiline comments in conditional blocks" {
+test "multiline conditional comments" {
     var value = 0
 
     if true {

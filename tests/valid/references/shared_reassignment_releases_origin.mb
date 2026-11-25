@@ -1,4 +1,4 @@
-test "shared reassignment releases origin" {
+test "shared rebind releases origin" {
     var first = 10
     var second = 20
     var shared = &first

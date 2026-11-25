@@ -38,7 +38,7 @@ test "nested function default arguments" {
     assert(nested_default == 6)
 }
 
-test "function calls in default arguments" {
+test "calls in default arguments" {
     let constant_default = from_function()
 
     assert(constant_default == 7)

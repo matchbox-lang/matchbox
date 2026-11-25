@@ -1,4 +1,4 @@
-test "mixed width float bounds and powers" {
+test "mixed float bounds and powers" {
     let narrow: f32 = 1.5
     let wide: f64 = 2.25
     let low: f64 = 1.0000000000000002

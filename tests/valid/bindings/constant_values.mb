@@ -15,7 +15,7 @@ test "integer constant values and copies" {
     assert(LARGE_INTEGER == 65535)
 }
 
-test "floating point constant values" {
+test "float constant values" {
     const FLOATING: f32 = 1.25
 
     assert(FLOATING == 1.25)
@@ -27,7 +27,7 @@ test "string constant values" {
     assert(TEXT == "123")
 }
 
-test "character and boolean constant values" {
+test "char and bool constants" {
     const CHARACTER = 'a'
     const TRUTH = true
 

@@ -12,7 +12,7 @@ func fail() -> i32 {
     return 0
 }
 
-test "runtime conditional branch evaluation" {
+test "runtime branch evaluation" {
     var condition = true
 
     let left = if condition {
@@ -36,7 +36,7 @@ test "runtime conditional branch evaluation" {
     }
 }
 
-test "constant conditional branch evaluation" {
+test "constant branch evaluation" {
     let constant = if true {
         42
     } else {
@@ -48,7 +48,7 @@ test "constant conditional branch evaluation" {
     }
 }
 
-test "nested conditional branch evaluation" {
+test "nested branch evaluation" {
     var condition = false
 
     let nested = if condition {

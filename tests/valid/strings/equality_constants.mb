@@ -16,7 +16,7 @@ test "constant string equality" {
     assert(EMPTY)
 }
 
-test "literal string comparison conditions" {
+test "literal string conditions" {
     let value = if "a" != "b" {
         42
     } else {

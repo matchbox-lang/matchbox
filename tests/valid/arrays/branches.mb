@@ -26,7 +26,7 @@ test "typed conditional array literals" {
     assert(values[1] == 2)
 }
 
-test "conditional moves from the same array" {
+test "same array conditional moves" {
     var condition = true
     let c = [5, 6]
 

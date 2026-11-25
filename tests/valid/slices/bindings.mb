@@ -1,4 +1,4 @@
-test "slice bindings and conditional views" {
+test "slice bindings and branches" {
     let first = [1, 2]
     let second = [3, 4, 5]
     var view: &i32[] = first

@@ -31,7 +31,7 @@ test "builtin integer range constants" {
     assert(char.MAX == '\u{10FFFF}')
 }
 
-test "range constants in bindings and arithmetic" {
+test "range constant bindings and math" {
     const LOW = i64.MIN
     const HIGH = u64.MAX
     let widened: i16 = i8.MAX
@@ -47,10 +47,10 @@ test "range constants in bindings and arithmetic" {
     assert(-i64.MAX == i64.MIN + 1)
 }
 
-test "range constants in default arguments" {
+test "range constant defaults" {
     assert(default_limit() == i16.MAX)
 }
 
-test "negated range constants in arguments" {
+test "negated range arguments" {
     assert(preserve_small(-i8.MAX) == -127)
 }

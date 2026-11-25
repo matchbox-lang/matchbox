@@ -1,4 +1,4 @@
-test "comparison context integer literals" {
+test "integer literal comparison context" {
     let value = 2
     let narrow: i16 = 20
     let wide: u64 = 100

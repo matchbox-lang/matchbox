@@ -46,7 +46,7 @@ func access(value: ^i32) {
     return 2
 }
 
-test "overloads preserve defaults, variadics, arrays and references" {
+test "overload defaults and parameter kinds" {
     let default_value = defaults()
     let many = variadic(1, 2, 3)
     let first = array([5, 6])

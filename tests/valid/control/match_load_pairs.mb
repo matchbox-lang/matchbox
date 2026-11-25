@@ -70,7 +70,7 @@ func check_globals() {
     assert(third == 90)
 }
 
-test "match narrow integer literal values" {
+test "match narrow integer literals" {
     let minimum = match true {
         case true:
             -128
@@ -97,7 +97,7 @@ test "match narrow integer literal values" {
     assert(maximum == 127)
 }
 
-test "match integer literals beyond narrow boundaries" {
+test "match wide integer literals" {
     let below_minimum = match true {
         case true:
             -129
@@ -116,7 +116,7 @@ test "match integer literals beyond narrow boundaries" {
     assert(above_maximum == 128)
 }
 
-test "match values after control flow joins" {
+test "match values after branches" {
     check_join(true, 10, 50)
     check_join(false, 20, 60)
 }

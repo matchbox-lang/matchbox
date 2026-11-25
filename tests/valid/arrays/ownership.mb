@@ -4,7 +4,7 @@ func take(values: i32[3]) -> i32[3] {
     return values
 }
 
-test "array moves through assignments and calls" {
+test "array assignment and call moves" {
     let a = [1, 2, 3]
     let b = a
     b[0] = 10

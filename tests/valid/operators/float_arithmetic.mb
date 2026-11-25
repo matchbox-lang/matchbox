@@ -6,7 +6,7 @@ func widen_return(value: f32) -> f64 {
     return value
 }
 
-test "mixed precision floating point arithmetic" {
+test "mixed precision float arithmetic" {
     let narrow: f32 = 2.5
     let wide: f64 = 3.0
     let sum: f64 = narrow + wide
@@ -26,7 +26,7 @@ test "mixed precision floating point arithmetic" {
     assert(literal_product == 10.0)
 }
 
-test "mixed integer and floating point arithmetic" {
+test "mixed integer and float arithmetic" {
     let narrow: f32 = 2.5
     let wide: f64 = 3.0
     let signed16: i16 = -4
@@ -44,7 +44,7 @@ test "mixed integer and floating point arithmetic" {
     assert(unsigned_product64 == 12.0)
 }
 
-test "floating point assignment widening" {
+test "float assignment widening" {
     let narrow: f32 = 2.5
     let wide: f64 = 3.0
     let widened: f64 = narrow
@@ -61,7 +61,7 @@ test "floating point assignment widening" {
     assert(scaled == 5.0)
 }
 
-test "floating point argument and return widening" {
+test "float call and return widening" {
     let narrow: f32 = 2.5
     let argument_result = accept64(narrow)
 
@@ -72,7 +72,7 @@ test "floating point argument and return widening" {
     assert(return_result == 2.5)
 }
 
-test "arithmetic with floating point math results" {
+test "float math result arithmetic" {
     let half_turn = rad(180.0) / 2.0
     let degrees = deg(1.0) + 1.0
     let complementary_angles = acos(0.5) + asin(0.5)

@@ -10,7 +10,7 @@ func literal64() -> f64 {
     return 56.78
 }
 
-test "typed floating point literals" {
+test "typed float literals" {
     let a: f32 = 12.34
     let b: f32 = 12.34e2
     let c: f64 = 12.34
@@ -22,7 +22,7 @@ test "typed floating point literals" {
     assert(d == 1234.0)
 }
 
-test "floating point arguments and returns" {
+test "float arguments and returns" {
     let a: f32 = 12.34
     let c: f64 = 12.34
     let returned32 = preserve32(a)
@@ -38,7 +38,7 @@ test "floating point arguments and returns" {
     assert(contextual64 == 90.12)
 }
 
-test "floating point literal syntax" {
+test "float literal syntax" {
     let large: f64 = 1.0e100
     let inferred_large = 1e100
     let leading_decimal = .2
@@ -52,7 +52,7 @@ test "floating point literal syntax" {
     assert(leading_zeros == 1.2)
 }
 
-test "floating point math functions" {
+test "float math functions" {
     let exponential = exp(1.0)
     let natural_logarithm = log(2.0)
     let decimal_logarithm = log10(100.0)
@@ -77,7 +77,7 @@ test "floating point math functions" {
     assert(tangent <= 0.5463025 + 0.00001)
 }
 
-test "whole floating point values" {
+test "whole float values" {
     let whole32: f32 = 25.0
     let whole64: f64 = 25.0
     let positive = 25.0
@@ -89,7 +89,7 @@ test "whole floating point values" {
     assert(negative == -25.0)
 }
 
-test "signed floating point zero" {
+test "signed float zero" {
     let positive = 0.0
     let negative = -0.0
     let positive_reciprocal = 1.0 / positive
@@ -100,7 +100,7 @@ test "signed floating point zero" {
     assert(negative_reciprocal == f32.NEG_INFINITY)
 }
 
-test "floating point epsilon and exponents" {
+test "float epsilon and exponents" {
     let small_exponent: f64 = 1e-9
     let large_exponent: f64 = 1e9
 
@@ -114,7 +114,7 @@ test "floating point epsilon and exponents" {
     assert(negative_epsilon == "-1.1920929e-7")
 }
 
-test "special floating point values" {
+test "special float values" {
     let interpolated_single = $"{f32.NAN} {f32.INFINITY} {f32.NEG_INFINITY} {-f32.NAN}"
 
     assert(interpolated_single == "NaN Infinity -Infinity NaN")

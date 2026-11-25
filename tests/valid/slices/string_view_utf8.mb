@@ -1,4 +1,4 @@
-test "string view UTF-8 boundaries and empty ranges" {
+test "UTF-8 view bounds and empty ranges" {
     let text = "a\u{e9}\u{1f642}z"
     let view = text[1..7]
     let nested = view[2..6]

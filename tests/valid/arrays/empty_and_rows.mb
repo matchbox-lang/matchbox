@@ -12,7 +12,7 @@ test "empty array initialization" {
     assert(defaults == expected_defaults)
 }
 
-test "array row initialization and replacement" {
+test "array row setup and replacement" {
     let first = [1, 2]
     let second = [3, 4]
     let matrix: i32[2][2] = [first, second]

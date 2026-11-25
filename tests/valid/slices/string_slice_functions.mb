@@ -13,7 +13,7 @@ func literal_text() -> &string {
     return "hello"
 }
 
-test "string slice parameters and returns" {
+test "string slice calls and returns" {
     let text = "hello"
     let view = middle(text)
     let selected = select_text(view, "unused", true)

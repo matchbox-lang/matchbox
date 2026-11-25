@@ -7,7 +7,7 @@ func slice_with_global_limit() -> string {
     return string(view)
 }
 
-test "string slices use current dynamic bounds" {
+test "dynamic string slice bounds" {
     let exclusive = ^string_slice_limit
     exclusive -= 1
     let result = slice_with_global_limit()

@@ -6,7 +6,7 @@ var mutable: i32[]
 let nested: i32[2][]
     = [[1, 2], [3, 4]]
 
-test "continued inferred array initializers" {
+test "multiline inferred initializers" {
     assert(fixed == [3, 7])
     assert(mutable == [5, 9])
     assert(nested[1][1] == 4)

@@ -6,7 +6,7 @@ func widen(value: u32) -> i64 {
     return value
 }
 
-test "implicit unsigned to signed contexts" {
+test "implicit unsigned to signed" {
     let source: u32 = 4294967295
     var assigned: i64 = 0
     assigned = source

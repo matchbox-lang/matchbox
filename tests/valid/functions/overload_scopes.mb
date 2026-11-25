@@ -19,7 +19,7 @@ func outer() {
     return local("hello")
 }
 
-test "overloaded recursion and nested declarations" {
+test "recursive and nested overloads" {
     let recursive_value = recursive(3.0)
     let nested = outer()
 
@@ -27,7 +27,7 @@ test "overloaded recursion and nested declarations" {
     assert(nested == "hello!")
 }
 
-test "inner scope overload sets shadow outer declarations" {
+test "inner overload shadowing" {
     func recursive(value: bool) {
         return value
     }

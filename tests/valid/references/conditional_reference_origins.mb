@@ -1,4 +1,4 @@
-test "conditional shared reference initialization" {
+test "conditional shared reference init" {
     var condition = true
     var left = 10
     var right = 20
@@ -27,7 +27,7 @@ test "conditional shared reference assignment" {
     assert(assigned_shared == 10)
 }
 
-test "conditional exclusive reference initialization" {
+test "conditional exclusive reference init" {
     var condition = true
     var left = 10
     var right = 20

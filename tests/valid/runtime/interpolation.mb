@@ -37,7 +37,7 @@ test "mixed precision interpolation" {
     assert(wide_reversed == 1.5)
 }
 
-test "inverse interpolation with equal endpoints" {
+test "equal endpoint inverse interpolation" {
     let start: f32 = 2.0
     let finish: f32 = 10.0
     let wide_start: f64 = 2.000000000000001

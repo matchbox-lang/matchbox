@@ -6,7 +6,7 @@ test "signed integer array negation" {
     assert((-wide) == [-5000000000, 6000000000])
 }
 
-test "unsigned integer array complementation" {
+test "unsigned array complement" {
     let bytes: u8[2] = [0, 255]
     let shorts: u16[2] = [0, 65535]
     let words: u32[2] = [0, 4294967295]
@@ -18,7 +18,7 @@ test "unsigned integer array complementation" {
     assert((~huge) == u64[2](18446744073709551615) - huge)
 }
 
-test "floating point array negation" {
+test "float array negation" {
     let singles: f32[2] = [1.5, -2.5]
     let doubles: f64[2] = [1.5, -2.5]
 

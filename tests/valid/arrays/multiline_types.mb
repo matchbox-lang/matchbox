@@ -1,4 +1,4 @@
-test "continued array dimension expressions" {
+test "multiline array dimensions" {
     let values: i32[
         1 +
         1

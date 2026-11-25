@@ -11,7 +11,7 @@ func texts(...values: &string) -> usize {
     return first_length + second_length
 }
 
-test "shared variadic arrays and string views" {
+test "shared variadic arrays and views" {
     var pair = [1, 2]
     let total = arrays(pair, pair)
     let length = texts("hello", "world")

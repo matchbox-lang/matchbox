@@ -42,7 +42,7 @@ test "nested expression body functions" {
     }
 }
 
-test "expression body semicolon boundaries" {
+test "expression body semicolons" {
     func constant() = 42; let value = constant()
 
     if value != 42 {

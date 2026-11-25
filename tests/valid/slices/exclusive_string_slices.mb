@@ -9,7 +9,7 @@ func read_text(text: ^string) {
     assert(text == "hello")
 }
 
-test "exclusive string slices retain immutable contents" {
+test "exclusive string slice immutability" {
     var text = "hello"
 
     read_text(text)

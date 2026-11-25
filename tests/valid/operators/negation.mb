@@ -34,7 +34,7 @@ test "integer negation" {
     assert(signed64 == -4)
 }
 
-test "floating point negation" {
+test "float negation" {
     let float32 = negate_float32(1.5)
     let float64 = negate_float64(1.5)
 

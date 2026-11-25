@@ -13,7 +13,7 @@ func check(value, expected: i32) {
     assert(selected == expected)
 }
 
-test "match dynamic alternative boundaries" {
+test "dynamic match boundaries" {
     check(-128, 10)
     check(0, 10)
     check(127, 10)

@@ -41,7 +41,7 @@ test "match expression alternatives" {
     assert(result == 300)
 }
 
-test "subjectless match expression values" {
+test "subjectless match values" {
     let binary_result = match {
         case true: 1
         case false: 0

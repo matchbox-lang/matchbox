@@ -10,7 +10,7 @@ func words(...values: string) -> string {
     return values[0] + values[1]
 }
 
-test "packed elements, widening and strings" {
+test "packed values, widening and strings" {
     let small: u8 = 2
     let narrow: f32 = 1.5
     let byte_sum = bytes(1, small, 3)

@@ -2,7 +2,7 @@ func typed(n: i32 = 10) = n
 func untyped(n = 10) = n
 func sum(a, b = 2, c = 3) = a + b + c
 
-test "typed and inferred default parameters" {
+test "typed and inferred defaults" {
     let typed_default = typed()
     let untyped_default = untyped()
 

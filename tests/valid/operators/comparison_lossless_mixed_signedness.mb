@@ -1,4 +1,4 @@
-test "comparison lossless mixed signedness" {
+test "lossless signedness comparisons" {
     let left: u8 = 25
     let right: i16 = 25
 

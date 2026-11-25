@@ -1,4 +1,4 @@
-test "narrow signed array element storage" {
+test "narrow signed array elements" {
     let bytes: i8[3] = [-128, 0, 127]
     let shorts: i16[3] = [-32768, 0, 32767]
 
@@ -26,7 +26,7 @@ test "narrow signed array element storage" {
     assert(short_text == "[-32768, -2, 32767]")
 }
 
-test "narrow unsigned array element storage" {
+test "narrow unsigned array elements" {
     let unsigned_bytes: u8[2] = [0, 255]
     let unsigned_shorts: u16[2] = [0, 65535]
 
@@ -47,7 +47,7 @@ test "narrow unsigned array element storage" {
     assert(short_text == "[65534, 65535]")
 }
 
-test "single precision array element storage" {
+test "f32 array elements" {
     let singles: f32[2] = [1.25, -2.5]
     singles[0] = -3.75
 

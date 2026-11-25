@@ -26,7 +26,7 @@ func mixed(first: i64, second: i16) {
     return 2
 }
 
-test "exact matches precede conversions regardless of declaration order" {
+test "order independent exact overloads" {
     let integer = select(1)
     let floating = select(1.5)
     let wide: f64 = 1.5
@@ -42,7 +42,7 @@ test "exact matches precede conversions regardless of declaration order" {
     assert(contextual == 9223372036854775807)
 }
 
-test "builtin overloads prefer exact types and support different counts" {
+test "builtin overload types and counts" {
     let value: f64 = -2.5
     let absolute = abs(value)
     let small: i8 = -2
@@ -52,7 +52,7 @@ test "builtin overloads prefer exact types and support different counts" {
     assert(promoted == -1, "builtin overloads")
 }
 
-test "exact arguments take priority over cheaper conversions" {
+test "exact argument overload priority" {
     let first: i32 = 1
     let second: i8 = 2
     let result = mixed(first, second)

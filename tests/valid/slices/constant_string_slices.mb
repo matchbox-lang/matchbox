@@ -1,4 +1,4 @@
-test "constant string slices with aliases and length bounds" {
+test "constant string slice aliases and bounds" {
     const START: usize = 2
     
     let text = "\u{e9}hello"

@@ -15,7 +15,7 @@ func make() -> i32[
     return [3, 7]
 }
 
-test "continued scalar and reference return types" {
+test "multiline scalar and reference returns" {
     let result = value()
     let origin = 9
     let reference = shared(&origin)

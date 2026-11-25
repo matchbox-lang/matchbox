@@ -1,6 +1,6 @@
 func trailing(value: i32,) -> i32 = value
 
-test "delimited lists allow trailing commas" {
+test "trailing commas" {
     let values = [8, 9,]
     let value = trailing(values[1],)
 

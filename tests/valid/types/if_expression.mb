@@ -1,4 +1,4 @@
-test "conditional floating point widening" {
+test "conditional float widening" {
     var condition = true
     let narrow: f32 = 2.5
 
@@ -27,7 +27,7 @@ test "conditional wide integer literals" {
     }
 }
 
-test "conditional shared reference results" {
+test "conditional shared references" {
     var condition = true
     var left = 10
     var right = 20
@@ -43,7 +43,7 @@ test "conditional shared reference results" {
     }
 }
 
-test "conditional exclusive reference results" {
+test "conditional exclusive references" {
     var condition = true
     var left = 10
     var right = 20

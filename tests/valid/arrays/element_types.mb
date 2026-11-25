@@ -29,7 +29,7 @@ test "array element storage types" {
     assert(formatted == "Array: [5000000000, 7000000000]")
 }
 
-test "inferred floating point array elements" {
+test "inferred float elements" {
     let inferred = [1.0, 2.0]
 
     assert(inferred[1] == 2.0)
@@ -43,7 +43,7 @@ test "independent string array copies" {
     assert(text_copy == ["hi", ""])
 }
 
-test "independent floating point array copies" {
+test "independent float array copies" {
     let floats: f64[2] = [3.5, 2.5]
     let float_copy = copy(floats)
     floats[0] = 4.5

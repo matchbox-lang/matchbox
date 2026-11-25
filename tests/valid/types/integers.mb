@@ -6,7 +6,7 @@ func preserve_wide(value: u64) -> u64 {
     return value
 }
 
-test "integer binding widths and function arguments" {
+test "integer binding and argument widths" {
     let inferred = 123
     let signed8: i8 = 127
     let signed16: i16 = 32767
@@ -71,7 +71,7 @@ test "integer aggregate boundary values" {
     }
 }
 
-test "unsigned integer aggregate wrapping" {
+test "unsigned aggregate wrapping" {
     let unsigned32: u32 = 4294967295
     let unsigned64: u64 = 18446744073709551615
     let unsigned_wrap32: u32 = sum(unsigned32, 1, 1)

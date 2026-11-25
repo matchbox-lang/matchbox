@@ -10,7 +10,7 @@ func select(value: i32) -> i32 {
     }
 }
 
-test "mixed conditional expression braces" {
+test "mixed conditional braces" {
     let parenthesized = if (true) {
         1
     } else {

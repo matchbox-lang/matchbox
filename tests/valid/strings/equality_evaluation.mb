@@ -8,7 +8,7 @@ func next(value: string, expected_call: i32) -> string {
     return value
 }
 
-test "string comparison operand evaluation" {
+test "string comparison evaluation" {
     let equal = next("same", 1) == next("same", 2)
 
     assert(equal)

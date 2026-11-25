@@ -38,7 +38,7 @@ test "literal iteration index references" {
     count = 0
 }
 
-test "empty row iteration index references" {
+test "empty row index references" {
     var count: usize = 0
     let rows: i32[3][0] = [[], [], []]
 

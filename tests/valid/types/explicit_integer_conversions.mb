@@ -32,7 +32,7 @@ test "integer literal conversions" {
     assert(maximum == 18446744073709551615)
 }
 
-test "integer constant expression conversions" {
+test "integer constant conversions" {
     let difference = i64(0 - 1)
     let negated_difference = i64(-(0 - 1))
     let narrowed_constant = u8(257)

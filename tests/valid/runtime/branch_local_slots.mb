@@ -10,7 +10,7 @@ func print_function_branch() {
     assert(before_branch == 70)
 }
 
-test "branch bindings preserve enclosing bindings" {
+test "branch binding isolation" {
     var first = 10
     var second = 20
 

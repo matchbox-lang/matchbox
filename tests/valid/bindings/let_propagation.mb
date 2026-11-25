@@ -47,7 +47,7 @@ test "local fixed binding scope" {
     assert(observed_steps == 0)
 }
 
-test "fixed snapshots of mutable bindings" {
+test "fixed mutable snapshots" {
     var changing = 4
     let snapshot = changing
     changing = 9
@@ -58,7 +58,7 @@ test "fixed snapshots of mutable bindings" {
     assert(observed_steps == 0)
 }
 
-test "runtime values in fixed binding arithmetic" {
+test "fixed arithmetic with runtime values" {
     let x = 10
     let dynamic = source()
 

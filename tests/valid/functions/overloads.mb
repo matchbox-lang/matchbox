@@ -10,7 +10,7 @@ func abs(first: i32, second: i32) -> i32 {
     return first + second
 }
 
-test "overloads by type and argument count" {
+test "overload types and counts" {
     const CONSTANT = abs(-7)
     
     let integer = abs(-10)

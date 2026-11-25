@@ -49,7 +49,7 @@ func widen(value: u32) {
     }
 }
 
-test "pointer sized conversion parameters" {
+test "pointer sized conversion arguments" {
     convert(-123, 200, -123, 200, 12.75, true)
 }
 

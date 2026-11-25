@@ -2,7 +2,7 @@ func identity[T](value: T) -> T {
     return value
 }
 
-test "explicit generic constant evaluation" {
+test "generic constant evaluation" {
     const INTEGER = identity[i64](4294967296)
     const FLOAT = identity[f64](2.5)
     

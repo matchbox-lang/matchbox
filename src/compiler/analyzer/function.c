@@ -523,10 +523,6 @@ void register_function_overload(Scope* scope, ASTNode* ast)
 
 static ASTNode* validate_function_declaration(Analyzer* analyzer, ASTNode* ast)
 {
-    if (ast->function_definition.is_test && analyzer->current_scope != analyzer->top_level->compound.scope) {
-        semantic_error("Test blocks are only allowed at file scope", ast->function_definition.token);
-    }
-
     StringView id = get_string_view(ast->function_definition.id);
     ASTNode* previous = get_local_symbol(analyzer->current_scope, id);
 
@@ -848,4 +844,13 @@ void analyze_return(Analyzer* analyzer, ASTNode* ast)
     }
 
     track_return_reference_origin(analyzer, ast);
+}
+
+void analyze_test_block(Analyzer* analyzer, ASTNode* ast)
+{
+    if (analyzer->current_scope != analyzer->top_level->compound.scope) {
+        semantic_error("Test blocks are only allowed at file scope", ast->test_block.token);
+    }
+
+    analyze_function(analyzer, ast->test_block.function);
 }

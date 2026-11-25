@@ -233,6 +233,8 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
             return visit_node_uses(ast->conversion.expr, visit, context);
         case ASTFunctionCall:
             return visit_node_list_uses(&ast->function_call.args, visit, context);
+        case ASTTestBlock:
+            return visit_node_uses(ast->test_block.function, visit, context);
         case ASTFunctionDefinition:
             return visit_function_uses(ast, visit, context);
         case ASTMatch:

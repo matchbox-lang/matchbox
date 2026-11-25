@@ -115,10 +115,10 @@ static void add_test_case(TestRun* run, const char* path, ASTNode* ast, size_t i
 
     test->path = path;
     test->statement_index = index;
-    test->skipped = ast->function_definition.is_test_skipped;
-    test->line = ast->function_definition.token.line;
+    test->skipped = ast->test_block.skipped;
+    test->line = ast->test_block.token.line;
 
-    Token name = ast->function_definition.test_name;
+    Token name = ast->test_block.name;
 
     if (name.length > 0) {
         test->name = allocate_memory(name.length + 1);
@@ -131,9 +131,7 @@ static void add_test_case(TestRun* run, const char* path, ASTNode* ast, size_t i
 
 static void collect_test_case(TestRun* run, const char* path, ASTNode* ast, size_t index)
 {
-    bool test = ast->type == ASTFunctionDefinition && ast->function_definition.is_test;
-
-    if (!test) {
+    if (ast->type != ASTTestBlock) {
         return;
     }
 

@@ -196,7 +196,8 @@ static void eliminate_compile_time_functions(Compiler* compiler)
 
 static void retain_test_statement(Compiler* compiler, ASTNode* ast, size_t* retained)
 {
-    bool declaration = ast->type == ASTFunctionDefinition || ast->type == ASTVariableDefinition;
+    bool declaration = ast->type == ASTFunctionDefinition || ast->type == ASTVariableDefinition
+        || ast->type == ASTTestBlock;
 
     if (declaration) {
         compiler->ast->compound.statements.data[(*retained)++] = ast;
@@ -217,11 +218,11 @@ static ASTNode* get_selected_test(Compiler* compiler)
 
     ASTNode* ast = nodes->data[compiler->test_index];
 
-    if (ast->type != ASTFunctionDefinition || !ast->function_definition.is_test) {
+    if (ast->type != ASTTestBlock) {
         fatal_error("Selected statement is not a test block");
     }
 
-    return ast;
+    return ast->test_block.function;
 }
 
 static void select_test_statements(Compiler* compiler)

@@ -19,7 +19,7 @@ static void parse_test_skip(Parser* parser, ASTNode* ast)
         return;
     }
 
-    ast->function_definition.is_test_skipped = true;
+    ast->test_block.skipped = true;
 
     consume(parser, TokenIdentifier);
 }
@@ -30,11 +30,11 @@ static void parse_test_name(Parser* parser, ASTNode* ast)
         return;
     }
 
-    ast->function_definition.test_name = parser->current_token;
+    ast->test_block.name = parser->current_token;
     ASTNode* name = parse_string_literal(parser);
 
     if (name->type != ASTString) {
-        Token token = ast->function_definition.test_name;
+        Token token = ast->test_block.name;
 
         fatal_token_error(token, "", "Test name must be a string literal: ");
     }
@@ -54,18 +54,6 @@ static StringObject* create_test_identifier(const Parser* parser, Token token)
     return copy_string_object(name, length);
 }
 
-static ASTNode* create_test_block_node(const Parser* parser, Token token)
-{
-    StringObject* id = create_test_identifier(parser, token);
-    ASTNode* ast = create_function_definition_node(token, id);
-
-    ast->function_definition.is_test = true;
-    ast->function_definition.has_explicit_return_type = true;
-    ast->function_definition.return_type_id = (Type){.kind = TypeVoid};
-
-    return ast;
-}
-
 static bool parse_test_body(Parser* parser, ASTNode* ast)
 {
     if (is_end_of_file(parser)) {
@@ -76,7 +64,7 @@ static bool parse_test_body(Parser* parser, ASTNode* ast)
         expected_token_error(TokenLbrace, parser->current_token);
     }
 
-    return parse_function_body(parser, ast);
+    return parse_function_body(parser, ast->test_block.function);
 }
 
 ASTNode* parse_test_block(Parser* parser)
@@ -85,7 +73,8 @@ ASTNode* parse_test_block(Parser* parser)
 
     consume(parser, TokenKeywordTest);
 
-    ASTNode* ast = create_test_block_node(parser, token);
+    StringObject* id = create_test_identifier(parser, token);
+    ASTNode* ast = create_test_block_node(token, id);
 
     parse_test_skip(parser, ast);
     parse_test_name(parser, ast);

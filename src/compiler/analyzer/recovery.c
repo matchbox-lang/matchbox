@@ -140,6 +140,9 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
         case ASTVariableDefinition:
             clear_variable_analysis(ast, functions);
             break;
+        case ASTTestBlock:
+            clear_node_analysis(ast->test_block.function, functions);
+            break;
         case ASTFunctionDefinition:
             clear_function_analysis(ast, functions);
             break;

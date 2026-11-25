@@ -794,10 +794,6 @@ void compile_function_definition(Compiler* compiler, ASTNode* ast)
         return;
     }
 
-    if (ast->function_definition.is_test && !compiler->test_mode) {
-        return;
-    }
-
     if (!compiler->repl_mode && !ast->function_definition.call_count) {
         return;
     }

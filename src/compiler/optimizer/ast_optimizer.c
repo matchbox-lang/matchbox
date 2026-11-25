@@ -502,6 +502,9 @@ static void optimize_node(ASTNode* ast)
         case ASTFunctionCall:
             optimize_nodes(&ast->function_call.args);
             break;
+        case ASTTestBlock:
+            optimize_node(ast->test_block.function);
+            break;
         case ASTFunctionDefinition: {
             ASTNode* body = get_function_analysis_body(ast);
 
@@ -590,6 +593,12 @@ static void remove_discarded_statement_vector_reads(Vector* nodes)
 
 static void remove_discarded_statement_reads(ASTNode* ast)
 {
+    if (ast->type == ASTTestBlock) {
+        remove_discarded_statement_reads(ast->test_block.function);
+
+        return;
+    }
+
     if (ast->type == ASTFunctionDefinition) {
         ASTNode* body = get_function_analysis_body(ast);
 
@@ -774,6 +783,12 @@ static void reset_match_function_call_counts(ASTNode* ast)
 static void reset_function_call_counts(ASTNode* ast)
 {
     if (!ast) {
+        return;
+    }
+
+    if (ast->type == ASTTestBlock) {
+        reset_function_call_counts(ast->test_block.function);
+
         return;
     }
 

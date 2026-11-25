@@ -198,6 +198,15 @@ Operand compile_expression(Compiler* compiler, ASTNode* ast, bool discard)
     return result;
 }
 
+static void compile_test_block(Compiler* compiler, ASTNode* ast)
+{
+    if (!compiler->test_mode) {
+        return;
+    }
+
+    compile_function_definition(compiler, ast->test_block.function);
+}
+
 Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
 {
     switch (ast->type) {
@@ -211,6 +220,9 @@ Operand compile_statement(Compiler* compiler, ASTNode* ast, bool discard)
             return compile_builtin_call(compiler, ast, discard);
         case ASTFunctionCall:
             return compile_function_call(compiler, ast, discard);
+        case ASTTestBlock:
+            compile_test_block(compiler, ast);
+            return no_operand();
         case ASTFunctionDefinition:
             compile_function_definition(compiler, ast);
             return no_operand();

@@ -307,6 +307,19 @@ ASTNode* create_function_definition_node(Token token, StringObject* id)
     return ast;
 }
 
+ASTNode* create_test_block_node(Token token, StringObject* id)
+{
+    ASTNode* function = create_function_definition_node(token, id);
+    function->function_definition.has_explicit_return_type = true;
+    function->function_definition.return_type_id = (Type){.kind = TypeVoid};
+
+    ASTNode* ast = create_ast_node(ASTTestBlock);
+    ast->test_block.token = token;
+    ast->test_block.function = function;
+
+    return ast;
+}
+
 ASTNode* create_integer_node(Token token, uint64_t value, Type type_id)
 {
     ASTNode* ast = create_ast_node(ASTInteger);
@@ -588,6 +601,9 @@ void free_ast_node(ASTNode* ast)
             free_vector(&ast->function_definition.array_possible_initializations);
             free_vector(&ast->function_definition.array_uninitialized_returns);
             free_ast_node(ast->function_definition.body);
+            break;
+        case ASTTestBlock:
+            free_ast_node(ast->test_block.function);
             break;
         case ASTMatch:
             free_ast_node(ast->match.subject);

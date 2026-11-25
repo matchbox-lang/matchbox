@@ -56,6 +56,7 @@ typedef enum ASTNodeType
     ASTPrefix,
     ASTReturn,
     ASTString,
+    ASTTestBlock,
     ASTVariable,
     ASTVariableDefinition,
     ASTWhile,
@@ -196,11 +197,8 @@ typedef struct ASTNode
             Vector array_initializations;
             Vector array_possible_initializations;
             Vector array_uninitialized_returns;
-            bool is_test;
-            bool is_test_skipped;
             bool has_explicit_return_type;
             bool signature_resolved;
-            Token test_name;
             Type return_type_id;
             ReferenceType return_reference_type;
             ASTNode* return_reference_origin;
@@ -208,6 +206,13 @@ typedef struct ASTNode
             ASTNode* next_overload;
             size_t call_count;
         } function_definition;
+
+        struct {
+            Token token;
+            Token name;
+            bool skipped;
+            ASTNode* function;
+        } test_block;
 
         struct {
             uint64_t value;
@@ -308,6 +313,7 @@ ASTNode* create_float_node(Token token, double value, Type type_id);
 ASTNode* create_for_node(Token token);
 ASTNode* create_function_call_node(Token token);
 ASTNode* create_function_definition_node(Token token, StringObject* id);
+ASTNode* create_test_block_node(Token token, StringObject* id);
 ASTNode* create_integer_node(Token token, uint64_t value, Type type_id);
 ASTNode* create_loop_control_node(Token token);
 ASTNode* create_match_node(Token token);

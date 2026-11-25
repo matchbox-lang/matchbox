@@ -163,6 +163,9 @@ static void validate_node(const ASTNode* ast, bool check_zero)
         case ASTFunctionCall:
             validate_nodes(&ast->function_call.args, 0, check_zero);
             break;
+        case ASTTestBlock:
+            validate_node(ast->test_block.function, check_zero);
+            break;
         case ASTFunctionDefinition: {
             ASTNode* body = get_function_analysis_body(ast);
 

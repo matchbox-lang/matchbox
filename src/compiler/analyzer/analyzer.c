@@ -118,6 +118,9 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
         case ASTFunctionDefinition:
             analyze_function(analyzer, ast);
             break;
+        case ASTTestBlock:
+            analyze_test_block(analyzer, ast);
+            break;
         case ASTMatch:
             analyze_match(analyzer, ast);
             break;

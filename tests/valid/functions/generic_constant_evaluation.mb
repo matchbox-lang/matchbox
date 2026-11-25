@@ -1,0 +1,16 @@
+func identity[T](value: T) -> T {
+    return value
+}
+
+test "explicit generic constant evaluation" {
+    const INTEGER = identity[i64](4294967296)
+    const FLOAT = identity[f64](2.5)
+    
+    let integer_value = const identity[i64](4294967297)
+    let float_value = const identity[f64](3.5)
+
+    assert(INTEGER == 4294967296)
+    assert(FLOAT == 2.5)
+    assert(integer_value == 4294967297)
+    assert(float_value == 3.5)
+}

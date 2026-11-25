@@ -313,18 +313,7 @@ static Operand match_result_operand(Type type, int destination)
     return make_operand(destination, true);
 }
 
-static bool get_literal_match_subject(ASTNode* ast, uint64_t* value)
-{
-    if (!ast->match.subject) {
-        *value = true;
-
-        return true;
-    }
-
-    return get_literal_match_value(ast->match.subject, value);
-}
-
-static bool evaluate_literal_match_pattern(ASTNode* pattern, uint64_t subject_value, bool* matches)
+static bool get_literal_match_result(ASTNode* pattern, uint64_t subject_value, bool* matches)
 {
     uint64_t pattern_value;
 
@@ -341,14 +330,25 @@ static bool evaluate_literal_match_pattern(ASTNode* pattern, uint64_t subject_va
     bool left;
     bool right;
 
-    if (!evaluate_literal_match_pattern(pattern->binary.left_expr, subject_value, &left)
-        || !evaluate_literal_match_pattern(pattern->binary.right_expr, subject_value, &right)) {
+    if (!get_literal_match_result(pattern->binary.left_expr, subject_value, &left)
+        || !get_literal_match_result(pattern->binary.right_expr, subject_value, &right)) {
         return false;
     }
 
     *matches = left || right;
 
     return true;
+}
+
+static bool get_literal_match_subject(ASTNode* ast, uint64_t* value)
+{
+    if (!ast->match.subject) {
+        *value = true;
+
+        return true;
+    }
+
+    return get_literal_match_value(ast->match.subject, value);
 }
 
 static LiteralMatchArmResult select_literal_match_arm(
@@ -367,7 +367,7 @@ static LiteralMatchArmResult select_literal_match_arm(
 
     bool matches;
 
-    if (!evaluate_literal_match_pattern(arm->pattern, subject_value, &matches)) {
+    if (!get_literal_match_result(arm->pattern, subject_value, &matches)) {
         return LiteralMatchArmUnavailable;
     }
 

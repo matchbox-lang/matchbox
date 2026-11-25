@@ -1,13 +1,14 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "compiler/ast/ast.h"
 #include "compiler/lexer/lexer.h"
 #include "compiler/lexer/token.h"
-#include "compiler/ast/ast.h"
 
 typedef struct Parser
 {
     ASTNode* top_level;
+    GenericBindings* generic_bindings;
     Lexer lexer;
     Token current_token;
     Token previous_token;

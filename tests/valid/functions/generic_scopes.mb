@@ -1,0 +1,34 @@
+func factorial[T](value: T) -> T {
+    if value <= 1 {
+        return 1
+    }
+
+    return value * factorial(value - 1)
+}
+
+func outer[T](value: T) -> T {
+    func inner[A](item: A) -> A {
+        return item
+    }
+
+    func same(item: T) -> T {
+        return item
+    }
+
+    let result = inner(value)
+    
+    return same(result)
+}
+
+test "generic recursion and nesting" {
+    const FACTORIAL_RESULT = factorial(4)
+
+    let a = factorial(5)
+    let b = factorial[i64](6)
+    let c = outer("nested")
+
+    assert(FACTORIAL_RESULT == 24)
+    assert(a == 120)
+    assert(b == 720)
+    assert(c == "nested")
+}

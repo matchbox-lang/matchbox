@@ -1,0 +1,3 @@
+func identity[T](value: U) -> T {
+    return value
+}

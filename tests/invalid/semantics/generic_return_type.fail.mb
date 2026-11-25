@@ -1,0 +1,7 @@
+func wrong[T](value: T) -> T {
+    return "wrong"
+}
+
+let result = wrong(1)
+
+print(result)

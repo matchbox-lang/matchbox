@@ -1,0 +1,34 @@
+func identity[T](value: T) -> T {
+    return value
+}
+
+func first[T](values: &T[]) -> T {
+    return values[0]
+}
+
+func length[T](values: &T[2]) {
+    return len(values)
+}
+
+func total[T](...values: T) {
+    var result: T = values[0]
+
+    return result
+}
+
+test "generic arrays and variadics" {
+    let integers = [7, 8]
+    let strings = ["a", "b"]
+    let count = length(&integers)
+
+    let a = first(&integers)
+    let b = first(&strings)
+    let c = total(4, 5)
+    let d = identity[i32[2]]([9, 10])
+
+    assert(count == 2)
+    assert(a == 7)
+    assert(b == "a")
+    assert(c == 4)
+    assert(d[1] == 10)
+}

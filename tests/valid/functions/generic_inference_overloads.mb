@@ -1,0 +1,15 @@
+func select[T, U](value: T) -> T {
+    return value
+}
+
+func select(value: i32) -> i32 {
+    return value + 1
+}
+
+test "uninferred overloads" {
+    let inferred = select(7)
+    let explicit = select[i32, bool](7)
+
+    assert(inferred == 8)
+    assert(explicit == 7)
+}

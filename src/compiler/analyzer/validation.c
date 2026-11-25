@@ -163,10 +163,14 @@ static void validate_node(const ASTNode* ast, bool check_zero)
         case ASTFunctionCall:
             validate_nodes(&ast->function_call.args, 0, check_zero);
             break;
-        case ASTFunctionDefinition:
+        case ASTFunctionDefinition: {
+            ASTNode* body = get_function_analysis_body(ast);
+
             validate_nodes(&ast->function_definition.params, 0, check_zero);
-            validate_node(ast->function_definition.body, check_zero);
+            validate_node(body, check_zero);
+
             break;
+        }
         case ASTMatch:
             validate_match(ast, check_zero);
             break;

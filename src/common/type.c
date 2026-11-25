@@ -49,10 +49,11 @@ static const char* get_type_kind_name(TypeKind kind)
         case TypeF32:           return "f32";
         case TypeF64:           return "f64";
         case TypeChar:          return "char";
-        case TypeString:        return "string";
-        case TypeStringSlice:   return "string view";
         case TypeBool:          return "bool";
         case TypeVoid:          return "void";
+        case TypeString:        return "string";
+        case TypeStringSlice:   return "string view";
+        case TypeGeneric:       return "generic";
         default:
             return "unknown token";
     }
@@ -341,6 +342,10 @@ bool types_equal(Type left, Type right)
 
     if (is_contiguous_type(left.kind)) {
         return left.array == right.array;
+    }
+
+    if (left.kind == TypeGeneric) {
+        return left.generic_index == right.generic_index;
     }
 
     return true;

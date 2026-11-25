@@ -1,0 +1,7 @@
+func add(a, b) {
+    return a + b
+}
+
+let result = add(true, false)
+
+print(result)

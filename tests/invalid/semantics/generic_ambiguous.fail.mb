@@ -1,0 +1,11 @@
+func select[T](a: T, b: i32) {
+    return a
+}
+
+func select[T](a: i32, b: T) {
+    return b
+}
+
+let result = select(1, 2)
+
+print(result)

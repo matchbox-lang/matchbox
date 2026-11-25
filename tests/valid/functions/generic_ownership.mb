@@ -1,0 +1,31 @@
+func transfer(value) {
+    return value
+}
+
+func read[T](value: &T) {
+    return value == 10
+}
+
+func increment[T](value: ^T, amount: T) {
+    value += amount
+}
+
+func borrow[T](value: &T) -> &T {
+    return value
+}
+
+test "generic ownership and references" {
+    let source = [1, 2]
+    let moved = transfer(source)
+    var value = 10
+    let before = read(&value)
+
+    increment(^value, 10)
+    
+    let shared: &i32 = borrow(&value)
+
+    assert(moved[0] == 1)
+    assert(moved[1] == 2)
+    assert(before)
+    assert(shared == 20)
+}

@@ -1,0 +1,7 @@
+func same[T](a: T, b: T) {
+    return a
+}
+
+let result = same(1, "text")
+
+print(result)

@@ -135,6 +135,7 @@ static bool parse_top_level_statements(Parser* parser)
 void init_parser(Parser* parser, ASTNode* ast)
 {
     parser->top_level = ast;
+    parser->generic_bindings = NULL;
 }
 
 bool parse(Parser* parser, const char* source)

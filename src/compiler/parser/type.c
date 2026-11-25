@@ -5,6 +5,7 @@
 #include "compiler/parser/array.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
+#include "compiler/parser/generic.h"
 #include "compiler/builtin_constant.h"
 #include "compiler/diagnostics.h"
 
@@ -139,7 +140,13 @@ bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_ty
     TypeKind kind = get_token_data_type(parser->current_token.type);
     *type = (Type){.kind = kind};
 
-    consume_type(parser);
+    if (parser->current_token.type == TokenIdentifier) {
+        *type = parse_named_type(parser, parser->current_token);
+
+        consume(parser, TokenIdentifier);
+    } else {
+        consume_type(parser);
+    }
 
     bool complete = parse_dimensions(parser, type);
 

@@ -1,0 +1,21 @@
+func identity[T](value: T) -> T {
+    return value
+}
+
+func first[A, B](a: A, b: B) -> A {
+    return a
+}
+
+test "explicit generics" {
+    let a = identity(10)
+    let b = identity("hello")
+    let c = identity[f64](3.14)
+    let d = identity(20)
+    let e = first[i32, string](12, "unused")
+
+    assert(a == 10)
+    assert(b == "hello")
+    assert(c == 3.14)
+    assert(d == 20)
+    assert(e == 12)
+}

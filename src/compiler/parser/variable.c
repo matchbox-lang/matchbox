@@ -3,6 +3,7 @@
 #include "compiler/ast/ast.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
+#include "compiler/parser/generic.h"
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"
 
@@ -132,7 +133,7 @@ ASTNode* parse_identifier(Parser* parser)
         return parse_assignment(parser);
     }
 
-    if (parser->current_token.type == TokenLparen) {
+    if (parser->current_token.type == TokenLparen || is_type_argument_list(parser)) {
         return parse_function_call(parser);
     }
 

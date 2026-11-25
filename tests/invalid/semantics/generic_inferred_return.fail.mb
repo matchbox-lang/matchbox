@@ -1,0 +1,11 @@
+func wrong(value) {
+    if value == 0 {
+        return value
+    }
+
+    return "wrong"
+}
+
+let result = wrong(1)
+
+print(result)

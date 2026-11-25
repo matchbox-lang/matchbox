@@ -1,5 +1,6 @@
 #include "compiler/analyzer/recovery.h"
 #include "common/vector.h"
+#include "compiler/ast/generic.h"
 #include "compiler/scope.h"
 #include <stdint.h>
 
@@ -30,8 +31,51 @@ static void clear_variable_analysis(ASTNode* ast, Vector* functions)
     clear_node_analysis(ast->variable_definition.expr, functions);
 }
 
+static void retain_specialization(ASTNode* ast, Vector* nodes, size_t* count)
+{
+    if (!ast->function_definition.generics->analyzed) {
+        free_ast_node(ast);
+
+        return;
+    }
+
+    nodes->data[*count] = ast;
+    (*count)++;
+}
+
+static void discard_incomplete_specializations(ASTNode* ast)
+{
+    if (!is_generic_function(ast)) {
+        return;
+    }
+
+    Vector* nodes = &ast->function_definition.generics->specializations->compound.statements;
+    size_t count = 0;
+
+    for (size_t i = 0; i < nodes->count; i++) {
+        retain_specialization(nodes->data[i], nodes, &count);
+    }
+
+    nodes->count = count;
+}
+
+static void clear_generic_analysis(ASTNode* ast, Vector* functions)
+{
+    GenericFunction* generics = ast->function_definition.generics;
+
+    if (!generics) {
+        return;
+    }
+
+    generics->analyzed = false;
+
+    clear_node_analysis(generics->specializations, functions);
+}
+
 static void clear_function_analysis(ASTNode* ast, Vector* functions)
 {
+    discard_incomplete_specializations(ast);
+
     ast->function_definition.array_moves.count = 0;
     ast->function_definition.array_initializations.count = 0;
     ast->function_definition.array_possible_initializations.count = 0;
@@ -44,6 +88,7 @@ static void clear_function_analysis(ASTNode* ast, Vector* functions)
     push_vector_item(functions, ast);
     clear_analysis_vector(&ast->function_definition.params, functions);
     clear_node_analysis(ast->function_definition.body, functions);
+    clear_generic_analysis(ast, functions);
 }
 
 static void clear_match_arm_analysis(MatchArm* arm, Vector* functions)

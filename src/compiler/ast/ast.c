@@ -2,6 +2,7 @@
 #include "common/array_type.h"
 #include "common/memory.h"
 #include "common/vector.h"
+#include "compiler/ast/generic.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
@@ -14,6 +15,15 @@ static void free_ast_node_vector(Vector* nodes)
     }
 
     free_vector(nodes);
+}
+
+static void free_item_vector(Vector* items)
+{
+    for (size_t i = 0; i < items->count; i++) {
+        free_memory(items->data[i]);
+    }
+
+    free_vector(items);
 }
 
 static void free_match_arms(Vector* arms)
@@ -46,6 +56,61 @@ static void free_type_dimensions(Type type)
     free_ast_node_vector(dimensions);
     free_memory(dimensions);
     free_memory((void*)array_type);
+}
+
+static void free_type_argument(Type* type)
+{
+    free_type_dimensions(*type);
+    free_memory(type);
+}
+
+static void free_type_argument_vector(Vector* types)
+{
+    for (size_t i = 0; i < types->count; i++) {
+        free_type_argument(types->data[i]);
+    }
+
+    free_vector(types);
+}
+
+static void free_function_generics(GenericFunction* generics)
+{
+    if (!generics) {
+        return;
+    }
+
+    free_item_vector(&generics->bindings.names);
+    free_type_argument_vector(&generics->bindings.arguments);
+    free_ast_node(generics->specializations);
+    free_memory(generics);
+}
+
+void initialize_function_generics(ASTNode* function, GenericBindings* parent, Vector* types, Token source)
+{
+    GenericFunction* generics = allocate_zeroed_memory(1, sizeof(GenericFunction));
+    generics->bindings.parent = parent;
+    generics->source = source;
+    function->function_definition.generics = generics;
+
+    init_vector(&generics->bindings.names);
+    init_vector(&generics->bindings.arguments);
+
+    if (types) {
+        generics->bindings.arguments = *types;
+    }
+}
+
+void finish_function_generics(ASTNode* function)
+{
+    GenericFunction* generics = function->function_definition.generics;
+
+    if (generics->bindings.names.count || generics->bindings.arguments.count) {
+        return;
+    }
+
+    free_function_generics(generics);
+
+    function->function_definition.generics = NULL;
 }
 
 ASTNode* create_array_node(Token token, Type type, bool flat)
@@ -94,6 +159,7 @@ ASTNode* create_ast_node(ASTNodeType type)
             break;
         case ASTFunctionCall:
             init_vector(&ast->function_call.args);
+            init_vector(&ast->function_call.type_args);
             init_vector(&ast->function_call.reference_origins);
             break;
         case ASTFunctionDefinition:
@@ -371,6 +437,42 @@ ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body)
     return ast;
 }
 
+bool is_generic_function(const ASTNode* function)
+{
+    const GenericFunction* generics = function->function_definition.generics;
+
+    return generics && generics->bindings.names.count && !generics->template;
+}
+
+bool is_function_specialization(const ASTNode* function)
+{
+    const GenericFunction* generics = function->function_definition.generics;
+
+    return generics && generics->template;
+}
+
+ASTNode* get_function_analysis_body(const ASTNode* function)
+{
+    if (is_generic_function(function)) {
+        return function->function_definition.generics->specializations;
+    }
+
+    return function->function_definition.body;
+}
+
+Type add_implicit_generic_parameter(ASTNode* function, Token token)
+{
+    GenericBindings* bindings = &function->function_definition.generics->bindings;
+    size_t index = bindings->names.count;
+    Token* name = allocate_memory(sizeof(Token));
+    *name = token;
+    name->length = 0;
+
+    push_vector_item(&bindings->names, name);
+
+    return get_generic_argument_type(bindings, index);
+}
+
 Type get_parameter_argument_type(ASTNode* parameter)
 {
     if (parameter->parameter.variadic) {
@@ -378,6 +480,25 @@ Type get_parameter_argument_type(ASTNode* parameter)
     }
 
     return parameter->parameter.type_id;
+}
+
+bool function_accepts_argument_count(const ASTNode* function, size_t count)
+{
+    const Vector* params = &function->function_definition.params;
+
+    if (count > params->count) {
+        ASTNode* last = get_vector_at(params, params->count - 1);
+
+        return last && last->parameter.variadic;
+    }
+
+    if (count == params->count) {
+        return true;
+    }
+
+    ASTNode* first_omitted = params->data[count];
+
+    return first_omitted->parameter.default_value || first_omitted->parameter.variadic;
 }
 
 static bool parameter_signatures_equal(ASTNode* left, ASTNode* right)
@@ -452,11 +573,13 @@ void free_ast_node(ASTNode* ast)
             free_vector(&ast->conditional.reference_origins);
             break;
         case ASTFunctionCall:
+            free_type_argument_vector(&ast->function_call.type_args);
             free_string_object(ast->function_call.id);
             free_ast_node_vector(&ast->function_call.args);
             free_vector(&ast->function_call.reference_origins);
             break;
         case ASTFunctionDefinition:
+            free_function_generics(ast->function_definition.generics);
             free_type_dimensions(ast->function_definition.return_type_id);
             free_string_object(ast->function_definition.id);
             free_ast_node_vector(&ast->function_definition.params);

@@ -1,0 +1,23 @@
+func add(a, b) {
+    return a + b
+}
+
+func mixed[T](a: T, b) {
+    return b
+}
+
+func fixed(a, b: f64) {
+    return b
+}
+
+test "implicit generics" {
+    let x: f32 = add(10.5, 20.25)
+    let y: i32 = add(10, 20)
+    let z = mixed(1, "hello")
+    let w = fixed(true, 2.5)
+
+    assert(x == 30.75)
+    assert(y == 30)
+    assert(z == "hello")
+    assert(w == 2.5)
+}

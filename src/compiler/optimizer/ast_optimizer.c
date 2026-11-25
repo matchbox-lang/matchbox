@@ -502,9 +502,12 @@ static void optimize_node(ASTNode* ast)
         case ASTFunctionCall:
             optimize_nodes(&ast->function_call.args);
             break;
-        case ASTFunctionDefinition:
-            optimize_nodes(&ast->function_definition.body->compound.statements);
+        case ASTFunctionDefinition: {
+            ASTNode* body = get_function_analysis_body(ast);
+
+            optimize_nodes(&body->compound.statements);
             break;
+        }
         case ASTMatch:
             optimize_match(ast);
             break;
@@ -588,7 +591,9 @@ static void remove_discarded_statement_vector_reads(Vector* nodes)
 static void remove_discarded_statement_reads(ASTNode* ast)
 {
     if (ast->type == ASTFunctionDefinition) {
-        remove_discarded_statement_vector_reads(&ast->function_definition.body->compound.statements);
+        ASTNode* body = get_function_analysis_body(ast);
+
+        remove_discarded_statement_vector_reads(&body->compound.statements);
 
         return;
     }
@@ -775,7 +780,9 @@ static void reset_function_call_counts(ASTNode* ast)
     if (ast->type == ASTFunctionDefinition) {
         ast->function_definition.call_count = 0;
 
-        reset_function_call_counts(ast->function_definition.body);
+        ASTNode* body = get_function_analysis_body(ast);
+
+        reset_function_call_counts(body);
 
         return;
     }

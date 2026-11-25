@@ -9,6 +9,7 @@ These rules apply to implementation code, tests, and verification scripts.
 - Prefix reserved-word token constants with `TokenKeyword`
 - Use `UPPER_SNAKE_CASE` for macros
 - Use `UPPER_SNAKE_CASE` for `const` bindings in Matchbox tests
+- Generally place `const` bindings before `var` and `let` bindings within each scope, unless dependencies or evaluation order require otherwise
 - Prefix public API functions with `matchbox_`
 - Include the matching header first in each `.c` file when one exists
 - Place project headers (`"..."`) before system headers (`<...>`) after the matching header
@@ -43,6 +44,7 @@ These rules apply to implementation code, tests, and verification scripts.
 - Do not suppress Windows crash dialogs. Treat them as evidence of a defect that must be investigated and fixed
 - Test changes in both file and interactive modes
 - Tests should test language functionality and errors, not AST or bytecode optimizations
+- Use block function bodies in tests. Use `=` shorthand functions only when specifically testing shorthand syntax
 - Write a separate `assert` for each independent condition instead of combining checks with `and`. Keep combined expressions when testing logical operators themselves
 - Before adding tests, inspect existing coverage and identify the specific gap. Add tests only for coverage that does not already exist; do not add redundant tests for every small change
 - Keep the `tests` directory focused on language syntax, features, and errors. Tests can and should use built-in functions where useful

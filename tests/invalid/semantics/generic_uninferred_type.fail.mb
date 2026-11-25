@@ -1,0 +1,7 @@
+func value[T]() -> i32 {
+    return 1
+}
+
+let result = value()
+
+print(result)

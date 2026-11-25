@@ -3,6 +3,7 @@
 
 #include "compiler/parser/parser.h"
 
+ASTNode* parse_function_specialization(ASTNode* template, Vector* types);
 ASTNode* parse_return_statement(Parser* parser);
 bool parse_argument_list(Parser* parser, Vector* args);
 ASTNode* parse_function_call(Parser* parser);

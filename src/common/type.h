@@ -28,7 +28,8 @@ typedef enum TypeKind
     TypeBool,
     TypeVoid,
     TypeArray,
-    TypeArraySlice
+    TypeArraySlice,
+    TypeGeneric,
 } TypeKind;
 
 typedef struct ArrayType ArrayType;
@@ -39,6 +40,7 @@ typedef struct Type
 
     union {
         const ArrayType* array;
+        size_t generic_index;
     };
 } Type;
 

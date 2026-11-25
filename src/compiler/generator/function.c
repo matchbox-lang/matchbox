@@ -6,6 +6,7 @@
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/generic.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
@@ -608,6 +609,12 @@ uint16_t get_function_position(Compiler* compiler, ASTNode* ast)
         }
     }
 
+    if (is_function_specialization(ast)) {
+        compile_function_definition(compiler, ast);
+
+        return get_function_position(compiler, ast);
+    }
+
     function_not_found_error(ast);
 
     return 0;
@@ -783,6 +790,10 @@ Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
 
 void compile_function_definition(Compiler* compiler, ASTNode* ast)
 {
+    if (is_generic_function(ast)) {
+        return;
+    }
+
     if (ast->function_definition.is_test && !compiler->test_mode) {
         return;
     }

@@ -12,69 +12,45 @@ static bool are_simple_match_values(const Vector* values)
     return index == values->count;
 }
 
-static ASTNode* find_conditional_return(ASTNode* ast)
+static bool visit_statement_returns(Vector* statements, VisitReturn visit, void* context)
 {
-    ASTNode* result = find_node_return(ast->conditional.then_branch);
+    bool complete = true;
 
-    if (result) {
-        return result;
+    for (size_t i = 0; i < statements->count && complete; i++) {
+        complete = visit_node_returns(statements->data[i], visit, context);
     }
 
-    return find_node_return(ast->conditional.else_branch);
+    return complete;
 }
 
-static ASTNode* find_function_return(Vector* statements)
+static bool visit_match_returns(ASTNode* ast, VisitReturn visit, void* context)
 {
-    size_t count = count_vector(statements);
-    size_t index = 0;
-    ASTNode* result = NULL;
+    Vector* arms = &ast->match.arms;
+    bool complete = true;
 
-    while (index < count && !result) {
-        ASTNode* statement = get_vector_at(statements, index);
-        result = find_node_return(statement);
-        index++;
+    for (size_t i = 0; i < arms->count && complete; i++) {
+        MatchArm* arm = arms->data[i];
+        complete = visit_node_returns(arm->branch, visit, context);
     }
 
-    return result;
+    return complete;
 }
 
-static ASTNode* find_match_return(ASTNode* ast)
+static bool record_first_return(ASTNode* ast, void* context)
 {
-    size_t count = count_vector(&ast->match.arms);
-    size_t index = 0;
-    ASTNode* result = NULL;
+    ASTNode** result = context;
+    *result = ast;
 
-    while (index < count && !result) {
-        MatchArm* arm = get_vector_at(&ast->match.arms, index);
-        result = find_node_return(arm->branch);
-        index++;
-    }
-
-    return result;
+    return false;
 }
 
 ASTNode* find_node_return(ASTNode* ast)
 {
-    if (!ast) {
-        return NULL;
-    }
+    ASTNode* result = NULL;
 
-    switch (ast->type) {
-        case ASTReturn:
-            return ast;
-        case ASTCompound:
-            return find_function_return(&ast->compound.statements);
-        case ASTFor:
-            return find_node_return(ast->for_statement.body);
-        case ASTWhile:
-            return find_node_return(ast->while_statement.body);
-        case ASTConditional:
-            return find_conditional_return(ast);
-        case ASTMatch:
-            return find_match_return(ast);
-        default:
-            return NULL;
-    }
+    visit_node_returns(ast, record_first_return, &result);
+
+    return result;
 }
 
 ASTNode* get_branch_result(ASTNode* branch)
@@ -139,9 +115,35 @@ bool match_has_wildcard(ASTNode* ast)
 
     while (index < count && !wildcard) {
         MatchArm* arm = get_vector_at(&ast->match.arms, index);
+        
         wildcard = !arm->pattern && !arm->guard;
         index++;
     }
 
     return wildcard;
+}
+
+bool visit_node_returns(ASTNode* ast, VisitReturn visit, void* context)
+{
+    if (!ast) {
+        return true;
+    }
+
+    switch (ast->type) {
+        case ASTReturn:
+            return visit(ast, context);
+        case ASTCompound:
+            return visit_statement_returns(&ast->compound.statements, visit, context);
+        case ASTFor:
+            return visit_node_returns(ast->for_statement.body, visit, context);
+        case ASTWhile:
+            return visit_node_returns(ast->while_statement.body, visit, context);
+        case ASTConditional:
+            return visit_node_returns(ast->conditional.then_branch, visit, context)
+                && visit_node_returns(ast->conditional.else_branch, visit, context);
+        case ASTMatch:
+            return visit_match_returns(ast, visit, context);
+        default:
+            return true;
+    }
 }

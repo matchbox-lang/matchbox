@@ -1,0 +1,7 @@
+func identity[T](value: T) -> T {
+    return value
+}
+
+let result = identity[i32, f64](1)
+
+print(result)

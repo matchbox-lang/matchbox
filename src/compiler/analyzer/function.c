@@ -6,12 +6,14 @@
 #include "compiler/analyzer/builtin.h"
 #include "compiler/analyzer/control_flow.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/analyzer/generic.h"
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/control_flow.h"
+#include "compiler/ast/generic.h"
 #include "compiler/ast/literal.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
@@ -70,11 +72,28 @@ static void resolve_variadic_parameter(Analyzer* analyzer, ASTNode* ast)
     ast->parameter.reference_type = RefShared;
 }
 
+void resolve_function_signature(Analyzer* analyzer, ASTNode* ast)
+{
+    if (ast->function_definition.signature_resolved) {
+        return;
+    }
+
+    resolve_dimensions(analyzer, &ast->function_definition.return_type_id);
+
+    Vector* params = &ast->function_definition.params;
+
+    for (size_t i = 0; i < params->count; i++) {
+        ASTNode* parameter = params->data[i];
+
+        resolve_dimensions(analyzer, &parameter->parameter.type_id);
+        resolve_variadic_parameter(analyzer, parameter);
+    }
+
+    ast->function_definition.signature_resolved = true;
+}
+
 void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 {
-    resolve_dimensions(analyzer, &ast->parameter.type_id);
-    resolve_variadic_parameter(analyzer, ast);
-
     StringView id = get_string_view(ast->parameter.id);
 
     if (get_local_symbol(analyzer->current_scope, id)) {
@@ -268,29 +287,48 @@ static size_t get_overload_cost(ASTNode* caller, ASTNode* callee)
     return cost;
 }
 
-static ASTNode* consider_function_overload(ASTNode* caller, ASTNode* candidate, ASTNode* best,
+static ASTNode* consider_function_overload(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate, ASTNode* best,
     size_t* best_cost, bool* ambiguous)
 {
-    size_t cost = get_overload_cost(caller, candidate);
+    candidate = prepare_generic_candidate(analyzer, caller, candidate);
 
-    if (cost == SIZE_MAX || cost > *best_cost) {
+    if (!candidate) {
         return best;
     }
 
-    *ambiguous = cost == *best_cost;
+    size_t cost = get_overload_cost(caller, candidate);
+
+    if (cost == SIZE_MAX || cost > *best_cost) {
+        discard_generic_candidate(candidate);
+
+        return best;
+    }
+
+    bool generic = is_function_specialization(candidate);
+    bool best_generic = best && is_function_specialization(best);
+
+    if (cost == *best_cost && generic && !best_generic) {
+        discard_generic_candidate(candidate);
+
+        return best;
+    }
+
+    *ambiguous = cost == *best_cost && generic == best_generic;
     *best_cost = cost;
+
+    discard_generic_candidate(best);
 
     return candidate;
 }
 
-static ASTNode* resolve_function_overload(ASTNode* caller, ASTNode* symbol)
+static ASTNode* resolve_function_overload(Analyzer* analyzer, ASTNode* caller, ASTNode* symbol)
 {
     ASTNode* best = NULL;
     size_t best_cost = SIZE_MAX;
     bool ambiguous = false;
 
     for (ASTNode* candidate = symbol; candidate; candidate = candidate->function_definition.next_overload) {
-        best = consider_function_overload(caller, candidate, best, &best_cost, &ambiguous);
+        best = consider_function_overload(analyzer, caller, candidate, best, &best_cost, &ambiguous);
     }
 
     if (!best) {
@@ -308,7 +346,6 @@ static void apply_overload_argument(Analyzer* analyzer, ASTNode* argument, ASTNo
 {
     Type type = get_parameter_argument_type(parameter);
     ReferenceType reference = get_parameter_argument_reference(parameter);
-
     Type source = get_node_data_type(argument);
 
     if (is_slice_type(type.kind) && !types_equal(source, type)) {
@@ -329,68 +366,6 @@ static void prepare_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
     }
 
     analyze_call_argument(analyzer, argument, parameter);
-}
-
-static ASTNode* analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
-{
-    StringView id = get_string_view(ast->function_call.id);
-    ASTNode* symbol = find_symbol(analyzer, id);
-
-    if (!symbol || symbol->type != ASTFunctionDefinition) {
-        analyze_expression_nodes(analyzer, &ast->function_call.args);
-
-        return symbol;
-    }
-
-    bool overloaded = symbol->function_definition.next_overload != NULL;
-
-    if (overloaded) {
-        analyze_expression_nodes(analyzer, &ast->function_call.args);
-
-        symbol = resolve_function_overload(ast, symbol);
-    }
-
-    for (size_t i = 0; i < ast->function_call.args.count; i++) {
-        ASTNode* parameter = get_call_parameter(&symbol->function_definition.params, i);
-        ASTNode* argument = ast->function_call.args.data[i];
-
-        prepare_call_argument(analyzer, argument, parameter, overloaded);
-    }
-
-    return symbol;
-}
-
-void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
-{
-    infer_conversion_literal(ast);
-
-    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
-
-    TypeKind called_type = get_token_data_type(ast->function_call.token.type);
-
-    if (is_integer_type(called_type) || is_float_type(called_type) || called_type == TypeChar) {
-        analyze_type_conversion(ast);
-
-        return;
-    }
-
-    if (!symbol) {
-        analyze_builtin_call(analyzer, ast);
-        return;
-    }
-
-    if (!is_function_definition(symbol)) {
-        symbol_error(" is undefined", ast->function_call.token);
-    }
-
-    ast->function_call.scope = analyzer->current_scope;
-    ast->function_call.symbol = symbol;
-    
-    validate_function_call(ast, symbol, ast->function_call.token);
-    validate_call_argument_access(analyzer, ast, symbol, ast->function_call.token);
-    validate_argument_accesses(ast, symbol);
-    validate_function_global_access(analyzer, symbol, true);
-    set_call_reference_origins(ast, symbol);
 }
 
 static Type get_function_return_value_type(ASTNode* body)
@@ -432,11 +407,20 @@ static void set_parameter_positions(ASTNode* ast)
 
 static void resolve_function_return_value_type(ASTNode* ast)
 {
+    if (is_function_specialization(ast) && !ast->function_definition.has_explicit_return_type
+        && ast->function_definition.return_type_id.kind != TypeUnknown) {
+        return;
+    }
+
     Type type = get_function_return_value_type(ast->function_definition.body);
 
     if (ast->function_definition.has_explicit_return_type) {
         validate_function_return_value_type(ast, type);
         return;
+    }
+
+    if (type.kind == TypeUnknown) {
+        semantic_token_error("Cannot infer recursive return type for function ", ast->function_definition.token);
     }
 
     ast->function_definition.return_type_id = type;
@@ -480,44 +464,15 @@ static void validate_overload_signature(ASTNode* ast, ASTNode* previous)
     }
 }
 
-void analyze_function(Analyzer* analyzer, ASTNode* ast)
+void register_function_overload(Scope* scope, ASTNode* ast)
 {
-    resolve_dimensions(analyzer, &ast->function_definition.return_type_id);
-
-    if (ast->function_definition.is_test && analyzer->current_scope != analyzer->top_level->compound.scope) {
-        semantic_error("Test blocks are only allowed at file scope", ast->function_definition.token);
-    }
-
     StringView id = get_string_view(ast->function_definition.id);
-
-    ASTNode* previous = get_local_symbol(analyzer->current_scope, id);
+    ASTNode* previous = get_local_symbol(scope, id);
 
     if (previous && previous->type != ASTFunctionDefinition) {
         redefinition_error("Function", ast->function_definition.token);
     }
 
-    Vector array_states;
-
-    capture_ownership_states(&array_states, analyzer->current_scope);
-
-    Scope* parent = analyzer->current_scope;
-    ASTNode* previous_function = analyzer->function;
-    LoopPath* previous_loop = analyzer->loop_path;
-    Scope* scope = create_scope(parent);
-    scope->frame_scope = scope;
-    scope->local_offset = 0;
-    scope->max_local_count = 0;
-    ast->function_definition.scope = scope;
-    ast->function_definition.body->compound.scope = scope;
-    analyzer->current_scope = scope;
-    analyzer->function = ast;
-    analyzer->loop_path = NULL;
-
-    ASTNode* symbol = previous ? previous : ast;
-
-    set_local_symbol(scope, id, symbol);
-    analyze_parameters(analyzer, &ast->function_definition.params);
-    set_parameter_positions(ast);
     validate_overload_signature(ast, previous);
 
     if (previous) {
@@ -525,20 +480,219 @@ void analyze_function(Analyzer* analyzer, ASTNode* ast)
         previous->function_definition.next_overload = ast;
     }
 
-    set_local_symbol(parent, id, ast);
+    set_local_symbol(scope, id, ast);
+}
 
+static ASTNode* validate_function_declaration(Analyzer* analyzer, ASTNode* ast)
+{
+    if (ast->function_definition.is_test && analyzer->current_scope != analyzer->top_level->compound.scope) {
+        semantic_error("Test blocks are only allowed at file scope", ast->function_definition.token);
+    }
+
+    StringView id = get_string_view(ast->function_definition.id);
+    ASTNode* previous = get_local_symbol(analyzer->current_scope, id);
+
+    if (previous && previous->type != ASTFunctionDefinition) {
+        redefinition_error("Function", ast->function_definition.token);
+    }
+
+    if (is_function_specialization(ast)) {
+        return NULL;
+    }
+
+    return previous;
+}
+
+static void enter_function_scope(Analyzer* analyzer, ASTNode* ast)
+{
+    Scope* scope = create_scope(analyzer->current_scope);
+    scope->frame_scope = scope;
+    scope->local_offset = 0;
+    scope->max_local_count = 0;
+
+    ast->function_definition.scope = scope;
+    ast->function_definition.body->compound.scope = scope;
+
+    analyzer->current_scope = scope;
+    analyzer->function = ast;
+    analyzer->loop_path = NULL;
+}
+
+static void prepare_function_parameters(Analyzer* analyzer, ASTNode* ast, ASTNode* previous)
+{
+    StringView id = get_string_view(ast->function_definition.id);
+    ASTNode* symbol = previous ? previous : ast;
+
+    if (is_function_specialization(ast)) {
+        symbol = ast->function_definition.generics->template;
+    }
+
+    set_local_symbol(analyzer->current_scope, id, symbol);
+    analyze_parameters(analyzer, &ast->function_definition.params);
+    set_parameter_positions(ast);
+
+    if (is_function_specialization(ast)) {
+        return;
+    }
+
+    register_function_overload(analyzer->current_scope->parent, ast);
+}
+
+static void analyze_function_body(Analyzer* analyzer, ASTNode* ast)
+{
     FunctionPath path = {ast, analyzer->function_path};
     analyzer->function_path = &path;
 
     analyze_expression_nodes(analyzer, &ast->function_definition.body->compound.statements);
 
     analyzer->function_path = path.previous;
+}
+
+static void analyze_scoped_function(Analyzer* analyzer, ASTNode* ast, ASTNode* previous)
+{
+    Scope* parent = analyzer->current_scope;
+    ASTNode* previous_function = analyzer->function;
+    LoopPath* previous_loop = analyzer->loop_path;
+
+    enter_function_scope(analyzer, ast);
+    prepare_function_parameters(analyzer, ast, previous);
+    analyze_function_body(analyzer, ast);
+
     analyzer->current_scope = parent;
     analyzer->function = previous_function;
     analyzer->loop_path = previous_loop;
+}
 
+void analyze_function(Analyzer* analyzer, ASTNode* ast)
+{
+    resolve_function_signature(analyzer, ast);
+
+    if (is_generic_function(ast)) {
+        register_generic_function(analyzer, ast);
+
+        return;
+    }
+
+    ASTNode* previous = validate_function_declaration(analyzer, ast);
+    Vector array_states;
+
+    capture_ownership_states(&array_states, analyzer->current_scope);
+    analyze_scoped_function(analyzer, ast, previous);
     resolve_function_return_value_type(ast);
     record_function_array_moves(ast, &array_states);
+}
+
+static void analyze_function_specialization(Analyzer* analyzer, ASTNode* ast)
+{
+    if (!is_function_specialization(ast) || ast->function_definition.scope) {
+        return;
+    }
+
+    Scope* previous = analyzer->current_scope;
+    Scope* constant_scope = analyzer->constant_scope;
+    FunctionPath* constant_functions = analyzer->constant_functions;
+    Vector states;
+
+    capture_ownership_states(&states, previous);
+
+    ASTNode* template = ast->function_definition.generics->template;
+
+    if (!ast->function_definition.generics->cached) {
+        push_vector_item(&template->function_definition.generics->specializations->compound.statements, ast);
+
+        ast->function_definition.generics->cached = true;
+    }
+
+    analyzer->constant_scope = NULL;
+    analyzer->constant_functions = NULL;
+    analyzer->current_scope = template->function_definition.generics->declaration_scope;
+
+    analyze_function(analyzer, ast);
+
+    ast->function_definition.generics->analyzed = true;
+
+    apply_ownership_states(&states);
+    free_ownership_states(&states);
+
+    analyzer->current_scope = previous;
+    analyzer->constant_scope = constant_scope;
+    analyzer->constant_functions = constant_functions;
+}
+
+static ASTNode* analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
+{
+    StringView id = get_string_view(ast->function_call.id);
+    ASTNode* symbol = find_symbol(analyzer, id);
+
+    if (!symbol || symbol->type != ASTFunctionDefinition) {
+        analyze_expression_nodes(analyzer, &ast->function_call.args);
+
+        return symbol;
+    }
+
+    bool overloaded = symbol->function_definition.next_overload != NULL
+        || is_generic_function(symbol) || ast->function_call.type_args.count != 0;
+
+    if (overloaded) {
+        analyze_expression_nodes(analyzer, &ast->function_call.args);
+        symbol = resolve_function_overload(analyzer, ast, symbol);
+        analyze_function_specialization(analyzer, symbol);
+    }
+
+    for (size_t i = 0; i < ast->function_call.args.count; i++) {
+        ASTNode* parameter = get_call_parameter(&symbol->function_definition.params, i);
+        ASTNode* argument = ast->function_call.args.data[i];
+
+        prepare_call_argument(analyzer, argument, parameter, overloaded);
+    }
+
+    return symbol;
+}
+
+static void resolve_call_type_arguments(Analyzer* analyzer, ASTNode* ast)
+{
+    Vector* types = &ast->function_call.type_args;
+
+    for (size_t i = 0; i < types->count; i++) {
+        resolve_dimensions(analyzer, types->data[i]);
+    }
+}
+
+void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
+{
+    resolve_call_type_arguments(analyzer, ast);
+    infer_conversion_literal(ast);
+
+    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
+    TypeKind called_type = get_token_data_type(ast->function_call.token.type);
+
+    if (is_integer_type(called_type) || is_float_type(called_type) || called_type == TypeChar) {
+        analyze_type_conversion(ast);
+
+        return;
+    }
+
+    if (!symbol && ast->function_call.type_args.count) {
+        semantic_token_error("Type arguments require a generic function: ", ast->function_call.token);
+    }
+
+    if (!symbol) {
+        analyze_builtin_call(analyzer, ast);
+        return;
+    }
+
+    if (!is_function_definition(symbol)) {
+        symbol_error(" is undefined", ast->function_call.token);
+    }
+
+    ast->function_call.scope = analyzer->current_scope;
+    ast->function_call.symbol = symbol;
+
+    validate_function_call(ast, symbol, ast->function_call.token);
+    validate_call_argument_access(analyzer, ast, symbol, ast->function_call.token);
+    validate_argument_accesses(ast, symbol);
+    validate_function_global_access(analyzer, symbol, true);
+    set_call_reference_origins(ast, symbol);
 }
 
 static bool can_return_reference_origin(ASTNode* origin)
@@ -624,6 +778,38 @@ static void track_return_reference_origin(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
+static void resolve_specialized_return_type(ASTNode* function, ASTNode* expression)
+{
+    if (!is_function_specialization(function)) {
+        return;
+    }
+
+    Type type = get_node_data_type(expression);
+    Type previous = function->function_definition.return_type_id;
+
+    if (function->function_definition.has_explicit_return_type) {
+        validate_function_return_value_type(function, type);
+
+        return;
+    }
+
+    if (previous.kind == TypeUnknown) {
+        function->function_definition.return_type_id = type;
+
+        return;
+    }
+
+    TypeKind common = get_common_numeric_type(previous.kind, type.kind);
+
+    if (common != TypeUnknown) {
+        function->function_definition.return_type_id = (Type){.kind = common};
+
+        return;
+    }
+
+    validate_function_return_value_type(function, type);
+}
+
 void analyze_return(Analyzer* analyzer, ASTNode* ast)
 {
     validate_return_scope(analyzer, ast);
@@ -636,6 +822,7 @@ void analyze_return(Analyzer* analyzer, ASTNode* ast)
     }
 
     analyze_node(analyzer, ast->return_statement.expr);
+    resolve_specialized_return_type(function, ast->return_statement.expr);
     consume_array(ast->return_statement.expr);
     record_array_return_initializations(analyzer);
 

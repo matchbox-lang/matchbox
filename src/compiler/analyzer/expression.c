@@ -131,6 +131,10 @@ static void validate_binary_operator(Token operator, Type left_type, Type right_
         semantic_error("Invalid operator for string operands", operator);
     }
 
+    if (left_type.kind == TypeBool && !is_logical_token(operator_type) && !is_equality_token(operator_type)) {
+        semantic_error("Invalid operator for bool operands", operator);
+    }
+
     if (left_type.kind == TypeChar && !is_character_comparison_token(operator_type)) {
         semantic_error("Invalid operator for char operands", operator);
     }

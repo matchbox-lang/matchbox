@@ -1,0 +1,23 @@
+func identity[T](value: T) -> T {
+    return value
+}
+
+func dependent[T](value: T = identity[T](1)) -> T {
+    return value
+}
+
+func default_value(value = 5) {
+    return value
+}
+
+test "generic defaults" {
+    let a = dependent[i32]()
+    let b = dependent[f64](2.5)
+    let c = default_value()
+    let d = default_value(7)
+
+    assert(a == 1)
+    assert(b == 2.5)
+    assert(c == 5)
+    assert(d == 7)
+}

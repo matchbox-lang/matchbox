@@ -1,0 +1,9 @@
+func take(value) {
+    return len(value)
+}
+
+let values = [1, 2]
+let result = take(values)
+
+print(result)
+print(values)

@@ -165,5 +165,6 @@ bool is_factor_token(TokenType type);
 bool is_prefix_token(TokenType type);
 bool is_match_arm_end_token(TokenType type);
 bool is_wildcard_token(Token token);
+bool token_texts_equal(const Token* left, const Token* right);
 
 #endif

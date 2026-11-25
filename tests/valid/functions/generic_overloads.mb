@@ -1,0 +1,39 @@
+func choose(value) {
+    return 1
+}
+
+func choose(value: i32) {
+    return 2
+}
+
+func reverse(value: i32) {
+    return 3
+}
+
+func reverse[T](value: T) {
+    return 4
+}
+
+func pick[T](value: T, other: i32) {
+    return value
+}
+
+func pick(value: string) {
+    return "fixed"
+}
+
+test "generic overloads" {
+    let a = choose(10)
+    let b = choose("hello")
+    let c = reverse(10)
+    let d = reverse(true)
+    let e = choose[i32](10)
+    let f = pick("generic", 1)
+
+    assert(a == 2)
+    assert(b == 1)
+    assert(c == 3)
+    assert(d == 4)
+    assert(e == 1)
+    assert(f == "generic")
+}

@@ -1,6 +1,7 @@
 #include "compiler/lexer/token.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 void print_token_value(Token token)
 {
@@ -347,4 +348,9 @@ bool is_match_arm_end_token(TokenType type)
 bool is_wildcard_token(Token token)
 {
     return token.type == TokenIdentifier && token.length == 1 && token.chars[0] == '_';
+}
+
+bool token_texts_equal(const Token* left, const Token* right)
+{
+    return left->length == right->length && memcmp(left->chars, right->chars, left->length) == 0;
 }

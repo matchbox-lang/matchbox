@@ -1,12 +1,14 @@
 #include "compiler/parser/function.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
-#include "compiler/diagnostics.h"
+#include "compiler/ast/generic.h"
 #include "compiler/parser/expression.h"
+#include "compiler/parser/generic.h"
 #include "compiler/parser/type.h"
+#include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 
-typedef bool (*ParseListItem)(Parser* parser, Vector* items);
+typedef bool (*ParseListItem)(Parser* parser, Vector* items, ASTNode* function);
 
 ASTNode* parse_return_statement(Parser* parser)
 {
@@ -21,15 +23,22 @@ ASTNode* parse_return_statement(Parser* parser)
     return create_return_node(token, expr);
 }
 
-static bool parse_argument_list_item(Parser* parser, Vector* args)
+static void validate_missing_argument_expression(Token token)
 {
+    if (token.type == TokenComma || token.type == TokenRparen) {
+        expected_expression_error(token);
+    }
+}
+
+static bool parse_argument_list_item(Parser* parser, Vector* args, ASTNode* function)
+{
+    (void)function;
+
     ASTNode* expr = parse_expression(parser);
 
-    if (!expr && (parser->current_token.type == TokenComma || parser->current_token.type == TokenRparen)) {
-        expected_expression_error(parser->current_token);
-    }
-
     if (!expr) {
+        validate_missing_argument_expression(parser->current_token);
+
         return false;
     }
 
@@ -46,7 +55,7 @@ static bool parse_argument_list_item(Parser* parser, Vector* args)
     return true;
 }
 
-static bool parse_parenthesized_list(Parser* parser, Vector* items, ParseListItem parse_item)
+static bool parse_parenthesized_list(Parser* parser, Vector* items, ParseListItem parse_item, ASTNode* function)
 {
     consume(parser, TokenLparen);
 
@@ -57,7 +66,7 @@ static bool parse_parenthesized_list(Parser* parser, Vector* items, ParseListIte
     bool complete = true;
 
     while (complete && parser->current_token.type != TokenRparen) {
-        complete = parse_item(parser, items);
+        complete = parse_item(parser, items, function);
     }
 
     if (!complete || is_end_of_file(parser)) {
@@ -71,7 +80,7 @@ static bool parse_parenthesized_list(Parser* parser, Vector* items, ParseListIte
 
 bool parse_argument_list(Parser* parser, Vector* args)
 {
-    return parse_parenthesized_list(parser, args, parse_argument_list_item);
+    return parse_parenthesized_list(parser, args, parse_argument_list_item, NULL);
 }
 
 static bool parse_parameter_default(Parser* parser, ASTNode* ast)
@@ -94,13 +103,15 @@ static bool parse_parameter_default(Parser* parser, ASTNode* ast)
     return true;
 }
 
-static bool parse_parameter_type(Parser* parser, ASTNode* ast)
+static bool parse_parameter_type(Parser* parser, ASTNode* ast, ASTNode* function)
 {
     if (ast->parameter.variadic && parser->current_token.type != TokenColon) {
         expected_token_error(TokenColon, parser->current_token);
     }
 
     if (parser->current_token.type != TokenColon) {
+        ast->parameter.type_id = add_implicit_generic_parameter(function, ast->parameter.token);
+
         return true;
     }
 
@@ -128,7 +139,7 @@ static ASTNode* parse_parameter_binding(Parser* parser)
     return ast;
 }
 
-static ASTNode* parse_parameter(Parser* parser)
+static ASTNode* parse_parameter(Parser* parser, ASTNode* function)
 {
     if (is_end_of_file(parser)) {
         return NULL;
@@ -136,7 +147,7 @@ static ASTNode* parse_parameter(Parser* parser)
 
     ASTNode* ast = parse_parameter_binding(parser);
 
-    if (!parse_parameter_type(parser, ast) || !parse_parameter_default(parser, ast)) {
+    if (!parse_parameter_type(parser, ast, function) || !parse_parameter_default(parser, ast)) {
         free_ast_node(ast);
 
         return NULL;
@@ -145,9 +156,9 @@ static ASTNode* parse_parameter(Parser* parser)
     return ast;
 }
 
-static bool parse_parameter_list_item(Parser* parser, Vector* params)
+static bool parse_parameter_list_item(Parser* parser, Vector* params, ASTNode* function)
 {
-    ASTNode* param = parse_parameter(parser);
+    ASTNode* param = parse_parameter(parser, function);
 
     if (!param) {
         return false;
@@ -173,9 +184,11 @@ static bool parse_parameter_list_item(Parser* parser, Vector* params)
     return true;
 }
 
-static bool parse_parameter_list(Parser* parser, Vector* params)
+static bool parse_parameter_list(Parser* parser, ASTNode* function)
 {
-    if (!parse_parenthesized_list(parser, params, parse_parameter_list_item)) {
+    Vector* params = &function->function_definition.params;
+
+    if (!parse_parenthesized_list(parser, params, parse_parameter_list_item, function)) {
         return false;
     }
 
@@ -193,7 +206,8 @@ ASTNode* parse_function_call(Parser* parser)
 {
     ASTNode* ast = create_function_call_node(parser->previous_token);
 
-    if (!parse_argument_list(parser, &ast->function_call.args)) {
+    if (!parse_type_arguments(parser, &ast->function_call.type_args)
+        || !parse_argument_list(parser, &ast->function_call.args)) {
         free_ast_node(ast);
 
         return NULL;
@@ -236,8 +250,10 @@ bool parse_function_body(Parser* parser, ASTNode* ast)
     return parse_braced_block(parser, &ast->function_definition.body);
 }
 
-ASTNode* parse_function_definition(Parser* parser)
+static ASTNode* parse_function_declaration(Parser* parser, Vector* types)
 {
+    Token source = parser->current_token;
+
     consume(parser, TokenKeywordFunc);
 
     if (is_end_of_file(parser)) {
@@ -259,16 +275,74 @@ ASTNode* parse_function_definition(Parser* parser)
 
     ASTNode* ast = create_function_definition_node(token, id);
 
-    if (!parse_parameter_list(parser, &ast->function_definition.params)) {
+    initialize_function_generics(ast, parser->generic_bindings, types, source);
+
+    parser->generic_bindings = &ast->function_definition.generics->bindings;
+
+    if (!parse_generic_names(parser, ast) || !parse_parameter_list(parser, ast)) {
         free_ast_node(ast);
 
         return NULL;
     }
 
-    if (!parse_function_return_type(parser, ast) || !parse_function_body(parser, ast)) {
+    if (!parse_function_return_type(parser, ast)) {
         free_ast_node(ast);
 
         return NULL;
+    }
+
+    GenericBindings* parent = parser->generic_bindings->parent;
+
+    finish_function_generics(ast);
+
+    if (!ast->function_definition.generics) {
+        parser->generic_bindings = parent;
+    }
+
+    if (!parse_function_body(parser, ast)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
+}
+
+ASTNode* parse_function_definition(Parser* parser)
+{
+    GenericBindings* parent = parser->generic_bindings;
+    ASTNode* ast = parse_function_declaration(parser, NULL);
+    parser->generic_bindings = parent;
+
+    if (!ast || !is_generic_function(ast)) {
+        return ast;
+    }
+
+    ast->function_definition.generics->specializations = create_compound_node(NULL);
+
+    return ast;
+}
+
+ASTNode* parse_function_specialization(ASTNode* template, Vector* types)
+{
+    GenericFunction* generics = template->function_definition.generics;
+    Token source = generics->source;
+    Parser parser = {0};
+
+    init_parser(&parser, NULL);
+    init_lexer(&parser.lexer, source.chars);
+
+    parser.lexer.current.line = source.line;
+    parser.lexer.current.column = source.column;
+    parser.generic_bindings = generics->bindings.parent;
+
+    advance(&parser);
+
+    ASTNode* ast = parse_function_declaration(&parser, types);
+    ast->function_definition.generics->template = template;
+
+    if (!ast->function_definition.has_explicit_return_type) {
+        ast->function_definition.return_type_id = (Type){.kind = TypeUnknown};
     }
 
     return ast;

@@ -1,0 +1,7 @@
+func add[T, U](a: T, b: T) {
+    return a + b
+}
+
+let result = add(10, 20)
+
+print(result)

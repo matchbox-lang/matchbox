@@ -201,7 +201,19 @@ static bool is_concrete_type_argument(Type* type)
     return type->kind != TypeUnknown && type->kind != TypeVoid && type->kind != TypeGeneric;
 }
 
-static bool infer_type_arguments(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate, Vector* types)
+static bool validate_inferred_type_argument(ASTNode* candidate, Vector* types, size_t index, Token** uninferred)
+{
+    Type* type = types->data[index];
+
+    if (type->kind == TypeUnknown && !*uninferred) {
+        *uninferred = candidate->function_definition.generics->bindings.names.data[index];
+    }
+
+    return is_concrete_type_argument(type);
+}
+
+static bool infer_type_arguments(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate, Vector* types,
+    Token** uninferred)
 {
     size_t index = 0;
     size_t count = caller->function_call.args.count;
@@ -222,7 +234,7 @@ static bool infer_type_arguments(Analyzer* analyzer, ASTNode* caller, ASTNode* c
     index = 0;
 
     while (index < types->count && valid) {
-        valid = is_concrete_type_argument(types->data[index]);
+        valid = validate_inferred_type_argument(candidate, types, index, uninferred);
         index++;
     }
 
@@ -258,7 +270,7 @@ static ASTNode* find_specialization(ASTNode* candidate, Vector* types)
     return get_vector_at(specializations, index);
 }
 
-ASTNode* prepare_generic_candidate(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate)
+ASTNode* prepare_generic_candidate(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate, Token** uninferred)
 {
     if (!is_generic_function(candidate)) {
         return caller->function_call.type_args.count ? NULL : candidate;
@@ -268,11 +280,15 @@ ASTNode* prepare_generic_candidate(Analyzer* analyzer, ASTNode* caller, ASTNode*
         return NULL;
     }
 
+    if (!function_accepts_argument_count(candidate, caller->function_call.args.count)) {
+        return NULL;
+    }
+
     Vector types;
 
     create_type_arguments(caller, candidate, &types);
 
-    if (!infer_type_arguments(analyzer, caller, candidate, &types)) {
+    if (!infer_type_arguments(analyzer, caller, candidate, &types, uninferred)) {
         free_type_arguments(&types);
 
         return NULL;

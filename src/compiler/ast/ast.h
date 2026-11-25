@@ -324,6 +324,7 @@ ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
 // Queries
 bool is_generic_function(const ASTNode* function);
 bool is_function_specialization(const ASTNode* function);
+bool function_accepts_argument_count(const ASTNode* function, size_t count);
 bool function_signatures_equal(ASTNode* left, ASTNode* right);
 ASTNode* get_function_analysis_body(const ASTNode* function);
 Type add_implicit_generic_parameter(ASTNode* function, Token token);

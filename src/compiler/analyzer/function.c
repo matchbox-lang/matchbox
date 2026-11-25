@@ -22,6 +22,16 @@
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
+static _Noreturn void no_matching_overload_error(Token token, Token* uninferred)
+{
+    if (!uninferred) {
+        semantic_token_error("No compatible overload for function ", token);
+    }
+
+    fatal_source_error(token.line, token.column, "Cannot infer type parameter %.*s for function %.*s",
+        (int)uninferred->length, uninferred->chars, (int)token.length, token.chars);
+}
+
 static _Noreturn void return_outside_function_error(Token token)
 {
     fatal_source_error(token.line, token.column, "Return statement is only valid inside a function");
@@ -112,17 +122,6 @@ void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
     set_local_symbol(analyzer->current_scope, id, ast);
 }
 
-static bool has_required_omitted_parameter(ASTNode* callee, size_t count, size_t param_count)
-{
-    if (count >= param_count) {
-        return false;
-    }
-
-    ASTNode* first_omitted = get_vector_at(&callee->function_definition.params, count);
-
-    return !first_omitted->parameter.default_value && !first_omitted->parameter.variadic;
-}
-
 static void apply_argument_literal_type(ASTNode* argument, Type type)
 {
     if (argument->type == ASTArray) {
@@ -135,11 +134,8 @@ static void apply_argument_literal_type(ASTNode* argument, Type type)
 static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = count_vector(&caller->function_call.args);
-    size_t param_count = count_vector(&callee->function_definition.params);
-    ASTNode* last = get_vector_at(&callee->function_definition.params, param_count - 1);
-    bool variadic = last && last->parameter.variadic;
 
-    if ((!variadic && count > param_count) || has_required_omitted_parameter(callee, count, param_count)) {
+    if (!function_accepts_argument_count(callee, count)) {
         semantic_token_error("Invalid arguments to function ", token);
     }
 
@@ -270,10 +266,8 @@ static size_t get_overload_cost(ASTNode* caller, ASTNode* callee)
 {
     size_t count = caller->function_call.args.count;
     Vector* params = &callee->function_definition.params;
-    ASTNode* last = get_vector_at(params, params->count - 1);
-    bool variadic = last && last->parameter.variadic;
 
-    if ((!variadic && count > params->count) || has_required_omitted_parameter(callee, count, params->count)) {
+    if (!function_accepts_argument_count(callee, count)) {
         return SIZE_MAX;
     }
 
@@ -288,9 +282,9 @@ static size_t get_overload_cost(ASTNode* caller, ASTNode* callee)
 }
 
 static ASTNode* consider_function_overload(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate, ASTNode* best,
-    size_t* best_cost, bool* ambiguous)
+    size_t* best_cost, bool* ambiguous, Token** uninferred)
 {
-    candidate = prepare_generic_candidate(analyzer, caller, candidate);
+    candidate = prepare_generic_candidate(analyzer, caller, candidate, uninferred);
 
     if (!candidate) {
         return best;
@@ -326,13 +320,14 @@ static ASTNode* resolve_function_overload(Analyzer* analyzer, ASTNode* caller, A
     ASTNode* best = NULL;
     size_t best_cost = SIZE_MAX;
     bool ambiguous = false;
+    Token* uninferred = NULL;
 
     for (ASTNode* candidate = symbol; candidate; candidate = candidate->function_definition.next_overload) {
-        best = consider_function_overload(analyzer, caller, candidate, best, &best_cost, &ambiguous);
+        best = consider_function_overload(analyzer, caller, candidate, best, &best_cost, &ambiguous, &uninferred);
     }
 
     if (!best) {
-        semantic_token_error("No compatible overload for function ", caller->function_call.token);
+        no_matching_overload_error(caller->function_call.token, uninferred);
     }
 
     if (ambiguous) {

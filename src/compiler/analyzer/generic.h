@@ -5,6 +5,6 @@
 
 void discard_generic_candidate(ASTNode* ast);
 void register_generic_function(Analyzer* analyzer, ASTNode* ast);
-ASTNode* prepare_generic_candidate(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate);
+ASTNode* prepare_generic_candidate(Analyzer* analyzer, ASTNode* caller, ASTNode* candidate, Token** uninferred);
 
 #endif

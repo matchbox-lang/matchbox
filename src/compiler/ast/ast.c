@@ -482,6 +482,25 @@ Type get_parameter_argument_type(ASTNode* parameter)
     return parameter->parameter.type_id;
 }
 
+bool function_accepts_argument_count(const ASTNode* function, size_t count)
+{
+    const Vector* params = &function->function_definition.params;
+
+    if (count > params->count) {
+        ASTNode* last = get_vector_at(params, params->count - 1);
+
+        return last && last->parameter.variadic;
+    }
+
+    if (count == params->count) {
+        return true;
+    }
+
+    ASTNode* first_omitted = params->data[count];
+
+    return first_omitted->parameter.default_value || first_omitted->parameter.variadic;
+}
+
 static bool parameter_signatures_equal(ASTNode* left, ASTNode* right)
 {
     return left->parameter.variadic == right->parameter.variadic

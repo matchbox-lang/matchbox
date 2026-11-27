@@ -1,4 +1,4 @@
-type Int = i32
+type Integer = i32
 
 type Operation = (i32) -> i32
 
@@ -11,3 +11,5 @@ type Point = {x: i32, y: i32}
 type Number = i32|f32
 
 type Numbers = Set[Number]
+
+type Matrix = f32[3][3]

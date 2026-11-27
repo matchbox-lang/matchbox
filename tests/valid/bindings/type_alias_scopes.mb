@@ -1,0 +1,19 @@
+type Number = i32
+
+func value[T](input: T) -> T {
+    type Local = T
+    
+    let result: Local = input
+
+    return result
+}
+
+test "type alias scopes" {
+    type Number = f64
+
+    let local: Number = 2.5
+    let result = value(7)
+
+    assert(local == 2.5)
+    assert(result == 7)
+}

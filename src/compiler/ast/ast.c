@@ -4,6 +4,7 @@
 #include "common/vector.h"
 #include "compiler/ast/function.h"
 #include "compiler/ast/generic.h"
+#include "compiler/ast/type_alias.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
@@ -62,6 +63,12 @@ static void free_match_arms(Vector* arms)
 
 static void free_type_dimensions(Type type)
 {
+    if (type.kind == TypeNamed) {
+        free_named_type(type.named);
+
+        return;
+    }
+
     if (!is_contiguous_type(type.kind) || !type.array || !type.array->dimensions) {
         return;
     }
@@ -88,6 +95,11 @@ static void free_type_argument_vector(Vector* types)
     }
 
     free_vector(types);
+}
+
+void free_named_type(const NamedType* named)
+{
+    free_memory((void*)named);
 }
 
 static void free_function_generics(GenericFunction* generics)
@@ -329,6 +341,19 @@ ASTNode* create_function_definition_node(Token token, StringObject* id)
     ast->function_definition.return_reference_origin = NULL;
     ast->function_definition.has_explicit_return_type = false;
     ast->function_definition.body = NULL;
+
+    return ast;
+}
+
+ASTNode* create_type_alias_node(Token token, StringObject* id)
+{
+    ASTNode* ast = create_ast_node(ASTTypeAlias);
+    ast->type_alias.token = token;
+    ast->type_alias.id = id;
+    ast->type_alias.reference_type = RefNone;
+
+    init_vector(&ast->type_alias.bindings.names);
+    init_vector(&ast->type_alias.bindings.arguments);
 
     return ast;
 }
@@ -624,6 +649,12 @@ void free_ast_node(ASTNode* ast)
             free_ast_node_vector(&ast->function_definition.params);
             clear_function_array_effects(ast);
             free_ast_node(ast->function_definition.body);
+            break;
+        case ASTTypeAlias:
+            free_type_dimensions(ast->type_alias.type_id);
+            free_item_vector(&ast->type_alias.bindings.names);
+            free_vector(&ast->type_alias.bindings.arguments);
+            free_string_object(ast->type_alias.id);
             break;
         case ASTTestBlock:
             free_ast_node(ast->test_block.function);

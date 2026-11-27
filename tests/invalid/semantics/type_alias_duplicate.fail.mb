@@ -1,0 +1,2 @@
+type Number = i32
+type Number = f64

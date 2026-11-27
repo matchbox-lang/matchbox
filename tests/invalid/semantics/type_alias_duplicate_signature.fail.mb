@@ -1,0 +1,4 @@
+type Integer = i32
+
+func process(value: Integer) {}
+func process(value: i32) {}

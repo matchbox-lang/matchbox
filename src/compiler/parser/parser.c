@@ -6,6 +6,7 @@
 #include "compiler/parser/function.h"
 #include "compiler/parser/match.h"
 #include "compiler/parser/test_block.h"
+#include "compiler/parser/type.h"
 #include "compiler/parser/variable.h"
 #include "compiler/diagnostics.h"
 
@@ -52,6 +53,8 @@ bool is_end_of_file(Parser* parser)
 ASTNode* parse_statement(Parser* parser)
 {
     switch (parser->current_token.type) {
+        case TokenKeywordType:
+            return parse_type_alias(parser);
         case TokenKeywordFunc:
             return parse_function_definition(parser);
         case TokenKeywordTest:

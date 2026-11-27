@@ -11,6 +11,7 @@
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
+#include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/control_flow.h"
 #include "compiler/ast/generic.h"
@@ -88,6 +89,8 @@ void resolve_function_signature(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
+    resolve_named_type(analyzer, &ast->function_definition.return_type_id,
+        &ast->function_definition.return_reference_type);
     resolve_dimensions(analyzer, &ast->function_definition.return_type_id);
 
     Vector* params = &ast->function_definition.params;
@@ -95,6 +98,7 @@ void resolve_function_signature(Analyzer* analyzer, ASTNode* ast)
     for (size_t i = 0; i < params->count; i++) {
         ASTNode* parameter = params->data[i];
 
+        resolve_named_type(analyzer, &parameter->parameter.type_id, &parameter->parameter.reference_type);
         resolve_dimensions(analyzer, &parameter->parameter.type_id);
         resolve_variadic_parameter(analyzer, parameter);
     }

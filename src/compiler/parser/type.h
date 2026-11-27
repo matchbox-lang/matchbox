@@ -3,6 +3,7 @@
 
 #include "compiler/parser/parser.h"
 
+ASTNode* parse_type_alias(Parser* parser);
 void consume_type(Parser* parser);
 ReferenceType parse_reference_type(Parser* parser);
 ASTNode* parse_type_expression(Parser* parser);

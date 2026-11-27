@@ -1,0 +1,5 @@
+func define() {
+    type Local = i32
+}
+
+let value: Local = 1

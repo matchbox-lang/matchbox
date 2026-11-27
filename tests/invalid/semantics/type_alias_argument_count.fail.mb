@@ -1,0 +1,3 @@
+type Vector[T] = T[3]
+
+let values: Vector[i32, f64] = [1, 2, 3]

@@ -1,0 +1,4 @@
+type Vector[T] = T[3]
+
+func process[T](value: &Vector[T]) {}
+func process[T](value: &T[3]) {}

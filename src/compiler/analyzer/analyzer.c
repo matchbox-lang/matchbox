@@ -9,6 +9,7 @@
 #include "compiler/analyzer/match.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
+#include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/validation.h"
 #include "compiler/analyzer/variable.h"
 
@@ -28,6 +29,19 @@ void init_analyzer(Analyzer* analyzer, ASTNode* ast)
     analyzer->loop_path = NULL;
 }
 
+static void analyze_pending_nodes(Analyzer* analyzer, Vector* nodes, size_t start, ReferenceLifetimes* lifetimes)
+{
+    for (size_t i = start; i < nodes->count; i++) {
+        ASTNode* ast = get_vector_at(nodes, i);
+        analyzer->current_nodes = nodes;
+        analyzer->next_node = i + 1;
+
+        analyze_node(analyzer, ast);
+        schedule_reference_release(lifetimes, ast, i);
+        release_inactive_reference_access(&lifetimes->releases[i]);
+    }
+}
+
 static void analyze_nodes(Analyzer* analyzer, Vector* nodes, size_t start)
 {
     size_t count = count_vector(nodes);
@@ -35,6 +49,8 @@ static void analyze_nodes(Analyzer* analyzer, Vector* nodes, size_t start)
     if (start >= count) {
         return;
     }
+
+    register_type_aliases(analyzer, nodes, start);
 
     ReferenceLifetimes lifetimes;
     ReferenceLifetimes* previous_lifetimes = analyzer->reference_lifetimes;
@@ -45,21 +61,7 @@ static void analyze_nodes(Analyzer* analyzer, Vector* nodes, size_t start)
 
     analyzer->reference_lifetimes = &lifetimes;
 
-    for (size_t i = 0; i < start; i++) {
-        ASTNode* ast = get_vector_at(nodes, i);
-
-        schedule_reference_release(&lifetimes, ast, start);
-    }
-
-    for (size_t i = start; i < count; i++) {
-        ASTNode* ast = get_vector_at(nodes, i);
-        analyzer->current_nodes = nodes;
-        analyzer->next_node = i + 1;
-
-        analyze_node(analyzer, ast);
-        schedule_reference_release(&lifetimes, ast, i);
-        release_inactive_reference_access(&lifetimes.releases[i]);
-    }
+    analyze_pending_nodes(analyzer, nodes, start, &lifetimes);
 
     analyzer->reference_lifetimes = previous_lifetimes;
     analyzer->current_nodes = previous_nodes;
@@ -76,6 +78,9 @@ void analyze_expression_nodes(Analyzer* analyzer, Vector* nodes)
 void analyze_node(Analyzer* analyzer, ASTNode* ast)
 {
     switch (ast->type) {
+        case ASTTypeAlias:
+            resolve_type_alias(analyzer, ast);
+            break;
         case ASTArray:
             analyze_array(analyzer, ast);
             break;

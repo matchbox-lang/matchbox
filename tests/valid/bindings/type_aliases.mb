@@ -1,0 +1,26 @@
+type Integer = i32
+type Vector = f64[3]
+type Matrix = Vector[3]
+type Forward = Later
+type Later = Integer
+
+func process(value: Integer) -> Forward {
+    return value
+}
+
+test "type aliases share underlying types" {
+    let a: Integer = 10
+    let b: i32 = a
+    let vector: Vector = [1, 2, 3]
+    let matrix: Matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    let b_values = [1, 2, 3]
+    let view: &Integer[] = &b_values
+
+    let processed = process(b)
+
+    assert(b == 10)
+    assert(processed == 10)
+    assert(vector[2] == 3)
+    assert(matrix[1][2] == 6)
+    assert(view[0] == 1)
+}

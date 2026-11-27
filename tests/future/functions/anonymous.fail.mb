@@ -20,5 +20,6 @@ invoke(1, 2, func(a, b) {
 })
 
 invoke(1, 2, (a, b) in a + b)
+invoke(1, 2, func(a, b) = a + b)
 invoke(1, 2, mul)
 invoke({x: 1, y: 2})

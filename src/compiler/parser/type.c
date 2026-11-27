@@ -2,12 +2,14 @@
 #include "common/array_type.h"
 #include "common/memory.h"
 #include "common/vector.h"
+#include "compiler/ast/type_alias.h"
 #include "compiler/parser/array.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/generic.h"
 #include "compiler/builtin_constant.h"
 #include "compiler/diagnostics.h"
+#include "runtime/string_object.h"
 
 static _Noreturn void expected_type_error(Token token)
 {
@@ -137,20 +139,20 @@ bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_ty
         return false;
     }
 
+    bool complete = true;
     TypeKind kind = get_token_data_type(parser->current_token.type);
     *type = (Type){.kind = kind};
 
     if (parser->current_token.type == TokenIdentifier) {
-        *type = parse_named_type(parser, parser->current_token);
-
-        consume(parser, TokenIdentifier);
+        *type = parse_named_type(parser, parser->current_token, *reference_type, &complete);
     } else {
         consume_type(parser);
     }
 
-    bool complete = parse_dimensions(parser, type);
+    complete = complete && parse_dimensions(parser, type);
 
-    if (type->kind == TypeArray && *reference_type != RefNone && !type->array->dimensions->data[0]) {
+    if (type->kind == TypeArray && *reference_type != RefNone
+        && type->array->dimensions && !type->array->dimensions->data[0]) {
         type->kind = TypeArraySlice;
     }
 
@@ -193,4 +195,53 @@ bool parse_variable_type(Parser* parser, ASTNode* ast)
     }
 
     return true;
+}
+
+static bool parse_type_alias_target(Parser* parser, ASTNode* ast)
+{
+    if (is_end_of_file(parser)) {
+        return false;
+    }
+
+    consume(parser, TokenEqual);
+
+    return parse_declared_type(parser, &ast->type_alias.type_id, &ast->type_alias.reference_type);
+}
+
+static bool parse_type_alias_definition(Parser* parser, ASTNode* ast)
+{
+    consume(parser, TokenIdentifier);
+
+    if (!parse_generic_type_names(parser, &ast->type_alias.bindings.names)) {
+        return false;
+    }
+
+    GenericBindings* parent = parser->generic_bindings;
+    ast->type_alias.bindings.parent = parent;
+    parser->generic_bindings = &ast->type_alias.bindings;
+    bool complete = parse_type_alias_target(parser, ast);
+    parser->generic_bindings = parent;
+
+    return complete;
+}
+
+ASTNode* parse_type_alias(Parser* parser)
+{
+    consume(parser, TokenKeywordType);
+
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
+    Token token = parser->current_token;
+    StringObject* id = copy_string_object(token.chars, token.length);
+    ASTNode* ast = create_type_alias_node(token, id);
+
+    if (!parse_type_alias_definition(parser, ast)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
 }

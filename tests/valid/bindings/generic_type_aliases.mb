@@ -1,0 +1,23 @@
+type Vector[T] = T[3]
+type Matrix[T] = Vector[T][3]
+type Number = i32
+
+func first[T](values: &Vector[T]) -> T {
+    return values[0]
+}
+
+func identity[T](value: T) -> T {
+    return value
+}
+
+test "generic aliases and type arguments" {
+    let values: Vector[Number] = [1, 2, 3]
+    let matrix: Matrix[f64] = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+
+    let first_value = first(&values)
+    let identity_value = identity[Number](5)
+
+    assert(first_value == 1)
+    assert(matrix[2][0] == 7)
+    assert(identity_value == 5)
+}

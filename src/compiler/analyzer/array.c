@@ -8,6 +8,7 @@
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/literal.h"
@@ -170,7 +171,9 @@ static Type resolve_dimension_types(Analyzer* analyzer, Type type, Vector* count
 {
     Type resolved_type = type.array->element_type;
 
-    if (resolved_type.kind == TypeVoid || is_array_type(resolved_type.kind)) {
+    resolve_dimensions(analyzer, &resolved_type);
+
+    if (resolved_type.kind == TypeVoid) {
         fatal_error("Invalid array element type");
     }
 
@@ -199,6 +202,8 @@ static void free_array_dimensions(const ArrayType* array_type)
 
 void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
+    resolve_named_type(analyzer, type, NULL);
+
     if (type->kind == TypeStringSlice) {
         *type = get_string_slice_type(&analyzer->array_types);
 

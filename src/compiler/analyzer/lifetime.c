@@ -278,6 +278,27 @@ static bool record_reference_use(StringView id, void* context)
     return false;
 }
 
+static void record_pending_reference_uses(ReferenceLifetimes* lifetimes, Vector* nodes, size_t start)
+{
+    size_t count = count_vector(nodes);
+
+    for (size_t i = start; i < count; i++) {
+        ASTNode* ast = get_vector_at(nodes, i);
+        lifetimes->position = i;
+
+        visit_node_uses(ast, record_reference_use, lifetimes);
+    }
+}
+
+static void schedule_previous_reference_releases(ReferenceLifetimes* lifetimes, Vector* nodes, size_t start)
+{
+    for (size_t i = 0; i < start; i++) {
+        ASTNode* ast = get_vector_at(nodes, i);
+
+        schedule_reference_release(lifetimes, ast, start);
+    }
+}
+
 void init_reference_lifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size_t start)
 {
     size_t count = count_vector(nodes);
@@ -286,12 +307,8 @@ void init_reference_lifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size
 
     lifetimes->releases = allocate_zeroed_memory(count, sizeof(Vector));
 
-    for (size_t i = start; i < count; i++) {
-        ASTNode* ast = get_vector_at(nodes, i);
-        lifetimes->position = i;
-
-        visit_node_uses(ast, record_reference_use, lifetimes);
-    }
+    record_pending_reference_uses(lifetimes, nodes, start);
+    schedule_previous_reference_releases(lifetimes, nodes, start);
 }
 
 void schedule_reference_release(ReferenceLifetimes* lifetimes, ASTNode* ast, size_t position)

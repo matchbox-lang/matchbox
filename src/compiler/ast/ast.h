@@ -58,6 +58,7 @@ typedef enum ASTNodeType
     ASTReturn,
     ASTString,
     ASTTestBlock,
+    ASTTypeAlias,
     ASTVariable,
     ASTVariableDefinition,
     ASTWhile,
@@ -207,6 +208,17 @@ typedef struct ASTNode
 
         struct {
             Token token;
+            StringObject* id;
+            Type type_id;
+            GenericBindings bindings;
+            ReferenceType reference_type;
+            Scope* scope;
+            bool resolving;
+            bool resolved;
+        } type_alias;
+
+        struct {
+            Token token;
             Token name;
             bool skipped;
             ASTNode* function;
@@ -312,6 +324,7 @@ ASTNode* create_float_node(Token token, double value, Type type_id);
 ASTNode* create_for_node(Token token);
 ASTNode* create_function_call_node(Token token);
 ASTNode* create_function_definition_node(Token token, StringObject* id);
+ASTNode* create_type_alias_node(Token token, StringObject* id);
 ASTNode* create_test_block_node(Token token, StringObject* id);
 ASTNode* create_integer_node(Token token, uint64_t value, Type type_id);
 ASTNode* create_loop_control_node(Token token);

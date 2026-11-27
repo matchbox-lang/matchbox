@@ -30,9 +30,11 @@ typedef enum TypeKind
     TypeArray,
     TypeArraySlice,
     TypeGeneric,
+    TypeNamed,
 } TypeKind;
 
 typedef struct ArrayType ArrayType;
+typedef struct NamedType NamedType;
 
 typedef struct Type
 {
@@ -40,6 +42,7 @@ typedef struct Type
 
     union {
         const ArrayType* array;
+        const NamedType* named;
         size_t generic_index;
     };
 } Type;

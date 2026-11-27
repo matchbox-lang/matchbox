@@ -1,6 +1,7 @@
 #include "compiler/parser/generic.h"
 #include "common/memory.h"
 #include "compiler/ast/generic.h"
+#include "compiler/ast/type_alias.h"
 #include "compiler/lexer/token.h"
 #include "compiler/parser/type.h"
 #include "compiler/diagnostics.h"
@@ -19,7 +20,7 @@ static size_t find_generic_name(Vector* names, Token token)
 static Type find_named_type(GenericBindings* bindings, Token token)
 {
     if (!bindings) {
-        semantic_token_error("Unknown generic type ", token);
+        return (Type){.kind = TypeUnknown};
     }
 
     size_t index = find_generic_name(&bindings->names, token);
@@ -31,9 +32,59 @@ static Type find_named_type(GenericBindings* bindings, Token token)
     return find_named_type(bindings->parent, token);
 }
 
-Type parse_named_type(Parser* parser, Token token)
+static bool consume_type_suffix(Parser* parser)
 {
-    return find_named_type(parser->generic_bindings, token);
+    size_t depth = 0;
+
+    while (!is_end_of_file(parser) && (depth || parser->current_token.type == TokenLsquare)) {
+        depth += parser->current_token.type == TokenLsquare;
+        depth -= parser->current_token.type == TokenRsquare;
+
+        advance(parser);
+    }
+
+    return depth == 0;
+}
+
+static GenericBindings* find_named_type_bindings(GenericBindings* bindings)
+{
+    while (bindings && !bindings->names.count) {
+        bindings = bindings->parent;
+    }
+
+    return bindings;
+}
+
+static Type parse_alias_type(Parser* parser, Token token, ReferenceType reference_type, bool* complete)
+{
+    NamedType* named = allocate_zeroed_memory(1, sizeof(NamedType));
+    named->token = token;
+    named->reference = reference_type != RefNone;
+    named->bindings = find_named_type_bindings(parser->generic_bindings);
+
+    Type type = {.kind = TypeNamed, .named = named};
+
+    if (parser->current_token.type != TokenLsquare) {
+        return type;
+    }
+
+    named->suffix = parser->current_token;
+    *complete = consume_type_suffix(parser);
+
+    return type;
+}
+
+Type parse_named_type(Parser* parser, Token token, ReferenceType reference_type, bool* complete)
+{
+    Type type = find_named_type(parser->generic_bindings, token);
+
+    consume(parser, TokenIdentifier);
+
+    if (type.kind != TypeUnknown) {
+        return type;
+    }
+
+    return parse_alias_type(parser, token, reference_type, complete);
 }
 
 bool is_type_argument_list(Parser* parser)
@@ -132,7 +183,7 @@ static bool parse_generic_name(Parser* parser, Vector* names)
     return true;
 }
 
-bool parse_generic_names(Parser* parser, ASTNode* ast)
+bool parse_generic_type_names(Parser* parser, Vector* names)
 {
     if (parser->current_token.type != TokenLsquare) {
         return true;
@@ -145,7 +196,7 @@ bool parse_generic_names(Parser* parser, ASTNode* ast)
     }
 
     while (!is_end_of_file(parser) && parser->current_token.type != TokenRsquare) {
-        parse_generic_name(parser, &ast->function_definition.generics->bindings.names);
+        parse_generic_name(parser, names);
     }
 
     if (is_end_of_file(parser)) {
@@ -157,3 +208,8 @@ bool parse_generic_names(Parser* parser, ASTNode* ast)
     return true;
 }
 
+
+bool parse_generic_names(Parser* parser, ASTNode* ast)
+{
+    return parse_generic_type_names(parser, &ast->function_definition.generics->bindings.names);
+}

@@ -1,0 +1,2 @@
+type Vector[T] = T[3]
+type Invalid = Vector[void]

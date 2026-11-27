@@ -5,6 +5,7 @@
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/type_alias.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
@@ -434,6 +435,8 @@ void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
     }
 
     initialize_variable_definition(analyzer, ast);
+
+    resolve_named_type(analyzer, &ast->variable_definition.type_id, &ast->variable_definition.reference_type);
 
     bool analyzed = infer_variable_array_count(analyzer, ast);
 

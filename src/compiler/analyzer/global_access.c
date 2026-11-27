@@ -1,13 +1,16 @@
 #include "compiler/analyzer/global_access.h"
 #include "common/array_type.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/analyzer/builtin.h"
 #include "compiler/analyzer/function.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/function.h"
+#include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
@@ -28,7 +31,7 @@ void validate_global_binding_access(Analyzer* analyzer, ASTNode* origin, Referen
     Type value_type = get_node_data_type(origin);
     bool moved = is_moved(origin);
 
-    if (is_array_type(value_type.kind) && moved) {
+    if (is_owned_type(value_type) && moved) {
         semantic_error("Function cannot access a moved array", token);
     }
 
@@ -76,20 +79,6 @@ static void validate_function_array_moves(Analyzer* analyzer, ASTNode* function)
     }
 }
 
-static void apply_function_array_moves(ASTNode* function)
-{
-    FunctionArrayEffects* effects = function->function_definition.array_effects;
-    if (!effects) {
-        return;
-    }
-
-    Vector* moves = &effects->moves;
-
-    for (size_t i = 0; i < moves->count; i++) {
-        set_moved_state(moves->data[i], true);
-    }
-}
-
 bool contains_binding(const Vector* bindings, const ASTNode* symbol)
 {
     size_t position = 0;
@@ -124,37 +113,6 @@ static void validate_function_array_initializations(ASTNode* function, bool recu
     }
 }
 
-static void apply_function_possible_initializations(ASTNode* function)
-{
-    FunctionArrayEffects* effects = function->function_definition.array_effects;
-    if (!effects) {
-        return;
-    }
-
-    Vector* bindings = &effects->possible_initializations;
-
-    for (size_t i = 0; i < bindings->count; i++) {
-        ASTNode* symbol = bindings->data[i];
-        symbol->variable_definition.possibly_initialized = true;
-    }
-}
-
-static void apply_function_array_initializations(ASTNode* function)
-{
-    FunctionArrayEffects* effects = function->function_definition.array_effects;
-    if (!effects) {
-        return;
-    }
-
-    Vector* bindings = &effects->initializations;
-
-    apply_function_possible_initializations(function);
-
-    for (size_t i = 0; i < bindings->count; i++) {
-        initialize_variable(bindings->data[i]);
-    }
-}
-
 void validate_function_global_access(Analyzer* analyzer, ASTNode* function, bool moves_arrays)
 {
     if (analyzer->constant_scope && is_function_in_path(analyzer->constant_functions, function)) {
@@ -176,8 +134,7 @@ void validate_function_global_access(Analyzer* analyzer, ASTNode* function, bool
     validate_global_access_in_nodes(analyzer, &function->function_definition.body->compound.statements);
 
     if (moves_arrays) {
-        apply_function_array_moves(function);
-        apply_function_array_initializations(function);
+        apply_function_ownership_effects(function);
     }
 
     analyzer->function_path = path.previous;
@@ -239,8 +196,22 @@ static void validate_prefix_global_access(Analyzer* analyzer, ASTNode* ast)
     validate_node_global_access(analyzer, ast->prefix.expr);
 }
 
+static void validate_global_tuple_projection(ASTNode* ast)
+{
+    ASTNode* owner = get_root_binding(ast->index.array);
+    Type type = get_node_data_type(ast->index.array);
+    Scope* scope = get_scope(owner);
+
+    if (!owner || type.kind != TypeTuple || !is_top_level_scope(scope)) {
+        return;
+    }
+
+    validate_tuple_projection(ast);
+}
+
 static void validate_index_global_access(Analyzer* analyzer, ASTNode* ast)
 {
+    validate_global_tuple_projection(ast);
     validate_node_global_access(analyzer, ast->index.array);
     validate_node_global_access(analyzer, ast->index.index);
 

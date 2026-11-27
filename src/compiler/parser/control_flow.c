@@ -48,7 +48,7 @@ bool parse_branch_statement(Parser* parser, ASTNode* branch, bool expression)
         return false;
     }
 
-    push_vector_item(&branch->compound.statements, statement);
+    append_statement(&branch->compound.statements, statement);
 
     return true;
 }

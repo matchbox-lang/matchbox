@@ -3,6 +3,7 @@
 #include "common/array_type.h"
 #include "common/math.h"
 #include "common/string_view.h"
+#include "common/tuple_type.h"
 #include "common/unicode.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/literal.h"
@@ -17,6 +18,7 @@
 static bool evaluate_branch(const ASTNode* branch, ConstantValue* value);
 static bool evaluate_string_constant(const ASTNode* ast, StringView* value);
 static bool can_discard_length_argument(const ASTNode* ast);
+static const ASTNode* get_constant_tuple_initializer(const ASTNode* ast);
 
 static _Noreturn void invalid_conversion_error(Token token, Type destination)
 {
@@ -631,6 +633,74 @@ bool validate_string_slice_constant(const ASTNode* ast)
     return true;
 }
 
+static const ASTNode* get_constant_tuple_element(const ASTNode* ast)
+{
+    if (!ast->index.constant) {
+        return NULL;
+    }
+
+    const ASTNode* tuple = get_constant_tuple_initializer(ast->index.array);
+
+    if (!tuple || ast->index.position >= tuple->array.elements.count) {
+        return NULL;
+    }
+
+    return tuple->array.elements.data[ast->index.position];
+}
+
+static const ASTNode* get_constant_tuple_variable(const ASTNode* ast)
+{
+    const ASTNode* symbol = ast->variable.symbol;
+
+    if (symbol && symbol->type == ASTVariableDefinition && symbol->variable_definition.constant) {
+        return symbol->variable_definition.expr;
+    }
+
+    return get_constant_variable_initializer(ast);
+}
+
+static const ASTNode* get_constant_tuple_initializer(const ASTNode* ast)
+{
+    if (!ast) {
+        return NULL;
+    }
+
+    if (ast->type == ASTVariable) {
+        const ASTNode* initializer = get_constant_tuple_variable(ast);
+
+        return get_constant_tuple_initializer(initializer);
+    }
+
+    if (ast->type == ASTPrefix && ast->prefix.operator.type == TokenKeywordConst) {
+        return get_constant_tuple_initializer(ast->prefix.expr);
+    }
+
+    if (ast->type == ASTIndex) {
+        const ASTNode* element = get_constant_tuple_element(ast);
+
+        return get_constant_tuple_initializer(element);
+    }
+
+    if (ast->type != ASTArray || !ast->array.tuple || !can_discard_length_argument(ast)) {
+        return NULL;
+    }
+
+    return ast;
+}
+
+static bool evaluate_tuple_index(const ASTNode* ast, ConstantValue* value)
+{
+    Type type = get_node_data_type(ast->index.array);
+
+    if (type.kind != TypeTuple || get_reference_type(ast) != RefNone) {
+        return false;
+    }
+
+    const ASTNode* element = get_constant_tuple_element(ast);
+
+    return evaluate_constant(element, value);
+}
+
 static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
 {
     if (ast->builtin_call.builtin->entry) {
@@ -658,6 +728,12 @@ static bool evaluate_builtin_call(const ASTNode* ast, ConstantValue* value)
         return false;
     }
 
+    if (type.kind == TypeTuple) {
+        value->integer = type.tuple->count;
+
+        return true;
+    }
+
     value->integer = type.array->count;
 
     return true;
@@ -672,6 +748,8 @@ bool evaluate_constant(const ASTNode* ast, ConstantValue* value)
     Type type = get_node_data_type(ast);
 
     switch (ast->type) {
+        case ASTIndex:
+            return evaluate_tuple_index(ast, value);
         case ASTBuiltinCall:
             return evaluate_builtin_call(ast, value);
         case ASTInteger:

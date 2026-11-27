@@ -1,8 +1,10 @@
 #include "compiler/ast/reference.h"
 #include "common/memory.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/predicate.h"
+#include "compiler/ast/query.h"
 
 static ReferenceType get_prefix_reference_type(TokenType type)
 {
@@ -15,6 +17,131 @@ static ReferenceType get_prefix_reference_type(TokenType type)
     }
 
     return RefNone;
+}
+
+Vector* get_tuple_references(ASTNode* ast)
+{
+    if (ast->type == ASTVariable) {
+        return &ast->variable.symbol->tuple_references;
+    }
+
+    return &ast->tuple_references;
+}
+
+void free_tuple_reference_vector(Vector* references)
+{
+    for (size_t i = 0; i < references->count; i++) {
+        free_memory(references->data[i]);
+    }
+
+    free_vector(references);
+    init_vector(references);
+}
+
+void clear_tuple_references(ASTNode* ast)
+{
+    free_tuple_reference_vector(&ast->tuple_references);
+}
+
+void copy_tuple_reference_vector(Vector* destination, const Vector* source)
+{
+    if (destination == source) {
+        return;
+    }
+
+    free_tuple_reference_vector(destination);
+
+    for (size_t i = 0; i < source->count; i++) {
+        TupleReference* copy = allocate_memory(sizeof(TupleReference));
+        *copy = *(TupleReference*)source->data[i];
+
+        push_vector_item(destination, copy);
+    }
+}
+
+static bool tuple_references_equal(const TupleReference* left, const TupleReference* right)
+{
+    return left->origin == right->origin && left->reference == right->reference
+        && left->offset == right->offset && left->origin_offset == right->origin_offset;
+}
+
+static void append_tuple_reference(Vector* references, TupleReference access)
+{
+    size_t index = 0;
+
+    while (index < references->count && !tuple_references_equal(references->data[index], &access)) {
+        index++;
+    }
+
+    if (index < references->count) {
+        return;
+    }
+
+    TupleReference* copy = allocate_memory(sizeof(TupleReference));
+    *copy = access;
+
+    push_vector_item(references, copy);
+}
+
+void add_tuple_reference(ASTNode* ast, TupleReference access)
+{
+    append_tuple_reference(&ast->tuple_references, access);
+}
+
+void merge_tuple_reference_vectors(Vector* destination, const Vector* source)
+{
+    for (size_t i = 0; i < source->count; i++) {
+        TupleReference access = *(TupleReference*)source->data[i];
+
+        append_tuple_reference(destination, access);
+    }
+}
+
+static void retain_tuple_reference(ASTNode* ast, TupleReference access, size_t start, size_t slots)
+{
+    if (access.offset >= start && access.offset - start < slots) {
+        return;
+    }
+
+    add_tuple_reference(ast, access);
+}
+
+void remove_tuple_references(ASTNode* ast, size_t start, size_t slots)
+{
+    Vector previous = ast->tuple_references;
+
+    init_vector(&ast->tuple_references);
+
+    for (size_t i = 0; i < previous.count; i++) {
+        TupleReference access = *(TupleReference*)previous.data[i];
+
+        retain_tuple_reference(ast, access, start, slots);
+    }
+
+    free_tuple_reference_vector(&previous);
+}
+
+static void copy_tuple_reference(ASTNode* destination, TupleReference access, size_t start, size_t offset,
+    size_t slots)
+{
+    if (access.offset < start || access.offset - start >= slots) {
+        return;
+    }
+
+    access.offset += offset - start;
+
+    add_tuple_reference(destination, access);
+}
+
+void copy_tuple_references(ASTNode* destination, ASTNode* source, size_t start, size_t offset, size_t slots)
+{
+    Vector* references = get_tuple_references(source);
+
+    for (size_t i = 0; i < references->count; i++) {
+        TupleReference access = *(TupleReference*)references->data[i];
+
+        copy_tuple_reference(destination, access, start, offset, slots);
+    }
 }
 
 void add_reference_origin(Vector* origins, ASTNode* origin)
@@ -155,6 +282,8 @@ Vector* get_reference_origins(ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTIndex:
+            return &ast->index.reference_origins;
         case ASTSlice:
             return &ast->slice.reference_origins;
         case ASTConditional:
@@ -188,6 +317,17 @@ Vector* get_reference_origins_from_expression(ASTNode* ast)
     return &empty;
 }
 
+static ReferenceType get_index_reference_type(const ASTNode* ast)
+{
+    Type type = get_node_data_type(ast->index.array);
+
+    if (type.kind != TypeTuple || !ast->index.constant) {
+        return RefNone;
+    }
+
+    return type.tuple->elements[ast->index.position].reference;
+}
+
 ReferenceType get_reference_type(const ASTNode* ast)
 {
     if (!ast) {
@@ -195,6 +335,9 @@ ReferenceType get_reference_type(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTIndex:
+        case ASTIndexAssignment:
+            return get_index_reference_type(ast);
         case ASTSlice:
             return ast->slice.reference_type;
         case ASTConditional:

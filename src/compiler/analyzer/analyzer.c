@@ -16,8 +16,10 @@
 void init_analyzer(Analyzer* analyzer, ASTNode* ast)
 {
     init_vector(&analyzer->array_types);
+    init_vector(&analyzer->tuple_types);
 
     analyzer->top_level = ast;
+    analyzer->tuple_projection = false;
     analyzer->function = NULL;
     analyzer->current_scope = ast->compound.scope;
     analyzer->constant_scope = NULL;

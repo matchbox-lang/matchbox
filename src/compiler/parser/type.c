@@ -1,6 +1,7 @@
 #include "compiler/parser/type.h"
 #include "common/array_type.h"
 #include "common/memory.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/type_alias.h"
 #include "compiler/parser/array.h"
@@ -131,6 +132,64 @@ bool parse_dimensions(Parser* parser, Type* type)
     return complete;
 }
 
+static bool parse_tuple_element_type(Parser* parser, Vector* elements)
+{
+    TupleElement* element = allocate_zeroed_memory(1, sizeof(TupleElement));
+
+    push_vector_item(elements, element);
+
+    return parse_declared_type(parser, &element->type, &element->reference);
+}
+
+static bool parse_next_tuple_element_type(Parser* parser, Vector* elements)
+{
+    consume(parser, TokenComma);
+
+    if (parser->current_token.type == TokenRparen) {
+        return true;
+    }
+
+    return parse_tuple_element_type(parser, elements);
+}
+
+static bool parse_tuple_type(Parser* parser, Type* type)
+{
+    Vector elements;
+
+    init_vector(&elements);
+    consume(parser, TokenLparen);
+
+    bool complete = true;
+
+    if (parser->current_token.type != TokenRparen) {
+        complete = parse_tuple_element_type(parser, &elements);
+    }
+
+    while (complete && parser->current_token.type == TokenComma) {
+        complete = parse_next_tuple_element_type(parser, &elements);
+    }
+
+    TupleType* tuple = create_tuple_type(elements.count);
+
+    for (size_t i = 0; i < elements.count; i++) {
+        tuple->elements[i] = *(TupleElement*)elements.data[i];
+
+        free_memory(elements.data[i]);
+    }
+
+    free_vector(&elements);
+
+    *type = (Type){.kind = TypeTuple, .tuple = tuple};
+
+    if (!complete || is_end_of_file(parser)) {
+        return false;
+    }
+
+    consume(parser, TokenRparen);
+
+    return true;
+}
+
 bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_type)
 {
     *reference_type = parse_reference_type(parser);
@@ -143,7 +202,9 @@ bool parse_declared_type(Parser* parser, Type* type, ReferenceType* reference_ty
     TypeKind kind = get_token_data_type(parser->current_token.type);
     *type = (Type){.kind = kind};
 
-    if (parser->current_token.type == TokenIdentifier) {
+    if (parser->current_token.type == TokenLparen) {
+        complete = parse_tuple_type(parser, type);
+    } else if (parser->current_token.type == TokenIdentifier) {
         *type = parse_named_type(parser, parser->current_token, *reference_type, &complete);
     } else {
         consume_type(parser);

@@ -139,6 +139,12 @@ void free_compiler(Compiler* compiler)
     }
 
     free_vector(&compiler->analyzer.array_types);
+
+    for (size_t i = 0; i < compiler->analyzer.tuple_types.count; i++) {
+        free_memory(compiler->analyzer.tuple_types.data[i]);
+    }
+
+    free_vector(&compiler->analyzer.tuple_types);
 }
 
 static void compile_statement_bytecode(Compiler* compiler, CompileStatements compile_statements)

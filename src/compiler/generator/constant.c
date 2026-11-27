@@ -7,6 +7,7 @@
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/tuple.h"
 #include "runtime/function_object.h"
 #include "runtime/string_object.h"
 #include "runtime/value.h"
@@ -270,6 +271,18 @@ static int emit_scalar_constant(Compiler* compiler, ASTNode* ast, size_t positio
     return emit_ldc(compiler, position);
 }
 
+static Operand compile_tuple_constant(Compiler* compiler, size_t position, Type type)
+{
+    size_t slots = get_value_slot_count(type);
+    int reg = compiler->register_count;
+
+    for (size_t i = 0; i < slots; i++) {
+        emit_ldc(compiler, position + i);
+    }
+
+    return make_typed_operand(reg, true, type);
+}
+
 Operand compile_constant(Compiler* compiler, ASTNode* ast)
 {
     if (!ast->prefix.evaluated) {
@@ -278,6 +291,11 @@ Operand compile_constant(Compiler* compiler, ASTNode* ast)
 
     size_t position = ast->prefix.constant_position;
     size_t slots = get_node_slot_count(ast);
+    Type type = get_node_data_type(ast);
+
+    if (type.kind == TypeTuple) {
+        return compile_tuple_constant(compiler, position, type);
+    }
 
     if (slots == 2) {
         int reg = emit_ldc_i64(compiler, position);

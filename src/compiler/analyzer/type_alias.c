@@ -3,6 +3,7 @@
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/slice.h"
+#include "common/tuple_type.h"
 #include "compiler/analyzer/array.h"
 #include "compiler/ast/type_alias.h"
 #include "compiler/parser/generic.h"
@@ -10,6 +11,8 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
+
+static Type substitute_alias_arguments(Analyzer* analyzer, Type type, Vector* arguments);
 
 static void register_type_alias(Analyzer* analyzer, ASTNode* ast)
 {
@@ -58,10 +61,29 @@ void resolve_type_alias(Analyzer* analyzer, ASTNode* ast)
     ast->type_alias.resolved = true;
 }
 
+static Type substitute_tuple_alias_arguments(Analyzer* analyzer, Type type, Vector* arguments)
+{
+    TupleType* tuple = create_tuple_type(type.tuple->count);
+
+    for (size_t i = 0; i < tuple->count; i++) {
+        tuple->elements[i] = type.tuple->elements[i];
+        tuple->elements[i].type = substitute_alias_arguments(analyzer, tuple->elements[i].type, arguments);
+    }
+
+    layout_tuple_type(tuple);
+    push_vector_item(&analyzer->tuple_types, tuple);
+
+    return (Type){.kind = TypeTuple, .tuple = tuple};
+}
+
 static Type substitute_alias_arguments(Analyzer* analyzer, Type type, Vector* arguments)
 {
     if (type.kind == TypeGeneric && type.generic_index < arguments->count) {
         return *(Type*)arguments->data[type.generic_index];
+    }
+
+    if (arguments->count && type.kind == TypeTuple) {
+        return substitute_tuple_alias_arguments(analyzer, type, arguments);
     }
 
     if (!arguments->count || !is_contiguous_type(type.kind) || type.kind == TypeStringSlice) {

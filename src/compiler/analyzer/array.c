@@ -8,9 +8,11 @@
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/binding.h"
 #include "compiler/ast/literal.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
@@ -203,6 +205,7 @@ static void free_array_dimensions(const ArrayType* array_type)
 void resolve_dimensions(Analyzer* analyzer, Type* type)
 {
     resolve_named_type(analyzer, type, NULL);
+    resolve_tuple_type(analyzer, type);
 
     if (type->kind == TypeStringSlice) {
         *type = get_string_slice_type(&analyzer->array_types);
@@ -239,7 +242,10 @@ static void analyze_array_element(Analyzer* analyzer, ASTNode* element, Type exp
         semantic_error("Array element requires an explicit type", token);
     }
 
-    if (reference != RefNone || (expected.kind != TypeUnknown && !compatible) || actual.kind == TypeVoid) {
+    Vector* references = get_tuple_references(element);
+
+    if (reference != RefNone || references->count || (expected.kind != TypeUnknown && !compatible)
+        || actual.kind == TypeVoid) {
         semantic_error("Array element type does not match", token);
     }
 
@@ -341,6 +347,12 @@ static void analyze_array_fill(Analyzer* analyzer, ASTNode* ast)
 
 void analyze_array(Analyzer* analyzer, ASTNode* ast)
 {
+    if (ast->array.tuple) {
+        analyze_tuple(analyzer, ast);
+
+        return;
+    }
+
     if (ast->array.fill) {
         analyze_array_fill(analyzer, ast);
 
@@ -385,13 +397,26 @@ static Type get_index_literal_type(ASTNode* expression)
     return (Type){.kind = TypeUsize};
 }
 
+static void analyze_index_source(Analyzer* analyzer, ASTNode* ast)
+{
+    bool previous = analyzer->tuple_projection;
+
+    analyzer->tuple_projection = ast->type == ASTVariable || ast->type == ASTIndex;
+    analyze_node(analyzer, ast);
+    analyzer->tuple_projection = previous;
+}
+
 void analyze_index(Analyzer* analyzer, ASTNode* ast)
 {
     Type literal_type = get_index_literal_type(ast->index.index);
+    bool previous = analyzer->tuple_projection;
+    analyzer->tuple_projection = false;
 
-    analyze_node(analyzer, ast->index.array);
+    analyze_index_source(analyzer, ast->index.array);
     apply_literal_type(ast->index.index, literal_type);
     analyze_node(analyzer, ast->index.index);
+
+    analyzer->tuple_projection = previous;
 
     Type array_type = get_node_data_type(ast->index.array);
     Type index_type = get_node_data_type(ast->index.index);
@@ -401,6 +426,12 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
     bool compatible = ast->index.constant || can_implicitly_widen_integer(index_type.kind, TypeUsize)
         || (is_integer_type(index_type.kind) && constant_expression);
     bool negative = is_signed_integer_type(index_type.kind) && (int64_t)value < 0;
+
+    if (array_type.kind == TypeTuple) {
+        analyze_tuple_index(ast, array_type, value);
+
+        return;
+    }
 
     if (!is_contiguous_type(array_type.kind)) {
         semantic_error("Indexing requires an array", ast->index.token);
@@ -442,9 +473,16 @@ static void validate_index_mutation(ASTNode* ast)
     ReferenceType reference = get_reference_type(owner);
     bool constant = owner && is_variable_definition(owner) && owner->variable_definition.constant;
     bool has_shared_access = owner && *get_shared_access_count(owner);
+    ReferenceType source_reference = get_reference_type(ast->index.array);
 
-    if (!owner || reference == RefShared || constant || has_shared_access) {
+    if (!owner || reference == RefShared || source_reference == RefShared || constant || has_shared_access) {
         semantic_error("Cannot mutate this array", ast->index.token);
+    }
+
+    Type owner_type = get_node_data_type(owner);
+
+    if (owner_type.kind == TypeTuple) {
+        mark_address_taken(owner);
     }
 }
 
@@ -469,6 +507,13 @@ void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_index(analyzer, ast);
     validate_index_mutation(ast);
-    analyze_array_element(analyzer, ast->index.value, ast->index.type_id, ast->index.token);
+    Type source = get_node_data_type(ast->index.array);
+
+    if (source.kind == TypeTuple) {
+        analyze_tuple_index_value(analyzer, ast);
+    } else {
+        analyze_array_element(analyzer, ast->index.value, ast->index.type_id, ast->index.token);
+    }
+
     validate_index_assignment_operator(ast);
 }

@@ -1,0 +1,14 @@
+test "tuple owned copies" {
+    const INDEX = 1 - 1
+
+    let original = ([1, 2], ("nested", [3, 4]))
+    let copied = copy(original)
+    
+    copied[INDEX][0] = 10
+    copied[1][1][0] = 30
+
+    assert(original[0][0] == 1)
+    assert(original[1][1][0] == 3)
+    assert(copied[0][0] == 10)
+    assert(copied[1][1][0] == 30)
+}

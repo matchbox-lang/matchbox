@@ -1,0 +1,2 @@
+let tuple = (1, "two")
+print(tuple[true])

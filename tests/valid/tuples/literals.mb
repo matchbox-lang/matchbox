@@ -1,0 +1,23 @@
+test "tuple literals" {
+    let product = ("LT-1000", 1099.99)
+    let model, price = product
+    let typed: (string, f32) = ("LT-1000", 2.5)
+    let nested = (true, (typed, 42))
+
+    assert(model == "LT-1000")
+    assert(price == 1099.99)
+    assert(nested[0])
+    assert(nested[1][0][0] == model)
+    assert(nested[1][1] == 42)
+}
+
+test "tuple assignment" {
+    var first = (1, "one")
+    let second = first
+    first[0] = 2
+    first = (3, "three")
+
+    assert(first[0] == 3)
+    assert(second[0] == 1)
+    assert(second[1] == "one")
+}

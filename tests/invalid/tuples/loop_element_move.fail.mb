@@ -1,0 +1,7 @@
+let tuple = ([1, 2], true)
+var count = 0
+while count < 2 {
+    let element = tuple[0]
+    assert(element[0] == 1)
+    count += 1
+}

@@ -9,6 +9,7 @@
 #include "compiler/generator/expression.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/generator/variable.h"
 #include "runtime/code_object.h"
 #include <stddef.h>
@@ -225,7 +226,7 @@ static void store_match_binding(Compiler* compiler, ASTNode* binding, Operand su
     emit_operand_mov(compiler, position, subject);
 
     Type binding_type = get_node_data_type(binding);
-    int binding_register_count = position + get_type_slot_count(binding_type.kind);
+    int binding_register_count = position + get_value_slot_count(binding_type);
 
     compiler->register_count = MAX(compiler->register_count, binding_register_count);
 }
@@ -304,6 +305,10 @@ static Operand match_result_operand(Type type, int destination)
 {
     if (type.kind == TypeVoid) {
         return no_operand();
+    }
+
+    if (type.kind == TypeTuple) {
+        return make_typed_operand(destination, true, type);
     }
 
     if (get_type_slot_count(type.kind) == 2) {
@@ -439,7 +444,7 @@ static void restore_match_compiler_state(Compiler* compiler, Type type, int prev
     compiler->register_count = previous_register_count;
 
     if (type.kind != TypeVoid) {
-        compiler->register_count += get_type_slot_count(type.kind);
+        compiler->register_count += get_value_slot_count(type);
     }
 }
 

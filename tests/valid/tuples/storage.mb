@@ -1,0 +1,19 @@
+type Pair = (i64, string)
+type Result[T] = (bool, T)
+
+func update(value: ^Pair) {
+    value[0] += 2
+}
+
+test "tuple storage" {
+    const PAIR: Pair = (9223372036854775805, "wide")
+    var value = PAIR
+    update(value)
+    let values = [value, PAIR]
+    let copied = copy(values)
+    let result: Result[Pair] = (true, copied[0])
+
+    assert(result[0])
+    assert(result[1][0] == 9223372036854775807)
+    assert(values[1][1] == "wide")
+}

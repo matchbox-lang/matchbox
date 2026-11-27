@@ -10,7 +10,7 @@ func increment[T](value: ^T, amount: T) {
     value += amount
 }
 
-func borrow[T](value: &T) -> &T {
+func share[T](value: &T) -> &T {
     return value
 }
 
@@ -22,7 +22,7 @@ test "generic ownership and references" {
 
     increment(^value, 10)
     
-    let shared: &i32 = borrow(&value)
+    let shared: &i32 = share(&value)
 
     assert(moved[0] == 1)
     assert(moved[1] == 2)

@@ -7,6 +7,8 @@ typedef struct OwnershipState
 {
     ASTNode* symbol;
     Vector reference_origins;
+    Vector tuple_references;
+    Vector tuple_moves;
     size_t shared_access_count;
     bool exclusive_access_active;
     bool initialized;
@@ -19,6 +21,7 @@ void consume_array(ASTNode* ast);
 void capture_ownership_states(Vector* states, Scope* scope);
 void copy_ownership_states(Vector* destination, Vector* source);
 void apply_ownership_states(Vector* states);
+void apply_function_ownership_effects(ASTNode* function);
 void update_ownership_states(Vector* states);
 void free_ownership_states(Vector* states);
 void release_references_dead_on_branch(Analyzer* analyzer, Vector* states, ASTNode* branch, ASTNode* binding);

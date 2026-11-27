@@ -1,0 +1,15 @@
+func take_values(value: (i32[2], string)) -> i32[2] {
+    let result = value[0]
+
+    assert(value[1] == "owned")
+
+    return result
+}
+
+test "tuple parameter moves" {
+    let tuple = ([1, 2], "owned")
+    let result = take_values(tuple)
+
+    assert(result[0] == 1)
+    assert(result[1] == 2)
+}

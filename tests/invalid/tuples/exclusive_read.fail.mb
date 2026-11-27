@@ -1,0 +1,4 @@
+var value = 1
+let tuple = (^value, true)
+print(value)
+assert(tuple[1])

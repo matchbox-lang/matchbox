@@ -17,7 +17,8 @@ typedef enum ObjectType
     ObjInt,
     ObjFunction,
     ObjModule,
-    ObjString
+    ObjString,
+    ObjTupleFormat
 } ObjectType;
 
 typedef struct Object

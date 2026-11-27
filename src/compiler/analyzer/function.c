@@ -1,6 +1,7 @@
 #include "compiler/analyzer/function.h"
 #include "common/array_type.h"
 #include "common/slice.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/analyzer/array.h"
 #include "compiler/analyzer/builtin.h"
@@ -11,6 +12,7 @@
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/control_flow.h"
@@ -123,6 +125,9 @@ void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
         add_reference_origin(origins, ast);
     }
 
+    Type type = get_node_data_type(ast);
+
+    initialize_tuple_parameter(ast, type, 0);
     set_local_symbol(analyzer->current_scope, id, ast);
 }
 
@@ -172,7 +177,7 @@ static void finish_call_argument(ASTNode* argument, ASTNode* parameter)
     Type type = get_parameter_argument_type(parameter);
     ReferenceType reference = get_parameter_argument_reference(parameter);
     ReferenceType argument_reference = get_reference_type(argument);
-    bool owned_array = is_array_type(type.kind) && reference == RefNone;
+    bool owned_array = is_owned_type(type) && reference == RefNone;
 
     if (owned_array && argument_reference != RefNone) {
         semantic_error("Cannot transfer array ownership through a reference", parameter->parameter.token);
@@ -400,7 +405,7 @@ static void set_parameter_positions(ASTNode* ast)
         param->parameter.position = position;
         Type type = get_node_data_type(param);
         bool value = get_reference_type(param) == RefNone || is_slice_type(type.kind);
-        position += value ? get_type_slot_count(type.kind) : 1;
+        position += value ? get_value_slot_count(type) : 1;
     }
 }
 
@@ -827,6 +832,13 @@ static void resolve_specialized_return_type(ASTNode* function, ASTNode* expressi
     merge_function_return_value_type(function, type);
 }
 
+static void consume_returned_tuple_reference(ASTNode* expression)
+{
+    if (expression->type == ASTIndex && get_reference_type(expression) == RefExclusive) {
+        consume_tuple_element(expression);
+    }
+}
+
 void analyze_return(Analyzer* analyzer, ASTNode* ast)
 {
     validate_return_scope(analyzer, ast);
@@ -839,11 +851,20 @@ void analyze_return(Analyzer* analyzer, ASTNode* ast)
     }
 
     analyze_node(analyzer, ast->return_statement.expr);
+    consume_returned_tuple_reference(ast->return_statement.expr);
     resolve_specialized_return_type(function, ast->return_statement.expr);
     consume_array(ast->return_statement.expr);
     record_array_return_initializations(analyzer);
 
+    track_tuple_return(analyzer, ast);
+
     if (validate_return_reference_type(analyzer, ast) == RefNone) {
+        return;
+    }
+
+    Vector* references = get_tuple_references(ast->return_statement.expr);
+
+    if (references->count) {
         return;
     }
 

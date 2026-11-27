@@ -1,0 +1,18 @@
+type Product = (string, f32)
+
+func get_product() -> Product {
+    return ("LT-1000", 1099.99)
+}
+
+func echo_product(product: Product) -> (Product, i64) {
+    return (product, 9223372036854775807)
+}
+
+test "tuple function aliases" {
+    let model, price = get_product()
+    let result = echo_product((model, price))
+
+    assert(result[0][0] == model)
+    assert(result[0][1] == price)
+    assert(result[1] == 9223372036854775807)
+}

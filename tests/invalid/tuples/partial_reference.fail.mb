@@ -1,0 +1,3 @@
+let tuple = ([1, 2], true)
+let element = tuple[0]
+let reference = &tuple

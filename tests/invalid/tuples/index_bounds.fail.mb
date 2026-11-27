@@ -1,0 +1,2 @@
+let value = (1, "name")
+print(value[2])

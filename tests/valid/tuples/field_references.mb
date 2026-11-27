@@ -1,0 +1,17 @@
+func field(value: (&i32, bool)) -> &i32 {
+    let reference, flag = value
+
+    assert(flag)
+
+    return reference
+}
+
+test "tuple field references" {
+    var value = 7
+    let reference = field((&value, true))
+
+    assert(reference == 7)
+    value = 8
+
+    assert(value == 8)
+}

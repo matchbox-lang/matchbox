@@ -19,6 +19,7 @@
 #include "compiler/generator/match.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/slice.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/generator/variable.h"
 #include "runtime/function_object.h"
 #include <stddef.h>
@@ -37,6 +38,10 @@ static _Noreturn void unresolved_repl_expression_type_error(void)
 Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
 {
     Type type = get_node_data_type(ast);
+
+    if (ast->type == ASTIndex && get_reference_type(ast) != RefNone) {
+        return compile_tuple_index(compiler, ast, true);
+    }
 
     if (is_slice_type(type.kind)) {
         return compile_expression(compiler, ast, false);

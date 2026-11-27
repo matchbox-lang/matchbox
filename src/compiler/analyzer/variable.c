@@ -1,5 +1,6 @@
 #include "compiler/analyzer/variable.h"
 #include "common/array_type.h"
+#include "common/tuple_type.h"
 #include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/expression.h"
@@ -123,7 +124,9 @@ void analyze_variable(Analyzer* analyzer, ASTNode* ast)
         symbol_error(" is uninitialized", ast->variable.token);
     }
 
-    if (is_moved(symbol)) {
+    Vector* moves = get_tuple_moves(symbol);
+
+    if (is_moved(symbol) || (moves->count && !analyzer->tuple_projection)) {
         symbol_error(" is moved", ast->variable.token);
     }
 
@@ -273,6 +276,11 @@ static void validate_assignment_operator(ASTNode* ast, ASTNode* symbol)
     Type binding_type = get_node_data_type(symbol);
     bool string_type = binding_type.kind == TypeString || binding_type.kind == TypeStringSlice;
 
+    if (binding_type.kind == TypeTuple && ast->assignment.operator.type != TokenEqual) {
+        semantic_error("Invalid operator for tuple assignment", ast->assignment.operator);
+    }
+
+
     if (string_type && ast->assignment.operator.type != TokenEqual) {
         semantic_error("Invalid operator for string assignment", ast->assignment.operator);
     }
@@ -318,6 +326,9 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
 
     ast->assignment.scope = analyzer->current_scope;
     ast->assignment.symbol = symbol;
+
+    Vector* moves = get_tuple_moves(symbol);
+    moves->count = 0;
 
     update_reference_binding(ast, symbol, initializes_binding);
     initialize_variable(symbol);
@@ -408,6 +419,13 @@ static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast, bool 
 
     set_reference_origins_from_expression(ast, expression);
     initialize_variable(ast);
+
+    size_t count = ast->variable_definition.destructure_count;
+    Type type = get_node_data_type(ast);
+
+    if (count && (type.kind != TypeTuple || type.tuple->count != count)) {
+        semantic_error("Tuple destructuring element count does not match", ast->variable_definition.token);
+    }
 }
 
 static void validate_variable_type(ASTNode* ast)
@@ -419,7 +437,12 @@ static void validate_variable_type(ASTNode* ast)
 
 static void track_variable_reference(ASTNode* ast)
 {
-    if (ast->variable_definition.reference_type == RefNone || !ast->variable_definition.initialized) {
+    if (ast->variable_definition.destructure_count) {
+        return;
+    }
+
+    if ((ast->variable_definition.reference_type == RefNone && !ast->tuple_references.count)
+        || !ast->variable_definition.initialized) {
         return;
     }
 

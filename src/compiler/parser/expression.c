@@ -21,16 +21,67 @@ static _Noreturn void expected_operand_error(Token token)
     fatal_token_error(token, "", "Expected operand but found ");
 }
 
-ASTNode* parse_group_expression(Parser* parser)
+static bool parse_tuple_element(Parser* parser, ASTNode* tuple)
 {
-    consume(parser, TokenLparen);
+    consume(parser, TokenComma);
+
+    if (parser->current_token.type == TokenRparen) {
+        return true;
+    }
+
+    ASTNode* element = parse_expression(parser);
+
+    if (!element) {
+        return false;
+    }
+
+    push_vector_item(&tuple->array.elements, element);
+
+    return true;
+}
+
+static ASTNode* parse_tuple_tail(Parser* parser, ASTNode* first, Token token)
+{
+    Type unknown = {.kind = TypeUnknown};
+    ASTNode* tuple = create_array_node(token, unknown, false);
+
+    tuple->array.tuple = true;
+    bool complete = true;
+
+    if (first) {
+        push_vector_item(&tuple->array.elements, first);
+    }
+
+    while (complete && parser->current_token.type == TokenComma) {
+        complete = parse_tuple_element(parser, tuple);
+    }
+
+    if (!complete) {
+        free_ast_node(tuple);
+
+        return NULL;
+    }
+
+    return tuple;
+}
+
+static ASTNode* parse_group_contents(Parser* parser, Token token)
+{
+    if (parser->current_token.type == TokenRparen) {
+        return parse_tuple_tail(parser, NULL, token);
+    }
 
     ASTNode* ast = parse_expression(parser);
 
-    if (!ast && parser->current_token.type == TokenRparen) {
-        expected_expression_error(parser->current_token);
+    if (ast && parser->current_token.type == TokenComma) {
+        return parse_tuple_tail(parser, ast, token);
     }
 
+    return ast;
+}
+
+static ASTNode* finish_group_expression(Parser* parser, ASTNode* ast)
+{
     if (!ast || is_end_of_file(parser)) {
         free_ast_node(ast);
 
@@ -40,6 +91,17 @@ ASTNode* parse_group_expression(Parser* parser)
     consume(parser, TokenRparen);
 
     return ast;
+}
+
+ASTNode* parse_group_expression(Parser* parser)
+{
+    Token token = parser->current_token;
+
+    consume(parser, TokenLparen);
+
+    ASTNode* ast = parse_group_contents(parser, token);
+
+    return finish_group_expression(parser, ast);
 }
 
 static ASTNode* parse_primary(Parser* parser)

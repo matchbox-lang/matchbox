@@ -26,7 +26,13 @@ void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_
 
     Vector* origins = get_reference_origins_from_expression(result);
     Vector* expression_origins = get_reference_origins(ast);
+    
     merge_reference_origins(expression_origins, origins);
+
+    Type value_type = get_node_data_type(result);
+    size_t slots = get_value_slot_count(value_type);
+
+    copy_tuple_references(ast, result, 0, 0, slots);
 }
 
 Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)

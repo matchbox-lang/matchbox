@@ -82,6 +82,25 @@ ASTNode* parse_statement(Parser* parser)
     }
 }
 
+void append_statement(Vector* nodes, ASTNode* statement)
+{
+    if (statement->type != ASTCompound || !statement->compound.destructuring) {
+        push_vector_item(nodes, statement);
+
+        return;
+    }
+
+    Vector* bindings = &statement->compound.statements;
+
+    for (size_t i = 0; i < bindings->count; i++) {
+        push_vector_item(nodes, bindings->data[i]);
+    }
+
+    bindings->count = 0;
+
+    free_ast_node(statement);
+}
+
 static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
 {
     Token token = parser->current_token;
@@ -101,7 +120,7 @@ static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
             consume(parser, TokenSemicolon);
         }
 
-        push_vector_item(nodes, stmt);
+        append_statement(nodes, stmt);
         token = parser->current_token;
     }
 

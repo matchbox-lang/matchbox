@@ -1,5 +1,6 @@
 #include "common/type.h"
 #include "common/array_type.h"
+#include "common/tuple_type.h"
 #include <float.h>
 #include <limits.h>
 
@@ -53,6 +54,7 @@ static const char* get_type_kind_name(TypeKind kind)
         case TypeVoid:          return "void";
         case TypeString:        return "string";
         case TypeStringSlice:   return "string view";
+        case TypeTuple:          return "tuple";
         case TypeGeneric:       return "generic";
         default:
             return "unknown token";
@@ -230,8 +232,21 @@ size_t get_type_slot_count(TypeKind kind)
     return kind == TypeI64 || kind == TypeU64 || kind == TypeF64 || is_slice_type(kind) ? 2 : 1;
 }
 
+size_t get_value_slot_count(Type type)
+{
+    if (type.kind == TypeTuple) {
+        return type.tuple->slots;
+    }
+
+    return get_type_slot_count(type.kind);
+}
+
 size_t get_type_storage_size(Type type)
 {
+    if (type.kind == TypeTuple) {
+        return type.tuple->slots * sizeof(void*);
+    }
+
     if (!is_contiguous_type(type.kind)) {
         return get_scalar_storage_size(type.kind);
     }
@@ -312,7 +327,7 @@ bool is_printable_type(TypeKind kind)
 {
     return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool
         || kind == TypeChar || is_slice_type(kind)
-        || kind == TypeString || is_array_type(kind);
+        || kind == TypeString || kind == TypeTuple || is_array_type(kind);
 }
 
 bool is_signed_integer_type(TypeKind kind)
@@ -338,6 +353,10 @@ bool types_equal(Type left, Type right)
 {
     if (left.kind != right.kind) {
         return false;
+    }
+
+    if (left.kind == TypeTuple) {
+        return tuple_types_equal(left.tuple, right.tuple);
     }
 
     if (is_contiguous_type(left.kind)) {

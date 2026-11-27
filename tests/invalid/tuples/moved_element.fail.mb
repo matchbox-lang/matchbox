@@ -1,0 +1,3 @@
+let tuple = ([1, 2], "remaining")
+let first = tuple[0]
+let second = tuple[0]

@@ -510,8 +510,13 @@ Operand compile_prefix(Compiler* compiler, ASTNode* ast)
     }
 
     if (get_reference_type(ast) != RefNone) {
-        return dereference_operand(
-            compiler, compile_reference_expression(compiler, ast), get_type_slot_count(get_node_data_type(ast).kind));
+        Type type = get_node_data_type(ast);
+        Operand reference = compile_reference_expression(compiler, ast);
+        size_t slots = get_value_slot_count(type);
+        
+        reference.pair = type.kind == TypeTuple;
+
+        return dereference_operand(compiler, reference, slots);
     }
 
     Type type = get_node_data_type(ast);

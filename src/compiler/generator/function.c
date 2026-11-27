@@ -17,6 +17,7 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/slice.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/optimizer/bytecode_optimizer.h"
 #include "compiler/scope.h"
 #include "runtime/argument_format.h"
@@ -216,7 +217,7 @@ static FunctionObject* create_variadic_builtin_function(Compiler* compiler, cons
 
         set_builtin_argument_format(compiler, function, type, i);
 
-        function->param_count += get_type_slot_count(type.kind);
+        function->param_count += get_value_slot_count(type);
     }
 
     function->max_stack_count = 2 + get_call_area_count(function);
@@ -537,15 +538,23 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
         );
     }
 
-    function->return_count = get_type_slot_count(ast->function_definition.return_type_id.kind);
+    function->return_count = get_value_slot_count(ast->function_definition.return_type_id);
 
     if (ast->function_definition.return_type_id.kind == TypeVoid) {
         function->return_count = 0;
     }
 
-    if (is_slice_type(ast->function_definition.return_type_id.kind)) {
+    bool tuple_result = ast->function_definition.return_type_id.kind == TypeTuple
+        && ast->function_definition.return_reference_type == RefNone;
+
+    if (is_slice_type(ast->function_definition.return_type_id.kind) || tuple_result) {
         function->param_count++;
         function->return_count = 0;
+    }
+
+    if (ast->function_definition.return_reference_type != RefNone
+        && !is_slice_type(ast->function_definition.return_type_id.kind)) {
+        function->return_count = 1;
     }
 
     function->local_count = get_max_local_count(body->compound.scope);
@@ -624,13 +633,23 @@ static bool returns_slice(Compiler* compiler, uint16_t position)
 {
     ASTNode* definition = compiler->function_references.data[position];
 
-    return definition && is_slice_type(definition->function_definition.return_type_id.kind);
+    if (!definition) {
+        return false;
+    }
+
+    Type type = definition->function_definition.return_type_id;
+    bool tuple_result = type.kind == TypeTuple && definition->function_definition.return_reference_type == RefNone;
+
+    return is_slice_type(type.kind) || tuple_result;
 }
 
 static Operand compile_slice_call(Compiler* compiler, FunctionObject* function, uint16_t position,
     Vector* args, Vector* params, bool discard)
 {
-    int result = allocate_registers(compiler, 2);
+    ASTNode* definition = compiler->function_references.data[position];
+    Type type = definition->function_definition.return_type_id;
+    size_t slots = get_value_slot_count(type);
+    int result = allocate_registers(compiler, slots);
     CallArea call = open_call_area(compiler);
     bool reserved = compile_arguments(compiler, args, params);
 
@@ -649,9 +668,9 @@ static Operand compile_slice_call(Compiler* compiler, FunctionObject* function, 
         return no_operand();
     }
 
-    compiler->register_count = result + 2;
+    compiler->register_count = result + slots;
 
-    return make_slice_operand(result, true);
+    return make_typed_operand(result, true, type);
 }
 
 Operand compile_call(Compiler* compiler, FunctionObject* function, uint16_t function_position,
@@ -785,7 +804,10 @@ Operand compile_function_call(Compiler* compiler, ASTNode* ast, bool discard)
         return result;
     }
 
-    return dereference_operand(compiler, result, get_type_slot_count(get_node_data_type(ast).kind));
+    size_t slots = get_value_slot_count(type);
+    result.pair = type.kind == TypeTuple;
+
+    return dereference_operand(compiler, result, slots);
 }
 
 void compile_function_definition(Compiler* compiler, ASTNode* ast)
@@ -853,7 +875,13 @@ void compile_return_statement(Compiler* compiler, ASTNode* ast)
     Type return_type = function->function_definition.return_type_id;
     Operand value = compile_converted_expression(compiler, ast->return_statement.expr, return_type, reference);
 
-    if (is_slice_type(return_type.kind)) {
+    if (return_type.kind == TypeTuple && !reference) {
+        int output = compiler->function->param_count - 1;
+        Operand buffer = make_operand(output, false);
+
+        store_tuple_slots(compiler, buffer, value, 0);
+        emit_ret(compiler);
+    } else if (is_slice_type(return_type.kind)) {
         int output = compiler->function->param_count - 1;
         Opcode store = sizeof(Value) == 8 ? OpStmi64 : OpStmi32;
 

@@ -129,7 +129,9 @@ static bool builtin_argument_matches(const Builtin* builtin, const Type* argumen
     bool slice_length = (is_slice_type(argument_type) || argument_type == TypeString)
         && parameter_type == TypeArray && !builtin->entry;
 
-    return slice_length || argument_type == TypeUnknown
+    bool tuple = argument_type == TypeTuple && parameter_type == TypeArray;
+
+    return tuple || slice_length || argument_type == TypeUnknown
         || argument_type == parameter_type
         || can_implicitly_widen_type(argument_type, parameter_type);
 }

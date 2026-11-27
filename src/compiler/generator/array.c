@@ -1,6 +1,7 @@
 #include "compiler/generator/array.h"
 #include "builtin/memory.h"
 #include "common/array_type.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/query.h"
@@ -12,6 +13,7 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/memory.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/generator/variable.h"
 #include "runtime/function_object.h"
 #include <stddef.h>
@@ -67,6 +69,15 @@ static Operand compile_array_new(Compiler* compiler, Type type)
 static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
     size_t position, Type type)
 {
+    if (type.kind == TypeTuple) {
+        Operand value = load_tuple_slots(compiler, source, position, type);
+
+        store_tuple_slots(compiler, buffer, value, offset + position);
+        release_operand(compiler, value);
+
+        return;
+    }
+
     size_t slots = get_type_slot_count(type.kind);
     int destination = allocate_registers(compiler, slots);
     Opcode load = get_memory_load_opcode(type);
@@ -262,7 +273,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
     offset += position * stride;
     ASTNode* element = ast->array.elements.data[position];
 
-    if (element->type == ASTArray) {
+    if (element->type == ASTArray && !element->array.tuple) {
         compile_array_into(compiler, element, array, offset);
 
         return;
@@ -336,6 +347,10 @@ static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, 
 
 Operand compile_array(Compiler* compiler, ASTNode* ast)
 {
+    if (ast->array.tuple) {
+        return compile_tuple(compiler, ast);
+    }
+
     Operand array = compile_array_new(compiler, ast->array.type_id);
 
     compile_array_into(compiler, ast, array, 0);
@@ -400,11 +415,35 @@ void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast)
     compiler->register_count = previous_register_count;
 }
 
+static Operand finish_tuple_copy(Compiler* compiler, const Builtin* builtin, Type type, Operand source,
+    int start, bool discard)
+{
+    Operand result = emit_tuple_copy(compiler, builtin, type, source);
+
+    emit_operand_mov(compiler, start, result);
+
+    result.reg = start;
+    compiler->register_count = start + result.slots;
+
+    if (discard) {
+        release_operand(compiler, result);
+
+        return no_operand();
+    }
+
+    return result;
+}
+
 Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
 {
     ASTNode* argument = ast->builtin_call.args.data[0];
     Type type = get_node_data_type(argument);
+    int start = compiler->register_count;
     Operand source = compile_expression(compiler, argument, false);
+
+    if (type.kind == TypeTuple) {
+        return finish_tuple_copy(compiler, ast->builtin_call.builtin, type, source, start, discard);
+    }
 
     return emit_array_copy(compiler, ast->builtin_call.builtin, type, source, discard);
 }
@@ -418,6 +457,10 @@ Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool discard)
 
     if (discard) {
         return no_operand();
+    }
+
+    if (type.kind == TypeTuple) {
+        return compile_usize_literal(compiler, type.tuple->count);
     }
 
     return compile_usize_literal(compiler, type.array->count);
@@ -455,6 +498,12 @@ Operand emit_array_copy(Compiler* compiler, const Builtin* definition, Type type
 
 void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
 {
+    if (type.kind == TypeTuple) {
+        store_tuple_slots(compiler, buffer, value, offset);
+
+        return;
+    }
+
     if (!is_array_type(type.kind)) {
         Opcode opcode = get_memory_store_opcode(type);
 

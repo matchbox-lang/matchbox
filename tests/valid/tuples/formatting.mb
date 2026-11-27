@@ -1,0 +1,27 @@
+test "tuple formatting" {
+    let value = (10, 12.45)
+
+    assert(string(value) == "(10, 12.45)")
+    assert(string("prefix ", value, " suffix") == "prefix (10, 12.45) suffix")
+    assert($"Tuple: {value}" == "Tuple: (10, 12.45)")
+    assert(string((true, 1)) == "(true, 1)")
+    assert(string((1,)) == "(1,)")
+
+    print(value)
+}
+
+test "nested formatting" {
+    let value = ("label", (true, [1, 2]))
+    let values = [(10, 12.45), (20, 24.5)]
+
+    assert(string(value) == "(label, (true, [1, 2]))")
+    assert(string(values) == "[(10, 12.45), (20, 24.5)]")
+}
+
+test "reference formatting" {
+    var number = 10
+    let source = (20, "text")
+    let value = (&number, &source)
+
+    assert(string(value) == "(10, (20, text))")
+}

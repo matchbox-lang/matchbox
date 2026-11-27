@@ -1,12 +1,15 @@
 #include "compiler/analyzer/builtin.h"
 #include "builtin/builtin.h"
 #include "builtin/io.h"
+#include "builtin/memory.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/ast/literal.h"
 #include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <float.h>
@@ -75,6 +78,17 @@ static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token to
 
     if (count != (size_t)builtin->param_count) {
         semantic_token_error("Invalid arguments to function ", token);
+    }
+
+    if (builtin->entry == builtin_copy_array) {
+        Type type = get_node_data_type(ast->function_call.args.data[0]);
+
+        validate_tuple_copy(type, token);
+
+        size_t slots = get_value_slot_count(type);
+        ASTNode* argument = ast->function_call.args.data[0];
+
+        copy_tuple_references(ast, argument, 0, 0, slots);
     }
 
     if (builtin->params[0] == TypeArray) {

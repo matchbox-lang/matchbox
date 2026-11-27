@@ -1,9 +1,11 @@
 #include "runtime/argument_format.h"
 #include "common/array_type.h"
 #include "common/errors.h"
+#include "common/tuple_type.h"
 #include "runtime/array_format.h"
 #include "runtime/concatenation.h"
 #include "runtime/module_object.h"
+#include "runtime/tuple_format.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -15,9 +17,16 @@ typedef struct FormattedArguments
 } FormattedArguments;
 
 static void format_array_data(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t count);
+static void format_tuple_data(Writer* writer, const TupleFormat* format, const uint8_t* data);
 
 static void format_argument(Writer* writer, const Value* argument, const ArgumentFormat* format)
 {
+    if (format->tuple) {
+        format_tuple_data(writer, format->tuple, (const uint8_t*)argument);
+
+        return;
+    }
+
     if (!format->array) {
         format->formatter(writer, argument);
 
@@ -58,7 +67,7 @@ static size_t argument_capacity(const Value* frame, const ArgumentFormat* format
         return format->capacity;
     }
 
-    if (format->array) {
+    if (format->array || format->tuple) {
         Writer writer;
 
         init_buffer_writer(&writer, NULL, 0);
@@ -219,6 +228,48 @@ void format_string_slice_argument(Writer* writer, const Value* argument)
     write_bytes(writer, data, length);
 }
 
+static void format_tuple_field(Writer* writer, const TupleFieldFormat* field, const uint8_t* data, size_t index)
+{
+    if (index) {
+        write_bytes(writer, ", ", 2);
+    }
+
+    data += field->format.slot * sizeof(Value);
+
+    if (!field->reference && field->format.tuple) {
+        format_tuple_data(writer, field->format.tuple, data);
+
+        return;
+    }
+
+    Value argument[2] = {0};
+
+    memcpy(argument, data, field->size);
+
+    const Value* value = argument;
+
+    if (field->reference) {
+        value = AS_POINTER(argument[0]);
+    }
+
+    format_argument(writer, value, &field->format);
+}
+
+static void format_tuple_data(Writer* writer, const TupleFormat* format, const uint8_t* data)
+{
+    write_bytes(writer, "(", 1);
+
+    for (size_t i = 0; i < format->count; i++) {
+        format_tuple_field(writer, &format->fields[i], data, i);
+    }
+
+    if (format->count == 1) {
+        write_bytes(writer, ",", 1);
+    }
+
+    write_bytes(writer, ")", 1);
+}
+
 static void format_array_item(Writer* writer, const ArrayFormat* format, const uint8_t* data, size_t index)
 {
     if (index) {
@@ -227,6 +278,12 @@ static void format_array_item(Writer* writer, const ArrayFormat* format, const u
 
     if (format->element.array) {
         format_array_data(writer, format->element.array, data, format->element.array->count);
+
+        return;
+    }
+
+    if (format->element.tuple) {
+        format_tuple_data(writer, format->element.tuple, data);
 
         return;
     }
@@ -288,8 +345,42 @@ static ArgumentFormat get_scalar_argument_format(TypeKind kind)
     }
 }
 
+static TupleFieldFormat compile_tuple_field_format(ModuleObject* module, TupleElement element)
+{
+    ArgumentFormat format = compile_argument_format(module, element.type);
+    format.slot = element.offset;
+    size_t slots = get_tuple_element_slot_count(element);
+    bool reference = element.reference != RefNone && !is_slice_type(element.type.kind);
+    TupleFieldFormat field = {format, slots * sizeof(Value), reference};
+
+    return field;
+}
+
+static ArgumentFormat compile_tuple_format(ModuleObject* module, const TupleType* type)
+{
+    if (type->count > (SIZE_MAX - sizeof(TupleFormat)) / sizeof(TupleFieldFormat)) {
+        out_of_memory_error();
+    }
+
+    size_t size = sizeof(TupleFormat) + type->count * sizeof(TupleFieldFormat);
+    TupleFormat* format = (TupleFormat*)allocate_object(size, ObjTupleFormat);
+    format->count = type->count;
+
+    push_vector_item(&module->objects, format);
+
+    for (size_t i = 0; i < type->count; i++) {
+        format->fields[i] = compile_tuple_field_format(module, type->elements[i]);
+    }
+
+    return (ArgumentFormat){.tuple = format};
+}
+
 ArgumentFormat compile_argument_format(ModuleObject* module, Type type)
 {
+    if (type.kind == TypeTuple) {
+        return compile_tuple_format(module, type.tuple);
+    }
+
     if (!is_contiguous_type(type.kind) || type.kind == TypeStringSlice) {
         return get_scalar_argument_format(type.kind);
     }
@@ -322,13 +413,43 @@ static bool matches_array_format(const ArrayFormat* format, Type type)
     return matches_argument_format(&format->element, info->element_type);
 }
 
+static bool matches_tuple_field(const TupleFieldFormat* field, TupleElement element)
+{
+    bool reference = element.reference != RefNone && !is_slice_type(element.type.kind);
+
+    if (field->reference != reference || field->format.slot != element.offset) {
+        return false;
+    }
+
+    return matches_argument_format(&field->format, element.type);
+}
+
+static bool matches_tuple_format(const TupleFormat* format, const TupleType* type)
+{
+    if (!format || format->count != type->count) {
+        return false;
+    }
+
+    size_t index = 0;
+
+    while (index < type->count && matches_tuple_field(&format->fields[index], type->elements[index])) {
+        index++;
+    }
+
+    return index == type->count;
+}
+
 bool matches_argument_format(const ArgumentFormat* format, Type type)
 {
+    if (type.kind == TypeTuple) {
+        return matches_tuple_format(format->tuple, type.tuple);
+    }
+
     if (is_contiguous_type(type.kind) && type.kind != TypeStringSlice) {
         return matches_array_format(format->array, type);
     }
 
     ArgumentFormat scalar = get_scalar_argument_format(type.kind);
 
-    return !format->array && format->formatter == scalar.formatter;
+    return !format->array && !format->tuple && format->formatter == scalar.formatter;
 }

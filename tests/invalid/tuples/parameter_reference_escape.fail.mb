@@ -1,0 +1,4 @@
+func invalid(value: (i32, bool)) -> (&(i32, bool), bool) {
+    return (&value, true)
+}
+let result = invalid((1, true))

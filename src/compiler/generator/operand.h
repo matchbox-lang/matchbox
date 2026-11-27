@@ -10,7 +10,7 @@ typedef struct Operand
 {
     int reg;
     bool temporary;
-    uint8_t slots;
+    size_t slots;
     bool pair;
 } Operand;
 
@@ -26,6 +26,7 @@ void release_pointer_padding(Compiler* compiler);
 Operand make_operand(int reg, bool temporary);
 Operand make_wide_operand(int reg, bool temporary);
 Operand make_slice_operand(int reg, bool temporary);
+Operand make_typed_operand(int reg, bool temporary, Type type);
 Operand no_operand(void);
 void release_operand(Compiler* compiler, Operand operand);
 Operand materialize_operand(Compiler* compiler, Operand operand);

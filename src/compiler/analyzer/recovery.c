@@ -1,6 +1,7 @@
 #include "compiler/analyzer/recovery.h"
 #include "common/vector.h"
 #include "compiler/ast/generic.h"
+#include "compiler/ast/reference.h"
 #include "compiler/scope.h"
 #include <stdint.h>
 
@@ -19,6 +20,7 @@ static void clear_variable_analysis(ASTNode* ast, Vector* functions)
     ast->variable_definition.initialized = false;
     ast->variable_definition.possibly_initialized = false;
     ast->variable_definition.moved = false;
+    ast->variable_definition.tuple_moves.count = 0;
     ast->variable_definition.shared_access_count = 0;
     ast->variable_definition.exclusive_access_active = false;
     ast->variable_definition.reference_access_active = false;
@@ -113,6 +115,8 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
         return;
     }
 
+    clear_tuple_references(ast);
+
     switch (ast->type) {
         case ASTSlice:
             ast->slice.reference_origins.count = 0;
@@ -125,6 +129,8 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
             break;
         case ASTIndex:
         case ASTIndexAssignment:
+            ast->index.reference_origins.count = 0;
+
             clear_node_analysis(ast->index.array, functions);
             clear_node_analysis(ast->index.index, functions);
             clear_node_analysis(ast->index.value, functions);
@@ -149,6 +155,7 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
             ast->parameter.exclusive_access_active = false;
             ast->parameter.moved = false;
             ast->parameter.reference_origins.count = 0;
+            ast->parameter.tuple_moves.count = 0;
             clear_node_analysis(ast->parameter.default_value, functions);
             break;
         case ASTVariable:

@@ -6,7 +6,9 @@
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
 #include "compiler/generator/emitter.h"
+#include "compiler/generator/memory.h"
 #include "runtime/string_object.h"
+#include "runtime/value.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -119,6 +121,15 @@ Operand make_slice_operand(int reg, bool temporary)
     return operand;
 }
 
+Operand make_typed_operand(int reg, bool temporary, Type type)
+{
+    size_t slots = get_value_slot_count(type);
+    bool cells = type.kind == TypeTuple || is_slice_type(type.kind);
+    Operand result = {reg, temporary, slots, cells};
+
+    return result;
+}
+
 Operand no_operand(void)
 {
     return make_operand(-1, false);
@@ -155,11 +166,38 @@ size_t get_node_slot_count(ASTNode* ast)
         return 1;
     }
 
-    return get_type_slot_count(get_node_data_type(ast).kind);
+    return get_value_slot_count(type);
+}
+
+static Operand dereference_cells(Compiler* compiler, Operand operand, size_t slots)
+{
+    int reg = allocate_registers(compiler, slots);
+    Opcode load = sizeof(Value) == 8 ? OpLdm64 : OpLdm32;
+
+    for (size_t i = 0; i < slots; i++) {
+        emit_memory_access(compiler, load, reg + i, operand.reg, i * sizeof(Value));
+    }
+
+    Operand result = {reg, true, slots, true};
+
+    if (!operand.temporary) {
+        return result;
+    }
+
+    emit_operand_mov(compiler, operand.reg, result);
+
+    result.reg = operand.reg;
+    compiler->register_count = result.reg + slots;
+
+    return result;
 }
 
 Operand dereference_operand(Compiler* compiler, Operand operand, size_t slots)
 {
+    if (operand.pair || slots > 2) {
+        return dereference_cells(compiler, operand, slots);
+    }
+
     Opcode opcode = slots == 2 ? OpLdr64 : OpLdr;
 
     if (!operand.temporary) {

@@ -313,7 +313,7 @@ void init_reference_lifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size
 
 void schedule_reference_release(ReferenceLifetimes* lifetimes, ASTNode* ast, size_t position)
 {
-    if (!is_variable_definition(ast) || get_reference_type(ast) == RefNone) {
+    if (!is_variable_definition(ast) || !ast->variable_definition.reference_access_active) {
         return;
     }
 

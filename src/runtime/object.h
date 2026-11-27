@@ -11,10 +11,7 @@ typedef enum ObjectType
 {
     ObjArray,
     ObjArrayFormat,
-    ObjBool,
     ObjCode,
-    ObjFloat,
-    ObjInt,
     ObjFunction,
     ObjModule,
     ObjString,

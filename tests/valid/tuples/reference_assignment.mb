@@ -1,0 +1,13 @@
+test "tuple reference assignment" {
+    var first = 1
+    var second = 2
+    var value = (&first, true)
+    value[0] = &second
+    first = 3
+
+    assert(value[0] == 2)
+    assert(first == 3)
+    second = 4
+
+    assert(second == 4)
+}

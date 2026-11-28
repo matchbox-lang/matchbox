@@ -6,6 +6,8 @@
 #include "compiler/parser/generic.h"
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"
+#include <stdio.h>
+#include <string.h>
 
 static ASTNode* parse_assignment(Parser* parser)
 {
@@ -114,12 +116,79 @@ static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword
     return ast;
 }
 
+static ASTNode* parse_destructuring_name(Parser* parser, ASTNode* group, Token keyword)
+{
+    consume(parser, TokenComma);
+
+    Token token = parser->current_token;
+
+    if (is_end_of_file(parser)) {
+        return NULL;
+    }
+
+    consume(parser, TokenIdentifier);
+
+    StringObject* id = copy_string_object(token.chars, token.length);
+    bool fixed = keyword.type != TokenKeywordVar;
+    ASTNode* binding = create_variable_definition_node(token, id, fixed);
+
+    push_vector_item(&group->compound.statements, binding);
+
+    return binding;
+}
+
+static ASTNode* parse_destructuring(Parser* parser, ASTNode* first, Token keyword)
+{
+    ASTNode* group = create_compound_node(NULL);
+
+    push_vector_item(&group->compound.statements, first);
+
+    ASTNode* binding = first;
+
+    while (binding && parser->current_token.type == TokenComma) {
+        binding = parse_destructuring_name(parser, group, keyword);
+    }
+
+    if (!binding) {
+        free_ast_node(group);
+
+        return NULL;
+    }
+
+    char name[80];
+    Token token = first->variable_definition.token;
+
+    snprintf(name, sizeof(name), "$tuple_%d_%d", token.line, token.column);
+
+    size_t length = strlen(name);
+    StringObject* id = copy_string_object(name, length);
+    token.chars = id->chars;
+    token.length = id->length;
+    ASTNode* source = create_variable_definition_node(token, id, true);
+    source->variable_definition.constant = first->variable_definition.constant;
+    source = parse_variable_value(parser, source, keyword);
+
+    if (!source) {
+        free_ast_node(group);
+
+        return NULL;
+    }
+
+    initialize_destructuring(group, source);
+
+    return group;
+}
+
 ASTNode* parse_variable_definition(Parser* parser)
 {
     Token keyword = parser->current_token;
     ASTNode* ast = parse_variable_binding(parser, keyword);
     if (!ast) {
         return NULL;
+    }
+
+    if (parser->current_token.type == TokenComma) {
+        return parse_destructuring(parser, ast, keyword);
     }
 
     return parse_variable_value(parser, ast, keyword);
@@ -151,7 +220,7 @@ ASTNode* parse_constant_statement(Parser* parser)
 
     Token next = scan_token(&lexer);
 
-    if (next.type == TokenEqual || next.type == TokenColon) {
+    if (next.type == TokenEqual || next.type == TokenColon || next.type == TokenComma) {
         return parse_variable_definition(parser);
     }
 

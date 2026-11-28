@@ -1,0 +1,25 @@
+()
+
+type Empty = ()
+
+test "empty tuples" {
+    const EMPTY: Empty = ()
+    let inferred = ()
+    let nested = ((), 42, ())
+    let values = [(), ()]
+
+    assert(string(EMPTY) == "()")
+    assert(string(inferred) == "()")
+    assert(string(nested) == "((), 42, ())")
+    assert(string(values) == "[(), ()]")
+    assert(string(values[1]) == "()")
+    assert(len(inferred) == 0)
+    assert(string(copy(inferred)) == "()")
+}
+
+test "empty destructuring" {
+    let first, second = ((), ())
+
+    assert(string(first) == "()")
+    assert(string(second) == "()")
+}

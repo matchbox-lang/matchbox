@@ -1,0 +1,6 @@
+func consume(value: (^i32, ^i32)) {
+    assert(value[0] == 1)
+}
+var value = 1
+let tuple = (^value, true)
+consume((tuple[0], tuple[0]))

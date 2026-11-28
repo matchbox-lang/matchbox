@@ -1,6 +1,7 @@
 #include "compiler/analyzer/generic.h"
 #include "common/array_type.h"
 #include "common/memory.h"
+#include "common/tuple_type.h"
 #include "compiler/analyzer/array.h"
 #include "compiler/analyzer/function.h"
 #include "compiler/ast/generic.h"
@@ -9,6 +10,8 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
+
+static bool infer_type_argument(Type pattern, Type actual, Vector* types, size_t explicit_count);
 
 static bool has_named_generic_parameter(ASTNode* ast)
 {
@@ -84,6 +87,22 @@ static bool can_infer_element_type(Type pattern, Type actual)
     return is_contiguous_type(pattern.kind) && is_contiguous_type(actual.kind) && pattern.array && actual.array;
 }
 
+static bool infer_tuple_type_argument(Type pattern, Type actual, Vector* types, size_t explicit_count)
+{
+    if (actual.kind != TypeTuple || pattern.tuple->count != actual.tuple->count) {
+        return false;
+    }
+
+    bool valid = true;
+
+    for (size_t i = 0; i < pattern.tuple->count && valid; i++) {
+        valid = infer_type_argument(pattern.tuple->elements[i].type, actual.tuple->elements[i].type,
+            types, explicit_count);
+    }
+
+    return valid;
+}
+
 static bool infer_type_argument(Type pattern, Type actual, Vector* types, size_t explicit_count)
 {
     if (pattern.kind == TypeGeneric && pattern.generic_index < explicit_count) {
@@ -92,6 +111,10 @@ static bool infer_type_argument(Type pattern, Type actual, Vector* types, size_t
 
     if (pattern.kind == TypeGeneric) {
         return bind_type_argument(actual, types->data[pattern.generic_index]);
+    }
+
+    if (pattern.kind == TypeTuple) {
+        return infer_tuple_type_argument(pattern, actual, types, explicit_count);
     }
 
     if (!can_infer_element_type(pattern, actual)) {

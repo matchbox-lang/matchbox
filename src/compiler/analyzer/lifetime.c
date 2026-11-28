@@ -202,6 +202,8 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
     switch (ast->type) {
         case ASTArray:
             return visit_node_list_uses(&ast->array.elements, visit, context);
+        case ASTTuple:
+            return visit_node_list_uses(&ast->tuple.elements, visit, context);
         case ASTSlice:
             return visit_node_uses(ast->slice.expr, visit, context)
                 || visit_node_uses(ast->slice.start, visit, context)
@@ -313,7 +315,7 @@ void init_reference_lifetimes(ReferenceLifetimes* lifetimes, Vector* nodes, size
 
 void schedule_reference_release(ReferenceLifetimes* lifetimes, ASTNode* ast, size_t position)
 {
-    if (!is_variable_definition(ast) || get_reference_type(ast) == RefNone) {
+    if (!is_variable_definition(ast) || !ast->variable_definition.reference_access_active) {
         return;
     }
 

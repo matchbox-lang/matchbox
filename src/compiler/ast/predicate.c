@@ -13,6 +13,7 @@ bool is_expression_statement(const ASTNode* ast)
 
     switch (ast->type) {
         case ASTArray:
+        case ASTTuple:
         case ASTSlice:
         case ASTIndex:
         case ASTBinary:
@@ -73,6 +74,7 @@ bool is_prefix_operand(const ASTNode* ast)
     switch (ast->type) {
         case ASTAssignment:
         case ASTArray:
+        case ASTTuple:
         case ASTIndex:
         case ASTBinary:
         case ASTBoolean:

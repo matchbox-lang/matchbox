@@ -1,10 +1,12 @@
 #include "compiler/generator/index.h"
 #include "builtin/builtin.h"
 #include "common/array_type.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/generator/array.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
@@ -14,6 +16,7 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/memory.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/diagnostics.h"
 #include "runtime/function_object.h"
 #include "runtime/value.h"
@@ -152,16 +155,39 @@ static Operand compile_runtime_index_address(Compiler* compiler, ASTNode* ast)
     return buffer;
 }
 
+static size_t get_index_byte_offset(ASTNode* ast)
+{
+    Type type = get_node_data_type(ast->index.array);
+
+    if (type.kind == TypeTuple) {
+        return type.tuple->elements[ast->index.position].offset * sizeof(Value);
+    }
+
+    size_t stride = get_type_storage_size(type.array->element_type);
+
+    return ast->index.position * stride;
+}
+
+static bool is_inline_index(ASTNode* ast)
+{
+    if (!is_constant_index(ast)) {
+        return false;
+    }
+
+    Type source = get_node_data_type(ast->index.array);
+    Type type = ast->index.type_id;
+    bool pointer_element = is_array_type(type.kind) || get_reference_type(ast) != RefNone;
+
+    return source.kind != TypeTuple || !pointer_element;
+}
+
 static ASTNode* get_index_base(ASTNode* ast, size_t* offset)
 {
     ASTNode* base = ast;
     *offset = 0;
 
-    while (is_constant_index(base)) {
-        Type type = get_node_data_type(base->index.array);
-        const ArrayType* info = type.array;
-        size_t stride = get_type_storage_size(info->element_type);
-        *offset += base->index.position * stride;
+    while (is_inline_index(base)) {
+        *offset += get_index_byte_offset(base);
         base = base->index.array;
     }
 
@@ -177,10 +203,16 @@ static Operand compile_index_buffer(Compiler* compiler, ASTNode* ast, size_t* of
         return compile_runtime_index_address(compiler, ast);
     }
 
+    Type type = get_node_data_type(base);
+
+    if (type.kind == TypeTuple) {
+        return compile_tuple_address(compiler, base);
+    }
+
     return compile_expression(compiler, base, false);
 }
 
-static Operand compile_index_address(Compiler* compiler, ASTNode* ast)
+Operand compile_index_address(Compiler* compiler, ASTNode* ast)
 {
     size_t offset;
     Operand buffer = compile_index_buffer(compiler, ast, &offset);
@@ -247,6 +279,26 @@ static Operand compile_index_value(Compiler* compiler, ASTNode* ast, Operand buf
 
 Operand compile_index(Compiler* compiler, ASTNode* ast)
 {
+    Type source = get_node_data_type(ast->index.array);
+
+    if (source.kind == TypeTuple) {
+        return compile_tuple_index(compiler, ast, false);
+    }
+
+    if (ast->index.type_id.kind == TypeTuple) {
+        Type type = ast->index.type_id;
+        size_t slots = get_value_slot_count(type);
+        int reg = allocate_registers(compiler, slots);
+        Operand buffer = compile_index_address(compiler, ast);
+        Operand value = load_tuple_slots(compiler, buffer, 0, type);
+
+        emit_operand_mov(compiler, reg, value);
+
+        compiler->register_count = reg + slots;
+
+        return make_typed_operand(reg, true, type);
+    }
+
     if (is_array_type(ast->index.type_id.kind)) {
         return compile_index_address(compiler, ast);
     }
@@ -263,12 +315,20 @@ Operand compile_index(Compiler* compiler, ASTNode* ast)
 
 void compile_index_assignment(Compiler* compiler, ASTNode* ast)
 {
+    Type source = get_node_data_type(ast->index.array);
+
+    if (source.kind == TypeTuple) {
+        compile_tuple_index_assignment(compiler, ast);
+
+        return;
+    }
+
     size_t offset;
     Operand buffer = compile_index_buffer(compiler, ast, &offset);
     buffer = materialize_operand(compiler, buffer);
     Operand value = compile_index_value(compiler, ast, buffer, offset);
 
-    store_array_value(compiler, buffer, value, offset, ast->index.type_id);
+    store_memory_value(compiler, buffer, value, offset, ast->index.type_id);
     release_operand(compiler, value);
     release_operand(compiler, buffer);
 }

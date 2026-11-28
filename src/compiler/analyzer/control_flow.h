@@ -10,7 +10,8 @@ typedef struct LoopPath
     Vector* entry_states;
 } LoopPath;
 
-void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_expected_type, Token token);
+void merge_branch_reference(Analyzer* analyzer, ASTNode* ast, ASTNode* result, bool first, bool has_expected_type,
+    Token token);
 Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding);
 Type analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Type type, bool moves_result);
 Type analyze_else_branch(Analyzer* analyzer, ASTNode* branch, Type type, bool moves_result);

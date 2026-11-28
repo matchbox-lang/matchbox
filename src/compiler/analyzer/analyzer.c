@@ -5,10 +5,13 @@
 #include "compiler/analyzer/control_flow.h"
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/function.h"
+#include "compiler/analyzer/index.h"
 #include "compiler/analyzer/lifetime.h"
 #include "compiler/analyzer/match.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
+#include "compiler/analyzer/tuple.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/validation.h"
 #include "compiler/analyzer/variable.h"
@@ -16,8 +19,11 @@
 void init_analyzer(Analyzer* analyzer, ASTNode* ast)
 {
     init_vector(&analyzer->array_types);
+    init_vector(&analyzer->tuple_types);
+    init_table(&analyzer->tuple_references, 128);
 
     analyzer->top_level = ast;
+    analyzer->tuple_projection = false;
     analyzer->function = NULL;
     analyzer->current_scope = ast->compound.scope;
     analyzer->constant_scope = NULL;
@@ -38,7 +44,7 @@ static void analyze_pending_nodes(Analyzer* analyzer, Vector* nodes, size_t star
 
         analyze_node(analyzer, ast);
         schedule_reference_release(lifetimes, ast, i);
-        release_inactive_reference_access(&lifetimes->releases[i]);
+        release_inactive_reference_access(analyzer, &lifetimes->releases[i]);
     }
 }
 
@@ -77,12 +83,17 @@ void analyze_expression_nodes(Analyzer* analyzer, Vector* nodes)
 
 void analyze_node(Analyzer* analyzer, ASTNode* ast)
 {
+    clear_tuple_references(analyzer, ast);
+
     switch (ast->type) {
         case ASTTypeAlias:
             resolve_type_alias(analyzer, ast);
             break;
         case ASTArray:
             analyze_array(analyzer, ast);
+            break;
+        case ASTTuple:
+            analyze_tuple(analyzer, ast);
             break;
         case ASTSlice:
             return analyze_slice(analyzer, ast);
@@ -154,6 +165,7 @@ bool analyze(Analyzer* analyzer, size_t start)
     analyzer->current_scope = analyzer->top_level->compound.scope;
     analyze_nodes(analyzer, &analyzer->top_level->compound.statements, start);
     validate_constant_expressions(analyzer->top_level, start);
+    discard_transient_tuple_references(analyzer);
 
     return true;
 }

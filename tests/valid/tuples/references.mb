@@ -1,0 +1,25 @@
+func references(value: &i32) -> (&i32, string) {
+    return (value, "shared")
+}
+
+test "tuple reference returns" {
+    var value = 7
+    let result = references(value)
+    let reference, label = result
+
+    assert(reference == 7)
+    assert(label == "shared")
+    value = 8
+
+    assert(value == 8)
+}
+
+test "tuple reference destructuring" {
+    var value = 10
+    let tuple = (^value, true)
+    let reference, flag = tuple
+    reference += 2
+
+    assert(reference == 12)
+    assert(flag)
+}

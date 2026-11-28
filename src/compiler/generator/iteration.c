@@ -13,6 +13,7 @@
 #include "compiler/generator/index.h"
 #include "compiler/generator/memory.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/tuple.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -117,10 +118,36 @@ static Operand compile_for_array_element(Compiler* compiler, const ForOperands* 
     return emit_array_copy(compiler, builtin, type, address, false);
 }
 
+static Operand compile_for_tuple_element(Compiler* compiler, const ForOperands* loop, Type type)
+{
+    size_t slots = get_value_slot_count(type);
+    int reg = compiler->register_count;
+
+    if (!slots) {
+        return make_typed_operand(reg, true, type);
+    }
+
+    Operand address = compile_for_element_address(compiler, loop);
+    Operand value = load_tuple_slots(compiler, address, 0, type);
+    const Builtin* builtin = resolve_builtin("copy", &type, 1);
+    Operand result = emit_tuple_copy(compiler, builtin, type, value);
+
+    emit_operand_mov(compiler, reg, result);
+
+    result.reg = reg;
+    compiler->register_count = reg + slots;
+
+    return result;
+}
+
 static Operand compile_for_element(Compiler* compiler, const ForOperands* loop, Type type)
 {
     if (loop->range) {
         return loop->offset;
+    }
+
+    if (type.kind == TypeTuple) {
+        return compile_for_tuple_element(compiler, loop, type);
     }
 
     if (is_array_type(type.kind)) {

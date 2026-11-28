@@ -1,0 +1,4 @@
+var value = 1
+let tuple = (&value, true)
+value = 2
+assert(tuple[0] == 2)

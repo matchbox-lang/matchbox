@@ -138,6 +138,9 @@ static void validate_node(const ASTNode* ast, bool check_zero)
         case ASTArray:
             validate_nodes(&ast->array.elements, 0, check_zero);
             break;
+        case ASTTuple:
+            validate_nodes(&ast->tuple.elements, 0, check_zero);
+            break;
         case ASTIndex:
         case ASTIndexAssignment:
             validate_index(ast, check_zero);

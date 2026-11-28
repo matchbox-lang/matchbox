@@ -27,12 +27,21 @@ typedef enum TypeKind
     TypeStringSlice,
     TypeBool,
     TypeVoid,
+    TypeTuple,
     TypeArray,
     TypeArraySlice,
     TypeGeneric,
     TypeNamed,
 } TypeKind;
 
+typedef enum ReferenceType
+{
+    RefShared,
+    RefExclusive,
+    RefNone
+} ReferenceType;
+
+typedef struct TupleType TupleType;
 typedef struct ArrayType ArrayType;
 typedef struct NamedType NamedType;
 
@@ -42,6 +51,7 @@ typedef struct Type
 
     union {
         const ArrayType* array;
+        const TupleType* tuple;
         const NamedType* named;
         size_t generic_index;
     };
@@ -57,6 +67,7 @@ TypeKind get_common_numeric_type(TypeKind left, TypeKind right);
 const char* get_data_type_name(Type type);
 size_t get_integer_type_size(TypeKind kind);
 size_t get_type_slot_count(TypeKind kind);
+size_t get_value_slot_count(Type type);
 size_t get_type_storage_size(Type type);
 bool integer_literal_fits_float(uint64_t value, Type type);
 bool integer_literal_fits_type(uint64_t value, bool negative, Type type);

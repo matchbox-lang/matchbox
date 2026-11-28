@@ -77,9 +77,9 @@ Operand allocate_branch_result(Compiler* compiler, Type type)
         return no_operand();
     }
 
-    size_t slots = get_type_slot_count(type.kind);
+    size_t slots = get_value_slot_count(type);
     int reg = allocate_registers(compiler, slots);
-    Operand result = {reg, true, slots, is_slice_type(type.kind)};
+    Operand result = {reg, true, slots, is_slice_type(type.kind) || type.kind == TypeTuple};
     
     compiler->local_position_offset += slots;
 

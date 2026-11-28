@@ -1,12 +1,15 @@
 #include "compiler/analyzer/builtin.h"
 #include "builtin/builtin.h"
 #include "builtin/io.h"
+#include "builtin/memory.h"
 #include "common/errors.h"
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/ast/literal.h"
 #include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <float.h>
@@ -63,7 +66,7 @@ static void validate_variadic_arguments(Vector* args, const Builtin* builtin, To
     }
 }
 
-static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token token)
+static void validate_builtin_call(Analyzer* analyzer, ASTNode* ast, const Builtin* builtin, Token token)
 {
     size_t count = count_vector(&ast->function_call.args);
 
@@ -75,6 +78,10 @@ static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token to
 
     if (count != (size_t)builtin->param_count) {
         semantic_token_error("Invalid arguments to function ", token);
+    }
+
+    if (builtin->entry == builtin_copy_array) {
+        analyze_tuple_copy(analyzer, ast, ast->function_call.args.data[0], token);
     }
 
     if (builtin->params[0] == TypeArray) {
@@ -257,13 +264,17 @@ void analyze_builtin_call(Analyzer* analyzer, ASTNode* ast)
 
     validate_builtin_resolution(ast, builtin);
     validate_constant_builtin(analyzer, builtin, ast->function_call.token);
-    validate_builtin_call(ast, builtin, ast->function_call.token);
+    validate_builtin_call(analyzer, ast, builtin, ast->function_call.token);
     convert_builtin_call(ast, builtin);
 }
 
 void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_expression_nodes(analyzer, &ast->builtin_call.args);
+
+    if (ast->builtin_call.builtin->entry == builtin_copy_array) {
+        analyze_tuple_copy(analyzer, ast, ast->builtin_call.args.data[0], ast->builtin_call.token);
+    }
 
     if (ast->builtin_call.builtin->param_count >= 0) {
         return;

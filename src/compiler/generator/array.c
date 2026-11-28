@@ -64,22 +64,6 @@ static Operand compile_array_new(Compiler* compiler, Type type)
     return close_call_area(compiler, function, position, call, false);
 }
 
-static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
-    size_t position, Type type)
-{
-    size_t slots = get_type_slot_count(type.kind);
-    int destination = allocate_registers(compiler, slots);
-    Opcode load = get_memory_load_opcode(type);
-    Opcode store = get_memory_store_opcode(type);
-
-    emit_memory_access(compiler, load, destination, source.reg, position);
-    emit_memory_access(compiler, store, destination, buffer.reg, offset + position);
-
-    Operand value = {destination, true, slots, false};
-
-    release_operand(compiler, value);
-}
-
 static Operand create_array_binary_offset(Compiler* compiler, size_t stride,
     size_t shared_stride, Operand shared_offset)
 {
@@ -270,7 +254,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
 
     Operand value = compile_converted_expression(compiler, element, type, false);
 
-    store_array_value(compiler, array, value, offset, type);
+    store_memory_value(compiler, array, value, offset, type);
     release_operand(compiler, value);
 }
 
@@ -451,23 +435,4 @@ Operand emit_array_copy(Compiler* compiler, const Builtin* definition, Type type
     arguments[1] = compile_usize_literal(compiler, size);
 
     return emit_builtin_operands(compiler, &builtin, types, arguments, 2, discard);
-}
-
-void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
-{
-    if (!is_array_type(type.kind)) {
-        Opcode opcode = get_memory_store_opcode(type);
-
-        emit_memory_access(compiler, opcode, value.reg, buffer.reg, offset);
-
-        return;
-    }
-
-    Type leaf = get_array_leaf_type(type);
-    size_t size = get_type_storage_size(leaf);
-    size_t total_size = get_type_storage_size(type);
-
-    for (size_t position = 0; position < total_size; position += size) {
-        copy_array_element(compiler, buffer, value, offset, position, leaf);
-    }
 }

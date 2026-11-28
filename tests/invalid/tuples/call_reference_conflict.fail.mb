@@ -1,0 +1,6 @@
+func conflicting(tuple: (&i32, bool), value: ^i32) {
+    value += 1
+    assert(tuple[0] == 1)
+}
+var value = 1
+conflicting((&value, true), value)

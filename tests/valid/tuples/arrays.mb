@@ -1,0 +1,10 @@
+test "tuple arrays" {
+    let values: (string, i64)[2] = [("first", 1), ("second", 9223372036854775807)]
+    var index: usize = 1
+    let selected = values[index]
+    values[index][0] = "changed"
+
+    assert(selected[0] == "second")
+    assert(selected[1] == 9223372036854775807)
+    assert(values[1][0] == "changed")
+}

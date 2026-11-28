@@ -1,0 +1,15 @@
+func empty() -> () {
+    return ()
+}
+
+func with_empty(value: (), number: i32) -> ((), i32) {
+    return (value, number)
+}
+
+test "empty calls" {
+    let value: () = empty()
+    let ignored, number = with_empty(value, 7)
+
+    assert(string(ignored) == "()")
+    assert(number == 7)
+}

@@ -1,8 +1,10 @@
 #include "compiler/ast/reference.h"
 #include "common/memory.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/predicate.h"
+#include "compiler/ast/query.h"
 
 static ReferenceType get_prefix_reference_type(TokenType type)
 {
@@ -155,6 +157,8 @@ Vector* get_reference_origins(ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTIndex:
+            return &ast->index.reference_origins;
         case ASTSlice:
             return &ast->slice.reference_origins;
         case ASTConditional:
@@ -188,6 +192,17 @@ Vector* get_reference_origins_from_expression(ASTNode* ast)
     return &empty;
 }
 
+static ReferenceType get_index_reference_type(const ASTNode* ast)
+{
+    Type type = get_node_data_type(ast->index.array);
+
+    if (type.kind != TypeTuple || !ast->index.constant) {
+        return RefNone;
+    }
+
+    return type.tuple->elements[ast->index.position].reference;
+}
+
 ReferenceType get_reference_type(const ASTNode* ast)
 {
     if (!ast) {
@@ -195,6 +210,9 @@ ReferenceType get_reference_type(const ASTNode* ast)
     }
 
     switch (ast->type) {
+        case ASTIndex:
+        case ASTIndexAssignment:
+            return get_index_reference_type(ast);
         case ASTSlice:
             return ast->slice.reference_type;
         case ASTConditional:

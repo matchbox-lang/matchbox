@@ -1,5 +1,6 @@
 #include "compiler/analyzer/recovery.h"
 #include "common/vector.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/ast/generic.h"
 #include "compiler/scope.h"
 #include <stdint.h>
@@ -19,6 +20,7 @@ static void clear_variable_analysis(ASTNode* ast, Vector* functions)
     ast->variable_definition.initialized = false;
     ast->variable_definition.possibly_initialized = false;
     ast->variable_definition.moved = false;
+    ast->variable_definition.tuple_moves.count = 0;
     ast->variable_definition.shared_access_count = 0;
     ast->variable_definition.exclusive_access_active = false;
     ast->variable_definition.reference_access_active = false;
@@ -123,8 +125,13 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
         case ASTArray:
             clear_analysis_vector(&ast->array.elements, functions);
             break;
+        case ASTTuple:
+            clear_analysis_vector(&ast->tuple.elements, functions);
+            break;
         case ASTIndex:
         case ASTIndexAssignment:
+            ast->index.reference_origins.count = 0;
+
             clear_node_analysis(ast->index.array, functions);
             clear_node_analysis(ast->index.index, functions);
             clear_node_analysis(ast->index.value, functions);
@@ -149,6 +156,7 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
             ast->parameter.exclusive_access_active = false;
             ast->parameter.moved = false;
             ast->parameter.reference_origins.count = 0;
+            ast->parameter.tuple_moves.count = 0;
             clear_node_analysis(ast->parameter.default_value, functions);
             break;
         case ASTVariable:
@@ -232,7 +240,9 @@ void rebuild_analyzer(Analyzer* analyzer, const Vector* submission_boundaries, V
 {
     ASTNode* ast = analyzer->top_level;
     Vector array_types = analyzer->array_types;
+    Vector tuple_types = analyzer->tuple_types;
 
+    free_tuple_reference_states(analyzer);
     init_vector(functions);
     clear_node_analysis(ast, functions);
 
@@ -240,6 +250,7 @@ void rebuild_analyzer(Analyzer* analyzer, const Vector* submission_boundaries, V
 
     init_analyzer(analyzer, ast);
     analyzer->array_types = array_types;
+    analyzer->tuple_types = tuple_types;
 
     analyze_submissions(analyzer, submission_boundaries);
 }

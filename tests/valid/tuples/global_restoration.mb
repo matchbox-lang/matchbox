@@ -1,0 +1,14 @@
+var global_tuple = ([1, 2], true)
+let moved = global_tuple[0]
+
+func restore_global_values() {
+    global_tuple[0] = [3, 4]
+}
+
+test "global tuple restoration" {
+    restore_global_values()
+
+    assert(moved[1] == 2)
+    assert(global_tuple[0][1] == 4)
+    assert(global_tuple[1])
+}

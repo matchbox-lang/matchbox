@@ -1,12 +1,24 @@
 #include "compiler/ast/ast.h"
 #include "common/array_type.h"
 #include "common/memory.h"
+#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/function.h"
 #include "compiler/ast/generic.h"
 #include "compiler/ast/type_alias.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
+
+static void free_type_dimensions(Type type);
+
+static void free_tuple_move_effects(Vector* effects)
+{
+    for (size_t i = 0; i < effects->count; i++) {
+        free_memory(effects->data[i]);
+    }
+
+    free_vector(effects);
+}
 
 void clear_function_array_effects(ASTNode* function)
 {
@@ -16,6 +28,7 @@ void clear_function_array_effects(ASTNode* function)
     }
 
     free_vector(&effects->moves);
+    free_tuple_move_effects(&effects->tuple_moves);
     free_vector(&effects->initializations);
     free_vector(&effects->possible_initializations);
     free_vector(&effects->uninitialized_returns);
@@ -61,8 +74,23 @@ static void free_match_arms(Vector* arms)
     free_vector(arms);
 }
 
+static void free_tuple_dimensions(const TupleType* tuple)
+{
+    for (size_t i = 0; i < tuple->count; i++) {
+        free_type_dimensions(tuple->elements[i].type);
+    }
+
+    free_memory((void*)tuple);
+}
+
 static void free_type_dimensions(Type type)
 {
+    if (type.kind == TypeTuple && !type.tuple->resolved) {
+        free_tuple_dimensions(type.tuple);
+
+        return;
+    }
+
     if (type.kind == TypeNamed) {
         free_named_type(type.named);
 
@@ -148,11 +176,23 @@ FunctionArrayEffects* create_function_array_effects(ASTNode* function)
     function->function_definition.array_effects = effects;
 
     init_vector(&effects->moves);
+    init_vector(&effects->tuple_moves);
     init_vector(&effects->initializations);
     init_vector(&effects->possible_initializations);
     init_vector(&effects->uninitialized_returns);
 
     return effects;
+}
+
+void add_function_tuple_move(ASTNode* function, ASTNode* symbol, size_t offset, bool restores)
+{
+    FunctionArrayEffects* effects = function->function_definition.array_effects;
+    TupleMoveEffect* move = allocate_memory(sizeof(TupleMoveEffect));
+    move->symbol = symbol;
+    move->offset = offset;
+    move->restores = restores;
+
+    push_vector_item(&effects->tuple_moves, move);
 }
 
 ASTNode* create_array_node(Token token, Type type, bool flat)
@@ -163,6 +203,55 @@ ASTNode* create_array_node(Token token, Type type, bool flat)
     ast->array.flat = flat;
 
     return ast;
+}
+
+ASTNode* create_tuple_node(Token token)
+{
+    ASTNode* ast = create_ast_node(ASTTuple);
+    ast->tuple.token = token;
+    ast->tuple.type_id = (Type){.kind = TypeUnknown};
+
+    return ast;
+}
+
+static void wrap_destructured_constant(ASTNode* binding, Token token)
+{
+    if (!binding->variable_definition.constant) {
+        return;
+    }
+
+    token.type = TokenKeywordConst;
+    ASTNode* expression = binding->variable_definition.expr;
+    binding->variable_definition.expr = create_prefix_node(token, expression);
+}
+
+void initialize_destructuring(ASTNode* group, ASTNode* source)
+{
+    Token token = source->variable_definition.token;
+    Type index_type = {.kind = TypeUsize};
+    
+    source->variable_definition.destructure_count = group->compound.statements.count;
+    group->compound.destructuring = true;
+
+    for (size_t i = 0; i < group->compound.statements.count; i++) {
+        ASTNode* binding = group->compound.statements.data[i];
+        ASTNode* index = create_ast_node(ASTIndex);
+        index->index.token = token;
+        index->index.array = create_variable_node(token);
+        index->index.index = create_integer_node(token, i, index_type);
+        binding->variable_definition.constant = source->variable_definition.constant;
+        binding->variable_definition.expr = index;
+
+        wrap_destructured_constant(binding, token);
+    }
+
+    push_vector_item(&group->compound.statements, source);
+
+    for (size_t i = group->compound.statements.count - 1; i > 0; i--) {
+        group->compound.statements.data[i] = group->compound.statements.data[i - 1];
+    }
+
+    group->compound.statements.data[0] = source;
 }
 
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr)
@@ -184,8 +273,15 @@ ASTNode* create_ast_node(ASTNodeType type)
     ast->type = type;
 
     switch (type) {
+        case ASTIndex:
+        case ASTIndexAssignment:
+            init_vector(&ast->index.reference_origins);
+            break;
         case ASTArray:
             init_vector(&ast->array.elements);
+            break;
+        case ASTTuple:
+            init_vector(&ast->tuple.elements);
             break;
         case ASTSlice:
             init_vector(&ast->slice.reference_origins);
@@ -213,12 +309,14 @@ ASTNode* create_ast_node(ASTNodeType type)
             break;
         case ASTParameter:
             init_vector(&ast->parameter.reference_origins);
+            init_vector(&ast->parameter.tuple_moves);
             break;
         case ASTPrefix:
             init_vector(&ast->prefix.reference_origins);
             break;
         case ASTVariableDefinition:
             init_vector(&ast->variable_definition.reference_origins);
+            init_vector(&ast->variable_definition.tuple_moves);
             break;
         default:
             break;
@@ -601,6 +699,9 @@ void free_ast_node(ASTNode* ast)
             free_type_dimensions(ast->array.type_id);
             free_ast_node_vector(&ast->array.elements);
             break;
+        case ASTTuple:
+            free_ast_node_vector(&ast->tuple.elements);
+            break;
         case ASTSlice:
             free_ast_node(ast->slice.expr);
             free_ast_node(ast->slice.start);
@@ -612,6 +713,7 @@ void free_ast_node(ASTNode* ast)
             free_ast_node(ast->index.array);
             free_ast_node(ast->index.index);
             free_ast_node(ast->index.value);
+            free_vector(&ast->index.reference_origins);
             break;
         case ASTConversion:
             free_ast_node(ast->conversion.expr);
@@ -669,6 +771,7 @@ void free_ast_node(ASTNode* ast)
             free_ast_node(ast->parameter.default_value);
             free_string_object(ast->parameter.id);
             free_vector(&ast->parameter.reference_origins);
+            free_vector(&ast->parameter.tuple_moves);
             break;
         case ASTPrefix:
             free_ast_node(ast->prefix.expr);
@@ -696,6 +799,7 @@ void free_ast_node(ASTNode* ast)
             free_string_object(ast->variable_definition.id);
             free_ast_node(ast->variable_definition.expr);
             free_vector(&ast->variable_definition.reference_origins);
+            free_vector(&ast->variable_definition.tuple_moves);
             break;
         case ASTVariable:
             free_string_object(ast->variable.id);

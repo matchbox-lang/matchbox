@@ -1,0 +1,12 @@
+func reverse[T, U](value: (T, U)) -> (U, T) {
+    let first, second = value
+
+    return (second, first)
+}
+
+test "tuple generic inference" {
+    let result = reverse(("first", 7))
+
+    assert(result[0] == 7)
+    assert(result[1] == "first")
+}

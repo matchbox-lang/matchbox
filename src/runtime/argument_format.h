@@ -5,6 +5,7 @@
 #include "runtime/writer.h"
 
 typedef struct ArrayFormat ArrayFormat;
+typedef struct TupleFormat TupleFormat;
 typedef struct ModuleObject ModuleObject;
 
 typedef void (*ArgumentFormatter)(Writer* writer, const Value* argument);
@@ -13,6 +14,7 @@ typedef struct ArgumentFormat
 {
     ArgumentFormatter formatter;
     const ArrayFormat* array;
+    const TupleFormat* tuple;
     size_t slot;
     size_t capacity;
 } ArgumentFormat;

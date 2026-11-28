@@ -1,0 +1,3 @@
+var index = 0
+let value = (1, "name")
+print(value[index])

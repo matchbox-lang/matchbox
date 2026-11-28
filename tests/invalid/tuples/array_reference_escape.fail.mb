@@ -1,0 +1,5 @@
+func invalid() -> (&i32, bool)[1] {
+    var value = 1
+    return [(&value, true)]
+}
+let result = invalid()

@@ -7,6 +7,7 @@
 
 void init_code_object(CodeObject* code)
 {
+    code->obj.type = ObjCode;
     code->data = NULL;
     code->capacity = 0;
     code->count = 0;

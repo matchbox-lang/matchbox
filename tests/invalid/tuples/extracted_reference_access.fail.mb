@@ -1,0 +1,5 @@
+var value = 1
+let tuple = (^value, true)
+let reference = tuple[0]
+value = 2
+assert(reference == 2)

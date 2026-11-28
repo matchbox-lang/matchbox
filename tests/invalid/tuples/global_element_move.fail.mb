@@ -1,0 +1,6 @@
+let global_tuple = ([1, 2], true)
+func take() -> i32[2] {
+    return global_tuple[0]
+}
+let first = take()
+let second = take()

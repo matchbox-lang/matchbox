@@ -1,0 +1,7 @@
+let tuple = ([1, 2], true)
+var choose = true
+if choose {
+    let element = tuple[0]
+    assert(element[0] == 1)
+}
+let moved = tuple[0]

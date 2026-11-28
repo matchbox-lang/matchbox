@@ -1,0 +1,1 @@
+let value: (string, bool) = ("name", true, 1)

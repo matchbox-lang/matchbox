@@ -1,0 +1,10 @@
+test "tuple constant indexes" {
+    const INDEXES = (0, (1, true))
+    const FIRST, SECOND = (0, 1)
+    let value = ("first", 42)
+
+    assert(value[INDEXES[0]] == "first")
+    assert(value[INDEXES[1][0]] == 42)
+    assert(value[FIRST] == "first")
+    assert(value[SECOND] == 42)
+}

@@ -12,6 +12,7 @@
 #include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/lexer/token.h"
 #include "compiler/scope.h"
 #include <stddef.h>
@@ -67,10 +68,26 @@ static Operand load_global_with_store_forwarding(Compiler* compiler, size_t posi
     return make_operand(previous.a, false);
 }
 
+static Operand load_global_tuple(Compiler* compiler, size_t position, Type type)
+{
+    size_t slots = get_value_slot_count(type);
+    int reg = compiler->register_count;
+
+    for (size_t i = 0; i < slots; i++) {
+        emit_ldg(compiler, position + i);
+    }
+
+    return make_typed_operand(reg, true, type);
+}
+
 static Operand load_global_variable(Compiler* compiler, ASTNode* ast)
 {
     size_t position = ast->variable_definition.position;
     Type type = get_node_data_type(ast);
+
+    if (type.kind == TypeTuple && get_reference_type(ast) == RefNone) {
+        return load_global_tuple(compiler, position, type);
+    }
 
     if (is_slice_type(type.kind)) {
         int reg = emit_ldg(compiler, position);
@@ -97,6 +114,10 @@ static Operand load_local_variable(Compiler* compiler, ASTNode* ast)
     int position = get_local_position(compiler, ast);
 
     Type type = get_node_data_type(ast);
+
+    if (type.kind == TypeTuple && get_reference_type(ast) == RefNone) {
+        return make_typed_operand(position, false, type);
+    }
 
     if (is_slice_type(type.kind)) {
         return make_slice_operand(position, false);
@@ -146,9 +167,18 @@ Operand load_variable_value(Compiler* compiler, ASTNode* symbol)
         return value;
     }
 
-    size_t slots = get_type_slot_count(type.kind);
+    size_t slots = get_value_slot_count(type);
+
+    value.pair = type.kind == TypeTuple;
 
     return dereference_operand(compiler, value, slots);
+}
+
+static void store_global_cells(Compiler* compiler, size_t position, Operand value)
+{
+    for (size_t i = 0; i < value.slots; i++) {
+        emit_global_instruction(compiler, OpStg, value.reg + i, position + i);
+    }
 }
 
 static void store_global_variable(Compiler* compiler, ASTNode* ast, Operand value)
@@ -156,8 +186,7 @@ static void store_global_variable(Compiler* compiler, ASTNode* ast, Operand valu
     size_t position = ast->variable_definition.position;
 
     if (value.pair) {
-        emit_global_instruction(compiler, OpStg, value.reg, position);
-        emit_global_instruction(compiler, OpStg, value.reg + 1, position + 1);
+        store_global_cells(compiler, position, value);
 
         return;
     }
@@ -325,8 +354,24 @@ static void compile_power_assignment(Compiler* compiler, ASTNode* ast)
     store_assignment_value(compiler, ast->assignment.symbol, result);
 }
 
-static Operand compile_zero_value(Compiler* compiler, size_t slots)
+static Operand compile_zero_tuple(Compiler* compiler, Type type)
 {
+    size_t slots = get_value_slot_count(type);
+    int reg = compiler->register_count;
+
+    for (size_t i = 0; i < slots; i++) {
+        emit_ldi(compiler, 0);
+    }
+
+    return make_typed_operand(reg, true, type);
+}
+
+static Operand compile_zero_value(Compiler* compiler, Type type, size_t slots)
+{
+    if (type.kind == TypeTuple) {
+        return compile_zero_tuple(compiler, type);
+    }
+
     if (slots == 2) {
         size_t position = make_i64_constant(compiler, 0);
 
@@ -378,7 +423,8 @@ void compile_variable_definition(Compiler* compiler, ASTNode* ast)
     }
 
     if (is_none(ast->variable_definition.expr)) {
-        value = compile_zero_value(compiler, slots);
+        Type type = get_node_data_type(ast);
+        value = compile_zero_value(compiler, type, slots);
     } else {
         bool reference = get_reference_type(ast) != RefNone;
         value = compile_converted_expression(

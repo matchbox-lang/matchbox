@@ -10,5 +10,12 @@ bool is_moved(ASTNode* symbol);
 void mark_address_taken(ASTNode* symbol);
 void set_moved_state(ASTNode* symbol, bool moved);
 void track_variable_read(ASTNode* symbol);
+Vector* get_tuple_moves(ASTNode* binding);
+bool tuple_moves_overlap(const Vector* moves, size_t start, size_t slots);
+bool tuple_moves_include(const Vector* destination, const Vector* source);
+void copy_tuple_moves(Vector* destination, const Vector* source);
+void merge_tuple_moves(Vector* destination, const Vector* source);
+void record_tuple_move(ASTNode* binding, size_t start, size_t slots);
+void forget_tuple_moves(ASTNode* binding, size_t start, size_t slots);
 
 #endif

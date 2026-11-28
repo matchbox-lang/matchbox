@@ -11,13 +11,11 @@ typedef enum ObjectType
 {
     ObjArray,
     ObjArrayFormat,
-    ObjBool,
     ObjCode,
-    ObjFloat,
-    ObjInt,
     ObjFunction,
     ObjModule,
-    ObjString
+    ObjString,
+    ObjTupleFormat
 } ObjectType;
 
 typedef struct Object

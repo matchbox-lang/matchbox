@@ -66,6 +66,8 @@ Type get_node_data_type(const ASTNode* ast)
     switch (ast->type) {
         case ASTArray:
             return ast->array.type_id;
+        case ASTTuple:
+            return ast->tuple.type_id;
         case ASTSlice:
             return ast->slice.type_id;
         case ASTIndex:

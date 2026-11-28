@@ -468,6 +468,9 @@ static void optimize_node(ASTNode* ast)
         case ASTArray:
             optimize_nodes(&ast->array.elements);
             break;
+        case ASTTuple:
+            optimize_nodes(&ast->tuple.elements);
+            break;
         case ASTSlice:
             optimize_slice(ast);
             break;
@@ -691,6 +694,9 @@ static void mark_called_functions(ASTNode* ast)
     switch (ast->type) {
         case ASTArray:
             mark_called_functions_in_vector(&ast->array.elements);
+            break;
+        case ASTTuple:
+            mark_called_functions_in_vector(&ast->tuple.elements);
             break;
         case ASTSlice:
             mark_called_functions(ast->slice.expr);

@@ -115,11 +115,17 @@ void emit_mov(Compiler* compiler, int destination, int source)
     emit_instruction(compiler, OpMov, destination, source, 0);
 }
 
+static void emit_cell_moves(Compiler* compiler, int destination, Operand operand)
+{
+    for (size_t i = 0; i < operand.slots; i++) {
+        emit_mov(compiler, destination + i, operand.reg + i);
+    }
+}
+
 void emit_operand_mov(Compiler* compiler, int destination, Operand operand)
 {
     if (operand.pair) {
-        emit_mov(compiler, destination, operand.reg);
-        emit_mov(compiler, destination + 1, operand.reg + 1);
+        emit_cell_moves(compiler, destination, operand);
 
         return;
     }

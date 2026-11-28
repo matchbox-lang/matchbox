@@ -24,16 +24,10 @@ typedef struct MatchArm
     ASTNode* branch;
 } MatchArm;
 
-typedef enum ReferenceType
-{
-    RefShared,
-    RefExclusive,
-    RefNone
-} ReferenceType;
-
 typedef enum ASTNodeType
 {
     ASTArray,
+    ASTTuple,
     ASTSlice,
     ASTIndex,
     ASTIndexAssignment,
@@ -80,6 +74,12 @@ typedef struct ASTNode
 
         struct {
             Token token;
+            Vector elements;
+            Type type_id;
+        } tuple;
+
+        struct {
+            Token token;
             ASTNode* expr;
             ASTNode* start;
             ASTNode* end;
@@ -97,6 +97,7 @@ typedef struct ASTNode
             Type type_id;
             size_t position;
             bool constant;
+            Vector reference_origins;
         } index;
 
         struct {
@@ -160,6 +161,7 @@ typedef struct ASTNode
         struct {
             Scope* scope;
             Vector statements;
+            bool destructuring;
         } compound;
 
         struct {
@@ -250,6 +252,7 @@ typedef struct ASTNode
             size_t shared_access_count;
             bool exclusive_access_active;
             bool moved;
+            Vector tuple_moves;
             int position;
             ASTNode* default_value;
             bool variadic;
@@ -284,6 +287,7 @@ typedef struct ASTNode
             Scope* scope;
             StringObject* id;
             Token token;
+            size_t destructure_count;
             bool fixed;
             bool constant;
             bool initialized;
@@ -294,6 +298,7 @@ typedef struct ASTNode
             size_t shared_access_count;
             bool exclusive_access_active;
             bool moved;
+            Vector tuple_moves;
             bool reference_access_active;
             size_t read_count;
             size_t discarded_read_count;
@@ -310,7 +315,10 @@ typedef struct ASTNode
 void initialize_function_generics(ASTNode* function, GenericBindings* parent, Vector* types, Token source);
 void finish_function_generics(ASTNode* function);
 FunctionArrayEffects* create_function_array_effects(ASTNode* function);
+void add_function_tuple_move(ASTNode* function, ASTNode* symbol, size_t offset, bool restores);
 ASTNode* create_array_node(Token token, Type type, bool flat);
+ASTNode* create_tuple_node(Token token);
+void initialize_destructuring(ASTNode* group, ASTNode* source);
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
 ASTNode* create_ast_node(ASTNodeType type);
 ASTNode* create_binary_node(ASTNode* left_expr, ASTNode* right_expr, Token token);

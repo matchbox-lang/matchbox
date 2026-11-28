@@ -1,0 +1,12 @@
+let global_tuple = ([1, 2], "remaining")
+
+func take_global_values() -> i32[2] {
+    return global_tuple[0]
+}
+
+test "global tuple moves" {
+    let result = take_global_values()
+
+    assert(result[1] == 2)
+    assert(global_tuple[1] == "remaining")
+}

@@ -64,7 +64,7 @@ static size_t get_symbol_slot_count(const ASTNode* symbol)
         return 1;
     }
 
-    return get_type_slot_count(get_node_data_type(symbol).kind);
+    return get_value_slot_count(type);
 }
 
 size_t get_max_local_count(const Scope* scope)

@@ -6,6 +6,7 @@
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/type.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/predicate.h"
@@ -463,7 +464,7 @@ void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
 
     bool analyzed = infer_variable_array_count(analyzer, ast);
 
-    resolve_dimensions(analyzer, &ast->variable_definition.type_id);
+    resolve_type(analyzer, &ast->variable_definition.type_id);
     analyze_variable_initializer(analyzer, ast, analyzed);
     validate_variable_type(ast);
     set_local_variable_symbol(analyzer->current_scope, id, ast);

@@ -5,6 +5,7 @@
 #include "compiler/analyzer/control_flow.h"
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/function.h"
+#include "compiler/analyzer/index.h"
 #include "compiler/analyzer/lifetime.h"
 #include "compiler/analyzer/match.h"
 #include "compiler/analyzer/reference.h"

@@ -328,7 +328,7 @@ void compile_index_assignment(Compiler* compiler, ASTNode* ast)
     buffer = materialize_operand(compiler, buffer);
     Operand value = compile_index_value(compiler, ast, buffer, offset);
 
-    store_array_value(compiler, buffer, value, offset, ast->index.type_id);
+    store_memory_value(compiler, buffer, value, offset, ast->index.type_id);
     release_operand(compiler, value);
     release_operand(compiler, buffer);
 }

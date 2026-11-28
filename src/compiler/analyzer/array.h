@@ -4,9 +4,8 @@
 #include "compiler/analyzer/analyzer.h"
 
 bool infer_variable_array_count(Analyzer* analyzer, ASTNode* ast);
-void resolve_dimensions(Analyzer* analyzer, Type* type);
+void resolve_array_dimensions(Analyzer* analyzer, Type* type);
 void analyze_array(Analyzer* analyzer, ASTNode* ast);
-void analyze_index(Analyzer* analyzer, ASTNode* ast);
-void analyze_index_assignment(Analyzer* analyzer, ASTNode* ast);
+void analyze_array_element(Analyzer* analyzer, ASTNode* element, Type expected, Token token);
 
 #endif

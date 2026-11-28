@@ -4,7 +4,7 @@
 #include "common/memory.h"
 #include "common/slice.h"
 #include "common/tuple_type.h"
-#include "compiler/analyzer/array.h"
+#include "compiler/analyzer/type.h"
 #include "compiler/ast/type_alias.h"
 #include "compiler/parser/generic.h"
 #include "compiler/parser/type.h"
@@ -54,7 +54,7 @@ void resolve_type_alias(Analyzer* analyzer, ASTNode* ast)
     analyzer->current_scope = ast->type_alias.scope;
 
     resolve_named_type(analyzer, &ast->type_alias.type_id, &ast->type_alias.reference_type);
-    resolve_dimensions(analyzer, &ast->type_alias.type_id);
+    resolve_type(analyzer, &ast->type_alias.type_id);
 
     analyzer->current_scope = previous;
     ast->type_alias.resolving = false;
@@ -174,7 +174,7 @@ static void resolve_alias_arguments(Analyzer* analyzer, Parser* parser, const Na
     }
 
     for (size_t i = 0; i < arguments->count; i++) {
-        resolve_dimensions(analyzer, arguments->data[i]);
+        resolve_type(analyzer, arguments->data[i]);
     }
 }
 

@@ -28,6 +28,14 @@ Vector* get_tuple_references(ASTNode* ast)
     return &ast->tuple_references;
 }
 
+bool has_value_references(ASTNode* ast)
+{
+    ReferenceType reference = get_reference_type(ast);
+    Vector* references = get_tuple_references(ast);
+
+    return reference != RefNone || references->count;
+}
+
 void free_tuple_reference_vector(Vector* references)
 {
     for (size_t i = 0; i < references->count; i++) {

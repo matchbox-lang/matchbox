@@ -4,6 +4,8 @@
 #include "compiler/generator/operand.h"
 
 Operand compile_tuple(Compiler* compiler, ASTNode* ast);
+Operand compile_tuple_copy(Compiler* compiler, ASTNode* ast, bool discard);
+Operand compile_tuple_length(Compiler* compiler, ASTNode* ast, bool discard);
 Operand compile_tuple_index(Compiler* compiler, ASTNode* ast, bool reference);
 Operand compile_tuple_address(Compiler* compiler, ASTNode* ast);
 void compile_tuple_index_assignment(Compiler* compiler, ASTNode* ast);

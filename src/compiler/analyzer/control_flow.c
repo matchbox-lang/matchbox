@@ -1,10 +1,10 @@
 #include "compiler/analyzer/control_flow.h"
 #include "common/array_type.h"
 #include "common/vector.h"
-#include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/type.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/control_flow.h"
 #include "compiler/ast/predicate.h"
@@ -284,7 +284,7 @@ static void analyze_for_binding(Analyzer* analyzer, ASTNode* binding, Type type)
         return;
     }
 
-    resolve_dimensions(analyzer, &binding->variable_definition.type_id);
+    resolve_type(analyzer, &binding->variable_definition.type_id);
 
     StringView id = get_string_view(binding->variable_definition.id);
 

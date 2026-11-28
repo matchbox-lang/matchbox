@@ -1,8 +1,10 @@
 #include "compiler/generator/memory.h"
+#include "common/array_type.h"
 #include "common/type.h"
 #include "compiler/generator/constant.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
+#include "compiler/generator/tuple.h"
 #include "vm/opcode.h"
 #include <stdint.h>
 
@@ -92,5 +94,55 @@ Opcode get_memory_store_opcode(Type type)
             return OpStm32;
         default:
             return OpStm64;
+    }
+}
+
+static void copy_memory_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
+    size_t position, Type type)
+{
+    if (type.kind == TypeTuple) {
+        Operand value = load_tuple_slots(compiler, source, position, type);
+
+        store_tuple_slots(compiler, buffer, value, offset + position);
+        release_operand(compiler, value);
+
+        return;
+    }
+
+    size_t slots = get_type_slot_count(type.kind);
+    int destination = allocate_registers(compiler, slots);
+    Opcode load = get_memory_load_opcode(type);
+    Opcode store = get_memory_store_opcode(type);
+
+    emit_memory_access(compiler, load, destination, source.reg, position);
+    emit_memory_access(compiler, store, destination, buffer.reg, offset + position);
+
+    Operand value = {destination, true, slots, false};
+
+    release_operand(compiler, value);
+}
+
+void store_memory_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
+{
+    if (type.kind == TypeTuple) {
+        store_tuple_slots(compiler, buffer, value, offset);
+
+        return;
+    }
+
+    if (!is_array_type(type.kind)) {
+        Opcode opcode = get_memory_store_opcode(type);
+
+        emit_memory_access(compiler, opcode, value.reg, buffer.reg, offset);
+
+        return;
+    }
+
+    Type leaf = get_array_leaf_type(type);
+    size_t size = get_type_storage_size(leaf);
+    size_t total_size = get_type_storage_size(type);
+
+    for (size_t position = 0; position < total_size; position += size) {
+        copy_memory_element(compiler, buffer, value, offset, position, leaf);
     }
 }

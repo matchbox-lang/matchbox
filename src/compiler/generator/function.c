@@ -15,6 +15,7 @@
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/generator.h"
+#include "compiler/generator/memory.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/slice.h"
 #include "compiler/generator/tuple.h"
@@ -406,7 +407,7 @@ static void compile_variadic_element(Compiler* compiler, ASTNode* argument, Type
 {
     Operand value = compile_converted_expression(compiler, argument, type, false);
 
-    store_array_value(compiler, buffer, value, offset, type);
+    store_memory_value(compiler, buffer, value, offset, type);
     release_operand(compiler, value);
 }
 
@@ -761,7 +762,23 @@ static Operand compile_length(Compiler* compiler, ASTNode* ast, bool discard)
         return compile_slice_length(compiler, ast, discard);
     }
 
+    if (type.kind == TypeTuple) {
+        return compile_tuple_length(compiler, ast, discard);
+    }
+
     return compile_array_length(compiler, ast, discard);
+}
+
+static Operand compile_copy(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    if (type.kind == TypeTuple) {
+        return compile_tuple_copy(compiler, ast, discard);
+    }
+
+    return compile_array_copy(compiler, ast, discard);
 }
 
 Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
@@ -773,7 +790,7 @@ Operand compile_builtin_call(Compiler* compiler, ASTNode* ast, bool discard)
     }
 
     if (builtin->entry == builtin_copy_array) {
-        return compile_array_copy(compiler, ast, discard);
+        return compile_copy(compiler, ast, discard);
     }
 
     size_t position = find_builtin_call_position(compiler, builtin, &ast->builtin_call.args);

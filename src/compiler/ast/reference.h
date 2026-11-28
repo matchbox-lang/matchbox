@@ -17,6 +17,7 @@ Vector* get_reference_origins_from_expression(ASTNode* ast);
 ReferenceType get_reference_type(const ASTNode* ast);
 size_t* get_shared_access_count(ASTNode* symbol);
 bool has_exclusive_access(ASTNode* symbol);
+bool has_value_references(ASTNode* ast);
 void merge_reference_origins(Vector* destination, Vector* source);
 void set_exclusive_access(ASTNode* symbol, bool active);
 void set_expression_reference_type(ASTNode* ast, ReferenceType type);

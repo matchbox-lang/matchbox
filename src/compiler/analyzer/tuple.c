@@ -1,9 +1,9 @@
 #include "compiler/analyzer/tuple.h"
 #include "common/tuple_type.h"
-#include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/type.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/function.h"
@@ -64,7 +64,7 @@ void resolve_tuple_type(Analyzer* analyzer, Type* type)
         TupleElement* element = &tuple->elements[i];
 
         resolve_named_type(analyzer, &element->type, &element->reference);
-        resolve_dimensions(analyzer, &element->type);
+        resolve_type(analyzer, &element->type);
     }
 
     layout_tuple_type(tuple);

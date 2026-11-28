@@ -3,6 +3,7 @@
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
 #include "compiler/generator/array.h"
+#include "compiler/generator/constant.h"
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
@@ -178,4 +179,40 @@ Operand emit_tuple_copy(Compiler* compiler, const Builtin* builtin, Type type, O
     }
 
     return result;
+}
+
+Operand compile_tuple_copy(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+    int start = compiler->register_count;
+    Operand source = compile_expression(compiler, argument, false);
+    Operand result = emit_tuple_copy(compiler, ast->builtin_call.builtin, type, source);
+
+    emit_operand_mov(compiler, start, result);
+
+    result.reg = start;
+    compiler->register_count = start + result.slots;
+
+    if (discard) {
+        release_operand(compiler, result);
+
+        return no_operand();
+    }
+
+    return result;
+}
+
+Operand compile_tuple_length(Compiler* compiler, ASTNode* ast, bool discard)
+{
+    ASTNode* argument = ast->builtin_call.args.data[0];
+    Type type = get_node_data_type(argument);
+
+    compile_expression(compiler, argument, true);
+
+    if (discard) {
+        return no_operand();
+    }
+
+    return compile_usize_literal(compiler, type.tuple->count);
 }

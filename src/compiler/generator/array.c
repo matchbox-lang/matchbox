@@ -1,7 +1,6 @@
 #include "compiler/generator/array.h"
 #include "builtin/memory.h"
 #include "common/array_type.h"
-#include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
 #include "compiler/ast/query.h"
@@ -13,7 +12,6 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/memory.h"
 #include "compiler/generator/operand.h"
-#include "compiler/generator/tuple.h"
 #include "compiler/generator/variable.h"
 #include "runtime/function_object.h"
 #include <stddef.h>
@@ -64,31 +62,6 @@ static Operand compile_array_new(Compiler* compiler, Type type)
     compile_usize_literal(compiler, size);
 
     return close_call_area(compiler, function, position, call, false);
-}
-
-static void copy_array_element(Compiler* compiler, Operand buffer, Operand source, size_t offset,
-    size_t position, Type type)
-{
-    if (type.kind == TypeTuple) {
-        Operand value = load_tuple_slots(compiler, source, position, type);
-
-        store_tuple_slots(compiler, buffer, value, offset + position);
-        release_operand(compiler, value);
-
-        return;
-    }
-
-    size_t slots = get_type_slot_count(type.kind);
-    int destination = allocate_registers(compiler, slots);
-    Opcode load = get_memory_load_opcode(type);
-    Opcode store = get_memory_store_opcode(type);
-
-    emit_memory_access(compiler, load, destination, source.reg, position);
-    emit_memory_access(compiler, store, destination, buffer.reg, offset + position);
-
-    Operand value = {destination, true, slots, false};
-
-    release_operand(compiler, value);
 }
 
 static Operand create_array_binary_offset(Compiler* compiler, size_t stride,
@@ -281,7 +254,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
 
     Operand value = compile_converted_expression(compiler, element, type, false);
 
-    store_array_value(compiler, array, value, offset, type);
+    store_memory_value(compiler, array, value, offset, type);
     release_operand(compiler, value);
 }
 
@@ -411,35 +384,11 @@ void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast)
     compiler->register_count = previous_register_count;
 }
 
-static Operand finish_tuple_copy(Compiler* compiler, const Builtin* builtin, Type type, Operand source,
-    int start, bool discard)
-{
-    Operand result = emit_tuple_copy(compiler, builtin, type, source);
-
-    emit_operand_mov(compiler, start, result);
-
-    result.reg = start;
-    compiler->register_count = start + result.slots;
-
-    if (discard) {
-        release_operand(compiler, result);
-
-        return no_operand();
-    }
-
-    return result;
-}
-
 Operand compile_array_copy(Compiler* compiler, ASTNode* ast, bool discard)
 {
     ASTNode* argument = ast->builtin_call.args.data[0];
     Type type = get_node_data_type(argument);
-    int start = compiler->register_count;
     Operand source = compile_expression(compiler, argument, false);
-
-    if (type.kind == TypeTuple) {
-        return finish_tuple_copy(compiler, ast->builtin_call.builtin, type, source, start, discard);
-    }
 
     return emit_array_copy(compiler, ast->builtin_call.builtin, type, source, discard);
 }
@@ -453,10 +402,6 @@ Operand compile_array_length(Compiler* compiler, ASTNode* ast, bool discard)
 
     if (discard) {
         return no_operand();
-    }
-
-    if (type.kind == TypeTuple) {
-        return compile_usize_literal(compiler, type.tuple->count);
     }
 
     return compile_usize_literal(compiler, type.array->count);
@@ -490,29 +435,4 @@ Operand emit_array_copy(Compiler* compiler, const Builtin* definition, Type type
     arguments[1] = compile_usize_literal(compiler, size);
 
     return emit_builtin_operands(compiler, &builtin, types, arguments, 2, discard);
-}
-
-void store_array_value(Compiler* compiler, Operand buffer, Operand value, size_t offset, Type type)
-{
-    if (type.kind == TypeTuple) {
-        store_tuple_slots(compiler, buffer, value, offset);
-
-        return;
-    }
-
-    if (!is_array_type(type.kind)) {
-        Opcode opcode = get_memory_store_opcode(type);
-
-        emit_memory_access(compiler, opcode, value.reg, buffer.reg, offset);
-
-        return;
-    }
-
-    Type leaf = get_array_leaf_type(type);
-    size_t size = get_type_storage_size(leaf);
-    size_t total_size = get_type_storage_size(type);
-
-    for (size_t position = 0; position < total_size; position += size) {
-        copy_array_element(compiler, buffer, value, offset, position, leaf);
-    }
 }

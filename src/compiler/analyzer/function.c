@@ -3,7 +3,6 @@
 #include "common/slice.h"
 #include "common/tuple_type.h"
 #include "common/vector.h"
-#include "compiler/analyzer/array.h"
 #include "compiler/analyzer/builtin.h"
 #include "compiler/analyzer/control_flow.h"
 #include "compiler/analyzer/conversion.h"
@@ -13,6 +12,7 @@
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
 #include "compiler/analyzer/tuple.h"
+#include "compiler/analyzer/type.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/control_flow.h"
@@ -93,7 +93,7 @@ void resolve_function_signature(Analyzer* analyzer, ASTNode* ast)
 
     resolve_named_type(analyzer, &ast->function_definition.return_type_id,
         &ast->function_definition.return_reference_type);
-    resolve_dimensions(analyzer, &ast->function_definition.return_type_id);
+    resolve_type(analyzer, &ast->function_definition.return_type_id);
 
     Vector* params = &ast->function_definition.params;
 
@@ -101,7 +101,7 @@ void resolve_function_signature(Analyzer* analyzer, ASTNode* ast)
         ASTNode* parameter = params->data[i];
 
         resolve_named_type(analyzer, &parameter->parameter.type_id, &parameter->parameter.reference_type);
-        resolve_dimensions(analyzer, &parameter->parameter.type_id);
+        resolve_type(analyzer, &parameter->parameter.type_id);
         resolve_variadic_parameter(analyzer, parameter);
     }
 
@@ -697,7 +697,7 @@ static void resolve_call_type_arguments(Analyzer* analyzer, ASTNode* ast)
     Vector* types = &ast->function_call.type_args;
 
     for (size_t i = 0; i < types->count; i++) {
-        resolve_dimensions(analyzer, types->data[i]);
+        resolve_type(analyzer, types->data[i]);
     }
 }
 

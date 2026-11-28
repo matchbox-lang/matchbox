@@ -1,0 +1,20 @@
+var values = (10, 20, 30)
+let initial = values + (1, 2, 3)
+
+func update() {
+    values = (40, 50, 60)
+}
+
+test "global reads" {
+    assert(initial == (11, 22, 33))
+
+    update()
+
+    assert(values == (40, 50, 60))
+
+    values = (70, 80, 90)
+
+    let updated = values + (1, 2, 3)
+
+    assert(updated == (71, 82, 93))
+}

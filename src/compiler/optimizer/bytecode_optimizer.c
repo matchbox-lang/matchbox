@@ -25,6 +25,12 @@ typedef struct KnownConstant
     uint16_t operand;
 } KnownConstant;
 
+typedef struct KnownGlobal
+{
+    bool known;
+    uint16_t position;
+} KnownGlobal;
+
 static bool uses_register_pairs(Opcode opcode)
 {
     switch (opcode) {
@@ -843,6 +849,61 @@ static void remove_redundant_instructions(OptimizationWord* words, size_t count)
     }
 }
 
+static void invalidate_matching_global(KnownGlobal* known, uint16_t position)
+{
+    if (known->position == position) {
+        known->known = false;
+    }
+}
+
+static void track_global_store(const OptimizationWord* word, KnownGlobal* known)
+{
+    uint16_t position = word->b << 8 | word->c;
+
+    for (size_t reg = 0; reg < 256; reg++) {
+        invalidate_matching_global(&known[reg], position);
+    }
+
+    known[word->a] = (KnownGlobal){.known = true, .position = position};
+}
+
+static void forward_global_load(OptimizationWord* word, KnownGlobal* known)
+{
+    if (word->target || word->wide) {
+        memset(known, 0, 256 * sizeof(KnownGlobal));
+    }
+
+    if (word->removed) {
+        return;
+    }
+
+    if (word->wide || (word->opcode != OpStg && word->opcode != OpLdg)) {
+        memset(known, 0, 256 * sizeof(KnownGlobal));
+
+        return;
+    }
+
+    if (word->opcode == OpStg) {
+        track_global_store(word, known);
+
+        return;
+    }
+
+    uint16_t position = word->b << 8 | word->c;
+    KnownGlobal value = known[word->a];
+    word->removed = value.known && value.position == position;
+    known[word->a] = (KnownGlobal){.known = true, .position = position};
+}
+
+static void forward_global_loads(OptimizationWord* words, size_t count)
+{
+    KnownGlobal known[256] = {0};
+
+    for (size_t i = 0; i < count; i++) {
+        forward_global_load(&words[i], known);
+    }
+}
+
 static void relocate_branch(OptimizationWord* word, size_t position, const size_t* positions)
 {
     int offset = (int)positions[word->destination] - (int)position - 1;
@@ -903,6 +964,7 @@ void optimize_bytecode(const ModuleObject* module, CodeObject* code, size_t pers
     optimize_constants(module, words, count);
     remove_dead_loads(module, words, count, persistent_registers);
     remove_immediate_operand_moves(words, count);
+    forward_global_loads(words, count);
     fuse_instructions(module, words, count);
     remove_redundant_instructions(words, count);
     write_words(code, words, count, positions);

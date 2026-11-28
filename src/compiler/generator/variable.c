@@ -227,8 +227,7 @@ bool is_direct_variable(Compiler* compiler, ASTNode* ast)
 
     ASTNode* symbol = ast->variable.symbol;
 
-    return !is_top_level_scope(symbol->variable_definition.scope)
-        || is_compiling_top_level(compiler);
+    return !is_top_level_scope(symbol->variable_definition.scope) || is_compiling_top_level(compiler);
 }
 
 Operand compile_variable(Compiler* compiler, ASTNode* ast)
@@ -416,8 +415,8 @@ void compile_variable_definition(Compiler* compiler, ASTNode* ast)
     Operand value;
     size_t slots = get_node_slot_count(ast);
     bool unused = ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
-    bool constant_value = ast->variable_definition.binding_type == BindingConstant
-        && !ast->variable_definition.address_taken;
+    bool constant_binding = ast->variable_definition.binding_type == BindingConstant;
+    bool constant_value = constant_binding && !ast->variable_definition.address_taken;
     bool preserve = compiler->repl_mode && is_compiling_top_level(compiler);
 
     if (compile_unused_variable_definition(compiler, ast, slots, unused || constant_value, preserve)) {

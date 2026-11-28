@@ -368,13 +368,22 @@ void initialize_tuple_parameter(Analyzer* analyzer, ASTNode* parameter, Type typ
     }
 }
 
+static bool is_tuple_return_reference(TupleReference access)
+{
+    if (get_reference_type(access.origin) != RefNone) {
+        return true;
+    }
+
+    Type type = get_node_data_type(access.origin);
+
+    return type.kind == TypeTuple && access.origin_offset != SIZE_MAX;
+}
+
 static void validate_tuple_return_reference(TupleReference access, Token token)
 {
     Scope* scope = get_scope(access.origin);
     bool parameter = is_parameter(access.origin);
-    Type type = get_node_data_type(access.origin);
-    bool reference = get_reference_type(access.origin) != RefNone
-        || (type.kind == TypeTuple && access.origin_offset != SIZE_MAX);
+    bool reference = is_tuple_return_reference(access);
     bool global = scope && is_top_level_scope(scope);
 
     if (!global && !(parameter && reference)) {

@@ -214,8 +214,8 @@ static void validate_assignment_type(ASTNode* ast, ASTNode* symbol)
         binding_reference_type = RefNone;
     }
 
-    bool compatible_value = types_equal(binding_type, expression_type) || (binding_reference_type == RefNone
-        && expression_reference_type == RefNone && can_implicitly_widen_type(expression_type.kind, binding_type.kind));
+    bool compatible_value = can_assign_type(
+        expression_type, binding_type, expression_reference_type, binding_reference_type);
 
     if (compatible_value && binding_reference_type == expression_reference_type) {
         return;
@@ -241,11 +241,10 @@ static void analyze_array_compound_assignment(ASTNode* ast, ASTNode* symbol)
 
     Type left_leaf = get_array_leaf_type(left);
     Type right_leaf = get_array_leaf_type(right);
+    bool compatible = types_equal(left_leaf, right_leaf) || can_implicitly_widen_type(right_leaf.kind, left_leaf.kind);
     bool numeric = is_integer_type(left_leaf.kind) || is_float_type(left_leaf.kind);
-    bool compatible = types_equal(left_leaf, right_leaf)
-        || can_implicitly_widen_type(right_leaf.kind, left_leaf.kind);
 
-    if (!numeric || !compatible) {
+    if (!compatible || !numeric) {
         semantic_error("Array compound assignment requires compatible numeric elements", ast->assignment.operator);
     }
 

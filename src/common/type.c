@@ -61,6 +61,19 @@ static const char* get_type_kind_name(TypeKind kind)
     }
 }
 
+bool can_assign_type(Type source, Type destination, ReferenceType source_ref, ReferenceType dest_ref)
+{
+    if (types_equal(source, destination)) {
+        return true;
+    }
+
+    if (source_ref != RefNone || dest_ref != RefNone) {
+        return false;
+    }
+
+    return can_implicitly_widen_type(source.kind, destination.kind);
+}
+
 bool can_explicitly_convert_type(TypeKind source, TypeKind destination)
 {
     bool source_numeric = is_integer_type(source) || is_float_type(source);
@@ -325,9 +338,15 @@ bool is_integer_type(TypeKind kind)
 
 bool is_printable_type(TypeKind kind)
 {
-    return is_integer_type(kind) || is_float_type(kind) || kind == TypeBool
-        || kind == TypeChar || is_slice_type(kind)
-        || kind == TypeString || kind == TypeTuple || is_array_type(kind);
+    switch (kind) {
+        case TypeUnknown:
+        case TypeVoid:
+        case TypeGeneric:
+        case TypeNamed:
+            return false;
+        default:
+            return true;
+    }
 }
 
 bool is_signed_integer_type(TypeKind kind)

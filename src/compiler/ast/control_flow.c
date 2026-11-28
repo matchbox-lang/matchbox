@@ -123,6 +123,15 @@ bool match_has_wildcard(ASTNode* ast)
     return wildcard;
 }
 
+static bool visit_conditional_returns(ASTNode* ast, VisitReturn visit, void* context)
+{
+    if (!visit_node_returns(ast->conditional.then_branch, visit, context)) {
+        return false;
+    }
+
+    return visit_node_returns(ast->conditional.else_branch, visit, context);
+}
+
 bool visit_node_returns(ASTNode* ast, VisitReturn visit, void* context)
 {
     if (!ast) {
@@ -139,8 +148,7 @@ bool visit_node_returns(ASTNode* ast, VisitReturn visit, void* context)
         case ASTWhile:
             return visit_node_returns(ast->while_statement.body, visit, context);
         case ASTConditional:
-            return visit_node_returns(ast->conditional.then_branch, visit, context)
-                && visit_node_returns(ast->conditional.else_branch, visit, context);
+            return visit_conditional_returns(ast, visit, context);
         case ASTMatch:
             return visit_match_returns(ast, visit, context);
         default:

@@ -295,9 +295,20 @@ void compile_top_level_statements(Compiler* compiler, Vector* nodes)
     }
 }
 
+static bool should_display_repl_statement(ASTNode* ast, bool is_last)
+{
+    if (!is_last || !is_expression_statement(ast)) {
+        return false;
+    }
+
+    Type type = get_node_data_type(ast);
+
+    return type.kind != TypeVoid;
+}
+
 static void compile_repl_statement(Compiler* compiler, ASTNode* ast, bool is_last)
 {
-    bool display = is_last && is_expression_statement(ast) && get_node_data_type(ast).kind != TypeVoid;
+    bool display = should_display_repl_statement(ast, is_last);
 
     if (display && get_node_data_type(ast).kind == TypeUnknown) {
         unresolved_repl_expression_type_error();

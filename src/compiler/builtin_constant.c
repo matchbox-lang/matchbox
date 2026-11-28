@@ -56,8 +56,11 @@ static bool matches_builtin_constant(const BuiltinConstant* constant, TypeKind k
 {
     size_t length = strlen(constant->name);
 
-    return constant->kind == kind && length == name.length
-        && memcmp(constant->name, name.chars, length) == 0;
+    if (constant->kind != kind || length != name.length) {
+        return false;
+    }
+
+    return memcmp(constant->name, name.chars, length) == 0;
 }
 
 ASTNode* resolve_builtin_constant(TypeKind kind, Token name)

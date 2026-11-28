@@ -349,18 +349,29 @@ static void fold_explicit_conversion(ASTNode* ast)
     ast->conversion.expr = replacement;
 }
 
+static bool can_remove_conversion(ASTNode* expression, Type destination)
+{
+    switch (expression->type) {
+        case ASTInteger:
+        case ASTFloat:
+        case ASTCharacter:
+            return true;
+        default:
+            break;
+    }
+
+    Type source = get_node_data_type(expression);
+
+    return types_equal(source, destination);
+}
+
 static void optimize_conversion(ASTNode* ast)
 {
     optimize_node(ast->conversion.expr);
     fold_explicit_conversion(ast);
 
     ASTNode* expression = ast->conversion.expr;
-    bool literal = expression->type == ASTInteger || expression->type == ASTFloat
-        || expression->type == ASTCharacter;
-    Type expression_type = get_node_data_type(expression);
-    bool identity = types_equal(expression_type, ast->conversion.type_id);
-
-    if (!literal && !identity) {
+    if (!can_remove_conversion(expression, ast->conversion.type_id)) {
         return;
     }
 

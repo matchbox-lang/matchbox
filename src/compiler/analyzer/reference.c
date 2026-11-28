@@ -433,6 +433,15 @@ void activate_reference_access(ASTNode* ast)
     }
 }
 
+static bool transfers_exclusive_reference(ASTNode* binding, ASTNode* expression)
+{
+    if (get_reference_type(binding) != RefExclusive || !is_variable(expression)) {
+        return false;
+    }
+
+    return get_reference_type(expression) == RefExclusive;
+}
+
 void establish_reference_access(Analyzer* analyzer, ASTNode* binding, ASTNode* expression)
 {
     const Vector* binding_tuple_references = get_tuple_references(analyzer, binding);
@@ -453,8 +462,7 @@ void establish_reference_access(Analyzer* analyzer, ASTNode* binding, ASTNode* e
         consume_tuple_element(analyzer, expression);
     }
 
-    bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression)
-        && get_reference_type(expression) == RefExclusive;
+    bool transfers_exclusive = transfers_exclusive_reference(binding, expression);
 
     if (transfers_exclusive) {
         transfer_exclusive_reference(expression);

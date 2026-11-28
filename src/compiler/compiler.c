@@ -204,16 +204,16 @@ static void eliminate_compile_time_functions(Compiler* compiler)
 
 static void retain_test_statement(Compiler* compiler, ASTNode* ast, size_t* retained)
 {
-    bool declaration = ast->type == ASTFunctionDefinition || ast->type == ASTVariableDefinition
-        || ast->type == ASTTestBlock;
+    switch (ast->type) {
+        case ASTFunctionDefinition:
+        case ASTVariableDefinition:
+        case ASTTestBlock:
+            compiler->ast->compound.statements.data[(*retained)++] = ast;
 
-    if (declaration) {
-        compiler->ast->compound.statements.data[(*retained)++] = ast;
-
-        return;
+            return;
+        default:
+            push_vector_item(&compiler->omitted_statements, ast);
     }
-
-    push_vector_item(&compiler->omitted_statements, ast);
 }
 
 static ASTNode* get_selected_test(Compiler* compiler)

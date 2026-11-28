@@ -1,6 +1,7 @@
 #include "compiler/analyzer/tuple_reference.h"
 #include "common/memory.h"
 #include "common/string_view.h"
+#include "compiler/ast/predicate.h"
 #include "compiler/ast/reference.h"
 
 typedef struct TupleReferenceState
@@ -27,8 +28,7 @@ static Vector* create_tuple_references(Analyzer* analyzer, ASTNode* ast)
 
     state = allocate_zeroed_memory(1, sizeof(TupleReferenceState));
     state->node = ast;
-    state->persistent = ast->type == ASTVariableDefinition || ast->type == ASTParameter
-        || ast->type == ASTFunctionDefinition;
+    state->persistent = is_variable_type(ast) || is_function_definition(ast);
     StringView key = create_string_view((const char*)&state->node, sizeof(state->node));
 
     set_table_at(&analyzer->tuple_references, key, state);
@@ -96,8 +96,11 @@ void copy_tuple_reference_vector(Vector* destination, const Vector* source)
 
 static bool tuple_references_equal(const TupleReference* left, const TupleReference* right)
 {
-    return left->origin == right->origin && left->reference == right->reference
-        && left->offset == right->offset && left->origin_offset == right->origin_offset;
+    if (left->origin != right->origin || left->reference != right->reference) {
+        return false;
+    }
+
+    return left->offset == right->offset && left->origin_offset == right->origin_offset;
 }
 
 static void append_tuple_reference(Vector* references, TupleReference access)

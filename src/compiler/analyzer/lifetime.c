@@ -118,6 +118,15 @@ static bool visit_node_list_uses(Vector* nodes, VisitId visit, void* context)
     return false;
 }
 
+static bool visit_match_body_uses(MatchArm* arm, VisitId visit, void* context)
+{
+    if (visit_node_uses(arm->guard, visit, context)) {
+        return true;
+    }
+
+    return visit_node_uses(arm->branch, visit, context);
+}
+
 static bool visit_match_arm_uses(MatchArm* arm, VisitId visit, void* context)
 {
     if (visit_node_uses(arm->pattern, visit, context)) {
@@ -125,14 +134,13 @@ static bool visit_match_arm_uses(MatchArm* arm, VisitId visit, void* context)
     }
 
     if (!arm->binding) {
-        return visit_node_uses(arm->guard, visit, context) || visit_node_uses(arm->branch, visit, context);
+        return visit_match_body_uses(arm, visit, context);
     }
 
     void* ids[] = {arm->binding->variable_definition.id};
     ScopedUses scope = {.visit = visit, .context = context, .shadowed = {.data = ids, .count = 1}};
 
-    return visit_node_uses(arm->guard, visit_unshadowed_use, &scope)
-        || visit_node_uses(arm->branch, visit_unshadowed_use, &scope);
+    return visit_match_body_uses(arm, visit_unshadowed_use, &scope);
 }
 
 static bool visit_match_uses(ASTNode* ast, VisitId visit, void* context)
@@ -193,6 +201,63 @@ static bool visit_for_uses(ASTNode* ast, VisitId visit, void* context)
     return found;
 }
 
+static bool visit_slice_uses(ASTNode* ast, VisitId visit, void* context)
+{
+    if (visit_node_uses(ast->slice.expr, visit, context)) {
+        return true;
+    }
+
+    if (visit_node_uses(ast->slice.start, visit, context)) {
+        return true;
+    }
+
+    return visit_node_uses(ast->slice.end, visit, context);
+}
+
+static bool visit_index_uses(ASTNode* ast, VisitId visit, void* context)
+{
+    if (visit_node_uses(ast->index.array, visit, context)) {
+        return true;
+    }
+
+    if (visit_node_uses(ast->index.index, visit, context)) {
+        return true;
+    }
+
+    return visit_node_uses(ast->index.value, visit, context);
+}
+
+static bool visit_binary_uses(ASTNode* ast, VisitId visit, void* context)
+{
+    if (visit_node_uses(ast->binary.left_expr, visit, context)) {
+        return true;
+    }
+
+    return visit_node_uses(ast->binary.right_expr, visit, context);
+}
+
+static bool visit_while_uses(ASTNode* ast, VisitId visit, void* context)
+{
+    if (visit_node_uses(ast->while_statement.condition, visit, context)) {
+        return true;
+    }
+
+    return visit_node_uses(ast->while_statement.body, visit, context);
+}
+
+static bool visit_conditional_uses(ASTNode* ast, VisitId visit, void* context)
+{
+    if (visit_node_uses(ast->conditional.condition, visit, context)) {
+        return true;
+    }
+
+    if (visit_node_uses(ast->conditional.then_branch, visit, context)) {
+        return true;
+    }
+
+    return visit_node_uses(ast->conditional.else_branch, visit, context);
+}
+
 static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
 {
     if (!ast) {
@@ -205,19 +270,14 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
         case ASTTuple:
             return visit_node_list_uses(&ast->tuple.elements, visit, context);
         case ASTSlice:
-            return visit_node_uses(ast->slice.expr, visit, context)
-                || visit_node_uses(ast->slice.start, visit, context)
-                || visit_node_uses(ast->slice.end, visit, context);
+            return visit_slice_uses(ast, visit, context);
         case ASTIndex:
         case ASTIndexAssignment:
-            return visit_node_uses(ast->index.array, visit, context)
-                || visit_node_uses(ast->index.index, visit, context)
-                || visit_node_uses(ast->index.value, visit, context);
+            return visit_index_uses(ast, visit, context);
         case ASTAssignment:
             return visit_assignment_uses(ast, visit, context);
         case ASTBinary:
-            return visit_node_uses(ast->binary.left_expr, visit, context)
-                || visit_node_uses(ast->binary.right_expr, visit, context);
+            return visit_binary_uses(ast, visit, context);
         case ASTBuiltinCall:
             return visit_node_list_uses(&ast->builtin_call.args, visit, context);
         case ASTCompound:
@@ -225,12 +285,9 @@ static bool visit_node_uses(ASTNode* ast, VisitId visit, void* context)
         case ASTFor:
             return visit_for_uses(ast, visit, context);
         case ASTWhile:
-            return visit_node_uses(ast->while_statement.condition, visit, context)
-                || visit_node_uses(ast->while_statement.body, visit, context);
+            return visit_while_uses(ast, visit, context);
         case ASTConditional:
-            return visit_node_uses(ast->conditional.condition, visit, context)
-                || visit_node_uses(ast->conditional.then_branch, visit, context)
-                || visit_node_uses(ast->conditional.else_branch, visit, context);
+            return visit_conditional_uses(ast, visit, context);
         case ASTConversion:
             return visit_node_uses(ast->conversion.expr, visit, context);
         case ASTFunctionCall:

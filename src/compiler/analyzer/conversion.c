@@ -85,6 +85,19 @@ void apply_analyzed_argument_type(ASTNode* argument, Type type)
     }
 }
 
+static size_t get_float_literal_conversion_cost(ASTNode* floating, Type destination)
+{
+    if (destination.kind == TypeF64) {
+        return 1;
+    }
+
+    if (destination.kind == TypeF32 && floating->float_literal.value <= FLT_MAX) {
+        return 1;
+    }
+
+    return SIZE_MAX;
+}
+
 static size_t get_scalar_argument_conversion_cost(ASTNode* argument, Type source, Type destination)
 {
     bool negative;
@@ -100,10 +113,7 @@ static size_t get_scalar_argument_conversion_cost(ASTNode* argument, Type source
     ASTNode* floating = get_float_literal(argument);
 
     if (floating) {
-        bool fits = destination.kind == TypeF64
-            || (destination.kind == TypeF32 && floating->float_literal.value <= FLT_MAX);
-
-        return fits ? 1 : SIZE_MAX;
+        return get_float_literal_conversion_cost(floating, destination);
     }
 
     return get_implicit_conversion_cost(source.kind, destination.kind);

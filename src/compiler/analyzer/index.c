@@ -40,6 +40,15 @@ static void analyze_index_source(Analyzer* analyzer, ASTNode* ast)
     analyzer->tuple_projection = previous;
 }
 
+static bool is_compatible_index(ASTNode* ast, Type type, ASTNode* constant_expression)
+{
+    if (ast->index.constant || can_implicitly_widen_integer(type.kind, TypeUsize)) {
+        return true;
+    }
+
+    return is_integer_type(type.kind) && constant_expression;
+}
+
 void analyze_index(Analyzer* analyzer, ASTNode* ast)
 {
     Type literal_type = get_index_literal_type(ast->index.index);
@@ -57,8 +66,7 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
     uint64_t value = 0;
     ast->index.constant = evaluate_integer_constant(ast->index.index, &value);
     ASTNode* constant_expression = get_index_constant_expression(ast->index.index);
-    bool compatible = ast->index.constant || can_implicitly_widen_integer(index_type.kind, TypeUsize)
-        || (is_integer_type(index_type.kind) && constant_expression);
+    bool compatible = is_compatible_index(ast, index_type, constant_expression);
     bool negative = is_signed_integer_type(index_type.kind) && (int64_t)value < 0;
 
     if (array_type.kind == TypeTuple) {
@@ -105,8 +113,7 @@ static void validate_index_mutation(ASTNode* ast)
 
     ASTNode* owner = get_root_binding(ast->index.array);
     ReferenceType reference = get_reference_type(owner);
-    bool constant = owner && is_variable_definition(owner)
-        && owner->variable_definition.binding_type == BindingConstant;
+    bool constant = is_variable_definition(owner) && owner->variable_definition.binding_type == BindingConstant;
     bool has_shared_access = owner && *get_shared_access_count(owner);
     ReferenceType source_reference = get_reference_type(ast->index.array);
 

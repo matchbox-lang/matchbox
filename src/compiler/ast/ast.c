@@ -662,16 +662,10 @@ bool parameter_accepts_argument_type(ASTNode* parameter, ASTNode* argument)
 {
     Type source = get_node_data_type(argument);
     Type destination = get_parameter_argument_type(parameter);
+    ReferenceType source_reference = get_reference_type(argument);
+    ReferenceType destination_reference = get_parameter_argument_reference(parameter);
 
-    if (types_equal(source, destination)) {
-        return true;
-    }
-
-    if (get_reference_type(argument) != RefNone || get_parameter_argument_reference(parameter) != RefNone) {
-        return false;
-    }
-
-    return can_implicitly_widen_type(source.kind, destination.kind);
+    return can_assign_type(source, destination, source_reference, destination_reference);
 }
 
 bool function_accepts_argument_count(const ASTNode* function, size_t count)
@@ -695,9 +689,15 @@ bool function_accepts_argument_count(const ASTNode* function, size_t count)
 
 static bool parameter_signatures_equal(ASTNode* left, ASTNode* right)
 {
-    return left->parameter.variadic == right->parameter.variadic
-        && left->parameter.reference_type == right->parameter.reference_type
-        && types_equal(left->parameter.type_id, right->parameter.type_id);
+    if (left->parameter.variadic != right->parameter.variadic) {
+        return false;
+    }
+
+    if (left->parameter.reference_type != right->parameter.reference_type) {
+        return false;
+    }
+
+    return types_equal(left->parameter.type_id, right->parameter.type_id);
 }
 
 bool function_signatures_equal(ASTNode* left, ASTNode* right)

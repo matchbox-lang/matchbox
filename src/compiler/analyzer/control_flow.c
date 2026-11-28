@@ -228,8 +228,8 @@ static void validate_conditional_result(ASTNode* ast, Type then_type, Type else_
 
 static void merge_conditional_references(Analyzer* analyzer, ASTNode* ast)
 {
-    bool has_expected_type = ast->conditional.type_id.kind != TypeUnknown
-        && ast->conditional.type_id.kind != TypeVoid;
+    TypeKind kind = ast->conditional.type_id.kind;
+    bool has_expected_type = kind != TypeUnknown && kind != TypeVoid;
     ASTNode* then_result = get_branch_result(ast->conditional.then_branch);
     ASTNode* else_result = get_branch_result(ast->conditional.else_branch);
 

@@ -325,9 +325,11 @@ static bool requires_reserved_argument(Vector* args, Vector* params, size_t posi
     ASTNode* argument = get_vector_at(args, position);
     ASTNode* parameter = get_vector_at(params, position);
 
-    return get_reference_type(parameter) != RefNone
-        && get_reference_type(argument) == RefNone
-        && argument->type != ASTVariable;
+    if (get_reference_type(parameter) == RefNone || get_reference_type(argument) != RefNone) {
+        return false;
+    }
+
+    return argument->type != ASTVariable;
 }
 
 static bool requires_reserved_arguments(Vector* args, Vector* params)
@@ -545,8 +547,8 @@ static FunctionObject* create_defined_function_object(ASTNode* ast)
         function->return_count = 0;
     }
 
-    bool tuple_result = ast->function_definition.return_type_id.kind == TypeTuple
-        && ast->function_definition.return_reference_type == RefNone;
+    TypeKind return_kind = ast->function_definition.return_type_id.kind;
+    bool tuple_result = return_kind == TypeTuple && ast->function_definition.return_reference_type == RefNone;
 
     if (is_slice_type(ast->function_definition.return_type_id.kind) || tuple_result) {
         function->param_count++;

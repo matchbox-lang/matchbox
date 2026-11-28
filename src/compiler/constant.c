@@ -542,8 +542,9 @@ static bool has_local_constant_variables(const ASTNode* ast)
     }
 
     if (ast->type == ASTBinary) {
-        return has_local_constant_variables(ast->binary.left_expr)
-            && has_local_constant_variables(ast->binary.right_expr);
+        bool left = has_local_constant_variables(ast->binary.left_expr);
+
+        return left && has_local_constant_variables(ast->binary.right_expr);
     }
 
     if (ast->type == ASTPrefix) {

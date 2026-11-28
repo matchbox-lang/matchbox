@@ -6,6 +6,19 @@
 #include "compiler/parser/slice.h"
 #include "compiler/parser/type.h"
 
+static bool parse_array_initializer_value(Parser* parser, ASTNode* ast)
+{
+    if (!parse_dimensions(parser, &ast->array.type_id)) {
+        return false;
+    }
+
+    if (is_end_of_file(parser)) {
+        return false;
+    }
+
+    return parse_argument_list(parser, &ast->array.elements);
+}
+
 ASTNode* parse_array_initializer(Parser* parser, Token token, TypeKind kind)
 {
     ASTNode* ast = create_ast_node(ASTArray);
@@ -13,8 +26,7 @@ ASTNode* parse_array_initializer(Parser* parser, Token token, TypeKind kind)
     ast->array.type_id = (Type){.kind = kind};
     ast->array.fill = true;
 
-    bool complete = parse_dimensions(parser, &ast->array.type_id)
-        && !is_end_of_file(parser) && parse_argument_list(parser, &ast->array.elements);
+    bool complete = parse_array_initializer_value(parser, ast);
 
     if (!complete) {
         free_ast_node(ast);

@@ -120,8 +120,11 @@ static bool prepare_immediate_comparison(
         *right = swap;
     }
 
-    return right->temporary && right->slots == 1 && load->a == right->reg
-        && value >= INT8_MIN && value <= INT8_MAX;
+    if (!right->temporary || right->slots != 1 || load->a != right->reg) {
+        return false;
+    }
+
+    return value >= INT8_MIN && value <= INT8_MAX;
 }
 
 static Operand emit_immediate_comparison_value(Compiler* compiler, Opcode opcode, Operand left, int8_t value)

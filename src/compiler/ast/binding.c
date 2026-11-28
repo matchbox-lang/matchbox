@@ -43,6 +43,17 @@ bool is_moved(ASTNode* symbol)
     return symbol->variable_definition.moved;
 }
 
+bool requires_variable_initializer(const ASTNode* ast)
+{
+    BindingType binding_type = ast->variable_definition.binding_type;
+
+    if (binding_type == BindingConstant) {
+        return true;
+    }
+
+    return binding_type == BindingFixed && ast->variable_definition.type_id.kind != TypeArray;
+}
+
 void mark_address_taken(ASTNode* symbol)
 {
     if (!symbol || !is_variable_definition(symbol)) {

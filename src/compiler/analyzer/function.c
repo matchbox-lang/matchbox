@@ -659,6 +659,15 @@ static void analyze_function_specialization(Analyzer* analyzer, ASTNode* ast)
     analyzer->constant_functions = constant_functions;
 }
 
+static bool requires_overload_resolution(ASTNode* caller, ASTNode* symbol)
+{
+    if (symbol->function_definition.next_overload || is_generic_function(symbol)) {
+        return true;
+    }
+
+    return caller->function_call.type_args.count != 0;
+}
+
 static ASTNode* analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
 {
     StringView id = get_string_view(ast->function_call.id);
@@ -670,8 +679,7 @@ static ASTNode* analyze_call_arguments(Analyzer* analyzer, ASTNode* ast)
         return symbol;
     }
 
-    bool overloaded = symbol->function_definition.next_overload != NULL
-        || is_generic_function(symbol) || ast->function_call.type_args.count != 0;
+    bool overloaded = requires_overload_resolution(ast, symbol);
 
     if (overloaded) {
         analyze_expression_nodes(analyzer, &ast->function_call.args);

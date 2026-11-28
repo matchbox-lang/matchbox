@@ -151,37 +151,20 @@ const char* get_token_type_name(TokenType type)
     return "unknown token";
 }
 
-bool is_float_assignment_token(TokenType type)
-{
-    return type == TokenEqual || type == TokenPlusEqual || type == TokenMinusEqual
-        || type == TokenStarEqual || type == TokenSlashEqual || type == TokenPercentEqual;
-}
-
 TokenType get_assignment_binary_token(TokenType type)
 {
     switch (type) {
-        case TokenPlusEqual:
-            return TokenPlus;
-        case TokenMinusEqual:
-            return TokenMinus;
-        case TokenStarEqual:
-            return TokenStar;
-        case TokenSlashEqual:
-            return TokenSlash;
-        case TokenPercentEqual:
-            return TokenPercent;
-        case TokenPowerEqual:
-            return TokenPower;
-        case TokenAndEqual:
-            return TokenAmpersand;
-        case TokenOrEqual:
-            return TokenPipe;
-        case TokenCircumflexEqual:
-            return TokenCircumflex;
-        case TokenLshiftEqual:
-            return TokenLshift;
-        case TokenRshiftEqual:
-            return TokenRshift;
+        case TokenPlusEqual:        return TokenPlus;
+        case TokenMinusEqual:       return TokenMinus;
+        case TokenStarEqual:        return TokenStar;
+        case TokenSlashEqual:       return TokenSlash;
+        case TokenPercentEqual:     return TokenPercent;
+        case TokenPowerEqual:       return TokenPower;
+        case TokenAndEqual:         return TokenAmpersand;
+        case TokenOrEqual:          return TokenPipe;
+        case TokenCircumflexEqual:  return TokenCircumflex;
+        case TokenLshiftEqual:      return TokenLshift;
+        case TokenRshiftEqual:      return TokenRshift;
         default:
             return TokenUnknown;
     }
@@ -202,6 +185,21 @@ bool is_assignment_token(TokenType type)
         case TokenCircumflexEqual:
         case TokenLshiftEqual:
         case TokenRshiftEqual:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool is_float_assignment_token(TokenType type)
+{
+    switch (type) {
+        case TokenEqual:
+        case TokenPlusEqual:
+        case TokenMinusEqual:
+        case TokenStarEqual:
+        case TokenSlashEqual:
+        case TokenPercentEqual:
             return true;
         default:
             return false;

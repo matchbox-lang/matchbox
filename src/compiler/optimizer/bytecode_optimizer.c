@@ -154,13 +154,32 @@ static void decode_words(const CodeObject* code, OptimizationWord* words, size_t
 
 static bool invalidates_constants(Opcode opcode)
 {
-    bool end = ends_block(opcode);
+    if (ends_block(opcode)) {
+        return true;
+    }
 
-    return end || opcode == OpCall || opcode == OpStgCall || opcode == OpStg || opcode == OpStg64
-        || opcode == OpStr || opcode == OpStr64 || opcode == OpStm8 || opcode == OpStm16
-        || opcode == OpStm32 || opcode == OpStm64
-        || opcode == OpStmi8 || opcode == OpStmi16 || opcode == OpStmi32 || opcode == OpStmi64
-        || opcode == OpRefl || opcode == OpRefg || opcode == OpWide;
+    switch (opcode) {
+        case OpCall:
+        case OpStgCall:
+        case OpStg:
+        case OpStg64:
+        case OpStr:
+        case OpStr64:
+        case OpStm8:
+        case OpStm16:
+        case OpStm32:
+        case OpStm64:
+        case OpStmi8:
+        case OpStmi16:
+        case OpStmi32:
+        case OpStmi64:
+        case OpRefl:
+        case OpRefg:
+        case OpWide:
+            return true;
+        default:
+            return false;
+    }
 }
 
 static void select_immediate_arithmetic(OptimizationWord* word, const KnownConstant* known)
@@ -172,8 +191,7 @@ static void select_immediate_arithmetic(OptimizationWord* word, const KnownConst
     int64_t maximum = signed_operand ? INT8_MAX : UINT8_MAX;
     bool pairs = uses_register_pairs(word->opcode);
 
-    if (immediate == OpHlt || !right.known || right.wide != pairs
-        || right.value < minimum || right.value > maximum) {
+    if (immediate == OpHlt || !right.known || right.wide != pairs || right.value < minimum || right.value > maximum) {
         return;
     }
 

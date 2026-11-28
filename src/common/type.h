@@ -57,6 +57,7 @@ typedef struct Type
     };
 } Type;
 
+bool can_assign_type(Type source, Type destination, ReferenceType source_ref, ReferenceType dest_ref);
 bool can_explicitly_convert_type(TypeKind source, TypeKind destination);
 bool can_implicitly_convert_integer_to_float(TypeKind source, TypeKind destination);
 bool can_implicitly_widen_float(TypeKind source, TypeKind destination);

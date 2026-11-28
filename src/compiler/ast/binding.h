@@ -25,6 +25,7 @@ void initialize_variable(ASTNode* ast);
 BindingState get_binding_state(const ASTNode* ast);
 bool is_initialized(const ASTNode* ast);
 bool is_moved(ASTNode* symbol);
+bool requires_variable_initializer(const ASTNode* ast);
 void mark_address_taken(ASTNode* symbol);
 void set_moved_state(ASTNode* symbol, bool moved);
 void track_variable_read(ASTNode* symbol);

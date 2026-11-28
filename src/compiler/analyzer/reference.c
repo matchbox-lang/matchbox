@@ -6,6 +6,7 @@
 #include "compiler/analyzer/global_access.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/tuple.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/predicate.h"
@@ -14,6 +15,14 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
+
+bool has_value_references(Analyzer* analyzer, ASTNode* ast)
+{
+    ReferenceType reference = get_reference_type(ast);
+    const Vector* references = get_tuple_references(analyzer, ast);
+
+    return reference != RefNone || references->count;
+}
 
 static void validate_slice_lifetime(ASTNode* destination, ASTNode* origin)
 {
@@ -32,23 +41,25 @@ static void validate_slice_lifetime(ASTNode* destination, ASTNode* origin)
     }
 }
 
-void set_reference_origins_from_expression(ASTNode* destination, ASTNode* expression)
+void set_reference_origins_from_expression(Analyzer* analyzer, ASTNode* destination, ASTNode* expression)
 {
     Vector* destination_origins = get_reference_origins(destination);
     Vector* origins = get_reference_origins_from_expression(expression);
 
     copy_reference_origins(destination_origins, origins);
-    set_tuple_binding_references(destination, expression);
+    set_tuple_binding_references(analyzer, destination, expression);
 
     for (size_t i = 0; i < origins->count; i++) {
         validate_slice_lifetime(destination, origins->data[i]);
     }
 }
 
-void release_reference_access(ASTNode* reference)
+void release_reference_access(Analyzer* analyzer, ASTNode* reference)
 {
-    if (reference->tuple_references.count && get_reference_type(reference) == RefNone) {
-        release_tuple_access(reference);
+    const Vector* reference_tuple_references = get_tuple_references(analyzer, reference);
+
+    if (reference_tuple_references->count && get_reference_type(reference) == RefNone) {
+        release_tuple_access(analyzer, reference);
 
         return;
     }
@@ -69,7 +80,7 @@ void release_reference_access(ASTNode* reference)
     reference->variable_definition.reference_access_active = false;
 }
 
-void release_inactive_reference_access(Vector* references)
+void release_inactive_reference_access(Analyzer* analyzer, Vector* references)
 {
     size_t count = count_vector(references);
 
@@ -77,7 +88,7 @@ void release_inactive_reference_access(Vector* references)
         ASTNode* ast = get_vector_at(references, i);
 
         if (ast->variable_definition.reference_access_active) {
-            release_reference_access(ast);
+            release_reference_access(analyzer, ast);
         }
     }
 }
@@ -241,9 +252,9 @@ static bool tuple_reference_conflicts(const TupleReference* access, ASTNode* ori
     return access->origin == origin && exclusive;
 }
 
-static bool tuple_argument_conflicts(ASTNode* origin, ReferenceType reference, ASTNode* argument)
+static bool tuple_argument_conflicts(Analyzer* analyzer, ASTNode* origin, ReferenceType reference, ASTNode* argument)
 {
-    Vector* references = get_tuple_references(argument);
+    const Vector* references = get_tuple_references(analyzer, argument);
     size_t index = 0;
 
     while (index < references->count && !tuple_reference_conflicts(references->data[index], origin, reference)) {
@@ -253,10 +264,10 @@ static bool tuple_argument_conflicts(ASTNode* origin, ReferenceType reference, A
     return index < references->count;
 }
 
-static bool reference_access_conflicts(ASTNode* left_origin, ReferenceType left_type,
+static bool reference_access_conflicts(Analyzer* analyzer, ASTNode* left_origin, ReferenceType left_type,
     ASTNode* right, ASTNode* right_parameter)
 {
-    if (tuple_argument_conflicts(left_origin, left_type, right)) {
+    if (tuple_argument_conflicts(analyzer, left_origin, left_type, right)) {
         return true;
     }
 
@@ -276,7 +287,7 @@ static bool reference_access_conflicts(ASTNode* left_origin, ReferenceType left_
     return left_origin == right_origin;
 }
 
-static void validate_argument_origin_access(Vector* arguments, Vector* parameters,
+static void validate_argument_origin_access(Analyzer* analyzer, Vector* arguments, Vector* parameters,
     size_t position, ASTNode* left_origin, ReferenceType left_type, Token token)
 {
     size_t count = count_vector(arguments);
@@ -285,7 +296,7 @@ static void validate_argument_origin_access(Vector* arguments, Vector* parameter
         ASTNode* right = get_vector_at(arguments, i);
         ASTNode* right_parameter = get_call_parameter(parameters, i);
 
-        if (!reference_access_conflicts(left_origin, left_type, right, right_parameter)) {
+        if (!reference_access_conflicts(analyzer, left_origin, left_type, right, right_parameter)) {
             continue;
         }
 
@@ -293,25 +304,28 @@ static void validate_argument_origin_access(Vector* arguments, Vector* parameter
     }
 }
 
-static void validate_tuple_argument_access(Vector* arguments, Vector* parameters, size_t position, Token token)
+static void validate_tuple_argument_access(Analyzer* analyzer, Vector* arguments, Vector* parameters,
+    size_t position, Token token)
 {
     ASTNode* argument = get_vector_at(arguments, position);
-    Vector* references = get_tuple_references(argument);
+    const Vector* references = get_tuple_references(analyzer, argument);
 
     for (size_t i = 0; i < references->count; i++) {
         TupleReference* access = references->data[i];
 
-        validate_argument_origin_access(arguments, parameters, position, access->origin, access->reference, token);
+        validate_argument_origin_access(analyzer, arguments, parameters, position, access->origin,
+            access->reference, token);
     }
 }
 
-static void validate_argument_access(Vector* arguments, Vector* parameters, size_t position, Token token)
+static void validate_argument_access(Analyzer* analyzer, Vector* arguments, Vector* parameters,
+    size_t position, Token token)
 {
     ASTNode* left = get_vector_at(arguments, position);
     ASTNode* left_parameter = get_call_parameter(parameters, position);
     ReferenceType left_type = get_argument_reference_type(left, left_parameter);
 
-    validate_tuple_argument_access(arguments, parameters, position, token);
+    validate_tuple_argument_access(analyzer, arguments, parameters, position, token);
 
     if (left_type == RefNone) {
         return;
@@ -322,7 +336,7 @@ static void validate_argument_access(Vector* arguments, Vector* parameters, size
 
     for (size_t i = 0; i < count; i++) {
         ASTNode* origin = get_vector_at(origins, i);
-        validate_argument_origin_access(arguments, parameters, position, origin, left_type, token);
+        validate_argument_origin_access(analyzer, arguments, parameters, position, origin, left_type, token);
     }
 
     if (count) {
@@ -331,18 +345,18 @@ static void validate_argument_access(Vector* arguments, Vector* parameters, size
 
     ASTNode* origin = get_argument_reference_origin(left);
     if (origin) {
-        validate_argument_origin_access(arguments, parameters, position, origin, left_type, token);
+        validate_argument_origin_access(analyzer, arguments, parameters, position, origin, left_type, token);
     }
 }
 
-void validate_argument_accesses(ASTNode* caller, ASTNode* callee)
+void validate_argument_accesses(Analyzer* analyzer, ASTNode* caller, ASTNode* callee)
 {
     Vector* arguments = &caller->function_call.args;
     Vector* parameters = &callee->function_definition.params;
     size_t count = count_vector(arguments);
 
     for (size_t i = 0; i < count; i++) {
-        validate_argument_access(arguments, parameters, i, caller->function_call.token);
+        validate_argument_access(analyzer, arguments, parameters, i, caller->function_call.token);
     }
 }
 
@@ -363,9 +377,9 @@ static void transfer_returned_slice(ASTNode* caller, ASTNode* argument)
     }
 }
 
-void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
+void set_call_reference_origins(Analyzer* analyzer, ASTNode* caller, ASTNode* callee)
 {
-    set_tuple_call_references(caller, callee);
+    set_tuple_call_references(analyzer, caller, callee);
 
     ASTNode* returned = callee->function_definition.return_reference_origin;
 
@@ -384,7 +398,7 @@ void set_call_reference_origins(ASTNode* caller, ASTNode* callee)
         }
 
         ASTNode* argument = get_vector_at(&caller->function_call.args, i);
-        set_reference_origins_from_expression(caller, argument);
+        set_reference_origins_from_expression(analyzer, caller, argument);
         transfer_returned_slice(caller, argument);
 
         return;
@@ -419,10 +433,12 @@ void activate_reference_access(ASTNode* ast)
     }
 }
 
-void establish_reference_access(ASTNode* binding, ASTNode* expression)
+void establish_reference_access(Analyzer* analyzer, ASTNode* binding, ASTNode* expression)
 {
-    if (binding->tuple_references.count && get_reference_type(binding) == RefNone) {
-        activate_tuple_access(binding);
+    const Vector* binding_tuple_references = get_tuple_references(analyzer, binding);
+
+    if (binding_tuple_references->count && get_reference_type(binding) == RefNone) {
+        activate_tuple_access(analyzer, binding);
 
         return;
     }
@@ -434,7 +450,7 @@ void establish_reference_access(ASTNode* binding, ASTNode* expression)
     bool tuple_reference = get_reference_type(binding) == RefExclusive && expression->type == ASTIndex;
 
     if (tuple_reference) {
-        consume_tuple_element(expression);
+        consume_tuple_element(analyzer, expression);
     }
 
     bool transfers_exclusive = get_reference_type(binding) == RefExclusive && is_variable(expression)
@@ -449,7 +465,7 @@ void establish_reference_access(ASTNode* binding, ASTNode* expression)
     binding->variable_definition.reference_access_active = true;
 }
 
-void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_binding)
+void update_reference_binding(Analyzer* analyzer, ASTNode* ast, ASTNode* symbol, bool initializes_binding)
 {
     Type type = get_node_data_type(symbol);
 
@@ -458,8 +474,8 @@ void update_reference_binding(ASTNode* ast, ASTNode* symbol, bool initializes_bi
         return;
     }
 
-    set_reference_origins_from_expression(symbol, ast->assignment.expr);
-    establish_reference_access(symbol, ast->assignment.expr);
+    set_reference_origins_from_expression(analyzer, symbol, ast->assignment.expr);
+    establish_reference_access(analyzer, symbol, ast->assignment.expr);
 
     ast->assignment.initializes_binding = initializes_binding;
 }

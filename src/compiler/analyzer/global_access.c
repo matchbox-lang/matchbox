@@ -134,7 +134,7 @@ void validate_function_global_access(Analyzer* analyzer, ASTNode* function, bool
     validate_global_access_in_nodes(analyzer, &function->function_definition.body->compound.statements);
 
     if (moves_arrays) {
-        apply_function_ownership_effects(function);
+        apply_function_ownership_effects(analyzer, function);
     }
 
     analyzer->function_path = path.previous;

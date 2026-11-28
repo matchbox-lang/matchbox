@@ -12,6 +12,7 @@
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
 #include "compiler/analyzer/tuple.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/analyzer/type.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/variable.h"
@@ -127,7 +128,7 @@ void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 
     Type type = get_node_data_type(ast);
 
-    initialize_tuple_parameter(ast, type, 0);
+    initialize_tuple_parameter(analyzer, ast, type, 0);
     set_local_symbol(analyzer->current_scope, id, ast);
 }
 
@@ -172,7 +173,7 @@ static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token
     }
 }
 
-static void finish_call_argument(ASTNode* argument, ASTNode* parameter)
+static void finish_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode* parameter)
 {
     Type type = get_parameter_argument_type(parameter);
     ReferenceType reference = get_parameter_argument_reference(parameter);
@@ -184,7 +185,7 @@ static void finish_call_argument(ASTNode* argument, ASTNode* parameter)
     }
 
     if (reference == RefNone && !parameter->parameter.variadic) {
-        consume_array(argument);
+        consume_array(analyzer, argument);
     }
 }
 
@@ -203,7 +204,7 @@ static void analyze_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode
     apply_declared_type(argument, parameter_type, reference);
     analyze_node(analyzer, argument);
 
-    finish_call_argument(argument, parameter);
+    finish_call_argument(analyzer, argument, parameter);
 }
 
 static size_t get_argument_reference_cost(ASTNode* argument, ASTNode* parameter)
@@ -358,7 +359,7 @@ static void apply_overload_argument(Analyzer* analyzer, ASTNode* argument, ASTNo
     }
 
     apply_analyzed_argument_type(argument, type);
-    finish_call_argument(argument, parameter);
+    finish_call_argument(analyzer, argument, parameter);
 }
 
 static void prepare_call_argument(Analyzer* analyzer, ASTNode* argument, ASTNode* parameter, bool overloaded)
@@ -619,10 +620,10 @@ void analyze_function(Analyzer* analyzer, ASTNode* ast)
     ASTNode* previous = validate_function_declaration(analyzer, ast);
     Vector array_states;
 
-    capture_ownership_states(&array_states, analyzer->current_scope);
+    capture_ownership_states(analyzer, &array_states, analyzer->current_scope);
     analyze_scoped_function(analyzer, ast, previous);
     resolve_function_return_value_type(ast);
-    record_function_array_moves(ast, &array_states);
+    record_function_array_moves(analyzer, ast, &array_states);
 }
 
 static void analyze_function_specialization(Analyzer* analyzer, ASTNode* ast)
@@ -636,7 +637,7 @@ static void analyze_function_specialization(Analyzer* analyzer, ASTNode* ast)
     FunctionPath* constant_functions = analyzer->constant_functions;
     Vector states;
 
-    capture_ownership_states(&states, previous);
+    capture_ownership_states(analyzer, &states, previous);
 
     ASTNode* template = ast->function_definition.generics->template;
 
@@ -654,7 +655,7 @@ static void analyze_function_specialization(Analyzer* analyzer, ASTNode* ast)
 
     ast->function_definition.generics->analyzed = true;
 
-    apply_ownership_states(&states);
+    apply_ownership_states(analyzer, &states);
     free_ownership_states(&states);
 
     analyzer->current_scope = previous;
@@ -733,9 +734,9 @@ void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
 
     validate_function_call(ast, symbol, ast->function_call.token);
     validate_call_argument_access(analyzer, ast, symbol, ast->function_call.token);
-    validate_argument_accesses(ast, symbol);
+    validate_argument_accesses(analyzer, ast, symbol);
     validate_function_global_access(analyzer, symbol, true);
-    set_call_reference_origins(ast, symbol);
+    set_call_reference_origins(analyzer, ast, symbol);
 }
 
 static bool can_return_reference_origin(ASTNode* origin)
@@ -832,10 +833,10 @@ static void resolve_specialized_return_type(ASTNode* function, ASTNode* expressi
     merge_function_return_value_type(function, type);
 }
 
-static void consume_returned_tuple_reference(ASTNode* expression)
+static void consume_returned_tuple_reference(Analyzer* analyzer, ASTNode* expression)
 {
     if (expression->type == ASTIndex && get_reference_type(expression) == RefExclusive) {
-        consume_tuple_element(expression);
+        consume_tuple_element(analyzer, expression);
     }
 }
 
@@ -851,9 +852,9 @@ void analyze_return(Analyzer* analyzer, ASTNode* ast)
     }
 
     analyze_node(analyzer, ast->return_statement.expr);
-    consume_returned_tuple_reference(ast->return_statement.expr);
+    consume_returned_tuple_reference(analyzer, ast->return_statement.expr);
     resolve_specialized_return_type(function, ast->return_statement.expr);
-    consume_array(ast->return_statement.expr);
+    consume_array(analyzer, ast->return_statement.expr);
     record_array_return_initializations(analyzer);
 
     track_tuple_return(analyzer, ast);
@@ -862,7 +863,7 @@ void analyze_return(Analyzer* analyzer, ASTNode* ast)
         return;
     }
 
-    Vector* references = get_tuple_references(ast->return_statement.expr);
+    const Vector* references = get_tuple_references(analyzer, ast->return_statement.expr);
 
     if (references->count) {
         return;

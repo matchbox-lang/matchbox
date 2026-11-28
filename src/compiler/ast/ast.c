@@ -5,7 +5,6 @@
 #include "common/vector.h"
 #include "compiler/ast/function.h"
 #include "compiler/ast/generic.h"
-#include "compiler/ast/reference.h"
 #include "compiler/ast/type_alias.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
@@ -809,15 +808,11 @@ void free_ast_node(ASTNode* ast)
             break;
     }
 
-    clear_tuple_references(ast);
-    free_vector(&ast->tuple_references);
     free_memory(ast);
 }
 
 void replace_ast_node(ASTNode* ast, ASTNode* replacement)
 {
-    clear_tuple_references(ast);
-
     *ast = *replacement;
 
     free_memory(replacement);

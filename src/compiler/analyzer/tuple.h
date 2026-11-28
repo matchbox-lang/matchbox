@@ -6,18 +6,18 @@
 
 void resolve_tuple_type(Analyzer* analyzer, Type* type);
 void analyze_tuple(Analyzer* analyzer, ASTNode* ast);
-void analyze_tuple_index(ASTNode* ast, Type type, uint64_t value);
+void analyze_tuple_index(Analyzer* analyzer, ASTNode* ast, Type type, uint64_t value);
 void analyze_tuple_index_value(Analyzer* analyzer, ASTNode* ast);
-bool consume_tuple_element(ASTNode* ast);
+bool consume_tuple_element(Analyzer* analyzer, ASTNode* ast);
 void validate_tuple_projection(ASTNode* ast);
-void validate_tuple_copy(Type type, Token token);
-bool apply_tuple_move_effects(ASTNode* symbol, const FunctionArrayEffects* effects);
-void collect_tuple_element_references(ASTNode* tuple, ASTNode* expression, TupleElement element);
-void set_tuple_binding_references(ASTNode* binding, ASTNode* expression);
-void activate_tuple_access(ASTNode* binding);
-void release_tuple_access(ASTNode* binding);
+void analyze_tuple_copy(Analyzer* analyzer, ASTNode* ast, ASTNode* argument, Token token);
+bool apply_tuple_move_effects(Analyzer* analyzer, ASTNode* symbol, const FunctionArrayEffects* effects);
+void collect_tuple_element_references(Analyzer* analyzer, ASTNode* tuple, ASTNode* expression, TupleElement element);
+void set_tuple_binding_references(Analyzer* analyzer, ASTNode* binding, ASTNode* expression);
+void activate_tuple_access(Analyzer* analyzer, ASTNode* binding);
+void release_tuple_access(Analyzer* analyzer, ASTNode* binding);
 void track_tuple_return(Analyzer* analyzer, ASTNode* ast);
-void set_tuple_call_references(ASTNode* caller, ASTNode* callee);
-void initialize_tuple_parameter(ASTNode* parameter, Type type, size_t offset);
+void set_tuple_call_references(Analyzer* analyzer, ASTNode* caller, ASTNode* callee);
+void initialize_tuple_parameter(Analyzer* analyzer, ASTNode* parameter, Type type, size_t offset);
 
 #endif

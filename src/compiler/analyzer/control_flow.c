@@ -4,6 +4,7 @@
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/analyzer/type.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/control_flow.h"
@@ -14,7 +15,8 @@
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
 
-void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_expected_type, Token token)
+void merge_branch_reference(Analyzer* analyzer, ASTNode* ast, ASTNode* result, bool first, bool has_expected_type,
+    Token token)
 {
     ReferenceType type = get_reference_type(result);
 
@@ -32,7 +34,7 @@ void merge_branch_reference(ASTNode* ast, ASTNode* result, bool first, bool has_
     Type value_type = get_node_data_type(result);
     size_t slots = get_value_slot_count(value_type);
 
-    copy_tuple_references(ast, result, 0, 0, slots);
+    copy_tuple_references(analyzer, ast, result, 0, 0, slots);
 }
 
 Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
@@ -73,7 +75,7 @@ Type analyze_branch_contents(Analyzer* analyzer, ASTNode* branch, Type type, boo
     Type result_type = get_node_data_type(result);
 
     if (moves_result) {
-        consume_array(result);
+        consume_array(analyzer, result);
     }
 
     if (types_equal(result_type, type) || can_implicitly_widen_type(result_type.kind, type.kind)) {
@@ -115,7 +117,7 @@ void analyze_while(Analyzer* analyzer, ASTNode* ast)
     LoopPath path = {ast, analyzer->loop_path, &entry_states};
     analyzer->loop_path = &path;
 
-    capture_ownership_states(&entry_states, analyzer->current_scope);
+    capture_ownership_states(analyzer, &entry_states, analyzer->current_scope);
     copy_ownership_states(&body_states, &entry_states);
     analyze_node(analyzer, ast->while_statement.condition);
 
@@ -127,11 +129,11 @@ void analyze_while(Analyzer* analyzer, ASTNode* ast)
 
     analyze_scoped_branch(analyzer, ast->while_statement.body, NULL, (Type){.kind = TypeVoid}, false);
     validate_loop_ownership(&entry_states, ast->while_statement.token);
-    update_ownership_states(&body_states);
+    update_ownership_states(analyzer, &body_states);
 
     analyzer->loop_path = path.previous;
 
-    merge_ownership_states(&entry_states, &body_states);
+    merge_ownership_states(analyzer, &entry_states, &body_states);
     free_ownership_states(&entry_states);
     free_ownership_states(&body_states);
 }
@@ -185,7 +187,7 @@ static void analyze_conditional_branches(Analyzer* analyzer, ASTNode* ast, Type*
     Vector else_states;
 
     analyze_conditional_condition(analyzer, ast);
-    capture_ownership_states(&then_states, analyzer->current_scope);
+    capture_ownership_states(analyzer, &then_states, analyzer->current_scope);
     copy_ownership_states(&else_states, &then_states);
 
     analyzer->current_nodes = continuation_nodes;
@@ -196,14 +198,14 @@ static void analyze_conditional_branches(Analyzer* analyzer, ASTNode* ast, Type*
     Type type = ast->conditional.type_id;
     *then_type = analyze_scoped_branch(analyzer, ast->conditional.then_branch, NULL, type, ast->conditional.expression);
 
-    update_ownership_states(&then_states);
+    update_ownership_states(analyzer, &then_states);
 
     analyzer->current_nodes = continuation_nodes;
     analyzer->next_node = continuation_start;
 
     analyze_ownership_branch(analyzer, &else_states, ast->conditional.else_branch, type, else_type,
         ast->conditional.expression);
-    merge_ownership_states(&then_states, &else_states);
+    merge_ownership_states(analyzer, &then_states, &else_states);
     free_ownership_states(&then_states);
     free_ownership_states(&else_states);
 }
@@ -223,15 +225,15 @@ static void validate_conditional_result(ASTNode* ast, Type then_type, Type else_
     }
 }
 
-static void merge_conditional_references(ASTNode* ast)
+static void merge_conditional_references(Analyzer* analyzer, ASTNode* ast)
 {
     bool has_expected_type = ast->conditional.type_id.kind != TypeUnknown
         && ast->conditional.type_id.kind != TypeVoid;
     ASTNode* then_result = get_branch_result(ast->conditional.then_branch);
     ASTNode* else_result = get_branch_result(ast->conditional.else_branch);
 
-    merge_branch_reference(ast, then_result, true, has_expected_type, ast->conditional.token);
-    merge_branch_reference(ast, else_result, false, has_expected_type, ast->conditional.token);
+    merge_branch_reference(analyzer, ast, then_result, true, has_expected_type, ast->conditional.token);
+    merge_branch_reference(analyzer, ast, else_result, false, has_expected_type, ast->conditional.token);
 }
 
 void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
@@ -249,7 +251,7 @@ void analyze_conditional(Analyzer* analyzer, ASTNode* ast)
     }
 
     validate_conditional_result(ast, then_type, else_type);
-    merge_conditional_references(ast);
+    merge_conditional_references(analyzer, ast);
 
     ast->conditional.type_id = then_type;
 }
@@ -371,15 +373,15 @@ static void analyze_for_ownership(Analyzer* analyzer, ASTNode* ast, Type element
     LoopPath path = {ast, analyzer->loop_path, &entry_states};
     analyzer->loop_path = &path;
 
-    capture_ownership_states(&entry_states, analyzer->current_scope);
+    capture_ownership_states(analyzer, &entry_states, analyzer->current_scope);
     copy_ownership_states(&body_states, &entry_states);
     analyze_for_body(analyzer, ast, element_type);
     validate_loop_ownership(&entry_states, ast->for_statement.token);
-    update_ownership_states(&body_states);
+    update_ownership_states(analyzer, &body_states);
 
     analyzer->loop_path = path.previous;
 
-    merge_ownership_states(&entry_states, &body_states);
+    merge_ownership_states(analyzer, &entry_states, &body_states);
     free_ownership_states(&entry_states);
     free_ownership_states(&body_states);
 }

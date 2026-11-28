@@ -1,0 +1,9 @@
+func copied_reference(value: &i32) -> (&i32, bool) {
+    return copy((value, true))
+}
+
+var value = 1
+let tuple = copied_reference(value)
+value = 2
+
+assert(tuple[0] == 1)

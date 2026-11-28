@@ -1,6 +1,7 @@
 #ifndef ANALYZER_H
 #define ANALYZER_H
 
+#include "common/table.h"
 #include "compiler/ast/ast.h"
 #include <stddef.h>
 
@@ -14,6 +15,7 @@ typedef struct Analyzer
     bool tuple_projection;
     Vector array_types;
     Vector tuple_types;
+    Table tuple_references;
     ASTNode* function;
     Scope* current_scope;
     Scope* constant_scope;

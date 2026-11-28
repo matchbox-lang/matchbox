@@ -10,6 +10,7 @@
 #include "compiler/analyzer/lifetime.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/tuple.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/ast/binding.h"
 #include "compiler/ast/function.h"
 #include "compiler/ast/predicate.h"
@@ -18,15 +19,15 @@
 #include "compiler/diagnostics.h"
 #include "compiler/scope.h"
 
-static void apply_binding_move_effects(ASTNode* symbol, const FunctionArrayEffects* effects)
+static void apply_binding_move_effects(Analyzer* analyzer, ASTNode* symbol, const FunctionArrayEffects* effects)
 {
     bool active = is_variable_definition(symbol) && symbol->variable_definition.reference_access_active;
 
     if (active) {
-        release_reference_access(symbol);
+        release_reference_access(analyzer, symbol);
     }
 
-    bool partial = apply_tuple_move_effects(symbol, effects);
+    bool partial = apply_tuple_move_effects(analyzer, symbol, effects);
 
     if (!partial) {
         set_moved_state(symbol, true);
@@ -35,11 +36,11 @@ static void apply_binding_move_effects(ASTNode* symbol, const FunctionArrayEffec
     }
 
     if (active) {
-        activate_tuple_access(symbol);
+        activate_tuple_access(analyzer, symbol);
     }
 }
 
-static void apply_function_array_moves(ASTNode* function)
+static void apply_function_array_moves(Analyzer* analyzer, ASTNode* function)
 {
     FunctionArrayEffects* effects = function->function_definition.array_effects;
     if (!effects) {
@@ -49,7 +50,7 @@ static void apply_function_array_moves(ASTNode* function)
     Vector* moves = &effects->moves;
 
     for (size_t i = 0; i < moves->count; i++) {
-        apply_binding_move_effects(moves->data[i], effects);
+        apply_binding_move_effects(analyzer, moves->data[i], effects);
     }
 }
 
@@ -84,15 +85,16 @@ static void apply_function_array_initializations(ASTNode* function)
     }
 }
 
-void apply_function_ownership_effects(ASTNode* function)
+void apply_function_ownership_effects(Analyzer* analyzer, ASTNode* function)
 {
-    apply_function_array_moves(function);
+    apply_function_array_moves(analyzer, function);
     apply_function_array_initializations(function);
 }
 
-static void consume_array_variable(ASTNode* ast)
+static void consume_array_variable(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
+    const Vector* symbol_tuple_references = get_tuple_references(analyzer, symbol);
     bool moved = is_moved(symbol);
     bool exclusive = has_exclusive_access(symbol);
     size_t shared = *get_shared_access_count(symbol);
@@ -103,22 +105,22 @@ static void consume_array_variable(ASTNode* ast)
 
     set_moved_state(symbol, true);
 
-    if (symbol->tuple_references.count && is_variable_definition(symbol)
+    if (symbol_tuple_references->count && is_variable_definition(symbol)
         && symbol->variable_definition.reference_access_active) {
-        release_reference_access(symbol);
+        release_reference_access(analyzer, symbol);
     }
 }
 
-static void consume_index_owner(ASTNode* ast)
+static void consume_index_owner(Analyzer* analyzer, ASTNode* ast)
 {
-    bool consumed = consume_tuple_element(ast);
+    bool consumed = consume_tuple_element(analyzer, ast);
 
     if (!consumed) {
         semantic_error("Cannot move an array element out of its owner", ast->index.token);
     }
 }
 
-void consume_array(ASTNode* ast)
+void consume_array(Analyzer* analyzer, ASTNode* ast)
 {
     Type type = get_node_data_type(ast);
     ReferenceType reference = get_reference_type(ast);
@@ -128,21 +130,22 @@ void consume_array(ASTNode* ast)
     }
 
     if (ast->type == ASTIndex) {
-        consume_index_owner(ast);
+        consume_index_owner(analyzer, ast);
     }
 
     if (ast->type == ASTVariable) {
-        consume_array_variable(ast);
+        consume_array_variable(analyzer, ast);
     }
 }
 
-static void update_ownership_state(OwnershipState* state)
+static void update_ownership_state(Analyzer* analyzer, OwnershipState* state)
 {
     ASTNode* symbol = state->symbol;
+    const Vector* symbol_tuple_references = get_tuple_references(analyzer, symbol);
     Vector* origins = get_reference_origins(symbol);
 
     copy_reference_origins(&state->reference_origins, origins);
-    copy_tuple_reference_vector(&state->tuple_references, &symbol->tuple_references);
+    copy_tuple_reference_vector(&state->tuple_references, symbol_tuple_references);
 
     Vector* moves = get_tuple_moves(symbol);
 
@@ -158,7 +161,7 @@ static void update_ownership_state(OwnershipState* state)
         && symbol->variable_definition.reference_access_active;
 }
 
-static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
+static void capture_symbol_ownership(Analyzer* analyzer, Vector* states, ASTNode* symbol)
 {
     if (!is_variable_type(symbol)) {
         return;
@@ -170,28 +173,28 @@ static void capture_symbol_ownership(Vector* states, ASTNode* symbol)
     init_vector(&state->reference_origins);
     init_vector(&state->tuple_references);
     init_vector(&state->tuple_moves);
-    update_ownership_state(state);
+    update_ownership_state(analyzer, state);
     push_vector_item(states, state);
 }
 
-static void capture_scope_ownership(Vector* states, Scope* scope)
+static void capture_scope_ownership(Analyzer* analyzer, Vector* states, Scope* scope)
 {
     for (size_t i = 0; i < scope->symbols.capacity; i++) {
         TableItem* item = scope->symbols.data[i];
 
         while (item) {
-            capture_symbol_ownership(states, item->value);
+            capture_symbol_ownership(analyzer, states, item->value);
             item = item->next;
         }
     }
 }
 
-void capture_ownership_states(Vector* states, Scope* scope)
+void capture_ownership_states(Analyzer* analyzer, Vector* states, Scope* scope)
 {
     init_vector(states);
 
     while (scope) {
-        capture_scope_ownership(states, scope);
+        capture_scope_ownership(analyzer, states, scope);
         scope = scope->parent;
     }
 }
@@ -221,11 +224,11 @@ void copy_ownership_states(Vector* destination, Vector* source)
     }
 }
 
-static void apply_ownership_state(OwnershipState* state)
+static void apply_ownership_state(Analyzer* analyzer, OwnershipState* state)
 {
     ASTNode* symbol = state->symbol;
 
-    copy_tuple_reference_vector(&symbol->tuple_references, &state->tuple_references);
+    set_tuple_reference_vector(analyzer, symbol, &state->tuple_references);
 
     Vector* moves = get_tuple_moves(symbol);
 
@@ -246,19 +249,19 @@ static void apply_ownership_state(OwnershipState* state)
     symbol->variable_definition.reference_access_active = state->reference_access_active;
 }
 
-void apply_ownership_states(Vector* states)
+void apply_ownership_states(Analyzer* analyzer, Vector* states)
 {
     for (size_t i = 0; i < count_vector(states); i++) {
-        apply_ownership_state(get_vector_at(states, i));
+        apply_ownership_state(analyzer, get_vector_at(states, i));
     }
 }
 
-void update_ownership_states(Vector* states)
+void update_ownership_states(Analyzer* analyzer, Vector* states)
 {
     for (size_t i = 0; i < count_vector(states); i++) {
         OwnershipState* state = get_vector_at(states, i);
 
-        update_ownership_state(state);
+        update_ownership_state(analyzer, state);
     }
 }
 
@@ -290,20 +293,20 @@ void release_references_dead_on_branch(Analyzer* analyzer, Vector* states, ASTNo
             continue;
         }
 
-        release_reference_access(symbol);
+        release_reference_access(analyzer, symbol);
     }
 }
 
 void analyze_ownership_branch(
     Analyzer* analyzer, Vector* states, ASTNode* branch, Type expected_type, Type* type, bool moves_result)
 {
-    apply_ownership_states(states);
+    apply_ownership_states(analyzer, states);
     release_references_dead_on_branch(analyzer, states, branch, NULL);
     *type = analyze_else_branch(analyzer, branch, expected_type, moves_result);
-    update_ownership_states(states);
+    update_ownership_states(analyzer, states);
 }
 
-static void merge_ownership_state(OwnershipState* then_state, OwnershipState* else_state)
+static void merge_ownership_state(Analyzer* analyzer, OwnershipState* then_state, OwnershipState* else_state)
 {
     OwnershipState merged;
 
@@ -319,18 +322,18 @@ static void merge_ownership_state(OwnershipState* then_state, OwnershipState* el
     merged.moved = then_state->moved || else_state->moved;
     merged.reference_access_active = then_state->reference_access_active || else_state->reference_access_active;
 
-    apply_ownership_state(&merged);
+    apply_ownership_state(analyzer, &merged);
     free_vector(&merged.reference_origins);
     free_tuple_reference_vector(&merged.tuple_references);
     free_vector(&merged.tuple_moves);
 }
 
-void merge_ownership_states(Vector* then_states, Vector* else_states)
+void merge_ownership_states(Analyzer* analyzer, Vector* then_states, Vector* else_states)
 {
     size_t count = count_vector(then_states);
 
     for (size_t i = 0; i < count; i++) {
-        merge_ownership_state(get_vector_at(then_states, i), get_vector_at(else_states, i));
+        merge_ownership_state(analyzer, get_vector_at(then_states, i), get_vector_at(else_states, i));
     }
 }
 
@@ -391,7 +394,7 @@ void validate_loop_ownership(Vector* entry_states, Token token)
     }
 }
 
-void merge_ownership_outcome(Vector* merged_states, Vector* states, bool* initialized)
+void merge_ownership_outcome(Analyzer* analyzer, Vector* merged_states, Vector* states, bool* initialized)
 {
     if (!*initialized) {
         copy_ownership_states(merged_states, states);
@@ -400,8 +403,8 @@ void merge_ownership_outcome(Vector* merged_states, Vector* states, bool* initia
         return;
     }
 
-    merge_ownership_states(merged_states, states);
-    update_ownership_states(merged_states);
+    merge_ownership_states(analyzer, merged_states, states);
+    update_ownership_states(analyzer, merged_states);
 }
 
 static void record_function_array_initialization(ASTNode* function, OwnershipState* state)
@@ -533,7 +536,7 @@ static void restore_tuple_origin_state(Vector* states, ASTNode* origin)
     set_exclusive_access(origin, state->exclusive_access_active);
 }
 
-static void restore_function_tuple_references(OwnershipState* state, Vector* states)
+static void restore_function_tuple_references(Analyzer* analyzer, OwnershipState* state, Vector* states)
 {
     ASTNode* symbol = state->symbol;
     Type type = get_node_data_type(symbol);
@@ -542,7 +545,7 @@ static void restore_function_tuple_references(OwnershipState* state, Vector* sta
         return;
     }
 
-    copy_tuple_reference_vector(&symbol->tuple_references, &state->tuple_references);
+    set_tuple_reference_vector(analyzer, symbol, &state->tuple_references);
     symbol->variable_definition.reference_access_active = state->reference_access_active;
 
     for (size_t i = 0; i < state->tuple_references.count; i++) {
@@ -552,14 +555,14 @@ static void restore_function_tuple_references(OwnershipState* state, Vector* sta
     }
 }
 
-void record_function_array_moves(ASTNode* function, Vector* states)
+void record_function_array_moves(Analyzer* analyzer, ASTNode* function, Vector* states)
 {
     for (size_t i = 0; i < states->count; i++) {
         record_function_array_move(function, states->data[i]);
     }
 
     for (size_t i = 0; i < states->count; i++) {
-        restore_function_tuple_references(states->data[i], states);
+        restore_function_tuple_references(analyzer, states->data[i], states);
     }
 
     free_ownership_states(states);
@@ -586,7 +589,7 @@ static void record_uninitialized_array_return(ASTNode* function, OwnershipState*
 void record_array_return_initializations(Analyzer* analyzer)
 {
     Vector states;
-    capture_ownership_states(&states, analyzer->current_scope);
+    capture_ownership_states(analyzer, &states, analyzer->current_scope);
 
     for (size_t i = 0; i < states.count; i++) {
         record_uninitialized_array_return(analyzer->function, states.data[i]);

@@ -62,7 +62,7 @@ void analyze_index(Analyzer* analyzer, ASTNode* ast)
     bool negative = is_signed_integer_type(index_type.kind) && (int64_t)value < 0;
 
     if (array_type.kind == TypeTuple) {
-        analyze_tuple_index(ast, array_type, value);
+        analyze_tuple_index(analyzer, ast, array_type, value);
 
         return;
     }

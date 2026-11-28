@@ -6,6 +6,7 @@
 #include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/analyzer/type.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/ast/binding.h"
@@ -260,7 +261,7 @@ static Type analyze_assignment_expression(Analyzer* analyzer, ASTNode* ast, ASTN
 {
     if (ast->assignment.operator.type == TokenEqual && is_variable_definition(symbol)
         && is_initialized(symbol) && symbol->variable_definition.reference_access_active) {
-        release_reference_access(symbol);
+        release_reference_access(analyzer, symbol);
     }
 
     Type destination_type = get_node_data_type(symbol);
@@ -322,7 +323,7 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     }
 
     validate_assignment_type(ast, symbol);
-    consume_array(ast->assignment.expr);
+    consume_array(analyzer, ast->assignment.expr);
     validate_assignment_operator(ast, symbol);
 
     ast->assignment.scope = analyzer->current_scope;
@@ -331,7 +332,7 @@ void analyze_assignment(Analyzer* analyzer, ASTNode* ast)
     Vector* moves = get_tuple_moves(symbol);
     moves->count = 0;
 
-    update_reference_binding(ast, symbol, initializes_binding);
+    update_reference_binding(analyzer, ast, symbol, initializes_binding);
     initialize_variable(symbol);
 }
 
@@ -416,9 +417,9 @@ static void analyze_variable_initializer(Analyzer* analyzer, ASTNode* ast, bool 
     }
 
     resolve_variable_type(ast, expression);
-    consume_array(expression);
+    consume_array(analyzer, expression);
 
-    set_reference_origins_from_expression(ast, expression);
+    set_reference_origins_from_expression(analyzer, ast, expression);
     initialize_variable(ast);
 
     size_t count = ast->variable_definition.destructure_count;
@@ -436,18 +437,20 @@ static void validate_variable_type(ASTNode* ast)
     }
 }
 
-static void track_variable_reference(ASTNode* ast)
+static void track_variable_reference(Analyzer* analyzer, ASTNode* ast)
 {
+    const Vector* ast_tuple_references = get_tuple_references(analyzer, ast);
+
     if (ast->variable_definition.destructure_count) {
         return;
     }
 
-    if ((ast->variable_definition.reference_type == RefNone && !ast->tuple_references.count)
+    if ((ast->variable_definition.reference_type == RefNone && !ast_tuple_references->count)
         || !ast->variable_definition.initialized) {
         return;
     }
 
-    establish_reference_access(ast, ast->variable_definition.expr);
+    establish_reference_access(analyzer, ast, ast->variable_definition.expr);
 }
 
 void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
@@ -468,5 +471,5 @@ void analyze_variable_definition(Analyzer* analyzer, ASTNode* ast)
     analyze_variable_initializer(analyzer, ast, analyzed);
     validate_variable_type(ast);
     set_local_variable_symbol(analyzer->current_scope, id, ast);
-    track_variable_reference(ast);
+    track_variable_reference(analyzer, ast);
 }

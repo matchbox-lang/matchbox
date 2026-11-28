@@ -4,6 +4,7 @@
 #include "common/vector.h"
 #include "compiler/analyzer/analyzer.h"
 #include "compiler/analyzer/recovery.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/ast/ast.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/generator.h"
@@ -145,6 +146,7 @@ void free_compiler(Compiler* compiler)
     }
 
     free_vector(&compiler->analyzer.tuple_types);
+    free_tuple_reference_states(&compiler->analyzer);
 }
 
 static void compile_statement_bytecode(Compiler* compiler, CompileStatements compile_statements)

@@ -3,6 +3,7 @@
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/analyzer/type.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/ast/binding.h"
@@ -15,7 +16,7 @@
 
 static size_t get_tuple_binding_offset(ASTNode* ast);
 
-static bool apply_tuple_move_effect(ASTNode* symbol, const TupleMoveEffect* move)
+static bool apply_tuple_move_effect(Analyzer* analyzer, ASTNode* symbol, const TupleMoveEffect* move)
 {
     if (move->symbol != symbol) {
         return false;
@@ -27,29 +28,34 @@ static bool apply_tuple_move_effect(ASTNode* symbol, const TupleMoveEffect* move
         return true;
     }
 
-    remove_tuple_references(symbol, move->offset, 1);
+    remove_tuple_references(analyzer, symbol, move->offset, 1);
     record_tuple_move(symbol, move->offset, 1);
 
     return true;
 }
 
-bool apply_tuple_move_effects(ASTNode* symbol, const FunctionArrayEffects* effects)
+bool apply_tuple_move_effects(Analyzer* analyzer, ASTNode* symbol, const FunctionArrayEffects* effects)
 {
     bool partial = false;
 
     for (size_t i = 0; i < effects->tuple_moves.count; i++) {
-        bool applied = apply_tuple_move_effect(symbol, effects->tuple_moves.data[i]);
+        bool applied = apply_tuple_move_effect(analyzer, symbol, effects->tuple_moves.data[i]);
         partial = partial || applied;
     }
 
     return partial;
 }
 
-void validate_tuple_copy(Type type, Token token)
+void analyze_tuple_copy(Analyzer* analyzer, ASTNode* ast, ASTNode* argument, Token token)
 {
+    Type type = get_node_data_type(argument);
+    size_t slots = get_value_slot_count(type);
+
     if (has_exclusive_tuple_reference(type)) {
         semantic_error("Cannot copy a tuple containing an exclusive reference", token);
     }
+
+    copy_tuple_references(analyzer, ast, argument, 0, 0, slots);
 }
 
 void resolve_tuple_type(Analyzer* analyzer, Type* type)
@@ -94,7 +100,7 @@ static void analyze_tuple_element(Analyzer* analyzer, ASTNode* ast, TupleElement
         element->type = expected;
     }
 
-    consume_array(ast);
+    consume_array(analyzer, ast);
 }
 
 static TupleElement get_expected_tuple_element(Type type, size_t index)
@@ -130,11 +136,11 @@ void analyze_tuple(Analyzer* analyzer, ASTNode* ast)
     ast->tuple.type_id = (Type){.kind = TypeTuple, .tuple = tuple};
 
     for (size_t i = 0; i < count; i++) {
-        collect_tuple_element_references(ast, ast->tuple.elements.data[i], tuple->elements[i]);
+        collect_tuple_element_references(analyzer, ast, ast->tuple.elements.data[i], tuple->elements[i]);
     }
 }
 
-void analyze_tuple_index(ASTNode* ast, Type type, uint64_t value)
+void analyze_tuple_index(Analyzer* analyzer, ASTNode* ast, Type type, uint64_t value)
 {
     Type index_type = get_node_data_type(ast->index.index);
     bool integer = is_integer_type(index_type.kind);
@@ -158,10 +164,12 @@ void analyze_tuple_index(ASTNode* ast, Type type, uint64_t value)
     validate_tuple_projection(ast);
     size_t slots = get_value_slot_count(element.type);
 
-    copy_tuple_references(ast, ast->index.array, element.offset, 0, slots);
+    copy_tuple_references(analyzer, ast, ast->index.array, element.offset, 0, slots);
 
-    for (size_t i = 0; element.reference != RefNone && i < ast->tuple_references.count; i++) {
-        TupleReference* access = ast->tuple_references.data[i];
+    const Vector* ast_tuple_references = get_tuple_references(analyzer, ast);
+
+    for (size_t i = 0; element.reference != RefNone && i < ast_tuple_references->count; i++) {
+        TupleReference* access = ast_tuple_references->data[i];
 
         add_reference_origin(&ast->index.reference_origins, access->origin);
     }
@@ -174,16 +182,17 @@ static bool tuple_references_conflict(const TupleReference* previous, TupleRefer
     return previous->origin == access.origin && exclusive;
 }
 
-static void validate_tuple_reference(ASTNode* ast, TupleReference access)
+static void validate_tuple_reference(Analyzer* analyzer, ASTNode* ast, TupleReference access)
 {
+    const Vector* ast_tuple_references = get_tuple_references(analyzer, ast);
     size_t index = 0;
 
-    while (index < ast->tuple_references.count
-        && !tuple_references_conflict(ast->tuple_references.data[index], access)) {
+    while (index < ast_tuple_references->count
+        && !tuple_references_conflict(ast_tuple_references->data[index], access)) {
         index++;
     }
 
-    if (index == ast->tuple_references.count) {
+    if (index == ast_tuple_references->count) {
         return;
     }
 
@@ -196,53 +205,53 @@ static void validate_tuple_reference(ASTNode* ast, TupleReference access)
     semantic_error("Conflicting references in tuple", token);
 }
 
-static void transfer_tuple_reference_variable(ASTNode* expression)
+static void transfer_tuple_reference_variable(Analyzer* analyzer, ASTNode* expression)
 {
     ASTNode* source = expression->variable.symbol;
     bool active = is_variable_definition(source) && source->variable_definition.reference_access_active;
 
     if (active) {
-        release_reference_access(source);
+        release_reference_access(analyzer, source);
     }
 
     transfer_exclusive_reference(expression);
 }
 
-static void transfer_tuple_reference(ASTNode* expression, ReferenceType reference)
+static void transfer_tuple_reference(Analyzer* analyzer, ASTNode* expression, ReferenceType reference)
 {
     if (reference != RefExclusive) {
         return;
     }
 
     if (expression->type == ASTVariable) {
-        transfer_tuple_reference_variable(expression);
+        transfer_tuple_reference_variable(analyzer, expression);
 
         return;
     }
 
     if (expression->type == ASTIndex) {
-        consume_tuple_element(expression);
+        consume_tuple_element(analyzer, expression);
     }
 }
 
-void collect_tuple_element_references(ASTNode* tuple, ASTNode* expression, TupleElement element)
+void collect_tuple_element_references(Analyzer* analyzer, ASTNode* tuple, ASTNode* expression, TupleElement element)
 {
     if (element.reference == RefNone) {
         size_t slots = get_value_slot_count(element.type);
 
-        copy_tuple_references(tuple, expression, 0, element.offset, slots);
+        copy_tuple_references(analyzer, tuple, expression, 0, element.offset, slots);
 
         return;
     }
 
-    transfer_tuple_reference(expression, element.reference);
+    transfer_tuple_reference(analyzer, expression, element.reference);
 
-    Vector* carried = get_tuple_references(expression);
+    const Vector* carried = get_tuple_references(analyzer, expression);
 
     if (carried->count) {
         size_t slots = get_tuple_element_slot_count(element);
 
-        copy_tuple_references(tuple, expression, 0, element.offset, slots);
+        copy_tuple_references(analyzer, tuple, expression, 0, element.offset, slots);
 
         return;
     }
@@ -252,18 +261,18 @@ void collect_tuple_element_references(ASTNode* tuple, ASTNode* expression, Tuple
     for (size_t i = 0; i < origins->count; i++) {
         TupleReference access = {origins->data[i], element.reference, element.offset, SIZE_MAX};
 
-        validate_tuple_reference(tuple, access);
-        add_tuple_reference(tuple, access);
+        validate_tuple_reference(analyzer, tuple, access);
+        add_tuple_reference(analyzer, tuple, access);
     }
 
 }
 
-void set_tuple_binding_references(ASTNode* binding, ASTNode* expression)
+void set_tuple_binding_references(Analyzer* analyzer, ASTNode* binding, ASTNode* expression)
 {
     Type type = get_node_data_type(binding);
 
     ReferenceType reference = get_reference_type(binding);
-    Vector* carried = get_tuple_references(expression);
+    const Vector* carried = get_tuple_references(analyzer, expression);
 
     if (type.kind != TypeTuple && (reference == RefNone || !carried->count)) {
         return;
@@ -271,8 +280,8 @@ void set_tuple_binding_references(ASTNode* binding, ASTNode* expression)
 
     size_t slots = get_value_slot_count(type);
 
-    clear_tuple_references(binding);
-    copy_tuple_references(binding, expression, 0, 0, slots);
+    clear_tuple_references(analyzer, binding);
+    copy_tuple_references(analyzer, binding, expression, 0, 0, slots);
 }
 
 static void activate_tuple_element_access(ASTNode* binding, TupleReference* access)
@@ -295,14 +304,16 @@ static void activate_tuple_element_access(ASTNode* binding, TupleReference* acce
     set_exclusive_access(access->origin, true);
 }
 
-void activate_tuple_access(ASTNode* binding)
+void activate_tuple_access(Analyzer* analyzer, ASTNode* binding)
 {
-    if (!binding->tuple_references.count) {
+    const Vector* binding_tuple_references = get_tuple_references(analyzer, binding);
+
+    if (!binding_tuple_references->count) {
         return;
     }
 
-    for (size_t i = 0; i < binding->tuple_references.count; i++) {
-        activate_tuple_element_access(binding, binding->tuple_references.data[i]);
+    for (size_t i = 0; i < binding_tuple_references->count; i++) {
+        activate_tuple_element_access(binding, binding_tuple_references->data[i]);
     }
 
     binding->variable_definition.reference_access_active = true;
@@ -319,38 +330,41 @@ static void release_tuple_element_access(TupleReference* access)
     set_exclusive_access(access->origin, false);
 }
 
-void release_tuple_access(ASTNode* binding)
+void release_tuple_access(Analyzer* analyzer, ASTNode* binding)
 {
-    for (size_t i = 0; i < binding->tuple_references.count; i++) {
-        release_tuple_element_access(binding->tuple_references.data[i]);
+    const Vector* binding_tuple_references = get_tuple_references(analyzer, binding);
+
+    for (size_t i = 0; i < binding_tuple_references->count; i++) {
+        release_tuple_element_access(binding_tuple_references->data[i]);
     }
 
     binding->variable_definition.reference_access_active = false;
 }
 
-static void initialize_tuple_parameter_element(ASTNode* parameter, TupleElement element, size_t offset)
+static void initialize_tuple_parameter_element(Analyzer* analyzer, ASTNode* parameter, TupleElement element,
+    size_t offset)
 {
     size_t position = offset + element.offset;
 
     if (element.reference != RefNone) {
         TupleReference access = {parameter, element.reference, position, position};
 
-        add_tuple_reference(parameter, access);
+        add_tuple_reference(analyzer, parameter, access);
 
         return;
     }
 
-    initialize_tuple_parameter(parameter, element.type, position);
+    initialize_tuple_parameter(analyzer, parameter, element.type, position);
 }
 
-void initialize_tuple_parameter(ASTNode* parameter, Type type, size_t offset)
+void initialize_tuple_parameter(Analyzer* analyzer, ASTNode* parameter, Type type, size_t offset)
 {
     if (type.kind != TypeTuple) {
         return;
     }
 
     for (size_t i = 0; i < type.tuple->count; i++) {
-        initialize_tuple_parameter_element(parameter, type.tuple->elements[i], offset);
+        initialize_tuple_parameter_element(analyzer, parameter, type.tuple->elements[i], offset);
     }
 }
 
@@ -371,14 +385,14 @@ static void validate_tuple_return_reference(TupleReference access, Token token)
 void track_tuple_return(Analyzer* analyzer, ASTNode* ast)
 {
     ASTNode* expression = ast->return_statement.expr;
-    Vector* references = get_tuple_references(expression);
+    const Vector* references = get_tuple_references(analyzer, expression);
     ASTNode* function = analyzer->function;
 
     for (size_t i = 0; i < references->count; i++) {
         TupleReference access = *(TupleReference*)references->data[i];
 
         validate_tuple_return_reference(access, ast->return_statement.token);
-        add_tuple_reference(function, access);
+        add_tuple_reference(analyzer, function, access);
     }
 }
 
@@ -398,12 +412,12 @@ static ASTNode* find_tuple_origin_argument(ASTNode* caller, ASTNode* callee, AST
     return caller->function_call.args.data[index];
 }
 
-static void resolve_tuple_call_reference(ASTNode* caller, ASTNode* callee, TupleReference access)
+static void resolve_tuple_call_reference(Analyzer* analyzer, ASTNode* caller, ASTNode* callee, TupleReference access)
 {
     ASTNode* argument = find_tuple_origin_argument(caller, callee, access.origin);
 
     if (!argument) {
-        add_tuple_reference(caller, access);
+        add_tuple_reference(analyzer, caller, access);
 
         return;
     }
@@ -411,7 +425,7 @@ static void resolve_tuple_call_reference(ASTNode* caller, ASTNode* callee, Tuple
     Type type = get_node_data_type(argument);
 
     if (type.kind == TypeTuple && get_reference_type(argument) == RefNone) {
-        copy_tuple_references(caller, argument, access.origin_offset, access.offset, 1);
+        copy_tuple_references(analyzer, caller, argument, access.origin_offset, access.offset, 1);
 
         return;
     }
@@ -419,34 +433,38 @@ static void resolve_tuple_call_reference(ASTNode* caller, ASTNode* callee, Tuple
     access.origin = get_argument_reference_origin(argument);
 
     if (access.origin) {
-        add_tuple_reference(caller, access);
+        add_tuple_reference(analyzer, caller, access);
     }
 }
 
-static void set_tuple_call_reference_origins(ASTNode* caller)
+static void set_tuple_call_reference_origins(Analyzer* analyzer, ASTNode* caller)
 {
+    const Vector* caller_tuple_references = get_tuple_references(analyzer, caller);
+
     if (get_reference_type(caller) == RefNone) {
         return;
     }
 
     Vector* origins = get_reference_origins(caller);
 
-    for (size_t i = 0; i < caller->tuple_references.count; i++) {
-        TupleReference* access = caller->tuple_references.data[i];
+    for (size_t i = 0; i < caller_tuple_references->count; i++) {
+        TupleReference* access = caller_tuple_references->data[i];
 
         add_reference_origin(origins, access->origin);
     }
 }
 
-void set_tuple_call_references(ASTNode* caller, ASTNode* callee)
+void set_tuple_call_references(Analyzer* analyzer, ASTNode* caller, ASTNode* callee)
 {
-    for (size_t i = 0; i < callee->tuple_references.count; i++) {
-        TupleReference access = *(TupleReference*)callee->tuple_references.data[i];
+    const Vector* callee_tuple_references = get_tuple_references(analyzer, callee);
 
-        resolve_tuple_call_reference(caller, callee, access);
+    for (size_t i = 0; i < callee_tuple_references->count; i++) {
+        TupleReference access = *(TupleReference*)callee_tuple_references->data[i];
+
+        resolve_tuple_call_reference(analyzer, caller, callee, access);
     }
 
-    set_tuple_call_reference_origins(caller);
+    set_tuple_call_reference_origins(analyzer, caller);
 }
 
 static size_t get_tuple_binding_offset(ASTNode* ast)
@@ -466,15 +484,15 @@ static size_t get_tuple_binding_offset(ASTNode* ast)
     return offset + type.tuple->elements[ast->index.position].offset;
 }
 
-static void update_tuple_index_references(ASTNode* ast)
+static void update_tuple_index_references(Analyzer* analyzer, ASTNode* ast)
 {
     if (ast->index.operator.type != TokenEqual) {
         return;
     }
 
     ASTNode* owner = get_root_binding(ast->index.array);
-    Vector* replacement = get_tuple_references(ast->index.value);
-    Vector* previous = get_tuple_references(ast->index.array);
+    const Vector* replacement = get_tuple_references(analyzer, ast->index.value);
+    const Vector* previous = get_tuple_references(analyzer, ast->index.array);
 
     if (!previous->count && !replacement->count && get_reference_type(ast) == RefNone) {
         return;
@@ -493,12 +511,12 @@ static void update_tuple_index_references(ASTNode* ast)
     element.offset = offset;
 
     if (owner->variable_definition.reference_access_active) {
-        release_reference_access(owner);
+        release_reference_access(analyzer, owner);
     }
 
-    remove_tuple_references(owner, offset, slots);
-    collect_tuple_element_references(owner, ast->index.value, element);
-    activate_tuple_access(owner);
+    remove_tuple_references(analyzer, owner, offset, slots);
+    collect_tuple_element_references(analyzer, owner, ast->index.value, element);
+    activate_tuple_access(analyzer, owner);
 }
 
 static void restore_tuple_element(ASTNode* ast)
@@ -548,8 +566,8 @@ void analyze_tuple_index_value(Analyzer* analyzer, ASTNode* ast)
         semantic_error("Tuple element assignment type does not match", ast->index.token);
     }
 
-    consume_array(ast->index.value);
-    update_tuple_index_references(ast);
+    consume_array(analyzer, ast->index.value);
+    update_tuple_index_references(analyzer, ast);
     restore_tuple_element(ast);
 }
 
@@ -578,7 +596,7 @@ void validate_tuple_projection(ASTNode* ast)
     }
 }
 
-bool consume_tuple_element(ASTNode* ast)
+bool consume_tuple_element(Analyzer* analyzer, ASTNode* ast)
 {
     Type source = get_node_data_type(ast->index.array);
     ASTNode* owner = get_root_binding(ast->index.array);
@@ -601,14 +619,14 @@ bool consume_tuple_element(ASTNode* ast)
     bool active = is_variable_definition(owner) && owner->variable_definition.reference_access_active;
 
     if (active) {
-        release_reference_access(owner);
+        release_reference_access(analyzer, owner);
     }
 
-    remove_tuple_references(owner, offset, slots);
+    remove_tuple_references(analyzer, owner, offset, slots);
     record_tuple_move(owner, offset, slots);
 
     if (active) {
-        activate_tuple_access(owner);
+        activate_tuple_access(analyzer, owner);
     }
 
     return true;

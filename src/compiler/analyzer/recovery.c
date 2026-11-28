@@ -1,7 +1,7 @@
 #include "compiler/analyzer/recovery.h"
 #include "common/vector.h"
+#include "compiler/analyzer/tuple_reference.h"
 #include "compiler/ast/generic.h"
-#include "compiler/ast/reference.h"
 #include "compiler/scope.h"
 #include <stdint.h>
 
@@ -114,8 +114,6 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
     if (!ast) {
         return;
     }
-
-    clear_tuple_references(ast);
 
     switch (ast->type) {
         case ASTSlice:
@@ -242,7 +240,9 @@ void rebuild_analyzer(Analyzer* analyzer, const Vector* submission_boundaries, V
 {
     ASTNode* ast = analyzer->top_level;
     Vector array_types = analyzer->array_types;
+    Vector tuple_types = analyzer->tuple_types;
 
+    free_tuple_reference_states(analyzer);
     init_vector(functions);
     clear_node_analysis(ast, functions);
 
@@ -250,6 +250,7 @@ void rebuild_analyzer(Analyzer* analyzer, const Vector* submission_boundaries, V
 
     init_analyzer(analyzer, ast);
     analyzer->array_types = array_types;
+    analyzer->tuple_types = tuple_types;
 
     analyze_submissions(analyzer, submission_boundaries);
 }

@@ -59,18 +59,9 @@ typedef enum ASTNodeType
     ASTNone
 } ASTNodeType;
 
-typedef struct TupleReference
-{
-    ASTNode* origin;
-    ReferenceType reference;
-    size_t offset;
-    size_t origin_offset;
-} TupleReference;
-
 typedef struct ASTNode
 {
     ASTNodeType type;
-    Vector tuple_references;
 
     union {
         struct {

@@ -143,7 +143,7 @@ static void restore_match_continuation(Analyzer* analyzer, Vector* continuation_
     analyzer->next_node = continuation_start;
 }
 
-static void merge_match_result(ASTNode* ast, ASTNode* branch, Type branch_type, Type* result_type)
+static void merge_match_result(Analyzer* analyzer, ASTNode* ast, ASTNode* branch, Type branch_type, Type* result_type)
 {
     if (!ast->match.expression) {
         return;
@@ -153,7 +153,7 @@ static void merge_match_result(ASTNode* ast, ASTNode* branch, Type branch_type, 
     bool has_expected_type = ast->match.type_id.kind != TypeUnknown && ast->match.type_id.kind != TypeVoid;
     ASTNode* result = get_branch_result(branch);
     
-    merge_branch_reference(ast, result, first, has_expected_type, ast->match.token);
+    merge_branch_reference(analyzer, ast, result, first, has_expected_type, ast->match.token);
     merge_match_branch_type(ast, branch_type, result_type);
 }
 
@@ -172,14 +172,14 @@ static void analyze_match_guard(Analyzer* analyzer, MatchArm* arm, Vector* fallt
     Vector guard_states;
 
     copy_ownership_states(&guard_states, fallthrough_states);
-    update_ownership_states(&guard_states);
+    update_ownership_states(analyzer, &guard_states);
 
     if (arm->pattern) {
-        merge_ownership_states(fallthrough_states, &guard_states);
-        update_ownership_states(fallthrough_states);
-        apply_ownership_states(&guard_states);
+        merge_ownership_states(analyzer, fallthrough_states, &guard_states);
+        update_ownership_states(analyzer, fallthrough_states);
+        apply_ownership_states(analyzer, &guard_states);
     } else {
-        update_ownership_states(fallthrough_states);
+        update_ownership_states(analyzer, fallthrough_states);
     }
 
     release_references_dead_on_branch(analyzer, &guard_states, arm->branch, arm->binding);
@@ -203,7 +203,7 @@ static void analyze_match_arm(Analyzer* analyzer, ASTNode* ast, MatchArm* arm, V
     Type branch_type = analyze_branch_contents(analyzer, arm->branch, ast->match.type_id, ast->match.expression);
     analyzer->current_scope = previous_scope;
 
-    merge_match_result(ast, arm->branch, branch_type, result_type);
+    merge_match_result(analyzer, ast, arm->branch, branch_type, result_type);
 }
 
 static void analyze_match_arm_ownership(Analyzer* analyzer, ASTNode* ast, MatchArm* arm,
@@ -212,15 +212,15 @@ static void analyze_match_arm_ownership(Analyzer* analyzer, ASTNode* ast, MatchA
 {
     Vector states;
     copy_ownership_states(&states, initial_states);
-    apply_ownership_states(&states);
+    apply_ownership_states(analyzer, &states);
 
     if (!arm->guard) {
         release_references_dead_on_branch(analyzer, &states, arm->branch, arm->binding);
     }
 
     analyze_match_arm(analyzer, ast, arm, continuation_nodes, continuation_start, result_type, initial_states);
-    update_ownership_states(&states);
-    merge_ownership_outcome(merged_states, &states, merged_initialized);
+    update_ownership_states(analyzer, &states);
+    merge_ownership_outcome(analyzer, merged_states, &states, merged_initialized);
     free_ownership_states(&states);
 }
 
@@ -260,14 +260,14 @@ static void finalize_match_type(ASTNode* ast, Type result_type)
     ast->match.type_id = result_type;
 }
 
-static void finalize_match_ownership(ASTNode* ast, Vector* initial_states,
+static void finalize_match_ownership(Analyzer* analyzer, ASTNode* ast, Vector* initial_states,
     Vector* merged_states, bool* merged_initialized)
 {
     if (!match_is_exhaustive(ast)) {
-        merge_ownership_outcome(merged_states, initial_states, merged_initialized);
+        merge_ownership_outcome(analyzer, merged_states, initial_states, merged_initialized);
     }
 
-    apply_ownership_states(merged_states);
+    apply_ownership_states(analyzer, merged_states);
     free_ownership_states(merged_states);
     free_ownership_states(initial_states);
 }
@@ -297,10 +297,10 @@ void analyze_match(Analyzer* analyzer, ASTNode* ast)
 
     validate_match_expression(ast);
     analyze_match_subject(analyzer, ast);
-    capture_ownership_states(&initial_states, analyzer->current_scope);
+    capture_ownership_states(analyzer, &initial_states, analyzer->current_scope);
     analyze_match_arms(analyzer, ast, continuation_nodes, continuation_start, &result_type,
         &initial_states, &merged_states, &merged_initialized);
     restore_match_continuation(analyzer, continuation_nodes, continuation_start);
-    finalize_match_ownership(ast, &initial_states, &merged_states, &merged_initialized);
+    finalize_match_ownership(analyzer, ast, &initial_states, &merged_states, &merged_initialized);
     finalize_match_type(ast, result_type);
 }

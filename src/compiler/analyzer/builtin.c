@@ -66,7 +66,7 @@ static void validate_variadic_arguments(Vector* args, const Builtin* builtin, To
     }
 }
 
-static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token token)
+static void validate_builtin_call(Analyzer* analyzer, ASTNode* ast, const Builtin* builtin, Token token)
 {
     size_t count = count_vector(&ast->function_call.args);
 
@@ -81,14 +81,7 @@ static void validate_builtin_call(ASTNode* ast, const Builtin* builtin, Token to
     }
 
     if (builtin->entry == builtin_copy_array) {
-        Type type = get_node_data_type(ast->function_call.args.data[0]);
-
-        validate_tuple_copy(type, token);
-
-        size_t slots = get_value_slot_count(type);
-        ASTNode* argument = ast->function_call.args.data[0];
-
-        copy_tuple_references(ast, argument, 0, 0, slots);
+        analyze_tuple_copy(analyzer, ast, ast->function_call.args.data[0], token);
     }
 
     if (builtin->params[0] == TypeArray) {
@@ -271,13 +264,17 @@ void analyze_builtin_call(Analyzer* analyzer, ASTNode* ast)
 
     validate_builtin_resolution(ast, builtin);
     validate_constant_builtin(analyzer, builtin, ast->function_call.token);
-    validate_builtin_call(ast, builtin, ast->function_call.token);
+    validate_builtin_call(analyzer, ast, builtin, ast->function_call.token);
     convert_builtin_call(ast, builtin);
 }
 
 void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_expression_nodes(analyzer, &ast->builtin_call.args);
+
+    if (ast->builtin_call.builtin->entry == builtin_copy_array) {
+        analyze_tuple_copy(analyzer, ast, ast->builtin_call.args.data[0], ast->builtin_call.token);
+    }
 
     if (ast->builtin_call.builtin->param_count >= 0) {
         return;

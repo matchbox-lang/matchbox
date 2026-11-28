@@ -222,7 +222,7 @@ void analyze_array_element(Analyzer* analyzer, ASTNode* element, Type expected, 
     analyze_node(analyzer, element);
 
     Type actual = get_node_data_type(element);
-    bool references = has_value_references(element);
+    bool references = has_value_references(analyzer, element);
     bool compatible = types_equal(actual, expected) || can_implicitly_widen_type(actual.kind, expected.kind);
 
     if (actual.kind == TypeUnknown) {
@@ -234,7 +234,7 @@ void analyze_array_element(Analyzer* analyzer, ASTNode* element, Type expected, 
         semantic_error("Array element type does not match", token);
     }
 
-    consume_array(element);
+    consume_array(analyzer, element);
 }
 
 static bool array_has_nested_elements(Analyzer* analyzer, ASTNode* ast)

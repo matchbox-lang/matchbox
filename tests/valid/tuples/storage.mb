@@ -8,7 +8,9 @@ func update(value: ^Pair) {
 test "tuple storage" {
     const PAIR: Pair = (9223372036854775805, "wide")
     var value = PAIR
+
     update(value)
+    
     let values = [value, PAIR]
     let copied = copy(values)
     let result: Result[Pair] = (true, copied[0])

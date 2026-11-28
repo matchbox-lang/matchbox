@@ -1,9 +1,11 @@
 test "tuple reference mutation" {
     var value: i64 = 9223372036854775805
     let tuple = (^value, true)
+
     tuple[0] += 2
 
     assert(tuple[0] == 9223372036854775807)
+    
     value = 0
 
     assert(value == 0)

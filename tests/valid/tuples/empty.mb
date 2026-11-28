@@ -4,6 +4,7 @@ type Empty = ()
 
 test "empty tuples" {
     const EMPTY: Empty = ()
+
     let inferred = ()
     let nested = ((), 42, ())
     let values = [(), ()]

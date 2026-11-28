@@ -3,14 +3,15 @@ func values() -> (i32[2], (string, f64)) {
 }
 
 test "tuple temporaries" {
+    const MODEL, PRICE = ("constant", 42)
+
     let result = copy(values())
     let reference = &result
     let nested = reference[1]
-    const MODEL, PRICE = ("constant", 42)
 
+    assert(MODEL == "constant")
+    assert(PRICE == 42)
     assert(result[0][1] == 2)
     assert(nested[0] == "nested")
     assert(nested[1] == 1099.99)
-    assert(MODEL == "constant")
-    assert(PRICE == 42)
 }

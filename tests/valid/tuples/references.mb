@@ -9,6 +9,7 @@ test "tuple reference returns" {
 
     assert(reference == 7)
     assert(label == "shared")
+
     value = 8
 
     assert(value == 8)
@@ -18,6 +19,7 @@ test "tuple reference destructuring" {
     var value = 10
     let tuple = (^value, true)
     let reference, flag = tuple
+    
     reference += 2
 
     assert(reference == 12)

@@ -2,8 +2,10 @@ test "tuple partial moves" {
     var tuple = ([1, 2], [3, 4], "remaining")
     let first = tuple[0]
     let second = tuple[1]
+
     tuple[0] = [5, 6]
     tuple[1] = [7, 8]
+
     let restored = tuple
 
     assert(first[1] == 2)
@@ -16,6 +18,7 @@ test "tuple reference moves" {
     var value = 1
     let tuple = (^value, true)
     let reference = tuple[0]
+    
     reference += 1
 
     assert(tuple[1])

@@ -2,6 +2,7 @@ test "tuple owned elements" {
     let values = ([1, 2], ("label", [3, 4]))
     let first, nested = values
     let label, second = nested
+
     first[0] = 10
     second[1] = 40
 
@@ -19,6 +20,7 @@ test "tuple shared copies" {
     assert(reference == 4)
     assert(label == "shared")
     assert(original[0] == 4)
+    
     value = 5
 
     assert(value == 5)

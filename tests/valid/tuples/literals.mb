@@ -14,6 +14,7 @@ test "tuple literals" {
 test "tuple assignment" {
     var first = (1, "one")
     let second = first
+    
     first[0] = 2
     first = (3, "three")
 

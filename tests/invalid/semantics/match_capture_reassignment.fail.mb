@@ -1,0 +1,4 @@
+match 1 {
+    case captured:
+        captured = 2
+}

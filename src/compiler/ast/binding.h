@@ -5,6 +5,7 @@
 
 bool has_no_value_reads(ASTNode* ast);
 void initialize_variable(ASTNode* ast);
+BindingState get_binding_state(const ASTNode* ast);
 bool is_initialized(const ASTNode* ast);
 bool is_moved(ASTNode* symbol);
 void mark_address_taken(ASTNode* symbol);

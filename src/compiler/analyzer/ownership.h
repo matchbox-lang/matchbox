@@ -11,8 +11,7 @@ typedef struct OwnershipState
     Vector tuple_moves;
     size_t shared_access_count;
     bool exclusive_access_active;
-    bool initialized;
-    bool possibly_initialized;
+    uint8_t binding_state;
     bool moved;
     bool reference_access_active;
 } OwnershipState;

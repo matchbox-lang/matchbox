@@ -49,6 +49,7 @@ Scope* enter_branch_scope(Analyzer* analyzer, ASTNode* branch, ASTNode* binding)
         
         StringView id = get_string_view(binding->variable_definition.id);
 
+        initialize_variable(binding);
         set_local_variable_symbol(analyzer->current_scope, id, binding);
     }
 

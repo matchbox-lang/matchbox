@@ -66,7 +66,6 @@ static ASTNode* parse_match_binding(Parser* parser)
     Token token = parser->current_token;
     StringObject* id = copy_string_object(token.chars, token.length);
     ASTNode* binding = create_variable_definition_node(token, id, true);
-    binding->variable_definition.initialized = true;
 
     consume(parser, TokenIdentifier);
 

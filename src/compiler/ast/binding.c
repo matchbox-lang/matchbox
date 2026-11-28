@@ -9,22 +9,28 @@ bool has_no_value_reads(ASTNode* ast)
 void initialize_variable(ASTNode* ast)
 {
     if (is_variable_definition(ast)) {
-        ast->variable_definition.initialized = true;
-        ast->variable_definition.possibly_initialized = true;
+        ast->variable_definition.binding_state = BindingInitialized;
     }
+}
+
+BindingState get_binding_state(const ASTNode* ast)
+{
+    if (!ast) {
+        return BindingUninitialized;
+    }
+
+    if (ast->type == ASTVariableDefinition) {
+        return ast->variable_definition.binding_state;
+    }
+
+    return ast->type == ASTParameter ? BindingInitialized : BindingUninitialized;
 }
 
 bool is_initialized(const ASTNode* ast)
 {
-    if (!ast) {
-        return false;
-    }
+    BindingState state = get_binding_state(ast);
 
-    if (ast->type == ASTVariableDefinition) {
-        return ast->variable_definition.initialized;
-    }
-
-    return ast->type == ASTParameter;
+    return state == BindingInitialized;
 }
 
 bool is_moved(ASTNode* symbol)

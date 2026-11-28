@@ -59,6 +59,13 @@ typedef enum ASTNodeType
     ASTNone
 } ASTNodeType;
 
+typedef enum BindingState
+{
+    BindingUninitialized,
+    BindingPossiblyInitialized,
+    BindingInitialized
+} BindingState;
+
 typedef struct ASTNode
 {
     ASTNodeType type;
@@ -290,8 +297,7 @@ typedef struct ASTNode
             size_t destructure_count;
             bool fixed;
             bool constant;
-            bool initialized;
-            bool possibly_initialized;
+            uint8_t binding_state;
             Type type_id;
             ReferenceType reference_type;
             Vector reference_origins;

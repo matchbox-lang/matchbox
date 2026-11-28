@@ -65,7 +65,8 @@ static void apply_function_possible_initializations(ASTNode* function)
 
     for (size_t i = 0; i < bindings->count; i++) {
         ASTNode* symbol = bindings->data[i];
-        symbol->variable_definition.possibly_initialized = true;
+        symbol->variable_definition.binding_state =
+            MAX(symbol->variable_definition.binding_state, BindingPossiblyInitialized);
     }
 }
 
@@ -153,9 +154,7 @@ static void update_ownership_state(Analyzer* analyzer, OwnershipState* state)
 
     state->shared_access_count = *get_shared_access_count(symbol);
     state->exclusive_access_active = has_exclusive_access(symbol);
-    state->initialized = is_initialized(symbol);
-    state->possibly_initialized = state->initialized
-        || (is_variable_definition(symbol) && symbol->variable_definition.possibly_initialized);
+    state->binding_state = get_binding_state(symbol);
     state->moved = is_moved(symbol);
     state->reference_access_active = is_variable_definition(symbol)
         && symbol->variable_definition.reference_access_active;
@@ -244,8 +243,7 @@ static void apply_ownership_state(Analyzer* analyzer, OwnershipState* state)
 
     Vector* origins = get_reference_origins(symbol);
     copy_reference_origins(origins, &state->reference_origins);
-    symbol->variable_definition.initialized = state->initialized;
-    symbol->variable_definition.possibly_initialized = state->possibly_initialized;
+    symbol->variable_definition.binding_state = state->binding_state;
     symbol->variable_definition.reference_access_active = state->reference_access_active;
 }
 
@@ -306,6 +304,11 @@ void analyze_ownership_branch(
     update_ownership_states(analyzer, states);
 }
 
+static BindingState merge_binding_states(BindingState left, BindingState right)
+{
+    return left == right ? left : BindingPossiblyInitialized;
+}
+
 static void merge_ownership_state(Analyzer* analyzer, OwnershipState* then_state, OwnershipState* else_state)
 {
     OwnershipState merged;
@@ -317,8 +320,7 @@ static void merge_ownership_state(Analyzer* analyzer, OwnershipState* then_state
 
     merged.shared_access_count = MAX(then_state->shared_access_count, else_state->shared_access_count);
     merged.exclusive_access_active = then_state->exclusive_access_active || else_state->exclusive_access_active;
-    merged.initialized = then_state->initialized && else_state->initialized;
-    merged.possibly_initialized = then_state->possibly_initialized || else_state->possibly_initialized;
+    merged.binding_state = merge_binding_states(then_state->binding_state, else_state->binding_state);
     merged.moved = then_state->moved || else_state->moved;
     merged.reference_access_active = then_state->reference_access_active || else_state->reference_access_active;
 
@@ -356,11 +358,12 @@ static void validate_loop_initialization(OwnershipState* entry, Token token)
 {
     ASTNode* symbol = entry->symbol;
 
-    if (!is_variable_definition(symbol) || !symbol->variable_definition.fixed || entry->possibly_initialized) {
+    if (!is_variable_definition(symbol) || !symbol->variable_definition.fixed
+        || entry->binding_state != BindingUninitialized) {
         return;
     }
 
-    if (symbol->variable_definition.possibly_initialized) {
+    if (symbol->variable_definition.binding_state != BindingUninitialized) {
         semantic_error("Cannot initialize fixed outer binding across iterations", token);
     }
 }
@@ -411,7 +414,7 @@ static void record_function_array_initialization(ASTNode* function, OwnershipSta
 {
     ASTNode* symbol = state->symbol;
     bool initialized = is_initialized(symbol);
-    bool possible = symbol->variable_definition.possibly_initialized;
+    bool possible = symbol->variable_definition.binding_state != BindingUninitialized;
     bool uninitialized_return = false;
 
     FunctionArrayEffects* effects = function->function_definition.array_effects;
@@ -419,10 +422,9 @@ static void record_function_array_initialization(ASTNode* function, OwnershipSta
         uninitialized_return = contains_binding(&effects->uninitialized_returns, symbol);
     }
 
-    bool initializes = !state->initialized && initialized && !uninitialized_return;
-    bool possibly_initializes = !state->possibly_initialized && possible;
-    symbol->variable_definition.initialized = state->initialized;
-    symbol->variable_definition.possibly_initialized = state->possibly_initialized;
+    bool initializes = state->binding_state != BindingInitialized && initialized && !uninitialized_return;
+    bool possibly_initializes = state->binding_state == BindingUninitialized && possible;
+    symbol->variable_definition.binding_state = state->binding_state;
 
     if (!initializes && !possibly_initializes) {
         return;
@@ -574,7 +576,8 @@ static void record_uninitialized_array_return(ASTNode* function, OwnershipState*
     Scope* scope = get_scope(symbol);
     Type type = get_node_data_type(symbol);
 
-    if (!is_top_level_scope(scope) || !is_owned_type(type) || state->initialized) {
+    if (!is_top_level_scope(scope) || !is_owned_type(type)
+        || state->binding_state == BindingInitialized) {
         return;
     }
 

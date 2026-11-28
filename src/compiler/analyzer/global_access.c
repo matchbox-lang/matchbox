@@ -92,7 +92,7 @@ bool contains_binding(const Vector* bindings, const ASTNode* symbol)
 
 static void validate_function_array_initialization(ASTNode* function, ASTNode* symbol, bool recursive)
 {
-    bool initialized = symbol->variable_definition.possibly_initialized;
+    bool initialized = symbol->variable_definition.binding_state != BindingUninitialized;
 
     if (symbol->variable_definition.fixed && (recursive || initialized)) {
         semantic_error("Function may reinitialize a fixed array binding", function->function_definition.token);

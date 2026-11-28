@@ -194,7 +194,8 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
     bool mutates_array = is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual;
 
     if (!mutates_array && get_reference_type(symbol) == RefNone && is_variable_definition(symbol)
-        && symbol->variable_definition.fixed && symbol->variable_definition.possibly_initialized) {
+        && symbol->variable_definition.fixed
+        && symbol->variable_definition.binding_state != BindingUninitialized) {
         semantic_token_error("Cannot reassign fixed binding ", token);
     }
 }
@@ -340,8 +341,7 @@ static void initialize_variable_definition(Analyzer* analyzer, ASTNode* ast)
 {
     ast->variable_definition.scope = analyzer->current_scope;
     ast->variable_definition.position = get_next_local_position(analyzer->current_scope);
-    ast->variable_definition.initialized = false;
-    ast->variable_definition.possibly_initialized = false;
+    ast->variable_definition.binding_state = BindingUninitialized;
 }
 
 static bool variable_types_match(ASTNode* ast, Type type, ReferenceType reference_type)
@@ -446,7 +446,7 @@ static void track_variable_reference(Analyzer* analyzer, ASTNode* ast)
     }
 
     if ((ast->variable_definition.reference_type == RefNone && !ast_tuple_references->count)
-        || !ast->variable_definition.initialized) {
+        || ast->variable_definition.binding_state != BindingInitialized) {
         return;
     }
 

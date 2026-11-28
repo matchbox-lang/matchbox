@@ -17,8 +17,7 @@ static void clear_analysis_vector(Vector* nodes, Vector* functions)
 static void clear_variable_analysis(ASTNode* ast, Vector* functions)
 {
     ast->variable_definition.scope = NULL;
-    ast->variable_definition.initialized = false;
-    ast->variable_definition.possibly_initialized = false;
+    ast->variable_definition.binding_state = BindingUninitialized;
     ast->variable_definition.moved = false;
     ast->variable_definition.tuple_moves.count = 0;
     ast->variable_definition.shared_access_count = 0;

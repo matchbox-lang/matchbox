@@ -107,6 +107,8 @@ static void convert_builtin_call(ASTNode* ast, const Builtin* builtin)
     Vector args = ast->function_call.args;
     Token token = ast->function_call.token;
 
+    free_type_argument_vector(&ast->function_call.type_args);
+    free_vector(&ast->function_call.reference_origins);
     free_string_object(ast->function_call.id);
 
     ast->type = ASTBuiltinCall;
@@ -201,7 +203,7 @@ static Type get_builtin_argument_type(ASTNode* argument)
     return type;
 }
 
-static const Builtin* resolve_builtin_call(ASTNode* ast)
+static const Builtin* find_builtin_overload(ASTNode* ast)
 {
     const Builtin* contextual = resolve_contextual_variadic_call(ast);
 
@@ -258,9 +260,9 @@ void validate_constant_builtin(Analyzer* analyzer, const Builtin* builtin, Token
     fatal_token_error(token, " during constant evaluation", "Cannot call builtin ");
 }
 
-void analyze_builtin_call(Analyzer* analyzer, ASTNode* ast)
+void resolve_builtin_call(Analyzer* analyzer, ASTNode* ast)
 {
-    const Builtin* builtin = resolve_builtin_call(ast);
+    const Builtin* builtin = find_builtin_overload(ast);
 
     validate_builtin_resolution(ast, builtin);
     validate_constant_builtin(analyzer, builtin, ast->function_call.token);
@@ -268,7 +270,16 @@ void analyze_builtin_call(Analyzer* analyzer, ASTNode* ast)
     convert_builtin_call(ast, builtin);
 }
 
-void analyze_resolved_builtin_call(Analyzer* analyzer, ASTNode* ast)
+void analyze_string_constructor(Analyzer* analyzer, ASTNode* ast)
+{
+    const Builtin* builtin = resolve_builtin("string", NULL, 0);
+
+    validate_constant_builtin(analyzer, builtin, ast->function_call.token);
+    validate_builtin_call(analyzer, ast, builtin, ast->function_call.token);
+    convert_builtin_call(ast, builtin);
+}
+
+void analyze_builtin_call(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_expression_nodes(analyzer, &ast->builtin_call.args);
 

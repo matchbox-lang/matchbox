@@ -110,7 +110,7 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
             analyze_binary(analyzer, ast);
             break;
         case ASTBuiltinCall:
-            analyze_resolved_builtin_call(analyzer, ast);
+            analyze_builtin_call(analyzer, ast);
             break;
         case ASTFor:
             analyze_for(analyzer, ast);

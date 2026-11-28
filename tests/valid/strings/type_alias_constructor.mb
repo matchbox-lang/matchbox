@@ -1,0 +1,18 @@
+type String = string
+type Text = String
+type Identity[T] = T
+
+test "string alias constructors" {
+    const TEXT = String(100)
+
+    let empty = String()
+    let number = String(100)
+    let mixed = Text("value: ", 100, '!')
+    let generic = Identity[string](42)
+
+    assert(TEXT == "100")
+    assert(empty == "")
+    assert(number == "100")
+    assert(mixed == "value: 100!")
+    assert(generic == "42")
+}

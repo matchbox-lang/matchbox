@@ -716,6 +716,13 @@ void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
         destination = resolve_alias_conversion_type(analyzer, ast);
     }
 
+    if (destination.kind == TypeString) {
+        analyze_expression_nodes(analyzer, &ast->function_call.args);
+        analyze_string_constructor(analyzer, ast);
+
+        return;
+    }
+
     if (destination.kind != TypeUnknown) {
         infer_conversion_literal(ast, destination);
         analyze_expression_nodes(analyzer, &ast->function_call.args);
@@ -731,7 +738,7 @@ void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
     }
 
     if (!symbol) {
-        analyze_builtin_call(analyzer, ast);
+        resolve_builtin_call(analyzer, ast);
         return;
     }
 

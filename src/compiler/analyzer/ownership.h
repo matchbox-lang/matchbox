@@ -2,6 +2,7 @@
 #define ANALYZER_OWNERSHIP_H
 
 #include "compiler/analyzer/analyzer.h"
+#include "compiler/ast/binding.h"
 
 typedef struct OwnershipState
 {
@@ -11,7 +12,7 @@ typedef struct OwnershipState
     Vector tuple_moves;
     size_t shared_access_count;
     bool exclusive_access_active;
-    uint8_t binding_state;
+    BindingState binding_state;
     bool moved;
     bool reference_access_active;
 } OwnershipState;

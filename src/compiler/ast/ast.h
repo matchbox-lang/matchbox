@@ -288,8 +288,8 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             size_t destructure_count;
-            uint8_t binding_type;
-            uint8_t binding_state;
+            BindingType binding_type;
+            BindingState binding_state;
             Type type_id;
             ReferenceType reference_type;
             Vector reference_origins;

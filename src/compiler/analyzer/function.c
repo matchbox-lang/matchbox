@@ -141,6 +141,20 @@ static void apply_argument_literal_type(ASTNode* argument, Type type)
     apply_literal_type(argument, type);
 }
 
+static void validate_function_argument(ASTNode* argument, ASTNode* parameter, Token token)
+{
+    Type type = get_parameter_argument_type(parameter);
+
+    apply_argument_literal_type(argument, type);
+
+    bool compatible_reference = parameter_accepts_argument_reference(parameter, argument);
+    bool compatible_value = parameter_accepts_argument_type(parameter, argument);
+
+    if (!compatible_value || !compatible_reference) {
+        semantic_token_error("Invalid arguments to function ", token);
+    }
+}
+
 static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token)
 {
     size_t count = count_vector(&caller->function_call.args);
@@ -152,24 +166,8 @@ static void validate_function_call(ASTNode* caller, ASTNode* callee, Token token
     for (size_t i = 0; i < count; i++) {
         ASTNode* arg = get_vector_at(&caller->function_call.args, i);
         ASTNode* param = get_call_parameter(&callee->function_definition.params, i);
-        Type parameter_value_type = get_parameter_argument_type(param);
 
-        apply_argument_literal_type(arg, parameter_value_type);
-
-        ReferenceType argument_type = get_reference_type(arg);
-        ReferenceType parameter_type = get_parameter_argument_reference(param);
-        bool value_parameter = parameter_type == RefNone;
-        bool implicit_access = argument_type == RefNone;
-        bool compatible_reference = value_parameter || implicit_access || argument_type == parameter_type
-            || (argument_type == RefExclusive && parameter_type == RefShared);
-        Type argument_value_type = get_node_data_type(arg);
-        bool compatible_value = types_equal(argument_value_type, parameter_value_type)
-            || (argument_type == RefNone && parameter_type == RefNone
-                && can_implicitly_widen_type(argument_value_type.kind, parameter_value_type.kind));
-
-        if (!compatible_value || !compatible_reference) {
-            semantic_token_error("Invalid arguments to function ", token);
-        }
+        validate_function_argument(arg, param, token);
     }
 }
 
@@ -211,9 +209,7 @@ static size_t get_argument_reference_cost(ASTNode* argument, ASTNode* parameter)
 {
     ReferenceType argument_reference = get_reference_type(argument);
     ReferenceType parameter_reference = get_parameter_argument_reference(parameter);
-    bool compatible = parameter_reference == RefNone || argument_reference == RefNone
-        || argument_reference == parameter_reference
-        || (argument_reference == RefExclusive && parameter_reference == RefShared);
+    bool compatible = parameter_accepts_argument_reference(parameter, argument);
 
     if (!compatible) {
         return SIZE_MAX;

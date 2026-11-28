@@ -6,6 +6,8 @@
 #include "compiler/ast/binding.h"
 #include "compiler/ast/function.h"
 #include "compiler/ast/generic.h"
+#include "compiler/ast/query.h"
+#include "compiler/ast/reference.h"
 #include "compiler/ast/type_alias.h"
 #include "compiler/scope.h"
 #include "runtime/string_object.h"
@@ -642,6 +644,34 @@ Type get_parameter_argument_type(ASTNode* parameter)
     }
 
     return parameter->parameter.type_id;
+}
+
+bool parameter_accepts_argument_reference(ASTNode* parameter, ASTNode* argument)
+{
+    ReferenceType source = get_reference_type(argument);
+    ReferenceType destination = get_parameter_argument_reference(parameter);
+
+    if (source == RefNone || destination == RefNone || source == destination) {
+        return true;
+    }
+
+    return source == RefExclusive && destination == RefShared;
+}
+
+bool parameter_accepts_argument_type(ASTNode* parameter, ASTNode* argument)
+{
+    Type source = get_node_data_type(argument);
+    Type destination = get_parameter_argument_type(parameter);
+
+    if (types_equal(source, destination)) {
+        return true;
+    }
+
+    if (get_reference_type(argument) != RefNone || get_parameter_argument_reference(parameter) != RefNone) {
+        return false;
+    }
+
+    return can_implicitly_widen_type(source.kind, destination.kind);
 }
 
 bool function_accepts_argument_count(const ASTNode* function, size_t count)

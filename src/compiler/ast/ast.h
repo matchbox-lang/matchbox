@@ -353,6 +353,8 @@ bool function_signatures_equal(ASTNode* left, ASTNode* right);
 ASTNode* get_function_analysis_body(const ASTNode* function);
 Type add_implicit_generic_parameter(ASTNode* function, Token token);
 Type get_parameter_argument_type(ASTNode* parameter);
+bool parameter_accepts_argument_reference(ASTNode* parameter, ASTNode* argument);
+bool parameter_accepts_argument_type(ASTNode* parameter, ASTNode* argument);
 
 // Lifetime
 void clear_function_array_effects(ASTNode* function);

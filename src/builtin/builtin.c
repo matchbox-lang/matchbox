@@ -121,19 +121,38 @@ static const Builtin builtins[BUILTINS_MAX] = {
     {"panic",       builtin_panic,              1,  {TypeString},                           TypeVoid,   false}
 };
 
+static bool builtin_accepts_collection_type(const Builtin* builtin, TypeKind argument_type, TypeKind parameter_type)
+{
+    if (parameter_type != TypeArray) {
+        return false;
+    }
+
+    if (argument_type == TypeTuple) {
+        return true;
+    }
+
+    if (builtin->entry) {
+        return false;
+    }
+
+    return is_slice_type(argument_type) || argument_type == TypeString;
+}
+
+static bool builtin_parameter_matches(TypeKind argument_type, TypeKind parameter_type)
+{
+    return argument_type == parameter_type || can_implicitly_widen_type(argument_type, parameter_type);
+}
+
 static bool builtin_argument_matches(const Builtin* builtin, const Type* argument_types, size_t position)
 {
     TypeKind argument_type = argument_types[position].kind;
     TypeKind parameter_type = builtin->params[position];
 
-    bool slice_length = (is_slice_type(argument_type) || argument_type == TypeString)
-        && parameter_type == TypeArray && !builtin->entry;
+    if (argument_type == TypeUnknown || builtin_accepts_collection_type(builtin, argument_type, parameter_type)) {
+        return true;
+    }
 
-    bool tuple = argument_type == TypeTuple && parameter_type == TypeArray;
-
-    return tuple || slice_length || argument_type == TypeUnknown
-        || argument_type == parameter_type
-        || can_implicitly_widen_type(argument_type, parameter_type);
+    return builtin_parameter_matches(argument_type, parameter_type);
 }
 
 static bool typed_variadic_matches(const Builtin* builtin, const Type* argument_types, size_t argument_count)
@@ -147,8 +166,7 @@ static bool typed_variadic_matches(const Builtin* builtin, const Type* argument_
     for (size_t i = 0; i < argument_count && matches; i++) {
         TypeKind argument_type = argument_types[i].kind;
         TypeKind parameter_type = builtin->params[0];
-        matches = argument_type == parameter_type
-            || can_implicitly_widen_type(argument_type, parameter_type);
+        matches = builtin_parameter_matches(argument_type, parameter_type);
     }
 
     return matches;
@@ -180,8 +198,11 @@ static bool builtin_matches(const Builtin* builtin, const Type* argument_types, 
 static bool builtin_call_matches(
     const Builtin* builtin, const char* name, const Type* argument_types, size_t argument_count)
 {
-    return strcmp(name, builtin->name) == 0
-        && builtin_matches(builtin, argument_types, argument_count);
+    if (strcmp(name, builtin->name) != 0) {
+        return false;
+    }
+
+    return builtin_matches(builtin, argument_types, argument_count);
 }
 
 static size_t get_builtin_argument_cost(TypeKind source, TypeKind destination, size_t count)

@@ -20,6 +20,7 @@ _Noreturn void expected_tokens_error(TokenType first_type, TokenType second_type
 void advance(Parser* parser);
 void consume(Parser* parser, TokenType type);
 bool is_end_of_file(Parser* parser);
+bool requires_statement_separator(Parser* parser);
 ASTNode* parse_statement(Parser* parser);
 void append_statement(Vector* nodes, ASTNode* statement);
 bool parse_braced_block(Parser* parser, ASTNode** block);

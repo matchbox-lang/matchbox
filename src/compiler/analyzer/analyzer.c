@@ -163,6 +163,7 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
 bool analyze(Analyzer* analyzer, size_t start)
 {
     analyzer->current_scope = analyzer->top_level->compound.scope;
+    
     analyze_nodes(analyzer, &analyzer->top_level->compound.statements, start);
     validate_constant_expressions(analyzer->top_level, start);
     discard_transient_tuple_references(analyzer);

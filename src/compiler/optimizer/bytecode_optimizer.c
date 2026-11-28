@@ -766,24 +766,39 @@ static void fuse_instructions(const ModuleObject* module, OptimizationWord* word
     }
 }
 
+static bool has_redundant_operands(const OptimizationWord* previous, const OptimizationWord* word)
+{
+    if (!previous || previous->wide || word->wide || word->target) {
+        return false;
+    }
+
+    return previous->a == word->a && previous->b == word->b && previous->c == word->c;
+}
+
 static bool is_duplicate_instruction(const OptimizationWord* previous, const OptimizationWord* word)
 {
     uint8_t registers = get_opcode_register_flags(word->opcode);
     bool writes_a = opcode_writes_a(word->opcode);
     bool independent = writes_a && !(registers & OpFlagRegBC);
 
-    return independent && previous && previous->opcode == word->opcode
-        && previous->a == word->a && previous->b == word->b && previous->c == word->c
-        && !previous->wide && !word->wide && !word->target;
+    if (!independent || !has_redundant_operands(previous, word)) {
+        return false;
+    }
+
+    return previous->opcode == word->opcode;
 }
 
 static bool is_redundant_global_load(const OptimizationWord* previous, const OptimizationWord* word)
 {
-    bool matching_opcodes = previous && ((previous->opcode == OpStg && word->opcode == OpLdg)
-        || (previous->opcode == OpStg64 && word->opcode == OpLdg64));
+    if (!has_redundant_operands(previous, word)) {
+        return false;
+    }
 
-    return matching_opcodes && previous->a == word->a && previous->b == word->b && previous->c == word->c
-        && !previous->wide && !word->wide && !word->target;
+    if (previous->opcode == OpStg) {
+        return word->opcode == OpLdg;
+    }
+
+    return previous->opcode == OpStg64 && word->opcode == OpLdg64;
 }
 
 static OptimizationWord* remove_redundant_instruction(OptimizationWord* previous, OptimizationWord* word)

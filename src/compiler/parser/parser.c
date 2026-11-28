@@ -50,6 +50,24 @@ bool is_end_of_file(Parser* parser)
     return parser->current_token.type == TokenIncompleteInput || parser->current_token.type == TokenEof;
 }
 
+bool requires_statement_separator(Parser* parser)
+{
+    if (is_end_of_file(parser) || parser->previous_token.type == TokenRbrace) {
+        return false;
+    }
+
+    return parser->current_token.line == parser->previous_token.line;
+}
+
+static void consume_statement_separator(Parser* parser, TokenType end_type)
+{
+    bool same_line_statement = parser->current_token.type != end_type && requires_statement_separator(parser);
+
+    if (same_line_statement || parser->current_token.type == TokenSemicolon) {
+        consume(parser, TokenSemicolon);
+    }
+}
+
 ASTNode* parse_statement(Parser* parser)
 {
     switch (parser->current_token.type) {
@@ -111,14 +129,7 @@ static bool parse_statements(Parser* parser, Vector* nodes, TokenType type)
             return false;
         }
 
-        bool same_line_statement = !is_end_of_file(parser) &&
-            parser->current_token.line == parser->previous_token.line &&
-            parser->current_token.type != type &&
-            parser->previous_token.type != TokenRbrace;
-
-        if (same_line_statement || parser->current_token.type == TokenSemicolon) {
-            consume(parser, TokenSemicolon);
-        }
+        consume_statement_separator(parser, type);
 
         append_statement(nodes, stmt);
         token = parser->current_token;

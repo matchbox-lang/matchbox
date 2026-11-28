@@ -1,0 +1,3 @@
+type Reference = &i32
+
+let value = Reference(1)

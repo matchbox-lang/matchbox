@@ -8,7 +8,7 @@ bool apply_integer_literal_type(ASTNode* expression, Type type);
 void apply_analyzed_argument_type(ASTNode* argument, Type type);
 void apply_literal_type(ASTNode* expression, Type type);
 void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference_type);
-void infer_conversion_literal(ASTNode* ast);
-void analyze_type_conversion(ASTNode* ast);
+void infer_conversion_literal(ASTNode* ast, Type destination);
+void analyze_type_conversion(ASTNode* ast, Type destination);
 
 #endif

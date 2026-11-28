@@ -326,9 +326,9 @@ void apply_declared_type(ASTNode* expression, Type type, ReferenceType reference
     }
 }
 
-void infer_conversion_literal(ASTNode* ast)
+void infer_conversion_literal(ASTNode* ast, Type destination)
 {
-    TypeKind kind = get_token_data_type(ast->function_call.token.type);
+    TypeKind kind = destination.kind;
     size_t count = count_vector(&ast->function_call.args);
 
     if ((!is_integer_type(kind) && !is_float_type(kind) && kind != TypeChar) || count != 1) {
@@ -343,10 +343,9 @@ void infer_conversion_literal(ASTNode* ast)
     }
 }
 
-void analyze_type_conversion(ASTNode* ast)
+void analyze_type_conversion(ASTNode* ast, Type destination)
 {
     Token token = ast->function_call.token;
-    Type destination = {.kind = get_token_data_type(token.type)};
     size_t count = count_vector(&ast->function_call.args);
 
     if (count != 1) {
@@ -366,6 +365,7 @@ void analyze_type_conversion(ASTNode* ast)
         semantic_error("Explicit type conversions require a value", token);
     }
 
+    free_type_argument_vector(&ast->function_call.type_args);
     free_string_object(ast->function_call.id);
     free_vector(&ast->function_call.args);
     free_vector(&ast->function_call.reference_origins);

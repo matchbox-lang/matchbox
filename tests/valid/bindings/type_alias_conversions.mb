@@ -1,0 +1,33 @@
+type Integer = i32
+type Wide = Later
+type Later = u64
+type Identity[T] = T
+
+func convert[T](value: T) -> i64 {
+    type Local = i64
+
+    return Local(value)
+}
+
+test "type alias conversions" {
+    const NARROWED = Integer(4294967297)
+    
+    let value = Integer(100)
+    let maximum = Wide(18446744073709551615)
+    let floating = Identity[f64](value)
+    let converted = convert(value)
+
+    assert(NARROWED == 1)
+    assert(value == 100)
+    assert(maximum == 18446744073709551615)
+    assert(floating == 100.0)
+    assert(converted == 100)
+}
+
+test "local alias conversion target" {
+    type Integer = f64
+
+    let value = Integer(2.5)
+
+    assert(value == 2.5)
+}

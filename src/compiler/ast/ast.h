@@ -358,6 +358,7 @@ bool parameter_accepts_argument_type(ASTNode* parameter, ASTNode* argument);
 
 // Lifetime
 void clear_function_array_effects(ASTNode* function);
+void free_type_argument_vector(Vector* types);
 void free_ast_node(ASTNode* ast);
 void replace_ast_node(ASTNode* ast, ASTNode* replacement);
 

@@ -709,16 +709,22 @@ static void resolve_call_type_arguments(Analyzer* analyzer, ASTNode* ast)
 void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
 {
     resolve_call_type_arguments(analyzer, ast);
-    infer_conversion_literal(ast);
 
-    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
-    TypeKind called_type = get_token_data_type(ast->function_call.token.type);
+    Type destination = {.kind = get_token_data_type(ast->function_call.token.type)};
 
-    if (is_integer_type(called_type) || is_float_type(called_type) || called_type == TypeChar) {
-        analyze_type_conversion(ast);
+    if (!is_integer_type(destination.kind) && !is_float_type(destination.kind) && destination.kind != TypeChar) {
+        destination = resolve_alias_conversion_type(analyzer, ast);
+    }
+
+    if (destination.kind != TypeUnknown) {
+        infer_conversion_literal(ast, destination);
+        analyze_expression_nodes(analyzer, &ast->function_call.args);
+        analyze_type_conversion(ast, destination);
 
         return;
     }
+
+    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
 
     if (!symbol && ast->function_call.type_args.count) {
         semantic_token_error("Type arguments require a generic function: ", ast->function_call.token);

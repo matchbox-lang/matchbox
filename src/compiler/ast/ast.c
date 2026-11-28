@@ -119,7 +119,7 @@ static void free_type_argument(Type* type)
     free_memory(type);
 }
 
-static void free_type_argument_vector(Vector* types)
+void free_type_argument_vector(Vector* types)
 {
     for (size_t i = 0; i < types->count; i++) {
         free_type_argument(types->data[i]);

@@ -109,6 +109,30 @@ static Type substitute_alias_arguments(Analyzer* analyzer, Type type, Vector* ar
     return resolved;
 }
 
+Type resolve_alias_conversion_type(Analyzer* analyzer, ASTNode* ast)
+{
+    StringView id = get_string_view(ast->function_call.id);
+    ASTNode* alias = get_symbol(analyzer->current_scope, id);
+
+    if (!alias || alias->type != ASTTypeAlias) {
+        return (Type){.kind = TypeUnknown};
+    }
+
+    Vector* arguments = &ast->function_call.type_args;
+
+    if (arguments->count != alias->type_alias.bindings.names.count) {
+        semantic_token_error("Incorrect type argument count for alias ", ast->function_call.token);
+    }
+
+    resolve_type_alias(analyzer, alias);
+
+    if (alias->type_alias.reference_type != RefNone) {
+        semantic_token_error("Explicit type conversions require a value type: ", ast->function_call.token);
+    }
+
+    return substitute_alias_arguments(analyzer, alias->type_alias.type_id, arguments);
+}
+
 static void parse_alias_arguments(Parser* parser, const NamedType* named, bool generic, Vector* arguments)
 {
     init_vector(arguments);

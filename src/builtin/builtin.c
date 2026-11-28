@@ -136,8 +136,7 @@ static bool builtin_argument_matches(const Builtin* builtin, const Type* argumen
         || can_implicitly_widen_type(argument_type, parameter_type);
 }
 
-static bool typed_variadic_matches(
-    const Builtin* builtin, const Type* argument_types, size_t argument_count)
+static bool typed_variadic_matches(const Builtin* builtin, const Type* argument_types, size_t argument_count)
 {
     if (!argument_count || !argument_types) {
         return false;

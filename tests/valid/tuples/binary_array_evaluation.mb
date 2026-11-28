@@ -2,6 +2,7 @@ var calls = 0
 
 func values() -> (i32[2], i32) {
     calls += 1
+
     return ([calls, calls * 10], calls)
 }
 
@@ -9,7 +10,7 @@ func difference(left: &(i32[2], i32), right: &(i32[2], i32)) -> (i32[2], i32) {
     return left - right
 }
 
-test "tuple array operands evaluate once from left to right" {
+test "array evaluation" {
     let result = values() - values()
     let first = ([8, 9], 20)
     let second = ([2, 3], 5)

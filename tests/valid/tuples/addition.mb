@@ -15,7 +15,7 @@ test "tuple addition" {
     assert(wide[1] == 9223372036854775805)
 }
 
-test "nested and widened tuple addition" {
+test "nested addition" {
     let left: (i8, (f32, i32)) = (10, (1.5, 20))
     let right: (i64, (f64, i64)) = (5, (2.25, 5))
     let result = left + right

@@ -2,15 +2,17 @@ var calls = 0
 
 func values() -> (i32, i32)[2] {
     calls += 1
+
     return [(calls, calls), (calls, calls)]
 }
 
 func scalar() -> i32 {
     calls += 1
+
     return calls
 }
 
-test "array tuple and broadcast operands evaluate once" {
+test "tuple evaluation" {
     let right_broadcast = values() - scalar()
     let left_broadcast = scalar() - values()
 

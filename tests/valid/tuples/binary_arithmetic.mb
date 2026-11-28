@@ -1,4 +1,4 @@
-test "tuple arithmetic and bitwise operators" {
+test "tuple arithmetic" {
     let a = (8, 9)
     let b = (2, 3)
 

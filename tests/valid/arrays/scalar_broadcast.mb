@@ -1,4 +1,4 @@
-test "scalar broadcasting preserves operand order" {
+test "scalar broadcast" {
     let values = [(10, 20), (30, 40)]
 
     assert((values + 5) == [(15, 25), (35, 45)])

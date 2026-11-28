@@ -1,4 +1,4 @@
-test "array tuple arithmetic and comparisons" {
+test "tuple operators" {
     let left = [(8, 9), (10, 20)]
     let right = [(2, 3), (5, 5)]
 

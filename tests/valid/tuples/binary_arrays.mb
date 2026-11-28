@@ -1,4 +1,4 @@
-test "tuple array arithmetic" {
+test "array arithmetic" {
     let left = ([8, 9], 20)
     let right = ([2, 3], 5)
     let sum = left + right
@@ -23,7 +23,7 @@ test "tuple array arithmetic" {
     assert(left[0][0] == 8)
 }
 
-test "tuple array comparisons" {
+test "array comparisons" {
     let left = ([1, 3], 20)
     let right = ([2, 3], 5)
 

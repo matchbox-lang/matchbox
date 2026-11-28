@@ -133,7 +133,14 @@ Operand emit_tuple_binary_value(Compiler* compiler, TokenType operator_type, Typ
     bool equality = is_equality_token(operator_type);
     bool broadcast = left_type.kind != TypeTuple || right_type.kind != TypeTuple;
     bool same_shape = broadcast || tuple_shapes_equal(left_type, right_type);
-    TupleBinaryOperation operation = {operator_type, left_type, right_type, result_type, operand_type};
+
+    TupleBinaryOperation operation = {
+        .operator_type = operator_type,
+        .left_type = left_type,
+        .right_type = right_type,
+        .operand_type = operand_type,
+        .result_type = result_type
+    };
 
     if (equality) {
         emit_instruction(compiler, OpLdi, result.reg, 0, same_shape);

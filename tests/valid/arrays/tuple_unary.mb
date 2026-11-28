@@ -1,4 +1,4 @@
-test "array tuple prefix operators" {
+test "tuple prefix" {
     let values: (i32, f64)[2] = [(10, 1.5), (-20, -2.5)]
     let integers = [(0, -1), (1, 2)]
     let negative = -values

@@ -1,4 +1,4 @@
-test "tuple comparisons and equality" {
+test "tuple comparisons" {
     let a = (1, 3, 2)
     let b = (2, 3, 1)
 

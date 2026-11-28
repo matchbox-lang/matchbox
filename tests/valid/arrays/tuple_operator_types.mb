@@ -1,4 +1,4 @@
-test "array tuple lossless numeric operations" {
+test "tuple numeric types" {
     let small: (i8, u8)[1] = [(-8, 255)]
     let unsigned: (u8, i16)[1] = [(2, 1)]
     let wide: (i64, u64)[1] = [(-6000000000, 18446744073709551615)]

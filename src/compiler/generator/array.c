@@ -388,7 +388,15 @@ Operand emit_array_binary(Compiler* compiler, TokenType operator_type, Type left
     bool same_shape = broadcast || array_shapes_equal(left_type, right_type);
     Operand result = create_array_binary_result(compiler, operator_type, result_type, same_shape);
     int previous_register_count = compiler->register_count;
-    ArrayBinaryOperation operation = {operator_type, left_type, right_type, result_type, operand_type};
+
+    ArrayBinaryOperation operation = {
+        .operator_type = operator_type,
+        .left_type = left_type,
+        .right_type = right_type,
+        .operand_type = operand_type,
+        .result_type = result_type
+    };
+    
     left.temporary = false;
     right.temporary = false;
     left = materialize_operand(compiler, left);
@@ -416,7 +424,11 @@ Operand compile_array_binary(Compiler* compiler, ASTNode* ast)
     right = materialize_operand(compiler, right);
 
     ArrayBinaryOperation operation = {
-        ast->binary.operator.type, left_type, right_type, ast->binary.type_id, ast->binary.operand_type
+        .operator_type = operator_type,
+        .left_type = left_type,
+        .right_type = right_type,
+        .operand_type = ast->binary.operand_type,
+        .result_type = ast->binary.type_id
     };
 
     emit_array_binary_result(compiler, &operation, left, right, result, same_shape);
@@ -432,7 +444,13 @@ void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast)
     Type right_type = get_node_data_type(ast->assignment.expr);
     Type operand_type = get_array_leaf_type(left_type);
     TokenType operator_type = get_assignment_binary_token(ast->assignment.operator.type);
-    ArrayBinaryOperation operation = {operator_type, left_type, right_type, left_type, operand_type};
+    ArrayBinaryOperation operation = {
+        .operator_type = operator_type,
+        .left_type = left_type,
+        .right_type = right_type,
+        .operand_type = operand_type,
+        .result_type = left_type
+    };
     int previous_register_count = compiler->register_count;
     Operand left = load_variable_value(compiler, ast->assignment.symbol);
     left = materialize_operand(compiler, left);

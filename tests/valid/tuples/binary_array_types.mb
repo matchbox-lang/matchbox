@@ -1,4 +1,4 @@
-test "nested tuple arrays and safe element widening" {
+test "nested array types" {
     let left: (i8[2], (f32[2], i32)) = ([-8, 9], ([1.5, 9.0], 20))
     let right: (u8[2], (f64[2], i64)) = ([2, 3], ([2.5, 2.0], 5))
     let empty_result = (i32[0](0), 1) + (i32[0](0), 2)

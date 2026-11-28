@@ -1,0 +1,2 @@
+let value = 10
+let tup = (&value, 20) + (&value, 5)

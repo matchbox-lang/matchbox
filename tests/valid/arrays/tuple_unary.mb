@@ -1,0 +1,12 @@
+test "array tuple prefix operators" {
+    let values: (i32, f64)[2] = [(10, 1.5), (-20, -2.5)]
+    let integers = [(0, -1), (1, 2)]
+    let negative = -values
+
+    assert(negative == [(-10, -1.5), (20, 2.5)])
+    assert((~integers) == [(-1, 0), (-2, -3)])
+    assert((not [(true, false)]) == [(false, true)])
+    assert((not [true, false]) == [false, true])
+    assert((-(1, ([2, -3], 4))) == (-1, ([-2, 3], -4)))
+    assert(values == [(10, 1.5), (-20, -2.5)])
+}

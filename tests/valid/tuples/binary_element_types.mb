@@ -1,0 +1,27 @@
+test "tuple operations preserve safe numeric types" {
+    let small: (i8, u8) = (-8, 255)
+    let unsigned: (u8, i16) = (2, 1)
+    let wide: (i64, u64) = (-6000000000, 18446744073709551615)
+    let divisor: (i64, u64) = (3, 3)
+    let quotient: (i64, u64) = (-2000000000, 6148914691236517205)
+    let singles: (f32, f32) = (1.5, 9.0)
+    let doubles: (f64, f64) = (2.5, 2.0)
+
+    assert((small / unsigned) == (-4, 255))
+    assert((small + unsigned) == (-6, 256))
+    assert((wide / divisor) == quotient)
+    assert((wide < divisor) == (true, false))
+    assert((singles + doubles) == (4.0, 11.0))
+    assert((singles / doubles) == (0.6, 4.5))
+    assert((singles % doubles) == (1.5, 1.0))
+    assert((singles < doubles) == (true, false))
+}
+
+test "tuple scalar element operations" {
+    assert(((true, false) and (false, true)) == (false, false))
+    assert(((true, false) or (false, true)) == (true, true))
+    assert((('a', 'z') < ('b', 'y')) == (true, false))
+    assert((('a', "hi") + ('b', " there")) == ("ab", "hi there"))
+    assert(("same", true) == ("same", true))
+    assert(("same", true) != ("other", true))
+}

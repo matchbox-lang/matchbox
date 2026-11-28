@@ -1,0 +1,28 @@
+var calls = 0
+var source = (10, 20)
+
+func next_tuple() -> (i32, i32) {
+    calls += 1
+    return (calls, calls * 10)
+}
+
+func change_source() -> (i32, i32) {
+    source = (100, 200)
+    return (5, 5)
+}
+
+test "tuple operands evaluate once from left to right" {
+    let result = next_tuple() + next_tuple()
+    let difference = next_tuple() - next_tuple()
+    let snapshot = source + change_source()
+
+    assert(calls == 4)
+    assert(result[0] == 3)
+    assert(result[1] == 30)
+    assert(difference[0] == -1)
+    assert(difference[1] == -10)
+    assert(snapshot[0] == 15)
+    assert(snapshot[1] == 25)
+    assert(source[0] == 100)
+    assert(source[1] == 200)
+}

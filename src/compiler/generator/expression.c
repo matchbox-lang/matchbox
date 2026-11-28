@@ -12,6 +12,7 @@
 #include "compiler/generator/generator.h"
 #include "compiler/generator/operand.h"
 #include "compiler/generator/slice.h"
+#include "compiler/generator/tuple.h"
 #include "compiler/generator/variable.h"
 #include "compiler/lexer/token.h"
 #include "runtime/code_object.h"
@@ -422,9 +423,14 @@ Operand compile_binary(Compiler* compiler, ASTNode* ast)
     }
 
     Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
 
-    if (is_array_type(left_type.kind)) {
+    if (is_array_type(left_type.kind) || is_array_type(right_type.kind)) {
         return compile_array_binary(compiler, ast);
+    }
+
+    if (left_type.kind == TypeTuple || right_type.kind == TypeTuple) {
+        return compile_tuple_binary(compiler, ast);
     }
 
     TokenType operator_type = ast->binary.operator.type;
@@ -433,7 +439,6 @@ Operand compile_binary(Compiler* compiler, ASTNode* ast)
         return compile_logical_binary(compiler, ast);
     }
 
-    Type right_type = get_node_data_type(ast->binary.right_expr);
     Type type = ast->binary.operand_type;
     Type result_type = ast->binary.type_id;
     bool concatenation = result_type.kind == TypeString;
@@ -497,6 +502,14 @@ static Opcode get_prefix_opcode(TokenType operator_type, Type type)
 
 Operand emit_prefix_operand(Compiler* compiler, TokenType operator_type, Type type, Operand operand)
 {
+    if (is_array_type(type.kind)) {
+        return emit_array_prefix(compiler, operator_type, type, operand);
+    }
+
+    if (type.kind == TypeTuple) {
+        return emit_tuple_prefix(compiler, operator_type, type, operand);
+    }
+
     Opcode opcode = get_prefix_opcode(operator_type, type);
 
     if (opcode == OpHlt) {

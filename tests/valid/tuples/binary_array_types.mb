@@ -1,0 +1,14 @@
+test "nested tuple arrays and safe element widening" {
+    let left: (i8[2], (f32[2], i32)) = ([-8, 9], ([1.5, 9.0], 20))
+    let right: (u8[2], (f64[2], i64)) = ([2, 3], ([2.5, 2.0], 5))
+    let empty_result = (i32[0](0), 1) + (i32[0](0), 2)
+    let empty_expected = (i32[0](0), 3)
+
+    assert((left + right) == ([-6, 12], ([4.0, 11.0], 25)))
+    assert((left / right) == ([-4, 3], ([0.6, 4.5], 4)))
+    assert((left < right) == ([true, false], ([true, false], false)))
+    assert((([[1, 2], [3, 4]],) + ([[4, 3], [2, 1]],)) == ([[5, 5], [5, 5]],))
+    assert(((['a', 'b'],) + (['x', 'y'],)) == (["ax", "by"],))
+    assert((([true, false],) and ([false, true],)) == ([false, false],))
+    assert(empty_result == empty_expected)
+}

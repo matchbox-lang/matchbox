@@ -111,7 +111,8 @@ static bool compile_discarded_array_binary(Compiler* compiler, ASTNode* ast)
     bool division = operator_type == TokenSlash || operator_type == TokenPercent;
     Type operand_type = ast->binary.operand_type;
 
-    if (!is_array_type(left_type.kind) || (division && is_integer_type(operand_type.kind))) {
+    if (!is_array_type(left_type.kind) || operand_type.kind == TypeTuple
+        || (division && is_integer_type(operand_type.kind))) {
         return false;
     }
 

@@ -7,11 +7,24 @@
 #include "compiler/generator/conversion.h"
 #include "compiler/generator/emitter.h"
 #include "compiler/generator/expression.h"
+#include "compiler/generator/function.h"
 #include "compiler/generator/generator.h"
 #include "compiler/generator/index.h"
 #include "compiler/generator/memory.h"
 #include "compiler/generator/variable.h"
 #include "runtime/value.h"
+
+typedef struct TupleBinaryOperation
+{
+    TokenType operator_type;
+    Type left_type;
+    Type right_type;
+    Type operand_type;
+    Type result_type;
+} TupleBinaryOperation;
+
+static void emit_tuple_binary(Compiler* compiler, const TupleBinaryOperation* operation,
+    Operand result, Operand left, Operand right);
 
 static void compile_tuple_element(Compiler* compiler, ASTNode* ast, Operand result, size_t position)
 {
@@ -22,6 +35,164 @@ static void compile_tuple_element(Compiler* compiler, ASTNode* ast, Operand resu
 
     emit_operand_mov(compiler, result.reg + element.offset, value);
     release_operand(compiler, value);
+}
+
+static Operand emit_tuple_binary_leaf(Compiler* compiler, const TupleBinaryOperation* operation,
+    Operand left, Operand right)
+{
+    TokenType operator_type = operation->operator_type;
+
+    if (is_equality_token(operator_type)) {
+        operator_type = TokenEqualEqual;
+    }
+
+    if (is_array_type(operation->left_type.kind) || is_array_type(operation->right_type.kind)) {
+        return emit_array_binary(compiler, operator_type, operation->left_type, operation->right_type,
+            operation->result_type, operation->operand_type, left, right);
+    }
+
+    if (operator_type == TokenPower || operation->result_type.kind == TypeString) {
+        left = materialize_operand(compiler, left);
+        right = materialize_operand(compiler, right);
+
+        return emit_binary_builtin(
+            compiler, operator_type, operation->left_type, operation->right_type, left, right);
+    }
+
+    left = convert_operand(compiler, left, operation->left_type, operation->operand_type);
+    right = convert_operand(compiler, right, operation->right_type, operation->operand_type);
+
+    return emit_binary_operator(compiler, operator_type, operation->operand_type, left, right);
+}
+
+static void emit_tuple_binary_leaf_result(Compiler* compiler, const TupleBinaryOperation* operation,
+    Operand result, Operand left, Operand right)
+{
+    Operand value = emit_tuple_binary_leaf(compiler, operation, left, right);
+    bool equality = is_equality_token(operation->operator_type);
+
+    if (equality) {
+        emit_instruction(compiler, OpBandI32, result.reg, result.reg, value.reg);
+    } else {
+        emit_operand_mov(compiler, result.reg, value);
+    }
+
+    release_operand(compiler, value);
+}
+
+static void emit_tuple_binary_element(Compiler* compiler, const TupleBinaryOperation* operation,
+    Operand result, Operand left, Operand right, size_t index)
+{
+    TupleElement left_element = get_tuple_operand_element(operation->left_type, index);
+    TupleElement right_element = get_tuple_operand_element(operation->right_type, index);
+    TupleBinaryOperation element = *operation;
+    element.operand_type = operation->operand_type.tuple->elements[index].type;
+    element.left_type = left_element.type;
+    element.right_type = right_element.type;
+    Operand destination = result;
+    Operand left_value = make_typed_operand(left.reg + left_element.offset, false, left_element.type);
+    Operand right_value = make_typed_operand(right.reg + right_element.offset, false, right_element.type);
+    bool equality = is_equality_token(operation->operator_type);
+
+    if (!equality) {
+        TupleElement result_element = operation->result_type.tuple->elements[index];
+        element.result_type = result_element.type;
+        destination = make_typed_operand(result.reg + result_element.offset, false, result_element.type);
+    }
+
+    emit_tuple_binary(compiler, &element, destination, left_value, right_value);
+}
+
+static void emit_tuple_binary(Compiler* compiler, const TupleBinaryOperation* operation,
+    Operand result, Operand left, Operand right)
+{
+    if (is_array_type(operation->left_type.kind) || is_array_type(operation->right_type.kind)) {
+        emit_tuple_binary_leaf_result(compiler, operation, result, left, right);
+
+        return;
+    }
+
+    if (operation->operand_type.kind != TypeTuple) {
+        emit_tuple_binary_leaf_result(compiler, operation, result, left, right);
+
+        return;
+    }
+
+    for (size_t i = 0; i < operation->operand_type.tuple->count; i++) {
+        emit_tuple_binary_element(compiler, operation, result, left, right, i);
+    }
+}
+
+Operand emit_tuple_binary_value(Compiler* compiler, TokenType operator_type, Type left_type, Type right_type,
+    Type result_type, Type operand_type, Operand left, Operand right)
+{
+    size_t slots = get_value_slot_count(result_type);
+    int reg = allocate_registers(compiler, slots);
+    Operand result = make_typed_operand(reg, true, result_type);
+    int previous_register_count = compiler->register_count;
+    bool equality = is_equality_token(operator_type);
+    bool broadcast = left_type.kind != TypeTuple || right_type.kind != TypeTuple;
+    bool same_shape = broadcast || tuple_shapes_equal(left_type, right_type);
+    TupleBinaryOperation operation = {operator_type, left_type, right_type, result_type, operand_type};
+
+    if (equality) {
+        emit_instruction(compiler, OpLdi, result.reg, 0, same_shape);
+    }
+
+    if (same_shape) {
+        emit_tuple_binary(compiler, &operation, result, left, right);
+    }
+
+    if (operator_type == TokenNotEqual || operator_type == TokenNotEqualEqual) {
+        emit_instruction(compiler, OpNot, result.reg, result.reg, 0);
+    }
+
+    compiler->register_count = previous_register_count;
+
+    return result;
+}
+
+Operand compile_tuple_binary(Compiler* compiler, ASTNode* ast)
+{
+    Type type = ast->binary.type_id;
+    Type left_type = get_node_data_type(ast->binary.left_expr);
+    Type right_type = get_node_data_type(ast->binary.right_expr);
+    int start = compiler->register_count;
+    Operand left = compile_expression(compiler, ast->binary.left_expr, false);
+    left = materialize_operand(compiler, left);
+    Operand right = compile_expression(compiler, ast->binary.right_expr, false);
+    Operand result = emit_tuple_binary_value(
+        compiler, ast->binary.operator.type, left_type, right_type, type, ast->binary.operand_type, left, right);
+
+    emit_operand_mov(compiler, start, result);
+
+    result.reg = start;
+    compiler->register_count = start + result.slots;
+
+    return result;
+}
+
+static void emit_tuple_prefix_element(Compiler* compiler, TokenType operator_type, TupleElement element,
+    Operand result, Operand source)
+{
+    Operand value = make_typed_operand(source.reg + element.offset, false, element.type);
+    value = emit_prefix_operand(compiler, operator_type, element.type, value);
+
+    emit_operand_mov(compiler, result.reg + element.offset, value);
+    release_operand(compiler, value);
+}
+
+Operand emit_tuple_prefix(Compiler* compiler, TokenType operator_type, Type type, Operand source)
+{
+    size_t slots = get_value_slot_count(type);
+    int reg = allocate_registers(compiler, slots);
+    Operand result = make_typed_operand(reg, true, type);
+
+    for (size_t i = 0; i < type.tuple->count; i++) {
+        emit_tuple_prefix_element(compiler, operator_type, type.tuple->elements[i], result, source);
+    }
+
+    return result;
 }
 
 Operand compile_tuple(Compiler* compiler, ASTNode* ast)

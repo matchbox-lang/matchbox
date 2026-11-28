@@ -1,6 +1,8 @@
 #include "compiler/analyzer/tuple.h"
 #include "common/tuple_type.h"
+#include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/tuple_reference.h"
@@ -15,6 +17,99 @@
 #include "compiler/scope.h"
 
 static size_t get_tuple_binding_offset(ASTNode* ast);
+
+static Type analyze_tuple_binary_element(Analyzer* analyzer, Token operator, TupleElement left, TupleElement right,
+    Type* operand_type)
+{
+    if (left.reference != RefNone || right.reference != RefNone) {
+        semantic_error("Tuple binary operators require value elements", operator);
+    }
+
+    if (is_array_type(left.type.kind) || is_array_type(right.type.kind)) {
+        return analyze_array_binary_types(analyzer, operator, left.type, right.type, operand_type);
+    }
+
+    if (left.type.kind == TypeTuple || right.type.kind == TypeTuple) {
+        return analyze_tuple_binary(analyzer, operator, left.type, right.type, operand_type);
+    }
+
+    if (is_slice_type(left.type.kind) || is_slice_type(right.type.kind)) {
+        semantic_error("Tuple binary operators do not support slice elements", operator);
+    }
+
+    Type result = analyze_binary_operand_types(operator, left.type, right.type, operand_type);
+
+    if (result.kind == TypeString) {
+        *operand_type = result;
+    }
+
+    return result;
+}
+
+Type analyze_tuple_binary(Analyzer* analyzer, Token operator, Type left, Type right, Type* operand_type)
+{
+    bool equality = is_equality_token(operator.type);
+    bool broadcast = left.kind != TypeTuple || right.kind != TypeTuple;
+
+    if (broadcast && equality) {
+        semantic_error("Tuple binary operators require two tuples", operator);
+    }
+
+    bool same_shape = broadcast || tuple_shapes_equal(left, right);
+
+    if (!same_shape && !equality) {
+        semantic_error("Tuple binary operators require matching shapes", operator);
+    }
+
+    if (!same_shape) {
+        *operand_type = (Type){.kind = TypeUnknown};
+
+        return (Type){.kind = TypeBool};
+    }
+
+    Type shape = left.kind == TypeTuple ? left : right;
+    TupleType* tuple = create_tuple_type(shape.tuple->count);
+    TupleType* operands = create_tuple_type(shape.tuple->count);
+
+    push_vector_item(&analyzer->tuple_types, tuple);
+    push_vector_item(&analyzer->tuple_types, operands);
+
+    for (size_t i = 0; i < tuple->count; i++) {
+        TupleElement left_element = get_tuple_operand_element(left, i);
+        TupleElement right_element = get_tuple_operand_element(right, i);
+        tuple->elements[i].type = analyze_tuple_binary_element(
+            analyzer, operator, left_element, right_element, &operands->elements[i].type);
+        tuple->elements[i].reference = RefNone;
+        operands->elements[i].reference = RefNone;
+    }
+
+    layout_tuple_type(tuple);
+    layout_tuple_type(operands);
+
+    *operand_type = (Type){.kind = TypeTuple, .tuple = operands};
+
+    if (equality) {
+        return (Type){.kind = TypeBool};
+    }
+
+    return (Type){.kind = TypeTuple, .tuple = tuple};
+}
+
+static void validate_tuple_prefix_element(Token operator, TupleElement element)
+{
+    if (element.reference != RefNone) {
+        semantic_error("Tuple prefix operators require value elements", operator);
+    }
+
+    validate_prefix_operand_type(operator, element.type);
+}
+
+void validate_tuple_prefix(Token operator, Type type)
+{
+    for (size_t i = 0; i < type.tuple->count; i++) {
+        validate_tuple_prefix_element(operator, type.tuple->elements[i]);
+    }
+}
 
 static bool apply_tuple_move_effect(Analyzer* analyzer, ASTNode* symbol, const TupleMoveEffect* move)
 {

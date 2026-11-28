@@ -1,8 +1,10 @@
 #include "compiler/analyzer/expression.h"
 #include "common/array_type.h"
+#include "compiler/analyzer/array.h"
 #include "compiler/analyzer/conversion.h"
 #include "compiler/analyzer/function.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/ast/literal.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
@@ -66,23 +68,6 @@ static void apply_binary_integer_literal_types(ASTNode* left, ASTNode* right)
     if (is_integer_type(right_type.kind)) {
         apply_integer_literal_type(left, right_type);
     }
-}
-
-static Type array_binary_result_type(Analyzer* analyzer, Type shape, Type leaf)
-{
-    if (!is_array_type(shape.kind)) {
-        return leaf;
-    }
-
-    Type element = array_binary_result_type(analyzer, shape.array->element_type, leaf);
-
-    Type result = find_array_type(&analyzer->array_types, element, shape.array->count);
-
-    if (result.kind != TypeUnknown) {
-        return result;
-    }
-
-    return add_array_type(&analyzer->array_types, element, shape.array->count);
 }
 
 static Type analyze_text_binary_types(TokenType operator_type, Type left_type, Type right_type, Type* operand_type)
@@ -174,6 +159,10 @@ static Type resolve_binary_result_type(TokenType operator_type, Type operand_typ
 
 Type analyze_binary_operand_types(Token operator, Type left_type, Type right_type, Type* operand_type)
 {
+    if (left_type.kind == TypeTuple || right_type.kind == TypeTuple) {
+        semantic_error("Invalid operator for tuple operands", operator);
+    }
+
     Type text_type = analyze_text_binary_types(operator.type, left_type, right_type, operand_type);
 
     if (text_type.kind != TypeUnknown) {
@@ -194,39 +183,6 @@ static void analyze_binary_types(ASTNode* ast, Type left_type, Type right_type)
         ast->binary.operator, left_type, right_type, &ast->binary.operand_type);
 }
 
-static void analyze_array_binary(Analyzer* analyzer, ASTNode* ast, Type left, Type right)
-{
-    TokenType operator_type = ast->binary.operator.type;
-    bool equality = is_equality_token(operator_type);
-    bool same_shape = array_shapes_equal(left, right);
-
-    if (!is_array_type(left.kind) || !is_array_type(right.kind)) {
-        semantic_error("Array binary operators require two arrays", ast->binary.operator);
-    }
-
-    if (!same_shape && !equality) {
-        semantic_error("Array binary operators require matching shapes", ast->binary.operator);
-    }
-
-    if (!same_shape) {
-        ast->binary.type_id = (Type){.kind = TypeBool};
-
-        return;
-    }
-
-    Type left_leaf = get_array_leaf_type(left);
-    Type right_leaf = get_array_leaf_type(right);
-
-    analyze_binary_types(ast, left_leaf, right_leaf);
-
-    Type result = ast->binary.type_id;
-    ast->binary.type_id = (Type){.kind = TypeBool};
-
-    if (!equality) {
-        ast->binary.type_id = array_binary_result_type(analyzer, left, result);
-    }
-}
-
 void analyze_binary(Analyzer* analyzer, ASTNode* ast)
 {
     analyze_node(analyzer, ast->binary.left_expr);
@@ -236,7 +192,15 @@ void analyze_binary(Analyzer* analyzer, ASTNode* ast)
     Type right_type = get_node_data_type(ast->binary.right_expr);
 
     if (is_array_type(left_type.kind) || is_array_type(right_type.kind)) {
-        analyze_array_binary(analyzer, ast, left_type, right_type);
+        ast->binary.type_id = analyze_array_binary_types(
+            analyzer, ast->binary.operator, left_type, right_type, &ast->binary.operand_type);
+
+        return;
+    }
+
+    if (left_type.kind == TypeTuple || right_type.kind == TypeTuple) {
+        ast->binary.type_id = analyze_tuple_binary(
+            analyzer, ast->binary.operator, left_type, right_type, &ast->binary.operand_type);
 
         return;
     }
@@ -306,31 +270,42 @@ void analyze_prefix(Analyzer* analyzer, ASTNode* ast)
     infer_negated_integer_literal_type(ast);
     analyze_node(analyzer, ast->prefix.expr);
 
-    if (ast->prefix.operator.type == TokenKeywordNot && get_node_data_type(ast->prefix.expr).kind != TypeBool) {
-        semantic_error("Logical not requires a bool operand", ast->prefix.operator);
-    }
-
     Type type = get_node_data_type(ast->prefix.expr);
 
+    validate_prefix_operand_type(ast->prefix.operator, type);
+}
+
+void validate_prefix_operand_type(Token operator, Type type)
+{
     if (is_array_type(type.kind)) {
         type = get_array_leaf_type(type);
     }
 
-    if (ast->prefix.operator.type == TokenTilde && !is_integer_type(type.kind)) {
-        semantic_error("Bitwise complement requires an integer operand", ast->prefix.operator);
+    if (type.kind == TypeTuple) {
+        validate_tuple_prefix(operator, type);
+
+        return;
+    }
+
+    if (operator.type == TokenKeywordNot && type.kind != TypeBool) {
+        semantic_error("Logical not requires a bool operand", operator);
+    }
+
+    if (operator.type == TokenTilde && !is_integer_type(type.kind)) {
+        semantic_error("Bitwise complement requires an integer operand", operator);
     }
 
     if (type.kind == TypeString) {
-        semantic_error("Invalid prefix operator for string operands", ast->prefix.operator);
+        semantic_error("Invalid prefix operator for string operands", operator);
     }
 
     if (type.kind == TypeChar) {
-        semantic_error("Invalid prefix operator for char operands", ast->prefix.operator);
+        semantic_error("Invalid prefix operator for char operands", operator);
     }
 
     bool numeric = is_signed_integer_type(type.kind) || is_float_type(type.kind);
 
-    if (ast->prefix.operator.type == TokenMinus && !numeric) {
-        semantic_error("Negation requires a signed numeric operand", ast->prefix.operator);
+    if (operator.type == TokenMinus && !numeric) {
+        semantic_error("Negation requires a signed numeric operand", operator);
     }
 }

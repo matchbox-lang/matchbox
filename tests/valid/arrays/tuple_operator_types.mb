@@ -1,0 +1,16 @@
+test "array tuple lossless numeric operations" {
+    let small: (i8, u8)[1] = [(-8, 255)]
+    let unsigned: (u8, i16)[1] = [(2, 1)]
+    let wide: (i64, u64)[1] = [(-6000000000, 18446744073709551615)]
+    let divisor: (i64, u64)[1] = [(3, 3)]
+    let expected: (i64, u64)[1] = [(-2000000000, 6148914691236517205)]
+    let singles: (f32, f32)[1] = [(1.5, 9.0)]
+    let doubles: (f64, f64)[1] = [(2.5, 2.0)]
+
+    assert((small + unsigned) == [(-6, 256)])
+    assert((small / unsigned) == [(-4, 255)])
+    assert((wide / divisor) == expected)
+    assert((wide < divisor) == [(true, false)])
+    assert((singles + doubles) == [(4.0, 11.0)])
+    assert((singles / doubles) == [(0.6, 4.5)])
+}

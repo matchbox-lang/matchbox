@@ -5,8 +5,10 @@
 #include "common/slice.h"
 #include "common/vector.h"
 #include "compiler/analyzer/conversion.h"
+#include "compiler/analyzer/expression.h"
 #include "compiler/analyzer/ownership.h"
 #include "compiler/analyzer/reference.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/analyzer/type.h"
 #include "compiler/analyzer/variable.h"
 #include "compiler/ast/ast.h"
@@ -17,6 +19,61 @@
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 #include <stdint.h>
+
+static Type array_binary_result_type(Analyzer* analyzer, Type shape, Type leaf)
+{
+    if (!is_array_type(shape.kind)) {
+        return leaf;
+    }
+
+    Type element = array_binary_result_type(analyzer, shape.array->element_type, leaf);
+    Type result = find_array_type(&analyzer->array_types, element, shape.array->count);
+
+    if (result.kind != TypeUnknown) {
+        return result;
+    }
+
+    return add_array_type(&analyzer->array_types, element, shape.array->count);
+}
+
+Type analyze_array_binary_types(Analyzer* analyzer, Token operator, Type left, Type right, Type* operand_type)
+{
+    bool equality = is_equality_token(operator.type);
+    bool broadcast = is_array_type(left.kind) != is_array_type(right.kind);
+    bool same_shape = broadcast || array_shapes_equal(left, right);
+
+    if (broadcast && equality) {
+        semantic_error("Array binary operators require two arrays", operator);
+    }
+
+    if (!same_shape && !equality) {
+        semantic_error("Array binary operators require matching shapes", operator);
+    }
+
+    if (!same_shape) {
+        *operand_type = (Type){.kind = TypeUnknown};
+
+        return (Type){.kind = TypeBool};
+    }
+
+    Type left_leaf = get_array_leaf_type(left);
+    Type right_leaf = get_array_leaf_type(right);
+    Type result;
+
+    if (left_leaf.kind == TypeTuple || right_leaf.kind == TypeTuple) {
+        result = analyze_tuple_binary(analyzer, operator, left_leaf, right_leaf, operand_type);
+    } else {
+        result = analyze_binary_operand_types(operator, left_leaf, right_leaf, operand_type);
+    }
+
+    if (equality) {
+        return (Type){.kind = TypeBool};
+    }
+
+    Type shape = is_array_type(left.kind) ? left : right;
+
+    return array_binary_result_type(analyzer, shape, result);
+}
 
 static void set_inferred_array_count(Vector* dimensions, size_t index, size_t count, Token token)
 {

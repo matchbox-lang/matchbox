@@ -6,6 +6,8 @@
 
 void resolve_tuple_type(Analyzer* analyzer, Type* type);
 void analyze_tuple(Analyzer* analyzer, ASTNode* ast);
+Type analyze_tuple_binary(Analyzer* analyzer, Token operator, Type left, Type right, Type* operand_type);
+void validate_tuple_prefix(Token operator, Type type);
 void analyze_tuple_index(Analyzer* analyzer, ASTNode* ast, Type type, uint64_t value);
 void analyze_tuple_index_value(Analyzer* analyzer, ASTNode* ast);
 bool consume_tuple_element(Analyzer* analyzer, ASTNode* ast);

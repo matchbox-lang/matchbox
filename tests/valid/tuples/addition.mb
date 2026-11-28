@@ -1,0 +1,29 @@
+func add_values(left: (i32, i64), right: (i32, i64)) -> (i32, i64) {
+    return left + right
+}
+
+test "tuple addition" {
+    let tup = (10, 20) + (5, 5)
+    let chained = tup + (1, 2) + (3, 4)
+    let wide = add_values((10, 9223372036854775800), (5, 5))
+
+    assert(tup[0] == 15)
+    assert(tup[1] == 25)
+    assert(chained[0] == 19)
+    assert(chained[1] == 31)
+    assert(wide[0] == 15)
+    assert(wide[1] == 9223372036854775805)
+}
+
+test "nested and widened tuple addition" {
+    let left: (i8, (f32, i32)) = (10, (1.5, 20))
+    let right: (i64, (f64, i64)) = (5, (2.25, 5))
+    let result = left + right
+    let empty = () + ()
+    let empty_count = len(empty)
+
+    assert(result[0] == 15)
+    assert(result[1][0] == 3.75)
+    assert(result[1][1] == 25)
+    assert(empty_count == 0)
+}

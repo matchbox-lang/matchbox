@@ -2,6 +2,15 @@
 #include "common/errors.h"
 #include "common/memory.h"
 
+TupleElement get_tuple_operand_element(Type type, size_t index)
+{
+    if (type.kind == TypeTuple) {
+        return type.tuple->elements[index];
+    }
+
+    return (TupleElement){.type = type, .reference = RefNone};
+}
+
 TupleType* create_tuple_type(size_t count)
 {
     TupleType* tuple = allocate_zeroed_memory(1, sizeof(TupleType) + count * sizeof(TupleElement));
@@ -43,6 +52,26 @@ static bool tuple_elements_equal(TupleElement left, TupleElement right)
     bool same = types_equal(left.type, right.type);
 
     return same && left.reference == right.reference;
+}
+
+bool tuple_shapes_equal(Type left, Type right)
+{
+    if (left.kind != TypeTuple || right.kind != TypeTuple) {
+        return left.kind != TypeTuple && right.kind != TypeTuple;
+    }
+
+    if (left.tuple->count != right.tuple->count) {
+        return false;
+    }
+
+    size_t index = 0;
+
+    while (index < left.tuple->count
+        && tuple_shapes_equal(left.tuple->elements[index].type, right.tuple->elements[index].type)) {
+        index++;
+    }
+
+    return index == left.tuple->count;
 }
 
 bool tuple_types_equal(const TupleType* left, const TupleType* right)

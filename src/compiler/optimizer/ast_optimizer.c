@@ -398,10 +398,21 @@ static bool expand_literal_array_binary(ASTNode* ast)
 
     Type leaf = get_array_leaf_type(type);
     size_t stride = get_type_storage_size(leaf);
+
+    if (stride == 0) {
+        return false;
+    }
+
     size_t size = get_type_storage_size(type);
     size_t count = size / stride;
     ASTNode* left = ast->binary.left_expr;
     ASTNode* right = ast->binary.right_expr;
+    Type left_type = get_node_data_type(left);
+    Type right_type = get_node_data_type(right);
+
+    if (!is_array_type(left_type.kind) || !is_array_type(right_type.kind)) {
+        return false;
+    }
 
     if (count > ARRAY_BINARY_EXPANSION_LIMIT || !is_literal_array_tree(left) || !is_literal_array_tree(right)) {
         return false;

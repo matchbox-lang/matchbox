@@ -1,0 +1,20 @@
+test "array tuple arithmetic and comparisons" {
+    let left = [(8, 9), (10, 20)]
+    let right = [(2, 3), (5, 5)]
+
+    assert((left + right) == [(10, 12), (15, 25)])
+    assert((left - right) == [(6, 6), (5, 15)])
+    assert((left * right) == [(16, 27), (50, 100)])
+    assert((left / right) == [(4, 3), (2, 4)])
+    assert((left % right) == [(0, 0), (0, 0)])
+    assert((left ** right) == [(64, 729), (100000, 3200000)])
+    assert((left & right) == [(0, 1), (0, 4)])
+    assert((left | right) == [(10, 11), (15, 21)])
+    assert((left ^ right) == [(10, 10), (15, 17)])
+    assert((left << right) == [(32, 72), (320, 640)])
+    assert((left >> right) == [(2, 1), (0, 0)])
+    assert((left < right) == [(false, false), (false, false)])
+    assert((left <=> right) == [(1, 1), (1, 1)])
+    assert(left != [(8, 9), (10, 21)])
+    assert(left == [(8, 9), (10, 20)])
+}

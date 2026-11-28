@@ -50,8 +50,53 @@ void emit_memory_access(Compiler* compiler, Opcode opcode, int value, int buffer
     release_operand(compiler, index);
 }
 
+static Operand offset_memory_buffer(Compiler* compiler, Operand buffer, Operand offset)
+{
+    buffer.temporary = false;
+    offset.temporary = false;
+    buffer = materialize_operand(compiler, buffer);
+
+    emit_buffer_offset(compiler, buffer, offset);
+
+    return buffer;
+}
+
+static Operand load_tuple_memory_value(Compiler* compiler, Operand buffer, Operand offset, Type type)
+{
+    Operand address = offset_memory_buffer(compiler, buffer, offset);
+    Operand value = load_tuple_slots(compiler, address, 0, type);
+
+    emit_operand_mov(compiler, address.reg, value);
+
+    value.reg = address.reg;
+    value.temporary = false;
+    compiler->register_count = value.reg + value.slots;
+
+    return value;
+}
+
+void store_memory_value_at_offset(Compiler* compiler, Operand buffer, Operand value, Operand offset, Type type)
+{
+    if (type.kind == TypeTuple) {
+        Operand address = offset_memory_buffer(compiler, buffer, offset);
+
+        store_tuple_slots(compiler, address, value, 0);
+        release_operand(compiler, address);
+
+        return;
+    }
+
+    Opcode store = get_memory_store_opcode(type);
+
+    emit_instruction(compiler, store, value.reg, buffer.reg, offset.reg);
+}
+
 Operand load_memory_value(Compiler* compiler, Operand buffer, Operand offset, Type type)
 {
+    if (type.kind == TypeTuple) {
+        return load_tuple_memory_value(compiler, buffer, offset, type);
+    }
+
     size_t slots = get_type_slot_count(type.kind);
     int reg = allocate_registers(compiler, slots);
     Opcode opcode = get_memory_load_opcode(type);

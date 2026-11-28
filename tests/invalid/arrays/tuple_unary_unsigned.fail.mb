@@ -1,0 +1,2 @@
+let values: (i32, u64)[1] = [(1, 1)]
+print(-values)

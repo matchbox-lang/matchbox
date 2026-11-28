@@ -9,6 +9,7 @@
 #include "compiler/analyzer/match.h"
 #include "compiler/analyzer/reference.h"
 #include "compiler/analyzer/slice.h"
+#include "compiler/analyzer/tuple.h"
 #include "compiler/analyzer/type_alias.h"
 #include "compiler/analyzer/validation.h"
 #include "compiler/analyzer/variable.h"
@@ -85,6 +86,9 @@ void analyze_node(Analyzer* analyzer, ASTNode* ast)
             break;
         case ASTArray:
             analyze_array(analyzer, ast);
+            break;
+        case ASTTuple:
+            analyze_tuple(analyzer, ast);
             break;
         case ASTSlice:
             return analyze_slice(analyzer, ast);

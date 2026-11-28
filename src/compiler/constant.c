@@ -500,6 +500,17 @@ static bool can_discard_length_prefix(const ASTNode* ast)
     return reference && can_discard_length_argument(ast->prefix.expr);
 }
 
+static bool can_discard_length_elements(const Vector* elements)
+{
+    bool discard = true;
+
+    for (size_t i = 0; i < elements->count && discard; i++) {
+        discard = can_discard_length_argument(elements->data[i]);
+    }
+
+    return discard;
+}
+
 static bool can_discard_length_argument(const ASTNode* ast)
 {
     if (ast->type == ASTVariable || is_literal(ast)) {
@@ -510,17 +521,15 @@ static bool can_discard_length_argument(const ASTNode* ast)
         return can_discard_length_prefix(ast);
     }
 
-    if (ast->type != ASTArray) {
-        return false;
+    if (ast->type == ASTTuple) {
+        return can_discard_length_elements(&ast->tuple.elements);
     }
 
-    bool discard = true;
-
-    for (size_t i = 0; i < ast->array.elements.count && discard; i++) {
-        discard = can_discard_length_argument(ast->array.elements.data[i]);
+    if (ast->type == ASTArray) {
+        return can_discard_length_elements(&ast->array.elements);
     }
 
-    return discard;
+    return false;
 }
 
 static bool has_local_constant_variables(const ASTNode* ast)
@@ -641,11 +650,11 @@ static const ASTNode* get_constant_tuple_element(const ASTNode* ast)
 
     const ASTNode* tuple = get_constant_tuple_initializer(ast->index.array);
 
-    if (!tuple || ast->index.position >= tuple->array.elements.count) {
+    if (!tuple || ast->index.position >= tuple->tuple.elements.count) {
         return NULL;
     }
 
-    return tuple->array.elements.data[ast->index.position];
+    return tuple->tuple.elements.data[ast->index.position];
 }
 
 static const ASTNode* get_constant_tuple_variable(const ASTNode* ast)
@@ -681,7 +690,7 @@ static const ASTNode* get_constant_tuple_initializer(const ASTNode* ast)
         return get_constant_tuple_initializer(element);
     }
 
-    if (ast->type != ASTArray || !ast->array.tuple || !can_discard_length_argument(ast)) {
+    if (ast->type != ASTTuple || !can_discard_length_argument(ast)) {
         return NULL;
     }
 

@@ -264,6 +264,9 @@ static void validate_node_global_access(Analyzer* analyzer, ASTNode* ast)
         case ASTArray:
             validate_global_access_in_nodes(analyzer, &ast->array.elements);
             break;
+        case ASTTuple:
+            validate_global_access_in_nodes(analyzer, &ast->tuple.elements);
+            break;
         case ASTIndex:
         case ASTIndexAssignment:
             validate_index_global_access(analyzer, ast);

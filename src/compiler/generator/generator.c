@@ -84,10 +84,10 @@ Operand compile_reference_expression(Compiler* compiler, ASTNode* ast)
     return no_operand();
 }
 
-static bool compile_discarded_array(Compiler* compiler, ASTNode* ast)
+static bool compile_discarded_elements(Compiler* compiler, Vector* elements)
 {
-    for (size_t i = 0; i < ast->array.elements.count; i++) {
-        compile_expression(compiler, ast->array.elements.data[i], true);
+    for (size_t i = 0; i < elements->count; i++) {
+        compile_expression(compiler, elements->data[i], true);
     }
 
     return true;
@@ -127,7 +127,9 @@ static bool compile_discarded_expression(Compiler* compiler, ASTNode* ast)
         case ASTBinary:
             return compile_discarded_array_binary(compiler, ast);
         case ASTArray:
-            return compile_discarded_array(compiler, ast);
+            return compile_discarded_elements(compiler, &ast->array.elements);
+        case ASTTuple:
+            return compile_discarded_elements(compiler, &ast->tuple.elements);
         case ASTBoolean:
         case ASTCharacter:
         case ASTFloat:
@@ -149,6 +151,8 @@ static Operand compile_value_expression(Compiler* compiler, ASTNode* ast)
             return compile_slice(compiler, ast);
         case ASTArray:
             return compile_array(compiler, ast);
+        case ASTTuple:
+            return compile_tuple(compiler, ast);
         case ASTIndex:
             return compile_index(compiler, ast);
         case ASTBinary:

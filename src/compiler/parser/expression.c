@@ -35,21 +35,18 @@ static bool parse_tuple_element(Parser* parser, ASTNode* tuple)
         return false;
     }
 
-    push_vector_item(&tuple->array.elements, element);
+    push_vector_item(&tuple->tuple.elements, element);
 
     return true;
 }
 
 static ASTNode* parse_tuple_tail(Parser* parser, ASTNode* first, Token token)
 {
-    Type unknown = {.kind = TypeUnknown};
-    ASTNode* tuple = create_array_node(token, unknown, false);
-
-    tuple->array.tuple = true;
+    ASTNode* tuple = create_tuple_node(token);
     bool complete = true;
 
     if (first) {
-        push_vector_item(&tuple->array.elements, first);
+        push_vector_item(&tuple->tuple.elements, first);
     }
 
     while (complete && parser->current_token.type == TokenComma) {

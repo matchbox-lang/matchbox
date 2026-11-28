@@ -14,8 +14,8 @@
 
 static void compile_tuple_element(Compiler* compiler, ASTNode* ast, Operand result, size_t position)
 {
-    TupleElement element = ast->array.type_id.tuple->elements[position];
-    ASTNode* expression = ast->array.elements.data[position];
+    TupleElement element = ast->tuple.type_id.tuple->elements[position];
+    ASTNode* expression = ast->tuple.elements.data[position];
     bool reference = element.reference != RefNone;
     Operand value = compile_converted_expression(compiler, expression, element.type, reference);
 
@@ -25,12 +25,12 @@ static void compile_tuple_element(Compiler* compiler, ASTNode* ast, Operand resu
 
 Operand compile_tuple(Compiler* compiler, ASTNode* ast)
 {
-    Type type = ast->array.type_id;
+    Type type = ast->tuple.type_id;
     size_t slots = get_value_slot_count(type);
     int reg = allocate_registers(compiler, slots);
     Operand result = make_typed_operand(reg, true, type);
 
-    for (size_t i = 0; i < ast->array.elements.count; i++) {
+    for (size_t i = 0; i < ast->tuple.elements.count; i++) {
         compile_tuple_element(compiler, ast, result, i);
     }
 

@@ -127,6 +127,9 @@ static void clear_node_analysis(ASTNode* ast, Vector* functions)
         case ASTArray:
             clear_analysis_vector(&ast->array.elements, functions);
             break;
+        case ASTTuple:
+            clear_analysis_vector(&ast->tuple.elements, functions);
+            break;
         case ASTIndex:
         case ASTIndexAssignment:
             ast->index.reference_origins.count = 0;

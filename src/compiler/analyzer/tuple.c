@@ -108,11 +108,11 @@ static TupleElement get_expected_tuple_element(Type type, size_t index)
 
 void analyze_tuple(Analyzer* analyzer, ASTNode* ast)
 {
-    size_t count = ast->array.elements.count;
-    Type declared = ast->array.type_id;
+    size_t count = ast->tuple.elements.count;
+    Type declared = ast->tuple.type_id;
 
     if (declared.kind != TypeUnknown && (declared.kind != TypeTuple || declared.tuple->count != count)) {
-        semantic_error("Tuple element count does not match its type", ast->array.token);
+        semantic_error("Tuple element count does not match its type", ast->tuple.token);
     }
 
     TupleType* tuple = create_tuple_type(count);
@@ -120,17 +120,17 @@ void analyze_tuple(Analyzer* analyzer, ASTNode* ast)
     for (size_t i = 0; i < count; i++) {
         TupleElement expected = get_expected_tuple_element(declared, i);
 
-        analyze_tuple_element(analyzer, ast->array.elements.data[i], &tuple->elements[i],
-            expected.type, expected.reference, ast->array.token);
+        analyze_tuple_element(analyzer, ast->tuple.elements.data[i], &tuple->elements[i],
+            expected.type, expected.reference, ast->tuple.token);
     }
 
     layout_tuple_type(tuple);
     push_vector_item(&analyzer->tuple_types, tuple);
 
-    ast->array.type_id = (Type){.kind = TypeTuple, .tuple = tuple};
+    ast->tuple.type_id = (Type){.kind = TypeTuple, .tuple = tuple};
 
     for (size_t i = 0; i < count; i++) {
-        collect_tuple_element_references(ast, ast->array.elements.data[i], tuple->elements[i]);
+        collect_tuple_element_references(ast, ast->tuple.elements.data[i], tuple->elements[i]);
     }
 }
 
@@ -187,7 +187,7 @@ static void validate_tuple_reference(ASTNode* ast, TupleReference access)
         return;
     }
 
-    Token token = ast->array.token;
+    Token token = ast->tuple.token;
 
     if (is_variable_definition(ast)) {
         token = ast->variable_definition.token;

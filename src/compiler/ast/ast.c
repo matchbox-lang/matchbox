@@ -206,6 +206,15 @@ ASTNode* create_array_node(Token token, Type type, bool flat)
     return ast;
 }
 
+ASTNode* create_tuple_node(Token token)
+{
+    ASTNode* ast = create_ast_node(ASTTuple);
+    ast->tuple.token = token;
+    ast->tuple.type_id = (Type){.kind = TypeUnknown};
+
+    return ast;
+}
+
 static void wrap_destructured_constant(ASTNode* binding, Token token)
 {
     if (!binding->variable_definition.constant) {
@@ -271,6 +280,9 @@ ASTNode* create_ast_node(ASTNodeType type)
             break;
         case ASTArray:
             init_vector(&ast->array.elements);
+            break;
+        case ASTTuple:
+            init_vector(&ast->tuple.elements);
             break;
         case ASTSlice:
             init_vector(&ast->slice.reference_origins);
@@ -687,6 +699,9 @@ void free_ast_node(ASTNode* ast)
         case ASTArray:
             free_type_dimensions(ast->array.type_id);
             free_ast_node_vector(&ast->array.elements);
+            break;
+        case ASTTuple:
+            free_ast_node_vector(&ast->tuple.elements);
             break;
         case ASTSlice:
             free_ast_node(ast->slice.expr);

@@ -273,7 +273,7 @@ static void compile_array_element(Compiler* compiler, ASTNode* ast, Operand arra
     offset += position * stride;
     ASTNode* element = ast->array.elements.data[position];
 
-    if (element->type == ASTArray && !element->array.tuple) {
+    if (element->type == ASTArray) {
         compile_array_into(compiler, element, array, offset);
 
         return;
@@ -347,10 +347,6 @@ static void compile_array_into(Compiler* compiler, ASTNode* ast, Operand array, 
 
 Operand compile_array(Compiler* compiler, ASTNode* ast)
 {
-    if (ast->array.tuple) {
-        return compile_tuple(compiler, ast);
-    }
-
     Operand array = compile_array_new(compiler, ast->array.type_id);
 
     compile_array_into(compiler, ast, array, 0);

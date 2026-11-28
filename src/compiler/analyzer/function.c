@@ -133,7 +133,7 @@ void analyze_parameter(Analyzer* analyzer, ASTNode* ast)
 
 static void apply_argument_literal_type(ASTNode* argument, Type type)
 {
-    if (argument->type == ASTArray) {
+    if (argument->type == ASTArray || argument->type == ASTTuple) {
         return;
     }
 

@@ -61,8 +61,8 @@ static size_t get_array_argument_conversion_cost(ASTNode* argument, Type type)
 
 static void apply_tuple_argument_type(ASTNode* argument, Type type)
 {
-    for (size_t i = 0; i < argument->array.elements.count; i++) {
-        apply_analyzed_argument_type(argument->array.elements.data[i], type.tuple->elements[i].type);
+    for (size_t i = 0; i < argument->tuple.elements.count; i++) {
+        apply_analyzed_argument_type(argument->tuple.elements.data[i], type.tuple->elements[i].type);
     }
 }
 
@@ -70,7 +70,7 @@ void apply_analyzed_argument_type(ASTNode* argument, Type type)
 {
     apply_literal_type(argument, type);
 
-    if (argument->type == ASTArray && argument->array.tuple && type.kind == TypeTuple) {
+    if (argument->type == ASTTuple && type.kind == TypeTuple) {
         apply_tuple_argument_type(argument, type);
 
         return;
@@ -120,14 +120,14 @@ static size_t get_tuple_element_conversion_cost(ASTNode* argument, TupleElement 
 
 static size_t get_tuple_argument_conversion_cost(ASTNode* argument, Type type)
 {
-    if (argument->array.elements.count != type.tuple->count) {
+    if (argument->tuple.elements.count != type.tuple->count) {
         return SIZE_MAX;
     }
 
     size_t cost = 0;
 
     for (size_t i = 0; i < type.tuple->count && cost != SIZE_MAX; i++) {
-        cost = get_tuple_element_conversion_cost(argument->array.elements.data[i], type.tuple->elements[i]);
+        cost = get_tuple_element_conversion_cost(argument->tuple.elements.data[i], type.tuple->elements[i]);
     }
 
     return cost == SIZE_MAX ? SIZE_MAX : 1;
@@ -141,11 +141,11 @@ size_t get_argument_conversion_cost(ASTNode* argument, Type type)
         return 0;
     }
 
-    if (argument->type == ASTArray && argument->array.tuple && type.kind == TypeTuple) {
+    if (argument->type == ASTTuple && type.kind == TypeTuple) {
         return get_tuple_argument_conversion_cost(argument, type);
     }
 
-    if (argument->type == ASTArray && !argument->array.tuple && type.kind == TypeArray) {
+    if (argument->type == ASTArray && type.kind == TypeArray) {
         return get_array_argument_conversion_cost(argument, type);
     }
 
@@ -187,7 +187,7 @@ bool apply_integer_literal_type(ASTNode* expression, Type type)
 
 static void apply_array_type(ASTNode* ast, Type type)
 {
-    if (ast->array.fill || ast->array.tuple != (type.kind == TypeTuple)) {
+    if (ast->array.fill) {
         return;
     }
 
@@ -196,9 +196,13 @@ static void apply_array_type(ASTNode* ast, Type type)
 
 void apply_literal_type(ASTNode* expression, Type type)
 {
-    bool aggregate = is_array_type(type.kind) || type.kind == TypeTuple;
+    if (expression->type == ASTTuple && type.kind == TypeTuple) {
+        expression->tuple.type_id = type;
 
-    if (expression->type == ASTArray && aggregate) {
+        return;
+    }
+
+    if (expression->type == ASTArray && is_array_type(type.kind)) {
         apply_array_type(expression, type);
 
         return;

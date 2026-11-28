@@ -347,12 +347,6 @@ static void analyze_array_fill(Analyzer* analyzer, ASTNode* ast)
 
 void analyze_array(Analyzer* analyzer, ASTNode* ast)
 {
-    if (ast->array.tuple) {
-        analyze_tuple(analyzer, ast);
-
-        return;
-    }
-
     if (ast->array.fill) {
         analyze_array_fill(analyzer, ast);
 

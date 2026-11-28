@@ -27,6 +27,7 @@ typedef struct MatchArm
 typedef enum ASTNodeType
 {
     ASTArray,
+    ASTTuple,
     ASTSlice,
     ASTIndex,
     ASTIndexAssignment,
@@ -78,8 +79,13 @@ typedef struct ASTNode
             Type type_id;
             bool flat;
             bool fill;
-            bool tuple;
         } array;
+
+        struct {
+            Token token;
+            Vector elements;
+            Type type_id;
+        } tuple;
 
         struct {
             Token token;
@@ -320,6 +326,7 @@ void finish_function_generics(ASTNode* function);
 FunctionArrayEffects* create_function_array_effects(ASTNode* function);
 void add_function_tuple_move(ASTNode* function, ASTNode* symbol, size_t offset, bool restores);
 ASTNode* create_array_node(Token token, Type type, bool flat);
+ASTNode* create_tuple_node(Token token);
 void initialize_destructuring(ASTNode* group, ASTNode* source);
 ASTNode* create_assignment_node(Token operator, Token token, ASTNode* expr);
 ASTNode* create_ast_node(ASTNodeType type);

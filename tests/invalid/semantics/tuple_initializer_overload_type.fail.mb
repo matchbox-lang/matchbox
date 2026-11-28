@@ -1,0 +1,9 @@
+func accept(value: (u8, u8)) {
+    assert(value == (10, 20))
+}
+
+func accept(value: string) {
+    assert(value == "value")
+}
+
+accept((i32, i32)(10, 20))

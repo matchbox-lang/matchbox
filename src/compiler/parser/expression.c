@@ -42,7 +42,7 @@ static bool parse_tuple_element(Parser* parser, ASTNode* tuple)
 
 static ASTNode* parse_tuple_tail(Parser* parser, ASTNode* first, Token token)
 {
-    ASTNode* tuple = create_tuple_node(token);
+    ASTNode* tuple = create_tuple_node(token, false);
     bool complete = true;
 
     if (first) {
@@ -92,6 +92,10 @@ static ASTNode* finish_group_expression(Parser* parser, ASTNode* ast)
 
 ASTNode* parse_group_expression(Parser* parser)
 {
+    if (is_tuple_initializer(parser)) {
+        return parse_tuple_initializer(parser);
+    }
+
     Token token = parser->current_token;
 
     consume(parser, TokenLparen);

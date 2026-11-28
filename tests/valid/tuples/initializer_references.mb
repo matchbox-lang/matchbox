@@ -1,0 +1,13 @@
+type References = (&i32, ^i32)
+
+test "tuple initializer references" {
+    let shared = 10
+    var mutable = 20
+    let tuple = References(&shared, ^mutable)
+    let first, second = tuple
+
+    second += 5
+
+    assert(first == 10)
+    assert(second == 25)
+}

@@ -208,13 +208,30 @@ ASTNode* create_array_node(Token token, Type type, bool flat)
     return ast;
 }
 
-ASTNode* create_tuple_node(Token token)
+ASTNode* create_tuple_node(Token token, bool initializer)
 {
     ASTNode* ast = create_ast_node(ASTTuple);
     ast->tuple.token = token;
     ast->tuple.type_id = (Type){.kind = TypeUnknown};
+    ast->tuple.initializer = initializer;
 
     return ast;
+}
+
+void convert_tuple_initializer(ASTNode* ast, Type type)
+{
+    Vector elements = ast->function_call.args;
+    Token token = ast->function_call.token;
+
+    free_type_argument_vector(&ast->function_call.type_args);
+    free_vector(&ast->function_call.reference_origins);
+    free_string_object(ast->function_call.id);
+
+    ast->type = ASTTuple;
+    ast->tuple.token = token;
+    ast->tuple.elements = elements;
+    ast->tuple.type_id = type;
+    ast->tuple.initializer = true;
 }
 
 static void wrap_destructured_constant(ASTNode* binding, Token token)
@@ -730,6 +747,7 @@ void free_ast_node(ASTNode* ast)
             free_ast_node_vector(&ast->array.elements);
             break;
         case ASTTuple:
+            free_type_dimensions(ast->tuple.type_id);
             free_ast_node_vector(&ast->tuple.elements);
             break;
         case ASTSlice:

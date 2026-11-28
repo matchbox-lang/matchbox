@@ -94,6 +94,11 @@ bool is_prefix_operand(const ASTNode* ast)
     }
 }
 
+bool is_tuple_literal(const ASTNode* ast)
+{
+    return ast->type == ASTTuple && !ast->tuple.initializer;
+}
+
 bool is_variable(const ASTNode* ast)
 {
     return ast && ast->type == ASTVariable;

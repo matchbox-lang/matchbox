@@ -1,0 +1,24 @@
+type Pair = (i32, i32)
+type Product[T] = (T, T)
+type Mixed = (u8, f64, i32[2])
+
+test "tuple initializers" {
+    const PAIR = Pair(10, 20)
+
+    let value = (i32, i32)(15, 25)
+    let alias = Pair(10, 20)
+    let generic = Product[i64](30, 40)
+    let mixed = Mixed(255, 1.5, [2, 3])
+    let nested = (Pair, (string, bool))(Pair(1, 2), ("value", true))
+    let empty = ()()
+    let single = (i32,)(5)
+
+    assert(PAIR == (10, 20))
+    assert(value == (15, 25))
+    assert(alias == (10, 20))
+    assert(generic == (30, 40))
+    assert(mixed == (255, 1.5, [2, 3]))
+    assert(nested == ((1, 2), ("value", true)))
+    assert(empty == ())
+    assert(single == (5,))
+}

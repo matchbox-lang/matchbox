@@ -1,0 +1,11 @@
+test "multiline tuple initializer" {
+    let value = (
+        i32,
+        i32
+    )(
+        15,
+        25
+    )
+
+    assert(value == (15, 25))
+}

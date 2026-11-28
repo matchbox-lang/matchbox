@@ -706,42 +706,48 @@ static void resolve_call_type_arguments(Analyzer* analyzer, ASTNode* ast)
     }
 }
 
-void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
+static Type resolve_constructor_type(Analyzer* analyzer, ASTNode* ast)
 {
-    resolve_call_type_arguments(analyzer, ast);
-
     Type destination = {.kind = get_token_data_type(ast->function_call.token.type)};
 
-    if (!is_integer_type(destination.kind) && !is_float_type(destination.kind) && destination.kind != TypeChar) {
-        destination = resolve_alias_conversion_type(analyzer, ast);
+    if (is_integer_type(destination.kind) || is_float_type(destination.kind) || destination.kind == TypeChar) {
+        return destination;
+    }
+
+    return resolve_alias_conversion_type(analyzer, ast);
+}
+
+static bool analyze_constructor_call(Analyzer* analyzer, ASTNode* ast)
+{
+    Type destination = resolve_constructor_type(analyzer, ast);
+
+    if (destination.kind == TypeUnknown) {
+        return false;
+    }
+
+    if (destination.kind == TypeTuple) {
+        convert_tuple_initializer(ast, destination);
+        analyze_tuple(analyzer, ast);
+
+        return true;
     }
 
     if (destination.kind == TypeString) {
         analyze_expression_nodes(analyzer, &ast->function_call.args);
         analyze_string_constructor(analyzer, ast);
 
-        return;
+        return true;
     }
 
-    if (destination.kind != TypeUnknown) {
-        infer_conversion_literal(ast, destination);
-        analyze_expression_nodes(analyzer, &ast->function_call.args);
-        analyze_type_conversion(ast, destination);
+    infer_conversion_literal(ast, destination);
+    analyze_expression_nodes(analyzer, &ast->function_call.args);
+    analyze_type_conversion(ast, destination);
 
-        return;
-    }
+    return true;
+}
 
-    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
-
-    if (!symbol && ast->function_call.type_args.count) {
-        semantic_token_error("Type arguments require a generic function: ", ast->function_call.token);
-    }
-
-    if (!symbol) {
-        resolve_builtin_call(analyzer, ast);
-        return;
-    }
-
+static void analyze_resolved_function_call(Analyzer* analyzer, ASTNode* ast, ASTNode* symbol)
+{
     if (!is_function_definition(symbol)) {
         symbol_error(" is undefined", ast->function_call.token);
     }
@@ -754,6 +760,31 @@ void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
     validate_argument_accesses(analyzer, ast, symbol);
     validate_function_global_access(analyzer, symbol, true);
     set_call_reference_origins(analyzer, ast, symbol);
+}
+
+void analyze_function_call(Analyzer* analyzer, ASTNode* ast)
+{
+    resolve_call_type_arguments(analyzer, ast);
+
+    bool constructor = analyze_constructor_call(analyzer, ast);
+
+    if (constructor) {
+        return;
+    }
+
+    ASTNode* symbol = analyze_call_arguments(analyzer, ast);
+
+    if (!symbol && ast->function_call.type_args.count) {
+        semantic_token_error("Type arguments require a generic function: ", ast->function_call.token);
+    }
+
+    if (!symbol) {
+        resolve_builtin_call(analyzer, ast);
+
+        return;
+    }
+
+    analyze_resolved_function_call(analyzer, ast, symbol);
 }
 
 static bool can_return_reference_origin(ASTNode* origin)

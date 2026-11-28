@@ -12,6 +12,7 @@ bool is_none(const ASTNode* ast);
 bool is_parameter(const ASTNode* ast);
 bool is_prefix(const ASTNode* ast);
 bool is_prefix_operand(const ASTNode* ast);
+bool is_tuple_literal(const ASTNode* ast);
 bool is_variable(const ASTNode* ast);
 bool is_variable_definition(const ASTNode* ast);
 bool is_variable_type(const ASTNode* ast);

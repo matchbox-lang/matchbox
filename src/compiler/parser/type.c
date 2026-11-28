@@ -12,6 +12,16 @@
 #include "compiler/diagnostics.h"
 #include "runtime/string_object.h"
 
+typedef struct TupleInitializerScan
+{
+    Lexer lexer;
+    Token token;
+    Token previous;
+    size_t depth;
+    size_t brackets;
+    bool has_type;
+} TupleInitializerScan;
+
 static _Noreturn void expected_type_error(Token token)
 {
     fatal_token_error(token, "", "Expected type but found ");
@@ -299,6 +309,125 @@ ASTNode* parse_type_alias(Parser* parser)
     ASTNode* ast = create_type_alias_node(token, id);
 
     if (!parse_type_alias_definition(parser, ast)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    return ast;
+}
+
+static bool is_tuple_type_syntax_token(TokenType type)
+{
+    switch (type) {
+        case TokenIdentifier:
+        case TokenLparen:
+        case TokenRparen:
+        case TokenComma:
+        case TokenLsquare:
+        case TokenRsquare:
+        case TokenAmpersand:
+        case TokenCircumflex:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool is_tuple_type_token(TokenType type)
+{
+    if (is_type_token(type)) {
+        return true;
+    }
+
+    return is_tuple_type_syntax_token(type);
+}
+
+static bool scan_tuple_type_token(TupleInitializerScan* scan)
+{
+    bool valid = is_tuple_type_token(scan->token.type);
+
+    if (!scan->brackets && !valid) {
+        return false;
+    }
+
+    scan->previous = scan->token;
+    scan->brackets += scan->token.type == TokenLsquare;
+    scan->brackets -= scan->token.type == TokenRsquare;
+    scan->depth += scan->token.type == TokenLparen;
+    scan->depth -= scan->token.type == TokenRparen;
+    scan->token = scan_token(&scan->lexer);
+    bool type_token = is_type_token(scan->previous.type);
+    bool element_end = scan->token.type == TokenComma || scan->token.type == TokenRparen;
+    scan->has_type = scan->has_type || (type_token && element_end);
+
+    return true;
+}
+
+static bool scan_tuple_type(TupleInitializerScan* scan)
+{
+    bool valid = true;
+
+    while (valid && scan->depth && scan->token.type != TokenEof && scan->token.type != TokenIncompleteInput) {
+        valid = scan_tuple_type_token(scan);
+    }
+
+    return valid;
+}
+
+static bool has_tuple_initializer_arguments(const TupleInitializerScan* scan)
+{
+    if (scan->depth) {
+        return scan->has_type;
+    }
+
+    bool incomplete = scan->token.type == TokenEof || scan->token.type == TokenIncompleteInput;
+
+    if (incomplete) {
+        return scan->has_type;
+    }
+
+    bool adjacent = scan->has_type || scan->token.line == scan->previous.line;
+
+    return adjacent && scan->token.type == TokenLparen;
+}
+
+bool is_tuple_initializer(Parser* parser)
+{
+    TupleInitializerScan scan = {
+        .lexer = parser->lexer,
+        .previous = parser->current_token,
+        .depth = 1
+    };
+
+    scan.token = scan_token(&scan.lexer);
+    bool valid = scan_tuple_type(&scan);
+
+    if (!valid) {
+        return false;
+    }
+
+    return has_tuple_initializer_arguments(&scan);
+}
+
+ASTNode* parse_tuple_initializer(Parser* parser)
+{
+    ASTNode* ast = create_tuple_node(parser->current_token, true);
+    ReferenceType reference;
+
+    if (!parse_declared_type(parser, &ast->tuple.type_id, &reference)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    if (is_end_of_file(parser)) {
+        free_ast_node(ast);
+
+        return NULL;
+    }
+
+    if (!parse_argument_list(parser, &ast->tuple.elements)) {
         free_ast_node(ast);
 
         return NULL;

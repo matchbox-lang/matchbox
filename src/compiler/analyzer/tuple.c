@@ -209,6 +209,8 @@ static TupleElement get_expected_tuple_element(Type type, size_t index)
 
 void analyze_tuple(Analyzer* analyzer, ASTNode* ast)
 {
+    resolve_type(analyzer, &ast->tuple.type_id);
+
     size_t count = ast->tuple.elements.count;
     Type declared = ast->tuple.type_id;
 

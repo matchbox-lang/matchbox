@@ -3,6 +3,7 @@
 #include "common/tuple_type.h"
 #include "common/vector.h"
 #include "compiler/ast/literal.h"
+#include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
 #include "compiler/diagnostics.h"
@@ -70,7 +71,7 @@ void apply_analyzed_argument_type(ASTNode* argument, Type type)
 {
     apply_literal_type(argument, type);
 
-    if (argument->type == ASTTuple && type.kind == TypeTuple) {
+    if (is_tuple_literal(argument) && type.kind == TypeTuple) {
         apply_tuple_argument_type(argument, type);
 
         return;
@@ -151,7 +152,7 @@ size_t get_argument_conversion_cost(ASTNode* argument, Type type)
         return 0;
     }
 
-    if (argument->type == ASTTuple && type.kind == TypeTuple) {
+    if (is_tuple_literal(argument) && type.kind == TypeTuple) {
         return get_tuple_argument_conversion_cost(argument, type);
     }
 
@@ -206,7 +207,7 @@ static void apply_array_type(ASTNode* ast, Type type)
 
 void apply_literal_type(ASTNode* expression, Type type)
 {
-    if (expression->type == ASTTuple && type.kind == TypeTuple) {
+    if (is_tuple_literal(expression) && type.kind == TypeTuple) {
         expression->tuple.type_id = type;
 
         return;

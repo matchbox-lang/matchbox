@@ -21,6 +21,15 @@ typedef enum IntegerOperation
     IntNeg
 } IntegerOperation;
 
+typedef struct BinaryOperation
+{
+    TokenType operator_type;
+    Type left_type;
+    Type right_type;
+    Type operand_type;
+    Type result_type;
+} BinaryOperation;
+
 Opcode get_width_opcode(Type type, Opcode opcode64, Opcode opcode32, Opcode opcode16, Opcode opcode8);
 Opcode get_integer_opcode(Type type, IntegerOperation operation);
 Operand emit_binary_operands(Compiler* compiler, IntegerOperation operation, Type type, Operand left, Operand right);

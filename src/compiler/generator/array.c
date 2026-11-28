@@ -18,15 +18,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct ArrayBinaryOperation
-{
-    TokenType operator_type;
-    Type left_type;
-    Type right_type;
-    Type operand_type;
-    Type result_type;
-} ArrayBinaryOperation;
-
 typedef struct ArrayBinaryOffsets
 {
     Operand left;
@@ -78,7 +69,7 @@ static Operand create_array_binary_offset(Compiler* compiler, size_t stride,
     return offset;
 }
 
-static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const ArrayBinaryOperation* operation)
+static ArrayBinaryOffsets create_array_binary_offsets(Compiler* compiler, const BinaryOperation* operation)
 {
     Type left_leaf = get_array_leaf_type(operation->left_type);
     Type right_leaf = get_array_leaf_type(operation->right_type);
@@ -159,7 +150,7 @@ static void compile_array_prefix_loop(Compiler* compiler, TokenType operator_typ
     patch_jump(compiler, exit_jump);
 }
 
-static Operand compile_array_leaf_binary(Compiler* compiler, const ArrayBinaryOperation* operation,
+static Operand compile_array_leaf_binary(Compiler* compiler, const BinaryOperation* operation,
     Operand left, Operand right, Type left_type, Type right_type)
 {
     TokenType operator_type = operation->operator_type;
@@ -198,7 +189,7 @@ static Operand load_array_binary_operand(Compiler* compiler, Operand source, Ope
     return load_memory_value(compiler, source, offset, leaf);
 }
 
-static void compile_array_binary_body(Compiler* compiler, const ArrayBinaryOperation* operation,
+static void compile_array_binary_body(Compiler* compiler, const BinaryOperation* operation,
     Operand left, Operand right, Operand result, const ArrayBinaryOffsets* offsets)
 {
     Type left_type = operation->left_type;
@@ -221,7 +212,7 @@ static void compile_array_binary_body(Compiler* compiler, const ArrayBinaryOpera
     store_memory_value_at_offset(compiler, result, value, offsets->result, result_leaf);
 }
 
-static void compile_array_binary_loop(Compiler* compiler, const ArrayBinaryOperation* operation,
+static void compile_array_binary_loop(Compiler* compiler, const BinaryOperation* operation,
     Operand left, Operand right, Operand result)
 {
     bool left_array = is_array_type(operation->left_type.kind);
@@ -369,7 +360,7 @@ static Operand create_array_binary_result(Compiler* compiler, TokenType operator
     return compile_array_new(compiler, type);
 }
 
-static void emit_array_binary_result(Compiler* compiler, const ArrayBinaryOperation* operation,
+static void emit_array_binary_result(Compiler* compiler, const BinaryOperation* operation,
     Operand left, Operand right, Operand result, bool same_shape)
 {
     if (same_shape) {
@@ -389,7 +380,7 @@ Operand emit_array_binary(Compiler* compiler, TokenType operator_type, Type left
     Operand result = create_array_binary_result(compiler, operator_type, result_type, same_shape);
     int previous_register_count = compiler->register_count;
 
-    ArrayBinaryOperation operation = {
+    BinaryOperation operation = {
         .operator_type = operator_type,
         .left_type = left_type,
         .right_type = right_type,
@@ -423,7 +414,7 @@ Operand compile_array_binary(Compiler* compiler, ASTNode* ast)
     Operand right = compile_expression(compiler, ast->binary.right_expr, false);
     right = materialize_operand(compiler, right);
 
-    ArrayBinaryOperation operation = {
+    BinaryOperation operation = {
         .operator_type = operator_type,
         .left_type = left_type,
         .right_type = right_type,
@@ -444,7 +435,7 @@ void compile_array_compound_assignment(Compiler* compiler, ASTNode* ast)
     Type right_type = get_node_data_type(ast->assignment.expr);
     Type operand_type = get_array_leaf_type(left_type);
     TokenType operator_type = get_assignment_binary_token(ast->assignment.operator.type);
-    ArrayBinaryOperation operation = {
+    BinaryOperation operation = {
         .operator_type = operator_type,
         .left_type = left_type,
         .right_type = right_type,

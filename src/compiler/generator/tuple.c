@@ -14,16 +14,7 @@
 #include "compiler/generator/variable.h"
 #include "runtime/value.h"
 
-typedef struct TupleBinaryOperation
-{
-    TokenType operator_type;
-    Type left_type;
-    Type right_type;
-    Type operand_type;
-    Type result_type;
-} TupleBinaryOperation;
-
-static void emit_tuple_binary(Compiler* compiler, const TupleBinaryOperation* operation,
+static void emit_tuple_binary(Compiler* compiler, const BinaryOperation* operation,
     Operand result, Operand left, Operand right);
 
 static void compile_tuple_element(Compiler* compiler, ASTNode* ast, Operand result, size_t position)
@@ -37,7 +28,7 @@ static void compile_tuple_element(Compiler* compiler, ASTNode* ast, Operand resu
     release_operand(compiler, value);
 }
 
-static Operand emit_tuple_binary_leaf(Compiler* compiler, const TupleBinaryOperation* operation,
+static Operand emit_tuple_binary_leaf(Compiler* compiler, const BinaryOperation* operation,
     Operand left, Operand right)
 {
     TokenType operator_type = operation->operator_type;
@@ -65,7 +56,7 @@ static Operand emit_tuple_binary_leaf(Compiler* compiler, const TupleBinaryOpera
     return emit_binary_operator(compiler, operator_type, operation->operand_type, left, right);
 }
 
-static void emit_tuple_binary_leaf_result(Compiler* compiler, const TupleBinaryOperation* operation,
+static void emit_tuple_binary_leaf_result(Compiler* compiler, const BinaryOperation* operation,
     Operand result, Operand left, Operand right)
 {
     Operand value = emit_tuple_binary_leaf(compiler, operation, left, right);
@@ -80,12 +71,12 @@ static void emit_tuple_binary_leaf_result(Compiler* compiler, const TupleBinaryO
     release_operand(compiler, value);
 }
 
-static void emit_tuple_binary_element(Compiler* compiler, const TupleBinaryOperation* operation,
+static void emit_tuple_binary_element(Compiler* compiler, const BinaryOperation* operation,
     Operand result, Operand left, Operand right, size_t index)
 {
     TupleElement left_element = get_tuple_operand_element(operation->left_type, index);
     TupleElement right_element = get_tuple_operand_element(operation->right_type, index);
-    TupleBinaryOperation element = *operation;
+    BinaryOperation element = *operation;
     element.operand_type = operation->operand_type.tuple->elements[index].type;
     element.left_type = left_element.type;
     element.right_type = right_element.type;
@@ -103,7 +94,7 @@ static void emit_tuple_binary_element(Compiler* compiler, const TupleBinaryOpera
     emit_tuple_binary(compiler, &element, destination, left_value, right_value);
 }
 
-static void emit_tuple_binary(Compiler* compiler, const TupleBinaryOperation* operation,
+static void emit_tuple_binary(Compiler* compiler, const BinaryOperation* operation,
     Operand result, Operand left, Operand right)
 {
     if (is_array_type(operation->left_type.kind) || is_array_type(operation->right_type.kind)) {
@@ -134,7 +125,7 @@ Operand emit_tuple_binary_value(Compiler* compiler, TokenType operator_type, Typ
     bool broadcast = left_type.kind != TypeTuple || right_type.kind != TypeTuple;
     bool same_shape = broadcast || tuple_shapes_equal(left_type, right_type);
 
-    TupleBinaryOperation operation = {
+    BinaryOperation operation = {
         .operator_type = operator_type,
         .left_type = left_type,
         .right_type = right_type,

@@ -1,0 +1,8 @@
+test "mutable tuple destructuring" {
+    var first, second = (1, 2)
+    first = 3
+    second = 4
+
+    assert(first == 3)
+    assert(second == 4)
+}

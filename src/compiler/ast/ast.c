@@ -3,6 +3,7 @@
 #include "common/memory.h"
 #include "common/tuple_type.h"
 #include "common/vector.h"
+#include "compiler/ast/binding.h"
 #include "compiler/ast/function.h"
 #include "compiler/ast/generic.h"
 #include "compiler/ast/type_alias.h"
@@ -216,7 +217,7 @@ ASTNode* create_tuple_node(Token token)
 
 static void wrap_destructured_constant(ASTNode* binding, Token token)
 {
-    if (!binding->variable_definition.constant) {
+    if (binding->variable_definition.binding_type != BindingConstant) {
         return;
     }
 
@@ -239,7 +240,6 @@ void initialize_destructuring(ASTNode* group, ASTNode* source)
         index->index.token = token;
         index->index.array = create_variable_node(token);
         index->index.index = create_integer_node(token, i, index_type);
-        binding->variable_definition.constant = source->variable_definition.constant;
         binding->variable_definition.expr = index;
 
         wrap_destructured_constant(binding, token);
@@ -563,13 +563,13 @@ ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Ty
     return ast;
 }
 
-ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed)
+ASTNode* create_variable_definition_node(Token token, StringObject* id, BindingType binding_type)
 {
     ASTNode* ast = create_ast_node(ASTVariableDefinition);
     ast->variable_definition.scope = NULL;
     ast->variable_definition.id = id;
     ast->variable_definition.token = token;
-    ast->variable_definition.fixed = fixed;
+    ast->variable_definition.binding_type = binding_type;
     ast->variable_definition.type_id = (Type){.kind = TypeUnknown};
     ast->variable_definition.reference_type = RefNone;
     ast->variable_definition.position = 0;

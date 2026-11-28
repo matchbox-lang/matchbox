@@ -6,6 +6,7 @@
 #include "common/tuple_type.h"
 #include "common/unicode.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/binding.h"
 #include "compiler/ast/literal.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
@@ -420,7 +421,7 @@ static const ASTNode* get_constant_variable_initializer(const ASTNode* ast)
         return NULL;
     }
 
-    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+    if (symbol->variable_definition.binding_type == BindingMutable || symbol->variable_definition.address_taken
         || symbol->variable_definition.reference_type != RefNone) {
         return NULL;
     }
@@ -661,7 +662,8 @@ static const ASTNode* get_constant_tuple_variable(const ASTNode* ast)
 {
     const ASTNode* symbol = ast->variable.symbol;
 
-    if (symbol && symbol->type == ASTVariableDefinition && symbol->variable_definition.constant) {
+    if (symbol && symbol->type == ASTVariableDefinition
+        && symbol->variable_definition.binding_type == BindingConstant) {
         return symbol->variable_definition.expr;
     }
 
@@ -797,7 +799,7 @@ static bool evaluate_count_variable(const ASTNode* ast, uint64_t* value)
         return false;
     }
 
-    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+    if (symbol->variable_definition.binding_type == BindingMutable || symbol->variable_definition.address_taken
         || symbol->variable_definition.reference_type != RefNone) {
         return false;
     }

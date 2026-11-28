@@ -1,4 +1,5 @@
 #include "compiler/ast/binding.h"
+#include "compiler/ast/ast.h"
 #include "compiler/ast/predicate.h"
 
 bool has_no_value_reads(ASTNode* ast)

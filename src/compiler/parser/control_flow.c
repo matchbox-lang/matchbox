@@ -1,6 +1,7 @@
 #include "compiler/parser/control_flow.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/binding.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/type.h"
 #include "runtime/string_object.h"
@@ -178,7 +179,7 @@ static ASTNode* parse_for_binding(Parser* parser)
     consume(parser, TokenIdentifier);
 
     StringObject* id = copy_string_object(token.chars, token.length);
-    ASTNode* binding = create_variable_definition_node(token, id, true);
+    ASTNode* binding = create_variable_definition_node(token, id, BindingFixed);
     binding->variable_definition.expr = create_ast_node(ASTNone);
 
     if (parser->current_token.type == TokenColon && !parse_variable_type(parser, binding)) {

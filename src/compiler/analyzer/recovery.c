@@ -1,6 +1,7 @@
 #include "compiler/analyzer/recovery.h"
 #include "common/vector.h"
 #include "compiler/analyzer/tuple_reference.h"
+#include "compiler/ast/binding.h"
 #include "compiler/ast/generic.h"
 #include "compiler/scope.h"
 #include <stdint.h>

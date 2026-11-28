@@ -1,7 +1,24 @@
 #ifndef AST_BINDING_H
 #define AST_BINDING_H
 
-#include "compiler/ast/ast.h"
+#include "common/vector.h"
+#include <stdbool.h>
+
+typedef struct ASTNode ASTNode;
+
+typedef enum BindingType
+{
+    BindingMutable,
+    BindingFixed,
+    BindingConstant
+} BindingType;
+
+typedef enum BindingState
+{
+    BindingUninitialized,
+    BindingPossiblyInitialized,
+    BindingInitialized
+} BindingState;
 
 bool has_no_value_reads(ASTNode* ast);
 void initialize_variable(ASTNode* ast);

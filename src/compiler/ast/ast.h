@@ -3,12 +3,12 @@
 
 #include "common/type.h"
 #include "common/vector.h"
+#include "compiler/ast/binding.h"
 #include "compiler/lexer/token.h"
 #include "compiler/generic_bindings.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct ASTNode ASTNode;
 typedef struct Builtin Builtin;
 typedef struct FunctionArrayEffects FunctionArrayEffects;
 typedef struct GenericFunction GenericFunction;
@@ -58,13 +58,6 @@ typedef enum ASTNodeType
     ASTWhile,
     ASTNone
 } ASTNodeType;
-
-typedef enum BindingState
-{
-    BindingUninitialized,
-    BindingPossiblyInitialized,
-    BindingInitialized
-} BindingState;
 
 typedef struct ASTNode
 {
@@ -295,8 +288,7 @@ typedef struct ASTNode
             StringObject* id;
             Token token;
             size_t destructure_count;
-            bool fixed;
-            bool constant;
+            uint8_t binding_type;
             uint8_t binding_state;
             Type type_id;
             ReferenceType reference_type;
@@ -349,7 +341,7 @@ ASTNode* create_return_node(Token token, ASTNode* expr);
 ASTNode* create_slice_node(Token token, ASTNode* expr, ASTNode* start);
 ASTNode* create_string_node(Token token, StringObject* value);
 ASTNode* create_typed_binary_node(ASTNode* left, ASTNode* right, Token token, Type operand_type, Type result_type);
-ASTNode* create_variable_definition_node(Token token, StringObject* id, bool fixed);
+ASTNode* create_variable_definition_node(Token token, StringObject* id, BindingType binding_type);
 ASTNode* create_variable_node(Token token);
 ASTNode* create_while_node(Token token, ASTNode* condition, ASTNode* body);
 

@@ -118,7 +118,7 @@ static void propagate_literal_let(ASTNode* ast)
         return;
     }
 
-    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+    if (symbol->variable_definition.binding_type == BindingMutable || symbol->variable_definition.address_taken
         || symbol->variable_definition.reference_type != RefNone) {
         return;
     }

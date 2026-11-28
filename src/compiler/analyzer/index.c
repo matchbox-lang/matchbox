@@ -105,7 +105,8 @@ static void validate_index_mutation(ASTNode* ast)
 
     ASTNode* owner = get_root_binding(ast->index.array);
     ReferenceType reference = get_reference_type(owner);
-    bool constant = owner && is_variable_definition(owner) && owner->variable_definition.constant;
+    bool constant = owner && is_variable_definition(owner)
+        && owner->variable_definition.binding_type == BindingConstant;
     bool has_shared_access = owner && *get_shared_access_count(owner);
     ReferenceType source_reference = get_reference_type(ast->index.array);
 

@@ -94,7 +94,7 @@ static void validate_function_array_initialization(ASTNode* function, ASTNode* s
 {
     bool initialized = symbol->variable_definition.binding_state != BindingUninitialized;
 
-    if (symbol->variable_definition.fixed && (recursive || initialized)) {
+    if (symbol->variable_definition.binding_type != BindingMutable && (recursive || initialized)) {
         semantic_error("Function may reinitialize a fixed array binding", function->function_definition.token);
     }
 }

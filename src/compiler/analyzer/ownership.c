@@ -358,7 +358,7 @@ static void validate_loop_initialization(OwnershipState* entry, Token token)
 {
     ASTNode* symbol = entry->symbol;
 
-    if (!is_variable_definition(symbol) || !symbol->variable_definition.fixed
+    if (!is_variable_definition(symbol) || symbol->variable_definition.binding_type == BindingMutable
         || entry->binding_state != BindingUninitialized) {
         return;
     }

@@ -1,6 +1,7 @@
 #include "compiler/parser/variable.h"
 #include "common/array_type.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/binding.h"
 #include "compiler/parser/expression.h"
 #include "compiler/parser/function.h"
 #include "compiler/parser/generic.h"
@@ -43,10 +44,22 @@ static bool parse_variable_initializer(Parser* parser, ASTNode* ast)
     return true;
 }
 
+static BindingType get_binding_type(TokenType type)
+{
+    if (type == TokenKeywordConst) {
+        return BindingConstant;
+    }
+
+    if (type == TokenKeywordLet) {
+        return BindingFixed;
+    }
+
+    return BindingMutable;
+}
+
 static ASTNode* parse_variable_binding(Parser* parser, Token keyword)
 {
-    bool constant = keyword.type == TokenKeywordConst;
-    bool fixed = constant || keyword.type == TokenKeywordLet;
+    BindingType binding_type = get_binding_type(keyword.type);
 
     consume(parser, parser->current_token.type);
 
@@ -63,8 +76,7 @@ static ASTNode* parse_variable_binding(Parser* parser, Token keyword)
     }
 
     StringObject* id = copy_string_object(token.chars, token.length);
-    ASTNode* ast = create_variable_definition_node(token, id, fixed);
-    ast->variable_definition.constant = constant;
+    ASTNode* ast = create_variable_definition_node(token, id, binding_type);
 
     return ast;
 }
@@ -93,8 +105,9 @@ static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword
         return NULL;
     }
 
-    bool requires_initializer = ast->variable_definition.fixed
-        && (ast->variable_definition.constant || ast->variable_definition.type_id.kind != TypeArray);
+    BindingType binding_type = ast->variable_definition.binding_type;
+    bool requires_initializer = binding_type == BindingConstant
+        || (binding_type == BindingFixed && ast->variable_definition.type_id.kind != TypeArray);
 
     if (requires_initializer && parser->current_token.type != TokenEqual && !is_end_of_file(parser)) {
         expected_token_error(TokenEqual, parser->current_token);
@@ -109,7 +122,7 @@ static ASTNode* parse_variable_value(Parser* parser, ASTNode* ast, Token keyword
         return NULL;
     }
 
-    if (ast->variable_definition.constant) {
+    if (ast->variable_definition.binding_type == BindingConstant) {
         ast->variable_definition.expr = create_prefix_node(keyword, ast->variable_definition.expr);
     }
 
@@ -129,8 +142,8 @@ static ASTNode* parse_destructuring_name(Parser* parser, ASTNode* group, Token k
     consume(parser, TokenIdentifier);
 
     StringObject* id = copy_string_object(token.chars, token.length);
-    bool fixed = keyword.type != TokenKeywordVar;
-    ASTNode* binding = create_variable_definition_node(token, id, fixed);
+    BindingType binding_type = get_binding_type(keyword.type);
+    ASTNode* binding = create_variable_definition_node(token, id, binding_type);
 
     push_vector_item(&group->compound.statements, binding);
 
@@ -164,8 +177,9 @@ static ASTNode* parse_destructuring(Parser* parser, ASTNode* first, Token keywor
     StringObject* id = copy_string_object(name, length);
     token.chars = id->chars;
     token.length = id->length;
-    ASTNode* source = create_variable_definition_node(token, id, true);
-    source->variable_definition.constant = first->variable_definition.constant;
+    BindingType binding_type = first->variable_definition.binding_type;
+    BindingType source_type = binding_type == BindingConstant ? BindingConstant : BindingFixed;
+    ASTNode* source = create_variable_definition_node(token, id, source_type);
     source = parse_variable_value(parser, source, keyword);
 
     if (!source) {

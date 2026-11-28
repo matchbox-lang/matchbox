@@ -1,6 +1,7 @@
 #include "compiler/generator/variable.h"
 #include "common/array_type.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/binding.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/query.h"
 #include "compiler/ast/reference.h"
@@ -234,7 +235,7 @@ Operand compile_variable(Compiler* compiler, ASTNode* ast)
 {
     ASTNode* symbol = ast->variable.symbol;
 
-    if (is_variable_definition(symbol) && symbol->variable_definition.constant) {
+    if (is_variable_definition(symbol) && symbol->variable_definition.binding_type == BindingConstant) {
         Type type = get_node_data_type(symbol);
 
         return compile_converted_expression(compiler, symbol->variable_definition.expr, type, false);
@@ -415,7 +416,8 @@ void compile_variable_definition(Compiler* compiler, ASTNode* ast)
     Operand value;
     size_t slots = get_node_slot_count(ast);
     bool unused = ast->variable_definition.read_count == ast->variable_definition.discarded_read_count;
-    bool constant_value = ast->variable_definition.constant && !ast->variable_definition.address_taken;
+    bool constant_value = ast->variable_definition.binding_type == BindingConstant
+        && !ast->variable_definition.address_taken;
     bool preserve = compiler->repl_mode && is_compiling_top_level(compiler);
 
     if (compile_unused_variable_definition(compiler, ast, slots, unused || constant_value, preserve)) {

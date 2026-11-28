@@ -2,6 +2,7 @@
 #include "common/memory.h"
 #include "common/vector.h"
 #include "compiler/ast/ast.h"
+#include "compiler/ast/binding.h"
 #include "compiler/parser/control_flow.h"
 #include "compiler/parser/expression.h"
 #include "compiler/diagnostics.h"
@@ -65,7 +66,7 @@ static ASTNode* parse_match_binding(Parser* parser)
 {
     Token token = parser->current_token;
     StringObject* id = copy_string_object(token.chars, token.length);
-    ASTNode* binding = create_variable_definition_node(token, id, true);
+    ASTNode* binding = create_variable_definition_node(token, id, BindingFixed);
 
     consume(parser, TokenIdentifier);
 

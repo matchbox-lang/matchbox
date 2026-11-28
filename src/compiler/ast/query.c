@@ -2,6 +2,7 @@
 #include "builtin/builtin.h"
 #include "common/array_type.h"
 #include "common/vector.h"
+#include "compiler/ast/binding.h"
 #include "compiler/ast/predicate.h"
 #include "compiler/ast/reference.h"
 
@@ -49,7 +50,7 @@ ASTNode* get_index_constant_expression(ASTNode* ast)
         return NULL;
     }
 
-    if (!symbol->variable_definition.fixed || symbol->variable_definition.address_taken
+    if (symbol->variable_definition.binding_type == BindingMutable || symbol->variable_definition.address_taken
         || symbol->variable_definition.reference_type != RefNone) {
         return NULL;
     }

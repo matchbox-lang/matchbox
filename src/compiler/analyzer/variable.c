@@ -62,7 +62,8 @@ ASTNode* find_symbol(Analyzer* analyzer, StringView id)
 
 void validate_constant_binding(Analyzer* analyzer, ASTNode* symbol, Token token)
 {
-    if (!analyzer->constant_scope || (is_variable_definition(symbol) && symbol->variable_definition.constant)) {
+    if (!analyzer->constant_scope
+        || (is_variable_definition(symbol) && symbol->variable_definition.binding_type == BindingConstant)) {
         return;
     }
 
@@ -106,7 +107,8 @@ void validate_constant_reference(Analyzer* analyzer, ASTNode* symbol, Token toke
 
 void validate_constant_mutation(ASTNode* symbol, ReferenceType type, Token token)
 {
-    if (type == RefExclusive && is_variable_definition(symbol) && symbol->variable_definition.constant) {
+    if (type == RefExclusive && is_variable_definition(symbol)
+        && symbol->variable_definition.binding_type == BindingConstant) {
         semantic_token_error("Cannot mutate constant ", token);
     }
 }
@@ -174,7 +176,7 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
 {
     Token token = ast->assignment.token;
 
-    if (is_variable_definition(symbol) && symbol->variable_definition.constant) {
+    if (is_variable_definition(symbol) && symbol->variable_definition.binding_type == BindingConstant) {
         semantic_token_error("Cannot reassign constant ", token);
     }
 
@@ -194,7 +196,7 @@ static void validate_assignment_target(ASTNode* ast, ASTNode* symbol)
     bool mutates_array = is_array_type(type.kind) && ast->assignment.operator.type != TokenEqual;
 
     if (!mutates_array && get_reference_type(symbol) == RefNone && is_variable_definition(symbol)
-        && symbol->variable_definition.fixed
+        && symbol->variable_definition.binding_type != BindingMutable
         && symbol->variable_definition.binding_state != BindingUninitialized) {
         semantic_token_error("Cannot reassign fixed binding ", token);
     }
